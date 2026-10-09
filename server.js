@@ -1,5 +1,180 @@
 const express = require("express");
-const app = express(); const PORT = process.env.PORT || 3000;
-app.use(express.json()); app.use(express.urlencoded({ extended: true }));
-app.get("/", (req, res) => { res.send(` 
-TrouveMoi - Trouvez le bon professionnel * { box-sizing: border-box; }</p> <pre><code> body { margin: 0; font-family: Arial, sans-serif; background: #f4f7fb; color: #1d2939; } header { background: #087f5b; color: white; padding: 22px 7%; } header h1 { margin: 0; font-size: 28px; } header p { margin-bottom: 0; } .hero { text-align: center; padding: 65px 20px; background: white; } .hero h2 { font-size: 34px; margin-bottom: 12px; } .hero p { color: #667085; line-height: 1.6; } .search { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 28px auto 0; max-width: 700px; } input, select, button { padding: 14px; border-radius: 8px; font-size: 16px; } input, select { border: 1px solid #d0d5dd; background: white; min-width: 180px; flex: 1; } button { border: none; background: #087f5b; color: white; cursor: pointer; } .categories { padding: 40px 7%; text-align: center; } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; margin-top: 25px; } .card { background: white; padding: 25px 15px; border-radius: 12px; box-shadow: 0 3px 12px rgba(0,0,0,0.05); } .card h3 { margin: 0 0 10px; } footer { text-align: center; padding: 25px; background: #123b30; color: white; } @media (max-width: 600px) { .hero h2 { font-size: 27px; } .search { flex-direction: column; } input, select, button { width: 100%; } } &lt;/style&gt; &lt;/head&gt; &lt;body&gt; &lt;header&gt; &lt;h1&gt;TrouveMoi&lt;/h1&gt; &lt;p&gt;Les professionnels qu'il vous faut, près de chez vous.&lt;/p&gt; &lt;/header&gt; &lt;main&gt; &lt;section class=&quot;hero&quot;&gt; &lt;h2&gt;Quel professionnel recherchez-vous ?&lt;/h2&gt; &lt;p&gt;Retrouvez des artisans et des prestataires de services au Bénin.&lt;/p&gt; &lt;form class=&quot;search&quot; id=&quot;searchForm&quot;&gt; &lt;input id=&quot;metier&quot; type=&quot;text&quot; placeholder=&quot;Ex. plombier, mécanicien&quot;&gt; &lt;select id=&quot;ville&quot;&gt; &lt;option value=&quot;&quot;&gt;Toutes les villes&lt;/option&gt; &lt;option value=&quot;Cotonou&quot;&gt;Cotonou&lt;/option&gt; &lt;option value=&quot;Abomey-Calavi&quot;&gt;Abomey-Calavi&lt;/option&gt; &lt;option value=&quot;Porto-Novo&quot;&gt;Porto-Novo&lt;/option&gt; &lt;/select&gt; &lt;button type=&quot;submit&quot;&gt;Rechercher&lt;/button&gt; &lt;/form&gt; &lt;p id=&quot;message&quot; role=&quot;status&quot;&gt;&lt;/p&gt; &lt;/section&gt; &lt;section class=&quot;categories&quot;&gt; &lt;h2&gt;Les services recherchés&lt;/h2&gt; &lt;div class=&quot;grid&quot;&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Réparation de téléphones&lt;/h3&gt; &lt;p&gt;Pour vos téléphones et accessoires.&lt;/p&gt; &lt;/article&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Plomberie&lt;/h3&gt; &lt;p&gt;Pour vos installations et réparations.&lt;/p&gt; &lt;/article&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Électricité&lt;/h3&gt; &lt;p&gt;Pour vos travaux électriques.&lt;/p&gt; &lt;/article&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Maçonnerie&lt;/h3&gt; &lt;p&gt;Pour vos travaux de construction.&lt;/p&gt; &lt;/article&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Mécanique automobile&lt;/h3&gt; &lt;p&gt;Pour l'entretien et la réparation de véhicules.&lt;/p&gt; &lt;/article&gt; &lt;article class=&quot;card&quot;&gt; &lt;h3&gt;Soudure&lt;/h3&gt; &lt;p&gt;Pour vos travaux métalliques.&lt;/p&gt; &lt;/article&gt; &lt;/div&gt; &lt;/section&gt; &lt;/main&gt; &lt;footer&gt; &lt;p&gt;&amp;copy; ${new Date().getFullYear()} TrouveMoi — Le service qui vous rapproche des professionnels.&lt;/p&gt; &lt;/footer&gt; &lt;script&gt; document.getElementById(&quot;searchForm&quot;).addEventListener(&quot;submit&quot;, function(event) { event.preventDefault(); const metier = document.getElementById(&quot;metier&quot;).value.trim(); const ville = document.getElementById(&quot;ville&quot;).value; const message = document.getElementById(&quot;message&quot;); if (!metier &amp;&amp; !ville) { message.textContent = &quot;Entrez un métier ou choisissez une ville pour commencer.&quot;; return; } message.textContent = &quot;La recherche de professionnels sera disponible lorsque l'annuaire sera connecté à sa base de données.&quot;; }); &lt;/script&gt; &lt;/body&gt; &lt;/html&gt; </code></pre> <p>`); });</p> <p>app.get(&quot;/health&quot;, (req, res) =&gt; { res.status(200).json({ status: &quot;ok&quot;, application: &quot;TrouveMoi&quot; }); });</p> <p>app.listen(PORT, &quot;0.0.0.0&quot;, () =&gt; { console.log(<code>TrouveMoi est lancé sur le port ${PORT}</code>); });</p>
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrouveMoi - Trouvez le bon professionnel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      color: #1d2939;
+    }
+
+    header {
+      background: #075e54;
+      color: white;
+      padding: 22px 16px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 30px;
+    }
+
+    header p {
+      margin-bottom: 0;
+    }
+
+    main {
+      max-width: 850px;
+      margin: 35px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 3px 15px rgba(0, 0, 0, 0.07);
+    }
+
+    h2 {
+      color: #075e54;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 13px;
+      margin: 8px 0;
+      border-radius: 7px;
+      font-size: 16px;
+    }
+
+    input, select {
+      border: 1px solid #ccd5df;
+      background: white;
+    }
+
+    button {
+      border: none;
+      background: #075e54;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #064b43;
+    }
+
+    .services {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 25px;
+    }
+
+    .service {
+      background: #e8f5f1;
+      padding: 18px 10px;
+      text-align: center;
+      border-radius: 8px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #667085;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>TrouveMoi</h1>
+    <p>Trouvez le bon professionnel près de chez vous.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Quel professionnel recherchez-vous ?</h2>
+      <p>Recherchez un artisan ou un prestataire de services au Bénin.</p>
+
+      <form id="searchForm">
+        <input
+          type="text"
+          id="service"
+          placeholder="Ex. : plombier, mécanicien, électricien"
+          required
+        >
+
+        <select id="city">
+          <option value="">Toutes les villes</option>
+          <option value="Cotonou">Cotonou</option>
+          <option value="Abomey-Calavi">Abomey-Calavi</option>
+        </select>
+
+        <button type="submit">Rechercher</button>
+      </form>
+
+      <p id="message"></p>
+    </section>
+
+    <section class="services">
+      <div class="service">Plombier</div>
+      <div class="service">Électricien</div>
+      <div class="service">Mécanicien</div>
+      <div class="service">Maçon</div>
+      <div class="service">Réparateur de téléphones</div>
+      <div class="service">Soudeur</div>
+    </section>
+  </main>
+
+  <footer>
+    TrouveMoi - La plateforme qui vous rapproche des professionnels.
+  </footer>
+
+  <script>
+    document.getElementById("searchForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      const service = document.getElementById("service").value.trim();
+      const city = document.getElementById("city").value;
+      const message = document.getElementById("message");
+
+      message.textContent = "Votre recherche de " + service +
+        (city ? " à " + city : "") +
+        " a été enregistrée. L'annuaire des professionnels sera bientôt disponible.";
+    });
+  </script>
+</body>
+</html>
+  `);
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    application: "TrouveMoi"
+  });
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("TrouveMoi est lancé sur le port " + PORT);
+});
