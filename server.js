@@ -232,7 +232,52 @@ app.get("/health/database", async (req, res) => {
   }
 });
 
-// Démarrer le serveur
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("TrouveMoi est lancé sur le port " + PORT);
-});
+// Créer la table des candidatures et démarrer le serveur
+async function startServer() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS professional_applications (
+        id BIGSERIAL PRIMARY KEY,
+        full_name VARCHAR(150) NOT NULL,
+        npi VARCHAR(100) NOT NULL,
+        phone VARCHAR(30) NOT NULL,
+        city VARCHAR(100) NOT NULL,
+        neighborhood VARCHAR(150),
+        profession VARCHAR(150) NOT NULL,
+        experience TEXT,
+        service_description TEXT NOT NULL,
+        service_area VARCHAR(200),
+        availability VARCHAR(200),
+        identity_document_path TEXT,
+        portrait_path TEXT,
+        full_body_photo_path TEXT,
+        work_photo_path TEXT,
+        portfolio_photo_path TEXT,
+        status VARCHAR(30) NOT NULL DEFAULT 'pending'
+          CHECK (
+            status IN (
+              'pending',
+              'under_review',
+              'approved',
+              'rejected',
+              'corrections_requested'
+            )
+          ),
+        admin_notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    console.log("Table des candidatures prête.");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log("TrouveMoi est lancé sur le port " + PORT);
+    });
+  } catch (error) {
+    console.error("Erreur au démarrage de TrouveMoi:", error.message);
+    process.exit(1);
+  }
+}
+
+startServer();
