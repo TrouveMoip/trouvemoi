@@ -427,8 +427,8 @@ function page(title, content) {
         }
 
         .photos-grid img {
-          max-width: 180px;
-          max-height: 180px;
+          max-width: 300px;
+          max-height: 300px;
           border-radius: 8px;
           border: 2px solid #e5e7eb;
           object-fit: cover;
@@ -590,6 +590,7 @@ app.get("/", async (req, res) => {
       SELECT
         id,
         full_name,
+        phone,
         city,
         neighborhood,
         profession,
@@ -597,7 +598,6 @@ app.get("/", async (req, res) => {
         service_description,
         service_area,
         availability,
-        photo_profil_url,
         photo_activite_url
       FROM professional_applications
       WHERE status = 'approved'
@@ -619,69 +619,86 @@ app.get("/", async (req, res) => {
 
     const result = await pool.query(query, values);
 
-    const professionals = result.rows.map((person) => `
-      <article class="card">
-        <h2>${escapeHtml(person.profession)}</h2>
+    const professionals = result.rows.map((person) => {
+      const phoneClean = normalizePhone(person.phone || "");
+      const whatsappNumber = phoneClean.replace(/^\+/, "");
 
-        <div class="photos-grid">
-          ${person.photo_profil_url
-            ? `
-              <div class="photo-block">
-                <img
-                  src="${escapeHtml(person.photo_profil_url)}"
-                  alt="Photo de profil"
-                  class="photo-profil"
-                >
-                <div class="photo-label">Profil</div>
-              </div>
-            `
-            : ""
-          }
+      const contactButtons = phoneClean
+        ? `
+          <div class="contact-buttons">
+            <a
+              class="button"
+              href="tel:${escapeHtml(phoneClean)}"
+            >
+              Appeler
+            </a>
+
+            <a
+              class="button whatsapp"
+              href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent(
+                "Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + "."
+              )}"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              WhatsApp
+            </a>
+          </div>
+        `
+        : "";
+
+      return `
+        <article class="card">
+          <h2>${escapeHtml(person.profession)}</h2>
 
           ${person.photo_activite_url
             ? `
-              <div class="photo-block">
-                <img
-                  src="${escapeHtml(person.photo_activite_url)}"
-                  alt="Photo d'activite"
-                  class="photo-activite"
-                >
-                <div class="photo-label">Activite</div>
+              <div class="photos-grid">
+                <div class="photo-block">
+                  <img
+                    src="${escapeHtml(person.photo_activite_url)}"
+                    alt="Photo d'activite"
+                    class="photo-activite"
+                  >
+                  <div class="photo-label">Activite</div>
+                </div>
               </div>
             `
             : ""
           }
-        </div>
 
-        <p>
-          <strong>Professionnel :</strong>
-          ${escapeHtml(person.full_name)}
-        </p>
+          <p>
+            <strong>Professionnel :</strong>
+            ${escapeHtml(person.full_name)}
+          </p>
 
-        <p>
-          <strong>Ville :</strong>
-          ${escapeHtml(person.city)}
-        </p>
+          <p>
+            <strong>Ville :</strong>
+            ${escapeHtml(person.city)}
+          </p>
 
-        ${person.neighborhood
-          ? `<p><strong>Quartier :</strong> ${escapeHtml(person.neighborhood)}</p>`
-          : ""}
+          ${person.neighborhood
+            ? `<p><strong>Quartier :</strong> ${escapeHtml(person.neighborhood)}</p>`
+            : ""}
 
-        ${person.experience
-          ? `<p><strong>Experience :</strong> ${escapeHtml(person.experience)}</p>`
-          : ""}
+          ${person.experience
+            ? `<p><strong>Experience :</strong> ${escapeHtml(person.experience)}</p>`
+            : ""}
 
-        <p>${escapeHtml(person.service_description)}</p>
+          <p>${escapeHtml(person.service_description)}</p>
 
-        ${person.service_area
-          ? `<p><strong>Zone d'intervention :</strong> ${escapeHtml(person.service_area)}</p>`
-          : ""}
+          ${person.service_area
+            ? `<p><strong>Zone d'intervention :</strong> ${escapeHtml(person.service_area)}</p>`
+            : ""}
 
-        ${person.availability
-          ? `<p><strong>Disponibilite :</strong> ${escapeHtml(person.availability)}</p>`
-          : ""}
-      </article>
-    `).join("");
+          ${person.availability
+            ? `<p><strong>Disponibilite :</strong> ${escapeHtml(person.availability)}</p>`
+            : ""}
+
+          ${contactButtons}
+        </article>
+      `;
+    }).join("");
 
     const content = `
       <section class="card">
@@ -848,7 +865,7 @@ app.get("/devenir-professionnel", (req, res) => {
         </p>
 
         <label for="photo_profil">
-          Photo de profil * (visible publiquement)
+          Photo de profil * (privee, visible uniquement par l'administration)
         </label>
         <input
           id="photo_profil"
@@ -1918,7 +1935,7 @@ app.get(
                     alt="Photo de profil"
                     class="photo-profil"
                   >
-                  <div class="photo-label">Profil</div>
+                  <div class="photo-label">Profil (privee)</div>
                 </div>
               `
               : ""
@@ -1946,7 +1963,7 @@ app.get(
                     alt="Photo d'activite"
                     class="photo-activite"
                   >
-                  <div class="photo-label">Activite</div>
+                  <div class="photo-label">Activite (publique)</div>
                 </div>
               `
               : ""
