@@ -291,58 +291,168 @@ function page(title, content) {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="description" content="TrouveMoi - La plateforme de mise en relation entre clients et professionnels au Benin.">
       <title>${escapeHtml(title)} - TrouveMoi</title>
 
       <style>
         * {
           box-sizing: border-box;
+          margin: 0;
+          padding: 0;
         }
 
         body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+          padding: 0;
           background: #f4f7fb;
           color: #222;
+          line-height: 1.6;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
         }
 
         header {
-          background: #087f5b;
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
           color: white;
-          padding: 22px;
-          text-align: center;
-          border-radius: 10px;
+          padding: 18px 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+
+        .header-content {
+          max-width: 1100px;
+          margin: 0 auto;
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .logo {
+          font-size: 26px;
+          font-weight: 800;
+          color: white;
+          text-decoration: none;
+          letter-spacing: -0.5px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .logo::before {
+          content: "🔍";
+          font-size: 24px;
+        }
+
+        .tagline {
+          font-size: 13px;
+          opacity: 0.9;
+          margin-top: 2px;
+        }
+
+        nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        nav a {
+          color: white;
+          text-decoration: none;
+          padding: 8px 14px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          transition: background 0.2s;
+        }
+
+        nav a:hover {
+          background: rgba(255,255,255,0.15);
         }
 
         main {
-          max-width: 1000px;
-          margin: 24px auto;
+          max-width: 1100px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 24px 20px;
+          flex: 1;
         }
 
         .card {
           background: white;
-          padding: 22px;
-          margin-bottom: 18px;
-          border-radius: 10px;
-          box-shadow: 0 3px 12px rgba(0,0,0,0.07);
+          padding: 24px;
+          margin-bottom: 20px;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          transition: box-shadow 0.2s;
         }
 
-        input,
-        textarea,
-        select,
-        button {
-          width: 100%;
-          padding: 12px;
-          margin: 8px 0 14px;
-          border-radius: 6px;
-          font-size: 16px;
+        .card:hover {
+          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+          font-size: 28px;
+          margin-bottom: 16px;
+          color: #087f5b;
+          line-height: 1.3;
+        }
+
+        h2 {
+          font-size: 22px;
+          margin-bottom: 14px;
+          color: #1a1a1a;
+          line-height: 1.3;
+        }
+
+        h3 {
+          font-size: 18px;
+          margin-bottom: 10px;
+          color: #1a1a1a;
+        }
+
+        p {
+          margin-bottom: 12px;
+        }
+
+        label {
+          display: block;
+          margin-top: 8px;
+          margin-bottom: 4px;
+          font-weight: 600;
+          font-size: 14px;
+          color: #333;
         }
 
         input,
         textarea,
         select {
-          border: 1px solid #ccc;
+          width: 100%;
+          padding: 12px 14px;
+          margin-bottom: 14px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          font-size: 15px;
+          font-family: inherit;
           background: white;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+          outline: none;
+          border-color: #087f5b;
+          box-shadow: 0 0 0 3px rgba(8,127,91,0.1);
+        }
+
+        textarea {
+          resize: vertical;
+          min-height: 100px;
         }
 
         input[type="file"] {
@@ -357,47 +467,54 @@ function page(title, content) {
           background: #f0fdf9;
         }
 
+        input[type="checkbox"] {
+          width: auto;
+          margin-right: 8px;
+        }
+
         button,
         .button {
           display: inline-block;
           border: none;
           background: #087f5b;
           color: white;
-          padding: 12px 16px;
-          border-radius: 6px;
+          padding: 12px 20px;
+          border-radius: 8px;
           cursor: pointer;
           text-decoration: none;
           text-align: center;
+          font-size: 15px;
+          font-weight: 600;
+          transition: background 0.2s, transform 0.1s;
+          margin-right: 8px;
+          margin-bottom: 8px;
+        }
+
+        button:hover,
+        .button:hover {
+          background: #0a6b4d;
+          transform: translateY(-1px);
         }
 
         .danger {
           background: #b42318;
         }
 
+        .danger:hover {
+          background: #9a1d13;
+        }
+
         .secondary {
           background: #475467;
         }
 
+        .secondary:hover {
+          background: #344054;
+        }
+
         .muted {
           color: #667085;
-        }
-
-        .actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-        }
-
-        .actions form {
-          flex: 1 1 150px;
-        }
-
-        .actions button {
-          margin: 0;
-        }
-
-        a {
-          color: #087f5b;
+          font-size: 14px;
         }
 
         .contact-buttons {
@@ -408,28 +525,45 @@ function page(title, content) {
         }
 
         .contact-buttons .button {
-          flex: 1 1 180px;
+          flex: 1 1 140px;
+          margin: 0;
         }
 
         .whatsapp {
-          background: #128c7e;
+          background: #25d366;
+        }
+
+        .whatsapp:hover {
+          background: #1da851;
         }
 
         .email {
           background: #475467;
         }
 
+        .email:hover {
+          background: #344054;
+        }
+
+        .share {
+          background: #4267b2;
+        }
+
+        .share:hover {
+          background: #365899;
+        }
+
         .photos-grid {
           display: flex;
           flex-wrap: wrap;
           gap: 12px;
-          margin: 12px 0;
+          margin: 16px 0;
         }
 
         .photos-grid img {
-          max-width: 300px;
-          max-height: 300px;
-          border-radius: 8px;
+          max-width: 280px;
+          max-height: 280px;
+          border-radius: 10px;
           border: 2px solid #e5e7eb;
           object-fit: cover;
         }
@@ -451,6 +585,7 @@ function page(title, content) {
           color: #667085;
           text-align: center;
           margin-top: 4px;
+          font-weight: 600;
         }
 
         .photo-block {
@@ -462,21 +597,111 @@ function page(title, content) {
         .help-text {
           font-size: 13px;
           color: #667085;
-          margin-top: -8px;
           margin-bottom: 12px;
+          font-style: italic;
         }
 
         .hidden {
           display: none !important;
         }
 
+        .actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin: 12px 0;
+        }
+
+        footer {
+          background: #1a1a1a;
+          color: #ccc;
+          padding: 32px 20px 20px;
+          margin-top: 40px;
+        }
+
+        .footer-content {
+          max-width: 1100px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 24px;
+        }
+
+        .footer-col h4 {
+          color: white;
+          margin-bottom: 12px;
+          font-size: 15px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .footer-col a {
+          display: block;
+          color: #aaa;
+          text-decoration: none;
+          padding: 4px 0;
+          font-size: 14px;
+        }
+
+        .footer-col a:hover {
+          color: #0a9d70;
+        }
+
+        .footer-bottom {
+          max-width: 1100px;
+          margin: 24px auto 0;
+          padding-top: 20px;
+          border-top: 1px solid #333;
+          text-align: center;
+          font-size: 13px;
+          color: #888;
+        }
+
         @media (max-width: 600px) {
-          body {
-            padding: 12px;
+          header {
+            padding: 14px 16px;
+          }
+
+          .header-content {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .logo {
+            font-size: 22px;
+          }
+
+          nav {
+            justify-content: center;
+          }
+
+          nav a {
+            padding: 6px 10px;
+            font-size: 13px;
+          }
+
+          main {
+            padding: 16px 12px;
           }
 
           .card {
             padding: 16px;
+          }
+
+          h1 {
+            font-size: 22px;
+          }
+
+          h2 {
+            font-size: 18px;
+          }
+
+          .photos-grid img {
+            max-width: 100%;
+          }
+
+          .contact-buttons .button {
+            flex: 1 1 100%;
           }
         }
       </style>
@@ -484,32 +709,61 @@ function page(title, content) {
 
     <body>
       <header>
-        <h1>
-          <a href="/" style="color:white;text-decoration:none">
-            TrouveMoi
-          </a>
-        </h1>
+        <div class="header-content">
+          <div>
+            <a href="/" class="logo">TrouveMoi</a>
+            <div class="tagline">Trouvez le bon professionnel au Benin</div>
+          </div>
 
-        <p>La plateforme de mise en relation au Benin</p>
-
-        <nav>
-          <a href="/" style="color:white;margin:0 8px">
-            Professionnels
-          </a>
-
-          <a href="/emplois" style="color:white;margin:0 8px">
-            Emploi
-          </a>
-
-          <a href="/publier-emploi" style="color:white;margin:0 8px">
-            Publier une offre
-          </a>
-        </nav>
+          <nav>
+            <a href="/">Professionnels</a>
+            <a href="/emplois">Emploi</a>
+            <a href="/publier-emploi">Publier une offre</a>
+            <a href="/contact">Contact</a>
+          </nav>
+        </div>
       </header>
 
       <main>
         ${content}
       </main>
+
+      <footer>
+        <div class="footer-content">
+          <div class="footer-col">
+            <h4>TrouveMoi</h4>
+            <p style="color:#aaa;font-size:14px">
+              La plateforme beninoise de mise en relation entre clients et professionnels.
+            </p>
+          </div>
+
+          <div class="footer-col">
+            <h4>Navigation</h4>
+            <a href="/">Professionnels</a>
+            <a href="/emplois">Offres d'emploi</a>
+            <a href="/devenir-professionnel">Devenir professionnel</a>
+            <a href="/publier-emploi">Publier une offre</a>
+          </div>
+
+          <div class="footer-col">
+            <h4>Informations</h4>
+            <a href="/a-propos">A propos</a>
+            <a href="/contact">Contact</a>
+            <a href="/conditions">Conditions d'utilisation</a>
+            <a href="/confidentialite">Politique de confidentialite</a>
+          </div>
+
+          <div class="footer-col">
+            <h4>Contact</h4>
+            <a href="/contact">Nous ecrire</a>
+            <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          &copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.
+        </div>
+      </footer>
     </body>
     </html>
   `;
@@ -655,8 +909,6 @@ app.get("/", async (req, res) => {
       </option>
     `).join("");
 
-    /* QUARTIERS DE LA VILLE SELECTIONNEE (si ville choisie) */
-
     let neighborhoodOptions = "";
 
     if (city) {
@@ -683,8 +935,6 @@ app.get("/", async (req, res) => {
         `).join("");
       }
     }
-
-    /* GROUPEMENT DES METIERS PAR CATEGORIE */
 
     const professionsByCategory = {};
 
@@ -722,29 +972,49 @@ app.get("/", async (req, res) => {
       const phoneClean = normalizePhone(person.phone || "");
       const whatsappNumber = phoneClean.replace(/^\+/, "");
 
-      const contactButtons = phoneClean
-        ? `
-          <div class="contact-buttons">
-            <a
-              class="button"
-              href="tel:${escapeHtml(phoneClean)}"
-            >
-              Appeler
-            </a>
+      const shareText = encodeURIComponent(
+        "Decouvrez " + person.full_name + " (" + person.profession + ") sur TrouveMoi"
+      );
 
-            <a
-              class="button whatsapp"
-              href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent(
-                "Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + "."
-              )}"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              WhatsApp
-            </a>
-          </div>
-        `
-        : "";
+      const shareUrl = encodeURIComponent(
+        "https://trouvemoi-4mk0.onrender.com/"
+      );
+
+      const contactButtons = `
+        <div class="contact-buttons">
+          ${phoneClean
+            ? `
+              <a
+                class="button"
+                href="tel:${escapeHtml(phoneClean)}"
+              >
+                📞 Appeler
+              </a>
+
+              <a
+                class="button whatsapp"
+                href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent(
+                  "Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + "."
+                )}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                💬 WhatsApp
+              </a>
+            `
+            : ""
+          }
+
+          <a
+            class="button share"
+            href="https://wa.me/?text=${shareText}%20-%20${shareUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            📤 Partager
+          </a>
+        </div>
+      `;
 
       return `
         <article class="card">
@@ -799,11 +1069,9 @@ app.get("/", async (req, res) => {
       `;
     }).join("");
 
-    /* CONTENU DE LA PAGE */
-
     const content = `
       <section class="card">
-        <h2>Rechercher un professionnel</h2>
+        <h1>Rechercher un professionnel</h1>
 
         <form action="/" method="GET">
           <label for="profession">Metier ou service</label>
@@ -839,12 +1107,12 @@ app.get("/", async (req, res) => {
           Devenir professionnel
         </a>
 
-        <a class="button" href="/emplois">
+        <a class="button secondary" href="/emplois">
           Consulter les offres d'emploi
         </a>
       </section>
 
-      <h2>Professionnels disponibles</h2>
+      <h2>Professionnels disponibles (${result.rows.length})</h2>
 
       ${professionals || `
         <section class="card">
@@ -854,7 +1122,7 @@ app.get("/", async (req, res) => {
         </section>
       `}
 
-      <p>
+      <p style="text-align:center;margin-top:24px">
         <a href="/devenir-professionnel">Proposer mes services</a>
       </p>
     `;
@@ -920,6 +1188,7 @@ app.get("/devenir-professionnel", async (req, res) => {
 
         <p>
           Remplissez le formulaire pour soumettre votre candidature.
+          Votre profil sera examine par notre equipe avant publication.
         </p>
 
         <form
@@ -942,6 +1211,7 @@ app.get("/devenir-professionnel", async (req, res) => {
             type="tel"
             required
             maxlength="30"
+            placeholder="+229..."
           >
 
           <label for="city">Ville *</label>
@@ -959,7 +1229,7 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <div id="neighborhood-other-block" class="hidden">
             <label for="neighborhood_other">
-              Precisez votre quartier (si non liste)
+              Precisez votre quartier
             </label>
             <input
               id="neighborhood_other"
@@ -1009,6 +1279,7 @@ app.get("/devenir-professionnel", async (req, res) => {
             rows="5"
             required
             maxlength="3000"
+            placeholder="Decrivez vos services, votre savoir-faire, vos specialites..."
           ></textarea>
 
           <label for="service_area">Zones d'intervention</label>
@@ -1016,6 +1287,7 @@ app.get("/devenir-professionnel", async (req, res) => {
             id="service_area"
             name="service_area"
             maxlength="300"
+            placeholder="Ex. : Cotonou et environs"
           >
 
           <label for="availability">Disponibilite</label>
@@ -2092,7 +2364,8 @@ app.get("/admin", (req, res) => {
       <h1>Administration TrouveMoi</h1>
 
       <p>
-        Connectez-vous pour gerer les candidatures et les offres d'emploi.
+        Connectez-vous pour gerer les candidatures, les offres d'emploi
+        et les messages recus.
       </p>
 
       <form action="/admin/login" method="POST">
@@ -2348,7 +2621,7 @@ app.get(
             </p>
 
             <p class="muted">
-              Reçue le : ${escapeHtml(candidate.created_at)}
+              Recue le : ${escapeHtml(candidate.created_at)}
             </p>
 
             <form
@@ -2397,6 +2670,10 @@ app.get(
               <div class="actions">
                 <a class="button" href="/admin/emplois">
                   Gerer les offres d'emploi
+                </a>
+
+                <a class="button" href="/admin/messages">
+                  Voir les messages
                 </a>
 
                 <a class="button secondary" href="/emplois">
@@ -2580,6 +2857,10 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
             <a class="button" href="/admin/candidatures">
               Retour aux candidatures professionnelles
             </a>
+
+            <a class="button" href="/admin/messages">
+              Voir les messages
+            </a>
           </section>
 
           ${offers || `
@@ -2733,6 +3014,203 @@ app.post(
   }
 );
 
+/* ADMIN : MESSAGES DE CONTACT */
+
+app.get("/admin/messages", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        is_read,
+        created_at
+      FROM contact_messages
+      ORDER BY
+        CASE WHEN is_read = false THEN 0 ELSE 1 END,
+        created_at DESC
+      LIMIT 200
+    `);
+
+    const messages = result.rows.map((msg) => `
+      <article class="card">
+        <h2>
+          ${msg.is_read ? "📖" : "📩"}
+          ${escapeHtml(msg.subject || "Sans objet")}
+        </h2>
+
+        <p>
+          <strong>De :</strong>
+          ${escapeHtml(msg.name)}
+        </p>
+
+        <p>
+          <strong>E-mail :</strong>
+          ${escapeHtml(msg.email || "Non renseigne")}
+        </p>
+
+        <p>
+          <strong>Telephone :</strong>
+          ${escapeHtml(msg.phone || "Non renseigne")}
+        </p>
+
+        <p>
+          <strong>Message :</strong>
+        </p>
+
+        <p style="background:#f9fafb;padding:12px;border-radius:8px">
+          ${escapeHtml(msg.message).replace(/\n/g, "<br>")}
+        </p>
+
+        <p class="muted">
+          Recu le : ${escapeHtml(msg.created_at)}
+        </p>
+
+        ${!msg.is_read
+          ? `
+            <form
+              action="/admin/messages/${encodeURIComponent(msg.id)}/read"
+              method="POST"
+            >
+              <input
+                type="hidden"
+                name="csrfToken"
+                value="${escapeHtml(req.adminSession.csrf)}"
+              >
+
+              <button type="submit">
+                Marquer comme lu
+              </button>
+            </form>
+          `
+          : ""
+        }
+
+        <form
+          action="/admin/messages/${encodeURIComponent(msg.id)}/delete"
+          method="POST"
+        >
+          <input
+            type="hidden"
+            name="csrfToken"
+            value="${escapeHtml(req.adminSession.csrf)}"
+          >
+
+          <button class="danger" type="submit">
+            Supprimer
+          </button>
+        </form>
+      </article>
+    `).join("");
+
+    res.setHeader("Cache-Control", "no-store");
+
+    res.send(
+      page(
+        "Messages",
+        `
+          <section class="card">
+            <h1>Messages recus</h1>
+
+            <p>Total : ${result.rows.length} message(s)</p>
+
+            <div class="actions">
+              <a class="button" href="/admin/candidatures">
+                Candidatures
+              </a>
+
+              <a class="button" href="/admin/emplois">
+                Offres d'emploi
+              </a>
+            </div>
+
+            <form action="/admin/logout" method="POST">
+              <input
+                type="hidden"
+                name="csrfToken"
+                value="${escapeHtml(req.adminSession.csrf)}"
+              >
+
+              <button class="secondary" type="submit">
+                Se deconnecter
+              </button>
+            </form>
+          </section>
+
+          ${messages || `
+            <section class="card">
+              <p>Aucun message pour le moment.</p>
+            </section>
+          `}
+        `
+      )
+    );
+  } catch (error) {
+    console.error(
+      "Erreur de chargement des messages :",
+      error.message
+    );
+
+    res.status(500).send(
+      page(
+        "Erreur",
+        "<h2>Impossible de charger les messages.</h2>"
+      )
+    );
+  }
+});
+
+app.post(
+  "/admin/messages/:id/read",
+  requireAdmin,
+  verifyCsrf,
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.redirect(303, "/admin/messages");
+    }
+
+    try {
+      await pool.query(
+        "UPDATE contact_messages SET is_read = true WHERE id = $1",
+        [id]
+      );
+    } catch (error) {
+      console.error("Erreur marquage lu :", error.message);
+    }
+
+    res.redirect(303, "/admin/messages");
+  }
+);
+
+app.post(
+  "/admin/messages/:id/delete",
+  requireAdmin,
+  verifyCsrf,
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.redirect(303, "/admin/messages");
+    }
+
+    try {
+      await pool.query(
+        "DELETE FROM contact_messages WHERE id = $1",
+        [id]
+      );
+    } catch (error) {
+      console.error("Erreur suppression message :", error.message);
+    }
+
+    res.redirect(303, "/admin/messages");
+  }
+);
+
 /* DECONNEXION */
 
 app.post(
@@ -2745,6 +3223,409 @@ app.post(
     res.redirect(303, "/admin");
   }
 );
+
+/* PAGES STATIQUES */
+
+app.get("/a-propos", (req, res) => {
+  const content = `
+    <section class="card">
+      <h1>A propos de TrouveMoi</h1>
+
+      <p>
+        <strong>TrouveMoi</strong> est la plateforme beninoise de mise en relation
+        entre les clients et les professionnels qualifiés.
+      </p>
+
+      <h2>Notre mission</h2>
+
+      <p>
+        Nous voulons simplifier la recherche de professionnels de confiance
+        au Benin. Trop souvent, trouver un plombier, un electricien ou un
+        couturier fiable prend du temps et passe par le bouche-a-oreille.
+      </p>
+
+      <p>
+        TrouveMoi centralise les professionnels de votre ville, verifie leur
+        identite et vous permet de les contacter en un clic.
+      </p>
+
+      <h2>Nos services</h2>
+
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li>Annuaire de professionnels verifies</li>
+        <li>Recherche par ville, quartier et metier</li>
+        <li>Contact direct par telephone ou WhatsApp</li>
+        <li>Offres d'emploi publiees par les entreprises</li>
+      </ul>
+
+      <h2>Notre engagement</h2>
+
+      <p>
+        Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe
+        (photo d'identite et informations verifiees) avant publication. Nous
+        nous engageons a fournir une plateforme de qualite et a proteger vos
+        donnees personnelles.
+      </p>
+
+      <p style="margin-top:24px">
+        <a class="button" href="/contact">Nous contacter</a>
+        <a class="button secondary" href="/">Voir les professionnels</a>
+      </p>
+    </section>
+  `;
+
+  res.send(page("A propos", content));
+});
+
+app.get("/conditions", (req, res) => {
+  const content = `
+    <section class="card">
+      <h1>Conditions d'utilisation</h1>
+
+      <p class="muted">
+        Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}
+      </p>
+
+      <h2>1. Acceptation des conditions</h2>
+
+      <p>
+        En utilisant TrouveMoi, vous acceptez sans reserve les presentes
+        conditions d'utilisation.
+      </p>
+
+      <h2>2. Nature du service</h2>
+
+      <p>
+        TrouveMoi est une plateforme de mise en relation. Nous ne fournissons
+        pas directement de services professionnels. Nous mettons en relation
+        des clients avec des professionnels independants.
+      </p>
+
+      <h2>3. Inscription des professionnels</h2>
+
+      <p>
+        Les professionnels doivent fournir des informations exactes et a jour,
+        ainsi que des photos veritables (profil, identite, activite). Toute
+        fausse declaration entraine le rejet ou le retrait de la candidature.
+      </p>
+
+      <h2>4. Responsabilites</h2>
+
+      <p>
+        TrouveMoi ne peut etre tenu responsable de la qualite des services
+        fournis par les professionnels references sur la plateforme. La
+        relation contractuelle s'etablit directement entre le client et le
+        professionnel.
+      </p>
+
+      <h2>5. Utilisation interdite</h2>
+
+      <p>
+        Il est interdit de :
+      </p>
+
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li>Publier de fausses informations</li>
+        <li>Usurper l'identite d'autrui</li>
+        <li>Utiliser la plateforme a des fins illicites</li>
+        <li>Publier du contenu offensant ou illegal</li>
+      </ul>
+
+      <h2>6. Modification des conditions</h2>
+
+      <p>
+        Nous nous reservons le droit de modifier ces conditions a tout moment.
+        Les utilisateurs seront informes des changements importants.
+      </p>
+
+      <h2>7. Contact</h2>
+
+      <p>
+        Pour toute question : <a href="/contact">formulaire de contact</a>
+      </p>
+    </section>
+  `;
+
+  res.send(page("Conditions d'utilisation", content));
+});
+
+app.get("/confidentialite", (req, res) => {
+  const content = `
+    <section class="card">
+      <h1>Politique de confidentialite</h1>
+
+      <p class="muted">
+        Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}
+      </p>
+
+      <h2>1. Donnees collectees</h2>
+
+      <p>
+        Nous collectons les donnees suivantes :
+      </p>
+
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li>Pour les professionnels : nom, telephone, ville, quartier, metier, description, photos</li>
+        <li>Pour les offres d'emploi : nom de l'entreprise, contacts, description du poste</li>
+        <li>Pour le contact : nom, email, telephone, message</li>
+      </ul>
+
+      <h2>2. Utilisation des donnees</h2>
+
+      <p>
+        Vos donnees sont utilisees pour :
+      </p>
+
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li>Mettre en relation les clients et les professionnels</li>
+        <li>Afficher les profils des professionnels approuves</li>
+        <li>Vous contacter en cas de besoin</li>
+      </ul>
+
+      <h2>3. Protection des photos d'identite</h2>
+
+      <p>
+        Les photos d'identite des professionnels sont <strong>strictement
+        privees</strong>. Elles ne sont visibles que par l'administration de
+        TrouveMoi pour verification. Elles ne sont jamais affichees publiquement.
+      </p>
+
+      <h2>4. Partage des donnees</h2>
+
+      <p>
+        Nous ne vendons ni ne partageons vos donnees avec des tiers.
+        Les coordonnees des professionnels sont visibles publiquement car
+        c'est le but meme du service.
+      </p>
+
+      <h2>5. Vos droits</h2>
+
+      <p>
+        Vous pouvez a tout moment demander :
+      </p>
+
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li>L'acces a vos donnees</li>
+        <li>La modification de vos donnees</li>
+        <li>La suppression de vos donnees</li>
+      </ul>
+
+      <p>
+        Pour exercer ces droits : <a href="/contact">formulaire de contact</a>
+      </p>
+
+      <h2>6. Cookies</h2>
+
+      <p>
+        Nous utilisons uniquement des cookies techniques necessaires au
+        fonctionnement de l'administration (session securisee).
+      </p>
+    </section>
+  `;
+
+  res.send(page("Politique de confidentialite", content));
+});
+
+app.get("/contact", (req, res) => {
+  const content = `
+    <section class="card">
+      <h1>Nous contacter</h1>
+
+      <p>
+        Une question, une suggestion, un probleme ? Ecrivez-nous.
+        Nous vous repondrons dans les plus brefs delais.
+      </p>
+
+      <form action="/contact" method="POST">
+        <label for="name">Votre nom *</label>
+        <input
+          id="name"
+          name="name"
+          required
+          maxlength="150"
+        >
+
+        <label for="email">Votre e-mail</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          maxlength="254"
+          placeholder="vous@exemple.com"
+        >
+
+        <label for="phone">Votre telephone</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          maxlength="30"
+          placeholder="+229..."
+        >
+
+        <label for="subject">Sujet *</label>
+        <input
+          id="subject"
+          name="subject"
+          required
+          maxlength="200"
+          placeholder="Ex. : Question sur les inscriptions"
+        >
+
+        <label for="message">Votre message *</label>
+        <textarea
+          id="message"
+          name="message"
+          required
+          maxlength="5000"
+          rows="6"
+        ></textarea>
+
+        <p class="help-text">
+          Au moins un moyen de contact (email ou telephone) est requis.
+        </p>
+
+        <button type="submit">Envoyer le message</button>
+      </form>
+    </section>
+  `;
+
+  res.send(page("Contact", content));
+});
+
+app.post("/contact", async (req, res) => {
+  const {
+    name,
+    email,
+    phone,
+    subject,
+    message
+  } = req.body;
+
+  const cleanName = typeof name === "string"
+    ? name.trim().slice(0, 150)
+    : "";
+
+  const cleanEmail = typeof email === "string"
+    ? email.trim().slice(0, 254)
+    : "";
+
+  const cleanPhone = typeof phone === "string"
+    ? normalizePhone(phone).slice(0, 30)
+    : "";
+
+  const cleanSubject = typeof subject === "string"
+    ? subject.trim().slice(0, 200)
+    : "";
+
+  const cleanMessage = typeof message === "string"
+    ? message.trim().slice(0, 5000)
+    : "";
+
+  if (
+    !cleanName ||
+    !cleanSubject ||
+    !cleanMessage ||
+    (!cleanEmail && !cleanPhone)
+  ) {
+    return res.status(400).send(
+      page(
+        "Informations manquantes",
+        `
+          <section class="card">
+            <h2>Informations manquantes</h2>
+            <p>
+              Le nom, le sujet, le message et au moins un moyen de contact
+              (email ou telephone) sont obligatoires.
+            </p>
+            <a href="/contact">Retour au formulaire</a>
+          </section>
+        `
+      )
+    );
+  }
+
+  if (cleanEmail && !validEmail(cleanEmail)) {
+    return res.status(400).send(
+      page(
+        "E-mail invalide",
+        `
+          <section class="card">
+            <h2>L'adresse e-mail est invalide.</h2>
+            <a href="/contact">Retour au formulaire</a>
+          </section>
+        `
+      )
+    );
+  }
+
+  if (cleanPhone && !validPhone(cleanPhone)) {
+    return res.status(400).send(
+      page(
+        "Telephone invalide",
+        `
+          <section class="card">
+            <h2>Le numero de telephone est invalide.</h2>
+            <a href="/contact">Retour au formulaire</a>
+          </section>
+        `
+      )
+    );
+  }
+
+  try {
+    await pool.query(`
+      INSERT INTO contact_messages (
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        is_read
+      )
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [
+      cleanName,
+      cleanEmail || null,
+      cleanPhone || null,
+      cleanSubject,
+      cleanMessage
+    ]);
+
+    res.status(201).send(
+      page(
+        "Message envoye",
+        `
+          <section class="card">
+            <h1>Message envoye avec succes !</h1>
+            <p>
+              Merci pour votre message. Nous vous repondrons dans les plus
+              brefs delais.
+            </p>
+            <a class="button" href="/">Retour a l'accueil</a>
+          </section>
+        `
+      )
+    );
+  } catch (error) {
+    console.error(
+      "Erreur lors de l'enregistrement du message :",
+      error.message
+    );
+
+    res.status(500).send(
+      page(
+        "Erreur",
+        `
+          <section class="card">
+            <h2>Impossible d'envoyer le message.</h2>
+            <p>Veuillez reessayer plus tard.</p>
+          </section>
+        `
+      )
+    );
+  }
+});
 
 /* VERIFICATION DU SERVEUR */
 
@@ -2877,6 +3758,21 @@ async function startServer() {
         name VARCHAR(150) NOT NULL UNIQUE,
         category VARCHAR(100),
         display_order INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+
+    /* TABLE DES MESSAGES DE CONTACT */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        email VARCHAR(254),
+        phone VARCHAR(30),
+        subject VARCHAR(200) NOT NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -3108,10 +4004,7 @@ async function startServer() {
     }
 
     console.log(
-      "Tables des candidatures et des offres d'emploi pretes."
-    );
-    console.log(
-      "Villes, quartiers et metiers charges."
+      "Tables des candidatures, offres, villes, quartiers, metiers et messages pretes."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
