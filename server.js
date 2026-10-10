@@ -17,9 +17,7 @@ if (
   !process.env.CLOUDINARY_API_KEY ||
   !process.env.CLOUDINARY_API_SECRET
 ) {
-  console.error(
-    "Erreur : les variables Cloudinary ne sont pas configurees."
-  );
+  console.error("Erreur : les variables Cloudinary ne sont pas configurees.");
   process.exit(1);
 }
 
@@ -32,17 +30,12 @@ cloudinary.config({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-    files: 3
-  },
+  limits: { fileSize: 5 * 1024 * 1024, files: 3 },
   fileFilter: (req, file, cb) => {
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-
     if (!allowed.includes(file.mimetype)) {
       return cb(new Error("Format non autorise. Utilisez JPG, PNG ou WEBP."));
     }
-
     cb(null, true);
   }
 });
@@ -69,11 +62,27 @@ function uploadToCloudinary(buffer, folder, publicId) {
   });
 }
 
+async function deleteFromCloudinary(publicId) {
+  if (!publicId) return;
+  try {
+    const urlParts = publicId.split("/upload/");
+    if (urlParts.length < 2) return;
+
+    let path = urlParts[1];
+    if (path.startsWith("v")) {
+      path = path.replace(/^v\d+\//, "");
+    }
+    const cleanId = path.replace(/\.[^.]+$/, "");
+
+    await cloudinary.uploader.destroy(cleanId, { invalidate: true });
+  } catch (error) {
+    console.error("Erreur suppression Cloudinary :", error.message);
+  }
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("localhost")
-    ? false
-    : { rejectUnauthorized: false }
+  ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
 });
 
 pool.on("error", (error) => {
@@ -86,16 +95,9 @@ app.disable("x-powered-by");
 
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
-
 const PRO_COOKIE = "tm_pro_session";
 
-const ALLOWED_STATUSES = [
-  "pending",
-  "under_review",
-  "approved",
-  "rejected",
-  "corrections_requested"
-];
+const ALLOWED_STATUSES = ["pending", "under_review", "approved", "rejected", "corrections_requested"];
 
 const STATUS_LABELS = {
   pending: "En attente",
@@ -114,14 +116,25 @@ const JOB_STATUS_LABELS = {
   closed: "Cloturee"
 };
 
+const GDPR_REQUEST_TYPES = ["access", "deletion", "rectification", "opposition"];
+
+const GDPR_TYPE_LABELS = {
+  access: "Acces aux donnees",
+  deletion: "Suppression du compte",
+  rectification: "Rectification",
+  opposition: "Opposition"
+};
+
+const GDPR_STATUSES = ["pending", "processed", "rejected"];
+
+const GDPR_STATUS_LABELS = {
+  pending: "En attente",
+  processed: "Traitee",
+  rejected: "Refusee"
+};
+
 const JOB_CONTRACT_TYPES = [
-  "CDI",
-  "CDD",
-  "Stage",
-  "Interim",
-  "Freelance",
-  "Apprentissage",
-  "Autre"
+  "CDI", "CDD", "Stage", "Interim", "Freelance", "Apprentissage", "Autre"
 ];
 
 const OFFER_DURATION_DAYS = 15;
@@ -142,55 +155,33 @@ function escapeHtml(value) {
 function safeEqual(first, second) {
   const firstBuffer = Buffer.from(String(first));
   const secondBuffer = Buffer.from(String(second));
-
-  if (firstBuffer.length !== secondBuffer.length) {
-    return false;
-  }
-
+  if (firstBuffer.length !== secondBuffer.length) return false;
   return crypto.timingSafeEqual(firstBuffer, secondBuffer);
 }
 
 function createSessionToken(payload) {
   const secret = process.env.ADMIN_SESSION_SECRET;
-
   if (!secret || secret.length < 32) {
     throw new Error("ADMIN_SESSION_SECRET doit contenir au moins 32 caracteres.");
   }
-
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
-
-  const signature = crypto
-    .createHmac("sha256", secret)
-    .update(encodedPayload)
-    .digest("base64url");
-
+  const signature = crypto.createHmac("sha256", secret).update(encodedPayload).digest("base64url");
   return `${encodedPayload}.${signature}`;
 }
 
 function verifySessionToken(token) {
   try {
     if (!token || !process.env.ADMIN_SESSION_SECRET) return null;
-
     const parts = token.split(".");
     if (parts.length !== 2) return null;
-
     const [encodedPayload, signature] = parts;
-
     const expectedSignature = crypto
       .createHmac("sha256", process.env.ADMIN_SESSION_SECRET)
       .update(encodedPayload)
       .digest("base64url");
-
     if (!safeEqual(signature, expectedSignature)) return null;
-
-    const payload = JSON.parse(
-      Buffer.from(encodedPayload, "base64url").toString("utf8")
-    );
-
-    if (payload.expiresAt <= Date.now() || typeof payload.csrf !== "string") {
-      return null;
-    }
-
+    const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8"));
+    if (payload.expiresAt <= Date.now() || typeof payload.csrf !== "string") return null;
     return payload;
   } catch {
     return null;
@@ -199,17 +190,13 @@ function verifySessionToken(token) {
 
 function readCookie(req, name) {
   const cookieHeader = req.headers.cookie || "";
-
   for (const item of cookieHeader.split(";")) {
     const separator = item.indexOf("=");
     if (separator === -1) continue;
-
     const key = item.slice(0, separator).trim();
     const value = item.slice(separator + 1).trim();
-
     if (key === name) return value;
   }
-
   return null;
 }
 
@@ -244,12 +231,10 @@ function clearProCookie(res) {
 function requireAdmin(req, res, next) {
   const token = readCookie(req, SESSION_COOKIE);
   const session = verifySessionToken(token);
-
   if (!session) {
     clearSessionCookie(res);
     return res.redirect(303, "/admin");
   }
-
   req.adminSession = session;
   next();
 }
@@ -257,20 +242,15 @@ function requireAdmin(req, res, next) {
 function verifyCsrf(req, res, next) {
   const submittedToken = req.body.csrfToken;
   const sessionToken = req.adminSession?.csrf;
-
   if (
     typeof submittedToken !== "string" ||
     typeof sessionToken !== "string" ||
     !safeEqual(submittedToken, sessionToken)
   ) {
     return res.status(403).send(
-      page(
-        "Requete refusee",
-        "<h1>Requete refusee</h1><p>Veuillez actualiser la page et reessayer.</p>"
-      )
+      page("Requete refusee", "<h1>Requete refusee</h1><p>Veuillez actualiser la page et reessayer.</p>")
     );
   }
-
   next();
 }
 
@@ -283,21 +263,13 @@ async function generateUniqueProCode() {
   let code;
   let exists = true;
   let attempts = 0;
-
   while (exists && attempts < 20) {
     code = generateProCode();
-    const result = await pool.query(
-      "SELECT id FROM professional_applications WHERE pro_code = $1",
-      [code]
-    );
+    const result = await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code]);
     exists = result.rows.length > 0;
     attempts += 1;
   }
-
-  if (exists) {
-    throw new Error("Impossible de generer un code unique.");
-  }
-
+  if (exists) throw new Error("Impossible de generer un code unique.");
   return code;
 }
 
@@ -313,295 +285,92 @@ function page(title, content) {
 
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-          padding: 0; background: #f4f7fb; color: #222;
-          line-height: 1.6; min-height: 100vh;
-          display: flex; flex-direction: column;
-        }
-
-        header {
-          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
-          color: white; padding: 18px 20px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          position: sticky; top: 0; z-index: 100;
-        }
-
-        .header-content {
-          max-width: 1100px; margin: 0 auto;
-          display: flex; flex-wrap: wrap;
-          justify-content: space-between; align-items: center; gap: 12px;
-        }
-
-        .logo {
-          font-size: 26px; font-weight: 800; color: white;
-          text-decoration: none; letter-spacing: -0.5px;
-          display: flex; align-items: center; gap: 8px;
-        }
-
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f4f7fb; color: #222; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+        header { background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%); color: white; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+        .logo { font-size: 26px; font-weight: 800; color: white; text-decoration: none; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
         .logo::before { content: "🔍"; font-size: 24px; }
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
-
         nav { display: flex; flex-wrap: wrap; gap: 6px; }
-
-        nav a {
-          color: white; text-decoration: none;
-          padding: 8px 14px; border-radius: 6px;
-          font-size: 14px; font-weight: 500;
-          transition: background 0.2s;
-        }
-
+        nav a { color: white; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: background 0.2s; }
         nav a:hover { background: rgba(255,255,255,0.15); }
-
-        main {
-          max-width: 1100px; width: 100%;
-          margin: 0 auto; padding: 24px 20px; flex: 1;
-        }
-
-        .card {
-          background: white; padding: 24px; margin-bottom: 20px;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-          transition: box-shadow 0.2s;
-        }
-
+        main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
+        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
         .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-
         h1 { font-size: 28px; margin-bottom: 16px; color: #087f5b; line-height: 1.3; }
         h2 { font-size: 22px; margin-bottom: 14px; color: #1a1a1a; line-height: 1.3; }
         h3 { font-size: 18px; margin-bottom: 10px; color: #1a1a1a; }
         p { margin-bottom: 12px; }
-
-        label {
-          display: block; margin-top: 8px; margin-bottom: 4px;
-          font-weight: 600; font-size: 14px; color: #333;
-        }
-
-        input, textarea, select {
-          width: 100%; padding: 12px 14px; margin-bottom: 14px;
-          border: 1px solid #ddd; border-radius: 8px;
-          font-size: 15px; font-family: inherit; background: white;
-          transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input:focus, textarea:focus, select:focus {
-          outline: none; border-color: #087f5b;
-          box-shadow: 0 0 0 3px rgba(8,127,91,0.1);
-        }
-
+        label { display: block; margin-top: 8px; margin-bottom: 4px; font-weight: 600; font-size: 14px; color: #333; }
+        input, textarea, select { width: 100%; padding: 12px 14px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #087f5b; box-shadow: 0 0 0 3px rgba(8,127,91,0.1); }
         textarea { resize: vertical; min-height: 100px; }
-
-        input[type="file"] {
-          padding: 10px; background: #f9fafb;
-          border: 2px dashed #ccc; cursor: pointer;
-        }
-
+        input[type="file"] { padding: 10px; background: #f9fafb; border: 2px dashed #ccc; cursor: pointer; }
         input[type="file"]:hover { border-color: #087f5b; background: #f0fdf9; }
-
-        input[type="checkbox"] { width: auto; margin-right: 8px; }
-
-        button, .button {
-          display: inline-block; border: none;
-          background: #087f5b; color: white;
-          padding: 12px 20px; border-radius: 8px;
-          cursor: pointer; text-decoration: none;
-          text-align: center; font-size: 15px; font-weight: 600;
-          transition: background 0.2s, transform 0.1s;
-          margin-right: 8px; margin-bottom: 8px;
-        }
-
+        input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
+        button, .button { display: inline-block; border: none; background: #087f5b; color: white; padding: 12px 20px; border-radius: 8px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: background 0.2s, transform 0.1s; margin-right: 8px; margin-bottom: 8px; }
         button:hover, .button:hover { background: #0a6b4d; transform: translateY(-1px); }
-
         .danger { background: #b42318; }
         .danger:hover { background: #9a1d13; }
-
         .secondary { background: #475467; }
         .secondary:hover { background: #344054; }
-
         .warning { background: #f59e0b; }
         .warning:hover { background: #d97706; }
-
         .success { background: #0a9d70; }
         .success:hover { background: #087f5b; }
-
         .muted { color: #667085; font-size: 14px; }
-
-        .contact-buttons {
-          display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
-        }
-
+        .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
         .contact-buttons .button { flex: 1 1 140px; margin: 0; }
-
         .whatsapp { background: #25d366; }
         .whatsapp:hover { background: #1da851; }
-
         .email { background: #475467; }
         .email:hover { background: #344054; }
-
         .share { background: #4267b2; }
         .share:hover { background: #365899; }
-
-        .photos-grid {
-          display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
-        }
-
-        .photos-grid img {
-          max-width: 280px; max-height: 280px;
-          border-radius: 10px; border: 2px solid #e5e7eb;
-          object-fit: cover;
-        }
-
+        .photos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+        .photos-grid img { max-width: 280px; max-height: 280px; border-radius: 10px; border: 2px solid #e5e7eb; object-fit: cover; }
         .photo-profil { border: 3px solid #087f5b !important; }
         .photo-identite { border: 3px solid #b42318 !important; }
         .photo-activite { border: 3px solid #475467 !important; }
-
-        .photo-label {
-          font-size: 12px; color: #667085;
-          text-align: center; margin-top: 4px; font-weight: 600;
-        }
-
+        .photo-label { font-size: 12px; color: #667085; text-align: center; margin-top: 4px; font-weight: 600; }
         .photo-block { display: flex; flex-direction: column; align-items: center; }
-
-        .help-text {
-          font-size: 13px; color: #667085;
-          margin-bottom: 12px; font-style: italic;
-        }
-
+        .help-text { font-size: 13px; color: #667085; margin-bottom: 12px; font-style: italic; }
         .hidden { display: none !important; }
-
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px; margin-bottom: 24px;
-        }
-
-        .stat-card {
-          background: white; padding: 24px;
-          border-radius: 12px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-          border-left: 4px solid #087f5b;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-        }
-
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #087f5b; transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
         .stat-card.warning { border-left-color: #f59e0b; }
         .stat-card.danger { border-left-color: #b42318; }
         .stat-card.info { border-left-color: #3b82f6; }
-
         .stat-icon { font-size: 32px; margin-bottom: 8px; }
-
-        .stat-number {
-          font-size: 36px; font-weight: 800;
-          color: #1a1a1a; line-height: 1; margin-bottom: 6px;
-        }
-
-        .stat-label {
-          font-size: 14px; color: #667085; font-weight: 500;
-        }
-
-        .stat-link {
-          display: inline-block; margin-top: 10px;
-          font-size: 13px; color: #087f5b;
-          text-decoration: none; font-weight: 600;
-        }
-
+        .stat-number { font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1; margin-bottom: 6px; }
+        .stat-label { font-size: 14px; color: #667085; font-weight: 500; }
+        .stat-link { display: inline-block; margin-top: 10px; font-size: 13px; color: #087f5b; text-decoration: none; font-weight: 600; }
         .stat-link:hover { text-decoration: underline; }
-
-        .pro-code-box {
-          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
-          color: white; padding: 24px; border-radius: 12px;
-          text-align: center; margin: 16px 0;
-        }
-
-        .pro-code-value {
-          font-size: 42px; font-weight: 800;
-          letter-spacing: 4px; margin: 12px 0;
-          font-family: "Courier New", monospace;
-        }
-
-        .pro-code-label {
-          font-size: 14px; opacity: 0.9;
-          text-transform: uppercase; letter-spacing: 1px;
-        }
-
-        .badge {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
+        .pro-code-box { background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 16px 0; }
+        .pro-code-value { font-size: 42px; font-weight: 800; letter-spacing: 4px; margin: 12px 0; font-family: "Courier New", monospace; }
+        .pro-code-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-approved { background: #d1fae5; color: #065f46; }
         .badge-rejected { background: #fee2e2; color: #991b1b; }
         .badge-closed { background: #e5e7eb; color: #374151; }
-
-        .alert {
-          padding: 16px 20px;
-          border-radius: 8px;
-          margin-bottom: 16px;
-          border-left: 4px solid;
-        }
-
-        .alert-success {
-          background: #d1fae5;
-          border-color: #0a9d70;
-          color: #065f46;
-        }
-
-        .alert-danger {
-          background: #fee2e2;
-          border-color: #b42318;
-          color: #991b1b;
-        }
-
-        .alert-warning {
-          background: #fef3c7;
-          border-color: #f59e0b;
-          color: #92400e;
-        }
-
-        footer {
-          background: #1a1a1a; color: #ccc;
-          padding: 32px 20px 20px; margin-top: 40px;
-        }
-
-        .footer-content {
-          max-width: 1100px; margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 24px;
-        }
-
-        .footer-col h4 {
-          color: white; margin-bottom: 12px;
-          font-size: 15px; text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .footer-col a {
-          display: block; color: #aaa;
-          text-decoration: none; padding: 4px 0; font-size: 14px;
-        }
-
+        .badge-processed { background: #d1fae5; color: #065f46; }
+        .alert { padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid; }
+        .alert-success { background: #d1fae5; border-color: #0a9d70; color: #065f46; }
+        .alert-danger { background: #fee2e2; border-color: #b42318; color: #991b1b; }
+        .alert-warning { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+        .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
+        .checkbox-block { background: #f9fafb; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb; }
+        .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; }
+        .checkbox-block input[type="checkbox"] { margin-top: 5px; }
+        footer { background: #1a1a1a; color: #ccc; padding: 32px 20px 20px; margin-top: 40px; }
+        .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
+        .footer-col h4 { color: white; margin-bottom: 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .footer-col a { display: block; color: #aaa; text-decoration: none; padding: 4px 0; font-size: 14px; }
         .footer-col a:hover { color: #0a9d70; }
-
-        .footer-bottom {
-          max-width: 1100px; margin: 24px auto 0;
-          padding-top: 20px; border-top: 1px solid #333;
-          text-align: center; font-size: 13px; color: #888;
-        }
-
+        .footer-bottom { max-width: 1100px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 13px; color: #888; }
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
@@ -619,7 +388,6 @@ function page(title, content) {
         }
       </style>
     </head>
-
     <body>
       <header>
         <div class="header-content">
@@ -627,7 +395,6 @@ function page(title, content) {
             <a href="/" class="logo">TrouveMoi</a>
             <div class="tagline">Trouvez le bon professionnel au Benin</div>
           </div>
-
           <nav>
             <a href="/">Professionnels</a>
             <a href="/emplois">Emploi</a>
@@ -636,20 +403,13 @@ function page(title, content) {
           </nav>
         </div>
       </header>
-
-      <main>
-        ${content}
-      </main>
-
+      <main>${content}</main>
       <footer>
         <div class="footer-content">
           <div class="footer-col">
             <h4>TrouveMoi</h4>
-            <p style="color:#aaa;font-size:14px">
-              La plateforme beninoise de mise en relation entre clients et professionnels.
-            </p>
+            <p style="color:#aaa;font-size:14px">La plateforme beninoise de mise en relation entre clients et professionnels.</p>
           </div>
-
           <div class="footer-col">
             <h4>Navigation</h4>
             <a href="/">Professionnels</a>
@@ -657,7 +417,6 @@ function page(title, content) {
             <a href="/devenir-professionnel">Devenir professionnel</a>
             <a href="/mon-espace-pro">Espace pro</a>
           </div>
-
           <div class="footer-col">
             <h4>Informations</h4>
             <a href="/a-propos">A propos</a>
@@ -665,17 +424,13 @@ function page(title, content) {
             <a href="/conditions">Conditions d'utilisation</a>
             <a href="/confidentialite">Politique de confidentialite</a>
           </div>
-
           <div class="footer-col">
             <h4>Contact</h4>
             <a href="/contact">Nous ecrire</a>
             <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
           </div>
         </div>
-
-        <div class="footer-bottom">
-          &copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.
-        </div>
+        <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
     </body>
     </html>
@@ -696,36 +451,17 @@ function validEmail(value) {
 
 function jobContactButtons(job) {
   const buttons = [];
-
   if (job.contact_phone) {
-    buttons.push(`
-      <a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">
-        Appeler le recruteur
-      </a>
-    `);
+    buttons.push(`<a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">Appeler le recruteur</a>`);
   }
-
   if (job.contact_whatsapp) {
     const whatsapp = normalizePhone(job.contact_whatsapp).replace(/^\+/, "");
-
-    buttons.push(`
-      <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">
-        Contacter sur WhatsApp
-      </a>
-    `);
+    buttons.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">Contacter sur WhatsApp</a>`);
   }
-
   if (job.contact_email) {
-    buttons.push(`
-      <a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">
-        Envoyer un e-mail
-      </a>
-    `);
+    buttons.push(`<a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">Envoyer un e-mail</a>`);
   }
-
-  return buttons.length
-    ? `<div class="contact-buttons">${buttons.join("")}</div>`
-    : "";
+  return buttons.length ? `<div class="contact-buttons">${buttons.join("")}</div>` : "";
 }
 
 /* PAGE D'ACCUEIL */
@@ -746,7 +482,7 @@ app.get("/", async (req, res) => {
 
     let query = `
       SELECT
-        id, full_name, phone, city, neighborhood, profession,
+        id, full_name, phone, phone_public, city, neighborhood, profession,
         experience, service_description, service_area, availability,
         photo_activite_url
       FROM professional_applications
@@ -822,21 +558,36 @@ app.get("/", async (req, res) => {
     const professionals = result.rows.map((person) => {
       const phoneClean = normalizePhone(person.phone || "");
       const whatsappNumber = phoneClean.replace(/^\+/, "");
+      const phonePublic = person.phone_public === true;
 
       const shareText = encodeURIComponent(
         "Decouvrez " + person.full_name + " (" + person.profession + ") sur TrouveMoi"
       );
       const shareUrl = encodeURIComponent("https://trouvemoi-4mk0.onrender.com/");
 
-      const contactButtons = `
-        <div class="contact-buttons">
-          ${phoneClean ? `
+      let contactButtons = "";
+
+      if (phonePublic && phoneClean) {
+        contactButtons = `
+          <div class="contact-buttons">
             <a class="button" href="tel:${escapeHtml(phoneClean)}">📞 Appeler</a>
             <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + ".")}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-          ` : ""}
-          <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
-        </div>
-      `;
+            <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
+          </div>
+        `;
+      } else {
+        contactButtons = `
+          <div class="alert alert-info" style="margin-top:16px">
+            📩 Ce professionnel a choisi de ne pas afficher son numero publiquement.
+            Pour le contacter, cliquez ci-dessous. Votre demande sera transmise
+            par l'administration (cela peut prendre quelques jours).
+          </div>
+          <div class="contact-buttons">
+            <a class="button" href="/contact?pro=${encodeURIComponent(person.id)}">📩 Contacter ce professionnel</a>
+            <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
+          </div>
+        `;
+      }
 
       return `
         <article class="card">
@@ -972,6 +723,33 @@ app.get("/devenir-professionnel", async (req, res) => {
           <label for="phone">Telephone *</label>
           <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229...">
 
+          <div class="checkbox-block">
+            <label>
+              <input type="checkbox" name="phone_public" value="yes" checked>
+              <span>
+                <strong>J'accepte que mon numero de telephone soit visible publiquement</strong>
+                <br>
+                <span class="muted">
+                  Cela permet aux clients de vous contacter directement
+                  (appel ou WhatsApp) depuis la plateforme.
+                </span>
+              </span>
+            </label>
+
+            <div class="alert alert-warning" style="margin-top:12px;margin-bottom:0">
+              ⚠️ <strong>Si vous refusez</strong> que votre numero soit public :
+              <ul style="margin-left:20px;margin-top:8px">
+                <li>Les clients ne pourront <strong>PAS</strong> vous contacter directement</li>
+                <li>Ils devront passer par l'administration de TrouveMoi</li>
+                <li>Votre mise en relation prendra <strong>PLUS DE TEMPS</strong> (delai administratif)</li>
+                <li>Vous risquez de perdre des opportunites</li>
+              </ul>
+              <p style="margin-top:8px;margin-bottom:0">
+                <strong>Nous vous recommandons fortement de laisser cette case cochee.</strong>
+              </p>
+            </div>
+          </div>
+
           <label for="city">Ville *</label>
           <select id="city" name="city" required>
             <option value="">Choisissez votre ville</option>
@@ -1039,6 +817,17 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <label for="photo_activite">Photo d'activite (optionnelle, visible publiquement)</label>
           <input id="photo_activite" name="photo_activite" type="file" accept="image/jpeg,image/jpg,image/png,image/webp">
+
+          <div class="checkbox-block">
+            <label>
+              <input type="checkbox" name="gdpr_consent" value="yes" required>
+              <span>
+                J'accepte que mes donnees soient traitees conformement a la
+                <a href="/confidentialite" target="_blank">Politique de confidentialite</a>.
+                Je dispose de droits d'acces, de rectification, de suppression et d'opposition.
+              </span>
+            </label>
+          </div>
 
           <button type="submit">Envoyer ma candidature</button>
         </form>
@@ -1157,15 +946,27 @@ app.post(
   ]),
   async (req, res) => {
     const {
-      full_name, phone, city, neighborhood, neighborhood_other,
+      full_name, phone, phone_public, city, neighborhood, neighborhood_other,
       profession, profession_other, experience, service_description,
-      service_area, availability
+      service_area, availability, gdpr_consent
     } = req.body;
 
     const files = req.files || {};
     const photoProfil = files.photo_profil?.[0];
     const photoIdentite = files.photo_identite?.[0];
     const photoActivite = files.photo_activite?.[0];
+
+    if (gdpr_consent !== "yes") {
+      return res.status(400).send(
+        page("Consentement requis", `
+          <section class="card">
+            <h2>Consentement RGPD obligatoire</h2>
+            <p>Vous devez accepter la Politique de confidentialite pour soumettre votre candidature.</p>
+            <a href="/devenir-professionnel">Retour au formulaire</a>
+          </section>
+        `)
+      );
+    }
 
     let finalNeighborhood = null;
 
@@ -1252,19 +1053,22 @@ app.post(
       );
     }
 
+    const phoneIsPublic = phone_public === "yes";
+
     try {
       const result = await pool.query(`
         INSERT INTO professional_applications (
-          full_name, phone, city, neighborhood, profession, experience,
-          service_description, service_area, availability, npi,
+          full_name, phone, phone_public, city, neighborhood, profession,
+          experience, service_description, service_area, availability, npi,
           photo_profil_url, photo_identite_url, photo_activite_url,
           pro_code, status
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11,$12,NULL,'pending')
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,$13,NULL,'pending')
         RETURNING id
       `, [
         full_name.trim().slice(0, 150),
         phone.trim().slice(0, 30),
+        phoneIsPublic,
         city.trim().slice(0, 100),
         finalNeighborhood,
         finalProfession,
@@ -1301,7 +1105,7 @@ app.post(
   }
 );
 
-/* PAGE DE RECHERCHE DES EMPLOIS (PUBLIQUE) */
+/* PAGE DE RECHERCHE DES EMPLOIS */
 
 app.get("/emplois", async (req, res) => {
   try {
@@ -1402,25 +1206,20 @@ app.get("/emplois", async (req, res) => {
   }
 });
 
-/* FORMULAIRE DE PUBLICATION D'EMPLOI (PROS UNIQUEMENT) */
+/* FORMULAIRE DE PUBLICATION D'EMPLOI */
 
 app.get("/publier-emploi", async (req, res) => {
   const proCodeCookie = readCookie(req, PRO_COOKIE);
-
   let proInfo = null;
 
   if (proCodeCookie) {
     try {
       const proResult = await pool.query(
-        `SELECT id, full_name, profession, city
-         FROM professional_applications
+        `SELECT id, full_name, profession, city FROM professional_applications
          WHERE pro_code = $1 AND status = 'approved'`,
         [proCodeCookie]
       );
-
-      if (proResult.rows.length) {
-        proInfo = proResult.rows[0];
-      }
+      if (proResult.rows.length) proInfo = proResult.rows[0];
     } catch (error) {
       console.error("Erreur verif pro :", error.message);
     }
@@ -1498,24 +1297,19 @@ app.get("/publier-emploi", async (req, res) => {
 
       <script>
         const form = document.querySelector('form');
-
         form.addEventListener('submit', function(event) {
           const methods = [
             ['use_phone', 'contact_phone'],
             ['use_whatsapp', 'contact_whatsapp'],
             ['use_email', 'contact_email']
           ];
-
           const selected = methods.filter(([check]) => document.getElementById(check).checked);
-
           if (!selected.length) {
             event.preventDefault();
             alert('Choisissez au moins un moyen de contact.');
             return;
           }
-
           const missing = selected.find(([check, field]) => !document.getElementById(field).value.trim());
-
           if (missing) {
             event.preventDefault();
             alert('Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.');
@@ -1564,7 +1358,7 @@ app.get("/publier-emploi", async (req, res) => {
   res.send(page("Publier une offre d'emploi", content));
 });
 
-/* ENREGISTREMENT DES OFFRES (PROS UNIQUEMENT) */
+/* ENREGISTREMENT DES OFFRES */
 
 app.post("/offres-emploi", async (req, res) => {
   const proCodeCookie = readCookie(req, PRO_COOKIE);
@@ -1574,10 +1368,7 @@ app.post("/offres-emploi", async (req, res) => {
       page("Acces refuse", `
         <section class="card">
           <h2>Acces refuse</h2>
-          <p>
-            Vous devez etre connecte en tant que professionnel verifie
-            pour publier une offre.
-          </p>
+          <p>Vous devez etre connecte en tant que professionnel verifie pour publier une offre.</p>
           <a class="button" href="/publier-emploi">Retour</a>
         </section>
       `)
@@ -1608,9 +1399,7 @@ app.post("/offres-emploi", async (req, res) => {
     proInfo = proResult.rows[0];
   } catch (error) {
     console.error("Erreur verif pro POST :", error.message);
-    return res.status(500).send(
-      page("Erreur", "<h2>Erreur technique.</h2>")
-    );
+    return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
   }
 
   const {
@@ -1641,17 +1430,6 @@ app.post("/offres-emploi", async (req, res) => {
     );
   }
 
-  if (company.length > 200 || title.length > 200 || jobCity.length > 100 || jobDescription.length > 8000) {
-    return res.status(400).send(
-      page("Informations trop longues", `
-        <section class="card">
-          <h2>Certains champs depassent la longueur autorisee.</h2>
-          <a href="/publier-emploi">Retour au formulaire</a>
-        </section>
-      `)
-    );
-  }
-
   if (!phone && !whatsapp && !email) {
     return res.status(400).send(
       page("Contact obligatoire", `
@@ -1666,10 +1444,7 @@ app.post("/offres-emploi", async (req, res) => {
   if (phone && !validPhone(phone)) {
     return res.status(400).send(
       page("Telephone invalide", `
-        <section class="card">
-          <h2>Le numero de telephone est invalide.</h2>
-          <a href="/publier-emploi">Retour au formulaire</a>
-        </section>
+        <section class="card"><h2>Le numero de telephone est invalide.</h2><a href="/publier-emploi">Retour</a></section>
       `)
     );
   }
@@ -1677,10 +1452,7 @@ app.post("/offres-emploi", async (req, res) => {
   if (whatsapp && !validPhone(whatsapp)) {
     return res.status(400).send(
       page("WhatsApp invalide", `
-        <section class="card">
-          <h2>Le numero WhatsApp est invalide.</h2>
-          <a href="/publier-emploi">Retour au formulaire</a>
-        </section>
+        <section class="card"><h2>Le numero WhatsApp est invalide.</h2><a href="/publier-emploi">Retour</a></section>
       `)
     );
   }
@@ -1688,21 +1460,7 @@ app.post("/offres-emploi", async (req, res) => {
   if (email && !validEmail(email)) {
     return res.status(400).send(
       page("E-mail invalide", `
-        <section class="card">
-          <h2>L'adresse e-mail est invalide.</h2>
-          <a href="/publier-emploi">Retour au formulaire</a>
-        </section>
-      `)
-    );
-  }
-
-  if (jobDeadline && !/^\d{4}-\d{2}-\d{2}$/.test(jobDeadline)) {
-    return res.status(400).send(
-      page("Date invalide", `
-        <section class="card">
-          <h2>La date limite est invalide.</h2>
-          <a href="/publier-emploi">Retour au formulaire</a>
-        </section>
+        <section class="card"><h2>L'adresse e-mail est invalide.</h2><a href="/publier-emploi">Retour</a></section>
       `)
     );
   }
@@ -1716,15 +1474,11 @@ app.post("/offres-emploi", async (req, res) => {
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12, NOW() + INTERVAL '${OFFER_DURATION_DAYS} days')
     `, [
-      company.slice(0, 200),
-      title.slice(0, 200),
-      jobCity.slice(0, 100),
-      contract,
+      company.slice(0, 200), title.slice(0, 200), jobCity.slice(0, 100), contract,
       typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
       typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
-      phone, whatsapp, email, jobDeadline,
-      proInfo.id
+      phone, whatsapp, email, jobDeadline, proInfo.id
     ]);
 
     res.status(201).send(
@@ -1751,7 +1505,7 @@ app.post("/offres-emploi", async (req, res) => {
   }
 });
 
-/* ESPACE PROFESSIONNEL : /mon-espace-pro */
+/* ESPACE PROFESSIONNEL */
 
 app.get("/mon-espace-pro", async (req, res) => {
   const proCodeCookie = readCookie(req, PRO_COOKIE);
@@ -1760,15 +1514,11 @@ app.get("/mon-espace-pro", async (req, res) => {
     return res.send(page("Espace pro", `
       <section class="card">
         <h1>Mon espace professionnel</h1>
-
-        <p>
-          Connectez-vous avec votre code professionnel pour gerer vos offres d'emploi.
-        </p>
+        <p>Connectez-vous avec votre code professionnel pour gerer vos offres d'emploi.</p>
 
         <form action="/mon-espace-pro/login" method="POST">
           <label for="pro_code">Code professionnel</label>
           <input id="pro_code" name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase;font-size:20px;letter-spacing:2px;text-align:center;font-family:'Courier New',monospace">
-
           <button type="submit">Se connecter</button>
         </form>
 
@@ -1787,10 +1537,11 @@ app.get("/mon-espace-pro", async (req, res) => {
 
   let proInfo = null;
   let offers = [];
+  let gdprRequests = [];
 
   try {
     const proResult = await pool.query(
-      `SELECT id, full_name, phone, city, neighborhood, profession,
+      `SELECT id, full_name, phone, phone_public, city, neighborhood, profession,
               experience, service_description, service_area, availability,
               photo_activite_url, created_at
        FROM professional_applications
@@ -1806,10 +1557,9 @@ app.get("/mon-espace-pro", async (req, res) => {
     proInfo = proResult.rows[0];
 
     const offersResult = await pool.query(
-      `SELECT
-         id, company_name, job_title, city, contract_type, salary,
-         description, qualifications, contact_phone, contact_whatsapp,
-         contact_email, deadline, status, created_at, expires_at
+      `SELECT id, company_name, job_title, city, contract_type, salary,
+              description, qualifications, contact_phone, contact_whatsapp,
+              contact_email, deadline, status, created_at, expires_at
        FROM job_offers
        WHERE pro_id = $1
        ORDER BY created_at DESC`,
@@ -1817,11 +1567,20 @@ app.get("/mon-espace-pro", async (req, res) => {
     );
 
     offers = offersResult.rows;
+
+    const gdprResult = await pool.query(
+      `SELECT id, request_type, status, created_at, processed_at
+       FROM gdpr_requests
+       WHERE pro_id = $1
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [proInfo.id]
+    );
+
+    gdprRequests = gdprResult.rows;
   } catch (error) {
     console.error("Erreur espace pro :", error.message);
-    return res.status(500).send(
-      page("Erreur", "<h2>Erreur technique.</h2>")
-    );
+    return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
   }
 
   const now = new Date();
@@ -1829,8 +1588,6 @@ app.get("/mon-espace-pro", async (req, res) => {
   const offersHtml = offers.map((offer) => {
     const expired = offer.expires_at && new Date(offer.expires_at) < now;
     const statusLabel = JOB_STATUS_LABELS[offer.status] || offer.status;
-    const statusClass = `badge-${offer.status}`;
-
     const isPublic = offer.status === "approved" && !expired;
 
     return `
@@ -1838,7 +1595,7 @@ app.get("/mon-espace-pro", async (req, res) => {
         <h2>${escapeHtml(offer.job_title)}</h2>
 
         <p>
-          <span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+          <span class="badge badge-${offer.status}">${escapeHtml(statusLabel)}</span>
           ${isPublic ? `<span class="badge badge-approved">En ligne</span>` : ""}
           ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}
         </p>
@@ -1885,13 +1642,28 @@ app.get("/mon-espace-pro", async (req, res) => {
             </form>
           ` : ""}
 
-          <a class="button secondary" href="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/modifier">
-            ✏️ Modifier
-          </a>
+          <a class="button secondary" href="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/modifier">✏️ Modifier</a>
         </div>
       </article>
     `;
   }).join("");
+
+  const gdprHtml = gdprRequests.map((req) => `
+    <article class="card" style="padding:16px">
+      <p>
+        <span class="badge badge-${req.status}">${escapeHtml(GDPR_STATUS_LABELS[req.status] || req.status)}</span>
+        <strong>${escapeHtml(GDPR_TYPE_LABELS[req.request_type] || req.request_type)}</strong>
+      </p>
+      <p class="muted">
+        Demande le : ${new Date(req.created_at).toLocaleString("fr-FR")}
+        ${req.processed_at ? ` — Traitee le : ${new Date(req.processed_at).toLocaleString("fr-FR")}` : ""}
+      </p>
+    </article>
+  `).join("");
+
+  const phoneStatus = proInfo.phone_public
+    ? `<span class="badge badge-approved">Public</span> Votre numero est visible publiquement.`
+    : `<span class="badge badge-closed">Prive</span> Votre numero n'est <strong>pas visible</strong> publiquement. Les clients doivent passer par l'administration.`;
 
   res.send(page("Mon espace pro", `
     <section class="card">
@@ -1924,8 +1696,13 @@ app.get("/mon-espace-pro", async (req, res) => {
       <p><strong>Ville :</strong> ${escapeHtml(proInfo.city)}</p>
       ${proInfo.neighborhood ? `<p><strong>Quartier :</strong> ${escapeHtml(proInfo.neighborhood)}</p>` : ""}
       <p><strong>Telephone :</strong> ${escapeHtml(proInfo.phone)}</p>
+      <p><strong>Visibilite du numero :</strong> ${phoneStatus}</p>
       ${proInfo.experience ? `<p><strong>Experience :</strong> ${escapeHtml(proInfo.experience)}</p>` : ""}
       <p><strong>Description :</strong> ${escapeHtml(proInfo.service_description)}</p>
+
+      <div class="actions">
+        <a class="button secondary" href="/mon-espace-pro/modifier-telephone">Modifier la visibilite de mon numero</a>
+      </div>
     </section>
 
     <section class="card">
@@ -1934,12 +1711,31 @@ app.get("/mon-espace-pro", async (req, res) => {
 
     ${offersHtml || `
       <section class="card">
-        <p class="muted">
-          Vous n'avez pas encore publie d'offre d'emploi.
-        </p>
+        <p class="muted">Vous n'avez pas encore publie d'offre d'emploi.</p>
         <a class="button" href="/publier-emploi">Publier ma premiere offre</a>
       </section>
     `}
+
+    <section class="card">
+      <h2>Mes droits sur mes donnees</h2>
+      <p class="help-text">
+        Conformement a la loi beninoise sur la protection des donnees personnelles,
+        vous disposez de droits sur vos donnees : acces, rectification, suppression, opposition.
+      </p>
+
+      <div class="actions">
+        <a class="button" href="/mon-espace-pro/mes-donnees">📥 Telecharger mes donnees</a>
+
+        <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline">
+          <button class="danger" type="submit">🗑️ Demander la suppression de mon compte</button>
+        </form>
+      </div>
+
+      ${gdprHtml ? `
+        <h3 style="margin-top:24px">Historique de mes demandes</h3>
+        ${gdprHtml}
+      ` : ""}
+    </section>
   `));
 });
 
@@ -1962,8 +1758,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `SELECT id FROM professional_applications
-       WHERE pro_code = $1 AND status = 'approved'`,
+      `SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`,
       [code]
     );
 
@@ -1972,10 +1767,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
         page("Code incorrect", `
           <section class="card">
             <h2>Code incorrect ou compte non approuve</h2>
-            <p>
-              Verifiez votre code ou contactez l'administration
-              si vous pensez qu'il y a une erreur.
-            </p>
+            <p>Verifiez votre code ou contactez l'administration.</p>
             <a class="button" href="/mon-espace-pro">Reessayer</a>
             <a class="button secondary" href="/contact">Contacter l'administration</a>
           </section>
@@ -1987,9 +1779,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
     res.redirect(303, "/mon-espace-pro");
   } catch (error) {
     console.error("Erreur login pro :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Erreur technique.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
   }
 });
 
@@ -2000,12 +1790,215 @@ app.post("/mon-espace-pro/logout", (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
+/* RECHARGEMENT UTIL : recup pro connecte */
+
+async function getConnectedPro(req) {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  if (!proCodeCookie) return null;
+
+  try {
+    const result = await pool.query(
+      `SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`,
+      [proCodeCookie]
+    );
+    if (!result.rows.length) return null;
+    return { pro: result.rows[0], code: proCodeCookie };
+  } catch (error) {
+    console.error("Erreur getConnectedPro :", error.message);
+    return null;
+  }
+}
+
+/* MODIFIER VISIBILITE DU TELEPHONE */
+
+app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
+  const data = await getConnectedPro(req);
+
+  if (!data) {
+    clearProCookie(res);
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  res.send(page("Modifier la visibilite", `
+    <section class="card">
+      <h1>Visibilite de mon numero</h1>
+
+      <p class="help-text">
+        Choisissez si votre numero doit etre visible publiquement sur TrouveMoi.
+      </p>
+
+      <form action="/mon-espace-pro/modifier-telephone" method="POST">
+        <div class="checkbox-block">
+          <label>
+            <input type="checkbox" name="phone_public" value="yes" ${data.pro.phone_public ? "checked" : ""}>
+            <span>
+              <strong>J'accepte que mon numero soit visible publiquement</strong>
+              <br>
+              <span class="muted">Les clients pourront vous contacter directement par appel ou WhatsApp.</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="alert alert-warning">
+          ⚠️ Si vous refusez que votre numero soit public, les clients devront
+          passer par l'administration de TrouveMoi. Cela peut prendre plusieurs jours
+          et vous risquez de perdre des opportunites.
+        </div>
+
+        <button type="submit">Enregistrer</button>
+        <a class="button secondary" href="/mon-espace-pro">Annuler</a>
+      </form>
+    </section>
+  `));
+});
+
+app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
+  const data = await getConnectedPro(req);
+
+  if (!data) {
+    clearProCookie(res);
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const phonePublic = req.body.phone_public === "yes";
+
+  try {
+    await pool.query(
+      `UPDATE professional_applications SET phone_public = $1 WHERE id = $2`,
+      [phonePublic, data.pro.id]
+    );
+  } catch (error) {
+    console.error("Erreur maj visibilite :", error.message);
+  }
+
+  res.redirect(303, "/mon-espace-pro");
+});
+
+/* TELECHARGER MES DONNEES (droit d'acces + portabilite) */
+
+app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
+  const data = await getConnectedPro(req);
+
+  if (!data) {
+    clearProCookie(res);
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const offersResult = await pool.query(
+      `SELECT id, company_name, job_title, city, contract_type, salary,
+              description, qualifications, contact_phone, contact_whatsapp,
+              contact_email, deadline, status, created_at, expires_at
+       FROM job_offers WHERE pro_id = $1`,
+      [data.pro.id]
+    );
+
+    const gdprResult = await pool.query(
+      `SELECT id, request_type, status, created_at, processed_at
+       FROM gdpr_requests WHERE pro_id = $1`,
+      [data.pro.id]
+    );
+
+    const exportData = {
+      export_date: new Date().toISOString(),
+      plateforme: "TrouveMoi",
+      utilisateur: {
+        nom: data.pro.full_name,
+        telephone: data.pro.phone,
+        telephone_public: data.pro.phone_public,
+        ville: data.pro.city,
+        quartier: data.pro.neighborhood,
+        profession: data.pro.profession,
+        experience: data.pro.experience,
+        description: data.pro.service_description,
+        zone_intervention: data.pro.service_area,
+        disponibilite: data.pro.availability,
+        code_professionnel: data.code,
+        date_inscription: data.pro.created_at
+      },
+      photos: {
+        profil_privee: data.pro.photo_profil_url,
+        identite_privee: data.pro.photo_identite_url,
+        activite_publique: data.pro.photo_activite_url
+      },
+      offres_emploi: offersResult.rows,
+      demandes_rgpd: gdprResult.rows
+    };
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="trouvemoi-donnees-${data.code}.json"`
+    );
+    res.send(JSON.stringify(exportData, null, 2));
+  } catch (error) {
+    console.error("Erreur export donnees :", error.message);
+    res.status(500).send(page("Erreur", "<h2>Impossible de generer l'export.</h2>"));
+  }
+});
+
+/* DEMANDE DE SUPPRESSION DE COMPTE */
+
+app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
+  const data = await getConnectedPro(req);
+
+  if (!data) {
+    clearProCookie(res);
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const existing = await pool.query(
+      `SELECT id FROM gdpr_requests
+       WHERE pro_id = $1 AND request_type = 'deletion' AND status = 'pending'`,
+      [data.pro.id]
+    );
+
+    if (existing.rows.length) {
+      return res.send(page("Demande deja en cours", `
+        <section class="card">
+          <div class="alert alert-warning">
+            ⚠️ Vous avez deja une demande de suppression en cours de traitement.
+          </div>
+          <p>Votre demande sera traitee par l'administration dans les plus brefs delais.</p>
+          <a class="button" href="/mon-espace-pro">Retour a mon espace</a>
+        </section>
+      `));
+    }
+
+    await pool.query(
+      `INSERT INTO gdpr_requests (pro_id, request_type, status, message)
+       VALUES ($1, 'deletion', 'pending', $2)`,
+      [data.pro.id, "Demande de suppression de compte depuis l'espace pro"]
+    );
+
+    res.send(page("Demande envoyee", `
+      <section class="card">
+        <h1>Demande de suppression envoyee</h1>
+        <p>Votre demande a bien ete enregistree.</p>
+        <p>
+          L'administration de TrouveMoi va traiter votre demande. Cela peut prendre
+          <strong>quelques jours</strong>.
+        </p>
+        <p>
+          Vous serez notifie par WhatsApp ou telephone lorsque votre compte sera supprime.
+        </p>
+        <a class="button" href="/mon-espace-pro">Retour a mon espace</a>
+      </section>
+    `));
+  } catch (error) {
+    console.error("Erreur demande suppression :", error.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
+  }
+});
+
 /* CLOTURER UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const data = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!data) {
+    clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
@@ -2016,20 +2009,9 @@ app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
   }
 
   try {
-    const proResult = await pool.query(
-      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
     await pool.query(
-      `UPDATE job_offers SET status = 'closed'
-       WHERE id = $1 AND pro_id = $2`,
-      [id, proResult.rows[0].id]
+      `UPDATE job_offers SET status = 'closed' WHERE id = $1 AND pro_id = $2`,
+      [id, data.pro.id]
     );
   } catch (error) {
     console.error("Erreur cloture :", error.message);
@@ -2041,9 +2023,10 @@ app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
 /* ROUVRIR UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const data = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!data) {
+    clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
@@ -2054,22 +2037,12 @@ app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
   }
 
   try {
-    const proResult = await pool.query(
-      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
     await pool.query(
       `UPDATE job_offers
        SET status = 'approved',
            expires_at = NOW() + INTERVAL '${OFFER_DURATION_DAYS} days'
        WHERE id = $1 AND pro_id = $2`,
-      [id, proResult.rows[0].id]
+      [id, data.pro.id]
     );
   } catch (error) {
     console.error("Erreur reouverture :", error.message);
@@ -2078,12 +2051,13 @@ app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-/* RENOUVELER UNE OFFRE (+15 jours) */
+/* RENOUVELER UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const data = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!data) {
+    clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
@@ -2094,22 +2068,12 @@ app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
   }
 
   try {
-    const proResult = await pool.query(
-      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
     await pool.query(
       `UPDATE job_offers
        SET expires_at = GREATEST(COALESCE(expires_at, NOW()), NOW()) + INTERVAL '${OFFER_DURATION_DAYS} days',
            status = CASE WHEN status = 'closed' THEN status ELSE 'approved' END
        WHERE id = $1 AND pro_id = $2`,
-      [id, proResult.rows[0].id]
+      [id, data.pro.id]
     );
   } catch (error) {
     console.error("Erreur renouvellement :", error.message);
@@ -2118,12 +2082,13 @@ app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-/* MODIFIER UNE OFFRE : FORMULAIRE */
+/* MODIFIER UNE OFFRE */
 
 app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const data = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!data) {
+    clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
@@ -2134,21 +2099,9 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
   }
 
   try {
-    const proResult = await pool.query(
-      "SELECT id, full_name, city FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
-    const proInfo = proResult.rows[0];
-
     const offerResult = await pool.query(
       `SELECT * FROM job_offers WHERE id = $1 AND pro_id = $2`,
-      [id, proInfo.id]
+      [id, data.pro.id]
     );
 
     if (!offerResult.rows.length) {
@@ -2167,8 +2120,7 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
       <section class="card">
         <h1>Modifier l'offre</h1>
         <p class="help-text">
-          Toute modification remettra l'offre en attente de validation
-          par l'administration.
+          Toute modification remettra l'offre en attente de validation par l'administration.
         </p>
 
         <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/modifier" method="POST">
@@ -2188,7 +2140,7 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
           </select>
 
           <label for="salary">Salaire (facultatif)</label>
-          <input id="salary" name="salary" maxlength="100" value="${escapeHtml(offer.salary || "")}" placeholder="Ex. : 100 000 FCFA/mois">
+          <input id="salary" name="salary" maxlength="100" value="${escapeHtml(offer.salary || "")}">
 
           <label for="description">Description du poste *</label>
           <textarea id="description" name="description" required maxlength="8000" rows="6">${escapeHtml(offer.description)}</textarea>
@@ -2201,15 +2153,15 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
 
             <label><input style="width:auto" type="checkbox" id="use_phone" name="use_phone" value="yes" ${offer.contact_phone ? "checked" : ""}> Appel direct</label>
             <label for="contact_phone">Numero de telephone</label>
-            <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" value="${escapeHtml(offer.contact_phone || "")}" placeholder="+229...">
+            <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" value="${escapeHtml(offer.contact_phone || "")}">
 
             <label><input style="width:auto" type="checkbox" id="use_whatsapp" name="use_whatsapp" value="yes" ${offer.contact_whatsapp ? "checked" : ""}> WhatsApp</label>
             <label for="contact_whatsapp">Numero WhatsApp</label>
-            <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" value="${escapeHtml(offer.contact_whatsapp || "")}" placeholder="+229...">
+            <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" value="${escapeHtml(offer.contact_whatsapp || "")}">
 
             <label><input style="width:auto" type="checkbox" id="use_email" name="use_email" value="yes" ${offer.contact_email ? "checked" : ""}> E-mail</label>
             <label for="contact_email">Adresse e-mail</label>
-            <input id="contact_email" name="contact_email" type="email" maxlength="254" value="${escapeHtml(offer.contact_email || "")}" placeholder="recrutement@entreprise.com">
+            <input id="contact_email" name="contact_email" type="email" maxlength="254" value="${escapeHtml(offer.contact_email || "")}">
           </fieldset>
 
           <label for="deadline">Date limite de candidature (facultatif)</label>
@@ -2227,9 +2179,10 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
 });
 
 app.post("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const data = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!data) {
+    clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
@@ -2239,67 +2192,45 @@ app.post("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
     return res.redirect(303, "/mon-espace-pro");
   }
 
+  const {
+    company_name, job_title, city, contract_type, salary, description,
+    qualifications, contact_phone, contact_whatsapp, contact_email,
+    deadline, use_phone, use_whatsapp, use_email
+  } = req.body;
+
+  const company = typeof company_name === "string" ? company_name.trim() : "";
+  const title = typeof job_title === "string" ? job_title.trim() : "";
+  const jobCity = typeof city === "string" ? city.trim() : "";
+  const contract = typeof contract_type === "string" ? contract_type.trim() : "";
+  const jobDescription = typeof description === "string" ? description.trim() : "";
+
+  const phone = use_phone === "yes" && typeof contact_phone === "string" ? normalizePhone(contact_phone) : null;
+  const whatsapp = use_whatsapp === "yes" && typeof contact_whatsapp === "string" ? normalizePhone(contact_whatsapp) : null;
+  const email = use_email === "yes" && typeof contact_email === "string" ? contact_email.trim() : null;
+  const jobDeadline = typeof deadline === "string" && deadline.trim() ? deadline.trim() : null;
+
+  if (!company || !title || !jobCity || !jobDescription || !JOB_CONTRACT_TYPES.includes(contract)) {
+    return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
+  }
+
+  if (!phone && !whatsapp && !email) {
+    return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
+  }
+
   try {
-    const proResult = await pool.query(
-      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
-    const {
-      company_name, job_title, city, contract_type, salary, description,
-      qualifications, contact_phone, contact_whatsapp, contact_email,
-      deadline, use_phone, use_whatsapp, use_email
-    } = req.body;
-
-    const company = typeof company_name === "string" ? company_name.trim() : "";
-    const title = typeof job_title === "string" ? job_title.trim() : "";
-    const jobCity = typeof city === "string" ? city.trim() : "";
-    const contract = typeof contract_type === "string" ? contract_type.trim() : "";
-    const jobDescription = typeof description === "string" ? description.trim() : "";
-
-    const phone = use_phone === "yes" && typeof contact_phone === "string" ? normalizePhone(contact_phone) : null;
-    const whatsapp = use_whatsapp === "yes" && typeof contact_whatsapp === "string" ? normalizePhone(contact_whatsapp) : null;
-    const email = use_email === "yes" && typeof contact_email === "string" ? contact_email.trim() : null;
-    const jobDeadline = typeof deadline === "string" && deadline.trim() ? deadline.trim() : null;
-
-    if (!company || !title || !jobCity || !jobDescription || !JOB_CONTRACT_TYPES.includes(contract)) {
-      return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
-    }
-
-    if (!phone && !whatsapp && !email) {
-      return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
-    }
-
     await pool.query(`
       UPDATE job_offers
-      SET company_name = $1,
-          job_title = $2,
-          city = $3,
-          contract_type = $4,
-          salary = $5,
-          description = $6,
-          qualifications = $7,
-          contact_phone = $8,
-          contact_whatsapp = $9,
-          contact_email = $10,
-          deadline = $11,
-          status = 'pending'
+      SET company_name = $1, job_title = $2, city = $3, contract_type = $4,
+          salary = $5, description = $6, qualifications = $7,
+          contact_phone = $8, contact_whatsapp = $9, contact_email = $10,
+          deadline = $11, status = 'pending'
       WHERE id = $12 AND pro_id = $13
     `, [
-      company.slice(0, 200),
-      title.slice(0, 200),
-      jobCity.slice(0, 100),
-      contract,
+      company.slice(0, 200), title.slice(0, 200), jobCity.slice(0, 100), contract,
       typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
       typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
-      phone, whatsapp, email, jobDeadline,
-      id, proResult.rows[0].id
+      phone, whatsapp, email, jobDeadline, id, data.pro.id
     ]);
   } catch (error) {
     console.error("Erreur modif POST :", error.message);
@@ -2322,11 +2253,7 @@ app.get("/admin", (req, res) => {
   const content = `
     <section class="card">
       <h1>Administration TrouveMoi</h1>
-
-      <p>
-        Connectez-vous pour gerer les candidatures, les offres d'emploi
-        et les messages recus.
-      </p>
+      <p>Connectez-vous pour gerer les candidatures, les offres d'emploi et les messages recus.</p>
 
       <form action="/admin/login" method="POST">
         <label for="password">Mot de passe administrateur</label>
@@ -2387,9 +2314,7 @@ app.post("/admin/login", (req, res) => {
   if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
     console.error("ADMIN_SESSION_SECRET est absente ou trop courte.");
     return res.status(500).send(
-      page("Configuration incomplete", `
-        <h2>La configuration securisee de l'administration est incomplete.</h2>
-      `)
+      page("Configuration incomplete", `<h2>La configuration securisee de l'administration est incomplete.</h2>`)
     );
   }
 
@@ -2400,29 +2325,26 @@ app.post("/admin/login", (req, res) => {
 
   setSessionCookie(res, createSessionToken(session));
   res.setHeader("Cache-Control", "no-store");
-
   res.redirect(303, "/admin/dashboard");
 });
 
-/* FONCTION : MENU ADMIN */
+/* MENU ADMIN */
 
 function adminMenu(current, csrf) {
   const links = [
     { href: "/admin/dashboard", label: "📊 Tableau de bord" },
     { href: "/admin/candidatures", label: "📋 Candidatures" },
     { href: "/admin/emplois", label: "💼 Offres d'emploi" },
-    { href: "/admin/messages", label: "📩 Messages" }
+    { href: "/admin/messages", label: "📩 Messages" },
+    { href: "/admin/rgpd", label: "🔐 Demandes RGPD" }
   ];
 
   return `
     <section class="card">
       <div class="actions">
         ${links.map((link) => `
-          <a class="button ${current === link.href ? "" : "secondary"}" href="${link.href}">
-            ${link.label}
-          </a>
+          <a class="button ${current === link.href ? "" : "secondary"}" href="${link.href}">${link.label}</a>
         `).join("")}
-
         <a class="button secondary" href="/" target="_blank">🌐 Voir le site</a>
       </div>
 
@@ -2444,6 +2366,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
     const jobsPending = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'");
     const jobsClosed = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'closed'");
     const messagesUnread = await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false");
+    const gdprPending = await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'");
 
     const stats = {
       prosApproved: Number(prosApproved.rows[0].count),
@@ -2451,87 +2374,88 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       jobsApproved: Number(jobsApproved.rows[0].count),
       jobsPending: Number(jobsPending.rows[0].count),
       jobsClosed: Number(jobsClosed.rows[0].count),
-      messagesUnread: Number(messagesUnread.rows[0].count)
+      messagesUnread: Number(messagesUnread.rows[0].count),
+      gdprPending: Number(gdprPending.rows[0].count)
     };
 
     res.setHeader("Cache-Control", "no-store");
 
-    res.send(
-      page("Tableau de bord", `
-        <section class="card">
-          <h1>Tableau de bord</h1>
-          <p class="muted">Bienvenue dans votre espace d'administration.</p>
-        </section>
+    res.send(page("Tableau de bord", `
+      <section class="card">
+        <h1>Tableau de bord</h1>
+        <p class="muted">Bienvenue dans votre espace d'administration.</p>
+      </section>
 
-        ${adminMenu("/admin/dashboard", req.adminSession.csrf)}
+      ${adminMenu("/admin/dashboard", req.adminSession.csrf)}
 
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-number">${stats.prosApproved}</div>
-            <div class="stat-label">Pros approuves</div>
-            <a class="stat-link" href="/admin/candidatures">Voir les candidatures →</a>
-          </div>
-
-          <div class="stat-card warning">
-            <div class="stat-icon">⏳</div>
-            <div class="stat-number">${stats.prosPending}</div>
-            <div class="stat-label">Candidatures en attente</div>
-            <a class="stat-link" href="/admin/candidatures">Traiter maintenant →</a>
-          </div>
-
-          <div class="stat-card info">
-            <div class="stat-icon">💼</div>
-            <div class="stat-number">${stats.jobsApproved}</div>
-            <div class="stat-label">Offres en ligne</div>
-            <a class="stat-link" href="/admin/emplois">Voir les offres →</a>
-          </div>
-
-          <div class="stat-card warning">
-            <div class="stat-icon">📝</div>
-            <div class="stat-number">${stats.jobsPending}</div>
-            <div class="stat-label">Offres en attente</div>
-            <a class="stat-link" href="/admin/emplois">Traiter maintenant →</a>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon">🔒</div>
-            <div class="stat-number">${stats.jobsClosed}</div>
-            <div class="stat-label">Offres cloturees</div>
-            <a class="stat-link" href="/admin/emplois">Voir →</a>
-          </div>
-
-          <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
-            <div class="stat-icon">📩</div>
-            <div class="stat-number">${stats.messagesUnread}</div>
-            <div class="stat-label">Messages non lus</div>
-            <a class="stat-link" href="/admin/messages">Lire les messages →</a>
-          </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-number">${stats.prosApproved}</div>
+          <div class="stat-label">Pros approuves</div>
+          <a class="stat-link" href="/admin/candidatures">Voir les candidatures →</a>
         </div>
-      `)
-    );
+
+        <div class="stat-card warning">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-number">${stats.prosPending}</div>
+          <div class="stat-label">Candidatures en attente</div>
+          <a class="stat-link" href="/admin/candidatures">Traiter maintenant →</a>
+        </div>
+
+        <div class="stat-card info">
+          <div class="stat-icon">💼</div>
+          <div class="stat-number">${stats.jobsApproved}</div>
+          <div class="stat-label">Offres en ligne</div>
+          <a class="stat-link" href="/admin/emplois">Voir les offres →</a>
+        </div>
+
+        <div class="stat-card warning">
+          <div class="stat-icon">📝</div>
+          <div class="stat-number">${stats.jobsPending}</div>
+          <div class="stat-label">Offres en attente</div>
+          <a class="stat-link" href="/admin/emplois">Traiter maintenant →</a>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon">🔒</div>
+          <div class="stat-number">${stats.jobsClosed}</div>
+          <div class="stat-label">Offres cloturees</div>
+          <a class="stat-link" href="/admin/emplois">Voir →</a>
+        </div>
+
+        <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
+          <div class="stat-icon">📩</div>
+          <div class="stat-number">${stats.messagesUnread}</div>
+          <div class="stat-label">Messages non lus</div>
+          <a class="stat-link" href="/admin/messages">Lire les messages →</a>
+        </div>
+
+        <div class="stat-card ${stats.gdprPending > 0 ? "danger" : ""}">
+          <div class="stat-icon">🔐</div>
+          <div class="stat-number">${stats.gdprPending}</div>
+          <div class="stat-label">Demandes RGPD en attente</div>
+          <a class="stat-link" href="/admin/rgpd">Traiter →</a>
+        </div>
+      </div>
+    `));
   } catch (error) {
     console.error("Erreur du tableau de bord :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de charger le tableau de bord.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger le tableau de bord.</h2>"));
   }
 });
 
-/* ADMIN : CANDIDATURES (avec code pro) */
+/* ADMIN : CANDIDATURES */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        id, full_name, phone, city, neighborhood, profession,
-        experience, service_description, service_area, availability,
-        status, created_at, photo_profil_url, photo_identite_url,
-        photo_activite_url, pro_code
+      SELECT id, full_name, phone, phone_public, city, neighborhood, profession,
+             experience, service_description, service_area, availability,
+             status, created_at, photo_profil_url, photo_identite_url,
+             photo_activite_url, pro_code
       FROM professional_applications
-      ORDER BY
-        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-        created_at DESC
+      ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC
       LIMIT 200
     `);
 
@@ -2542,6 +2466,10 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         </option>
       `).join("");
 
+      const phoneVisibility = candidate.phone_public
+        ? `<span class="badge badge-approved">Public</span>`
+        : `<span class="badge badge-closed">Prive</span>`;
+
       const photos = `
         <div class="photos-grid">
           ${candidate.photo_profil_url ? `
@@ -2550,14 +2478,12 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
               <div class="photo-label">Profil (privee)</div>
             </div>
           ` : ""}
-
           ${candidate.photo_identite_url ? `
             <div class="photo-block">
               <img src="${escapeHtml(candidate.photo_identite_url)}" alt="Photo d'identite" class="photo-identite">
               <div class="photo-label">Identite (privee)</div>
             </div>
           ` : ""}
-
           ${candidate.photo_activite_url ? `
             <div class="photo-block">
               <img src="${escapeHtml(candidate.photo_activite_url)}" alt="Photo d'activite" class="photo-activite">
@@ -2573,11 +2499,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           <div class="pro-code-value">${escapeHtml(candidate.pro_code)}</div>
           <div class="pro-code-label">A communiquer au pro</div>
         </div>
-      ` : `
-        <p class="help-text">
-          Aucun code genere (le pro doit etre approuve pour en recevoir un).
-        </p>
-      `;
+      ` : `<p class="help-text">Aucun code genere (le pro doit etre approuve pour en recevoir un).</p>`;
 
       return `
         <article class="card">
@@ -2585,7 +2507,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           ${photos}
 
           <p><strong>Reference :</strong> ${escapeHtml(candidate.id)}</p>
-          <p><strong>Telephone prive :</strong> ${escapeHtml(candidate.phone)}</p>
+          <p><strong>Telephone prive :</strong> ${escapeHtml(candidate.phone)} ${phoneVisibility}</p>
           <p><strong>Ville :</strong> ${escapeHtml(candidate.city)}</p>
           <p><strong>Quartier :</strong> ${escapeHtml(candidate.neighborhood || "Non renseigne")}</p>
           <p><strong>Profession :</strong> ${escapeHtml(candidate.profession)}</p>
@@ -2600,13 +2522,14 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
           <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status" method="POST">
             <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
-
             <label for="status-${escapeHtml(candidate.id)}">Changer le statut</label>
-            <select id="status-${escapeHtml(candidate.id)}" name="status">
-              ${statusOptions}
-            </select>
-
+            <select id="status-${escapeHtml(candidate.id)}" name="status">${statusOptions}</select>
             <button type="submit">Enregistrer le statut</button>
+          </form>
+
+          <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/supprimer" method="POST" style="margin-top:12px">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+            <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel ? Cette action est irreversible (compte + photos + offres).');">🗑️ Supprimer definitivement</button>
           </form>
         </article>
       `;
@@ -2614,59 +2537,82 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
     res.setHeader("Cache-Control", "no-store");
 
-    res.send(
-      page("Candidatures", `
-        <section class="card">
-          <h1>Candidatures professionnelles</h1>
-          <p>Total affiche : ${result.rows.length} candidature(s)</p>
-          <p class="help-text">
-            Lorsque vous approuvez une candidature, un code professionnel
-            unique est genere automatiquement. Communiquez-le au pro
-            (via WhatsApp, telephone, etc.).
-          </p>
-        </section>
+    res.send(page("Candidatures", `
+      <section class="card">
+        <h1>Candidatures professionnelles</h1>
+        <p>Total affiche : ${result.rows.length} candidature(s)</p>
+        <p class="help-text">
+          Lorsque vous approuvez une candidature, un code professionnel unique est genere automatiquement.
+        </p>
+      </section>
 
-        ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
+      ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
 
-        ${applications || `
-          <section class="card">
-            <p>Aucune candidature pour le moment.</p>
-          </section>
-        `}
-      `)
-    );
+      ${applications || `<section class="card"><p>Aucune candidature pour le moment.</p></section>`}
+    `));
   } catch (error) {
     console.error("Erreur candidatures :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de charger les candidatures.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les candidatures.</h2>"));
   }
 });
 
-/* ADMIN : OFFRES D'EMPLOI (avec pro et expiration) */
+/* ADMIN : SUPPRIMER DEFINITIVEMENT UNE CANDIDATURE (RGPD) */
+
+app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/admin/candidatures");
+  }
+
+  try {
+    const proResult = await pool.query(
+      `SELECT id, photo_profil_url, photo_identite_url, photo_activite_url
+       FROM professional_applications WHERE id = $1`,
+      [id]
+    );
+
+    if (!proResult.rows.length) {
+      return res.redirect(303, "/admin/candidatures");
+    }
+
+    const pro = proResult.rows[0];
+
+    await deleteFromCloudinary(pro.photo_profil_url);
+    await deleteFromCloudinary(pro.photo_identite_url);
+    await deleteFromCloudinary(pro.photo_activite_url);
+
+    await pool.query(`DELETE FROM gdpr_requests WHERE pro_id = $1`, [id]);
+    await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
+    await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [id]);
+
+    console.log(`Suppression RGPD effectuee pour pro id=${id}`);
+  } catch (error) {
+    console.error("Erreur suppression RGPD :", error.message);
+  }
+
+  res.redirect(303, "/admin/candidatures");
+});
+
+/* ADMIN : OFFRES D'EMPLOI */
 
 app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        j.id, j.company_name, j.job_title, j.city, j.contract_type,
-        j.salary, j.description, j.qualifications, j.contact_phone,
-        j.contact_whatsapp, j.contact_email, j.deadline, j.status,
-        j.created_at, j.expires_at, j.pro_id,
-        p.full_name AS pro_name, p.pro_code AS pro_code
+      SELECT j.id, j.company_name, j.job_title, j.city, j.contract_type,
+             j.salary, j.description, j.qualifications, j.contact_phone,
+             j.contact_whatsapp, j.contact_email, j.deadline, j.status,
+             j.created_at, j.expires_at, j.pro_id,
+             p.full_name AS pro_name, p.pro_code AS pro_code
       FROM job_offers j
       LEFT JOIN professional_applications p ON p.id = j.pro_id
-      ORDER BY
-        CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END,
-        j.created_at DESC
+      ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC
       LIMIT 200
     `);
 
     const offers = result.rows.map((job) => {
       const statusOptions = JOB_STATUSES.map((status) => `
-        <option value="${status}" ${job.status === status ? "selected" : ""}>
-          ${JOB_STATUS_LABELS[status]}
-        </option>
+        <option value="${status}" ${job.status === status ? "selected" : ""}>${JOB_STATUS_LABELS[status]}</option>
       `).join("");
 
       const expired = job.expires_at && new Date(job.expires_at) < new Date();
@@ -2676,24 +2622,12 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
           <p style="margin:0"><strong>📢 Publiee par :</strong> ${escapeHtml(job.pro_name)}</p>
           ${job.pro_code ? `<p style="margin:4px 0 0 0"><strong>Code pro :</strong> <code>${escapeHtml(job.pro_code)}</code></p>` : ""}
         </div>
-      ` : `
-        <p class="help-text">⚠️ Publiee avant la mise en place des pros verifies</p>
-      `;
-
-      const expirationBlock = job.expires_at ? `
-        <p><strong>Expire le :</strong> ${new Date(job.expires_at).toLocaleDateString("fr-FR")}
-        ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>
-      ` : "";
+      ` : `<p class="help-text">⚠️ Publiee avant la mise en place des pros verifies</p>`;
 
       return `
         <article class="card">
           <h2>${escapeHtml(job.job_title)}</h2>
-
-          <p>
-            <span class="badge badge-${job.status}">
-              ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}
-            </span>
-          </p>
+          <p><span class="badge badge-${job.status}">${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}</span></p>
 
           ${proBlock}
 
@@ -2707,16 +2641,12 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
           <p><strong>Contact WhatsApp :</strong> ${escapeHtml(job.contact_whatsapp || "Non fourni")}</p>
           <p><strong>Contact e-mail :</strong> ${escapeHtml(job.contact_email || "Non fourni")}</p>
           <p><strong>Date limite :</strong> ${escapeHtml(job.deadline || "Non renseignee")}</p>
-          ${expirationBlock}
+          ${job.expires_at ? `<p><strong>Expire le :</strong> ${new Date(job.expires_at).toLocaleDateString("fr-FR")} ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>` : ""}
 
           <form action="/admin/emplois/${encodeURIComponent(job.id)}/status" method="POST">
             <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
-
             <label for="job-status-${escapeHtml(job.id)}">Statut de l'offre</label>
-            <select id="job-status-${escapeHtml(job.id)}" name="status">
-              ${statusOptions}
-            </select>
-
+            <select id="job-status-${escapeHtml(job.id)}" name="status">${statusOptions}</select>
             <button type="submit">Enregistrer le statut</button>
           </form>
 
@@ -2732,31 +2662,20 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
     res.setHeader("Cache-Control", "no-store");
 
-    res.send(
-      page("Offres d'emploi", `
-        <section class="card">
-          <h1>Gestion des offres d'emploi</h1>
-          <p>Total affiche : ${result.rows.length} offre(s)</p>
-          <p class="help-text">
-            Les offres expirent automatiquement apres ${OFFER_DURATION_DAYS} jours.
-            Vous pouvez les prolonger manuellement.
-          </p>
-        </section>
+    res.send(page("Offres d'emploi", `
+      <section class="card">
+        <h1>Gestion des offres d'emploi</h1>
+        <p>Total affiche : ${result.rows.length} offre(s)</p>
+        <p class="help-text">Les offres expirent automatiquement apres ${OFFER_DURATION_DAYS} jours.</p>
+      </section>
 
-        ${adminMenu("/admin/emplois", req.adminSession.csrf)}
+      ${adminMenu("/admin/emplois", req.adminSession.csrf)}
 
-        ${offers || `
-          <section class="card">
-            <p>Aucune offre soumise pour le moment.</p>
-          </section>
-        `}
-      `)
-    );
+      ${offers || `<section class="card"><p>Aucune offre soumise pour le moment.</p></section>`}
+    `));
   } catch (error) {
     console.error("Erreur gestion offres :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de charger les offres.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les offres.</h2>"));
   }
 });
 
@@ -2791,15 +2710,11 @@ app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res)
   const status = req.body.status;
 
   if (!Number.isSafeInteger(id) || id < 1) {
-    return res.status(400).send(
-      page("Reference invalide", "<h2>Reference d'offre invalide.</h2>")
-    );
+    return res.status(400).send(page("Reference invalide", "<h2>Reference d'offre invalide.</h2>"));
   }
 
   if (!JOB_STATUSES.includes(status)) {
-    return res.status(400).send(
-      page("Statut invalide", "<h2>Statut non autorise.</h2>")
-    );
+    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>"));
   }
 
   try {
@@ -2816,75 +2731,53 @@ app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res)
         [status, id]
       );
     } else {
-      await pool.query(
-        `UPDATE job_offers SET status = $1 WHERE id = $2`,
-        [status, id]
-      );
+      await pool.query(`UPDATE job_offers SET status = $1 WHERE id = $2`, [status, id]);
     }
 
     res.redirect(303, "/admin/emplois");
   } catch (error) {
     console.error("Erreur statut offre :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>"));
   }
 });
 
-/* ADMIN : CHANGER STATUT CANDIDATURE (genere le code si approuvee) */
+/* ADMIN : CHANGER STATUT CANDIDATURE */
 
 app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const status = req.body.status;
 
   if (!Number.isSafeInteger(id) || id < 1) {
-    return res.status(400).send(
-      page("Reference invalide", "<h2>Reference de candidature invalide.</h2>")
-    );
+    return res.status(400).send(page("Reference invalide", "<h2>Reference de candidature invalide.</h2>"));
   }
 
   if (!ALLOWED_STATUSES.includes(status)) {
-    return res.status(400).send(
-      page("Statut invalide", "<h2>Statut non autorise.</h2>")
-    );
+    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>"));
   }
 
   try {
-    const existing = await pool.query(
-      "SELECT pro_code FROM professional_applications WHERE id = $1",
-      [id]
-    );
+    const existing = await pool.query("SELECT pro_code FROM professional_applications WHERE id = $1", [id]);
 
     if (!existing.rows.length) {
-      return res.status(404).send(
-        page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>")
-      );
+      return res.status(404).send(page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>"));
     }
 
     const currentCode = existing.rows[0].pro_code;
 
     if (status === "approved" && !currentCode) {
       const newCode = await generateUniqueProCode();
-
       await pool.query(
-        `UPDATE professional_applications
-         SET status = $1, pro_code = $2
-         WHERE id = $3`,
+        `UPDATE professional_applications SET status = $1, pro_code = $2 WHERE id = $3`,
         [status, newCode, id]
       );
     } else {
-      await pool.query(
-        `UPDATE professional_applications SET status = $1 WHERE id = $2`,
-        [status, id]
-      );
+      await pool.query(`UPDATE professional_applications SET status = $1 WHERE id = $2`, [status, id]);
     }
 
     res.redirect(303, "/admin/candidatures");
   } catch (error) {
     console.error("Erreur statut candidature :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de modifier le statut.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut.</h2>"));
   }
 });
 
@@ -2895,29 +2788,22 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
     const result = await pool.query(`
       SELECT id, name, email, phone, subject, message, is_read, created_at
       FROM contact_messages
-      ORDER BY
-        CASE WHEN is_read = false THEN 0 ELSE 1 END,
-        created_at DESC
+      ORDER BY CASE WHEN is_read = false THEN 0 ELSE 1 END, created_at DESC
       LIMIT 200
     `);
 
     const messages = result.rows.map((msg) => {
       const replyEmail = msg.email ? `
-        <a class="button email" href="mailto:${escapeHtml(msg.email)}?subject=${encodeURIComponent("Re: " + (msg.subject || "Votre message sur TrouveMoi"))}">
-          ✉️ Repondre par email
-        </a>
+        <a class="button email" href="mailto:${escapeHtml(msg.email)}?subject=${encodeURIComponent("Re: " + (msg.subject || "Votre message sur TrouveMoi"))}">✉️ Repondre par email</a>
       ` : "";
 
       const replyWhatsapp = msg.phone ? `
-        <a class="button whatsapp" href="https://wa.me/${escapeHtml(normalizePhone(msg.phone).replace(/^\+/, ""))}?text=${encodeURIComponent("Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande"))}" target="_blank" rel="noopener noreferrer">
-          💬 Repondre par WhatsApp
-        </a>
+        <a class="button whatsapp" href="https://wa.me/${escapeHtml(normalizePhone(msg.phone).replace(/^\+/, ""))}?text=${encodeURIComponent("Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande"))}" target="_blank" rel="noopener noreferrer">💬 Repondre par WhatsApp</a>
       ` : "";
 
       return `
         <article class="card">
           <h2>${msg.is_read ? "📖" : "📩"} ${escapeHtml(msg.subject || "Sans objet")}</h2>
-
           <p><strong>De :</strong> ${escapeHtml(msg.name)}</p>
           <p><strong>E-mail :</strong> ${escapeHtml(msg.email || "Non renseigne")}</p>
           <p><strong>Telephone :</strong> ${escapeHtml(msg.phone || "Non renseigne")}</p>
@@ -2928,14 +2814,12 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
           <div class="actions">
             ${replyEmail}
             ${replyWhatsapp}
-
             ${!msg.is_read ? `
               <form action="/admin/messages/${encodeURIComponent(msg.id)}/read" method="POST" style="display:inline">
                 <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
                 <button class="secondary" type="submit">✅ Marquer comme lu</button>
               </form>
             ` : ""}
-
             <form action="/admin/messages/${encodeURIComponent(msg.id)}/delete" method="POST" style="display:inline">
               <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
               <button class="danger" type="submit">🗑️ Supprimer</button>
@@ -2947,60 +2831,203 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
 
     res.setHeader("Cache-Control", "no-store");
 
-    res.send(
-      page("Messages", `
-        <section class="card">
-          <h1>Messages recus</h1>
-          <p>Total : ${result.rows.length} message(s)</p>
-        </section>
+    res.send(page("Messages", `
+      <section class="card">
+        <h1>Messages recus</h1>
+        <p>Total : ${result.rows.length} message(s)</p>
+      </section>
 
-        ${adminMenu("/admin/messages", req.adminSession.csrf)}
+      ${adminMenu("/admin/messages", req.adminSession.csrf)}
 
-        ${messages || `
-          <section class="card">
-            <p>Aucun message pour le moment.</p>
-          </section>
-        `}
-      `)
-    );
+      ${messages || `<section class="card"><p>Aucun message pour le moment.</p></section>`}
+    `));
   } catch (error) {
     console.error("Erreur messages :", error.message);
-    res.status(500).send(
-      page("Erreur", "<h2>Impossible de charger les messages.</h2>")
-    );
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les messages.</h2>"));
   }
 });
 
 app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/admin/messages");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/messages");
 
   try {
     await pool.query("UPDATE contact_messages SET is_read = true WHERE id = $1", [id]);
   } catch (error) {
     console.error("Erreur marquage lu :", error.message);
   }
-
   res.redirect(303, "/admin/messages");
 });
 
 app.post("/admin/messages/:id/delete", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/admin/messages");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/messages");
 
   try {
     await pool.query("DELETE FROM contact_messages WHERE id = $1", [id]);
   } catch (error) {
     console.error("Erreur suppression message :", error.message);
   }
-
   res.redirect(303, "/admin/messages");
+});
+
+/* ADMIN : DEMANDES RGPD */
+
+app.get("/admin/rgpd", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT g.id, g.request_type, g.status, g.message, g.created_at, g.processed_at,
+             g.pro_id, p.full_name AS pro_name, p.phone AS pro_phone, p.pro_code AS pro_code
+      FROM gdpr_requests g
+      LEFT JOIN professional_applications p ON p.id = g.pro_id
+      ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC
+      LIMIT 200
+    `);
+
+    const requests = result.rows.map((req) => {
+      const typeLabel = GDPR_TYPE_LABELS[req.request_type] || req.request_type;
+      const statusLabel = GDPR_STATUS_LABELS[req.status] || req.status;
+
+      return `
+        <article class="card">
+          <h2>
+            <span class="badge badge-${req.status}">${escapeHtml(statusLabel)}</span>
+            ${escapeHtml(typeLabel)}
+          </h2>
+
+          <p><strong>Professionnel :</strong> ${escapeHtml(req.pro_name || "Inconnu")}</p>
+          ${req.pro_code ? `<p><strong>Code pro :</strong> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
+          ${req.pro_phone ? `<p><strong>Telephone :</strong> ${escapeHtml(req.pro_phone)}</p>` : ""}
+          <p><strong>Message :</strong> ${escapeHtml(req.message || "Aucun message")}</p>
+          <p class="muted">Demande le : ${escapeHtml(req.created_at)}</p>
+          ${req.processed_at ? `<p class="muted">Traitee le : ${escapeHtml(req.processed_at)}</p>` : ""}
+
+          ${req.status === "pending" ? `
+            <div class="actions">
+              ${req.request_type === "deletion" && req.pro_id ? `
+                <form action="/admin/rgpd/${encodeURIComponent(req.id)}/supprimer-pro" method="POST" style="display:inline">
+                  <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+                  <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel et toutes ses donnees ? Action irreversible.');">🗑️ Supprimer le pro + marquer traitee</button>
+                </form>
+              ` : ""}
+
+              <form action="/admin/rgpd/${encodeURIComponent(req.id)}/traiter" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+                <button class="success" type="submit">✅ Marquer comme traitee</button>
+              </form>
+
+              <form action="/admin/rgpd/${encodeURIComponent(req.id)}/rejeter" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+                <button class="secondary" type="submit">❌ Rejeter</button>
+              </form>
+            </div>
+          ` : ""}
+        </article>
+      `;
+    }).join("");
+
+    res.setHeader("Cache-Control", "no-store");
+
+    res.send(page("Demandes RGPD", `
+      <section class="card">
+        <h1>Demandes RGPD</h1>
+        <p>Total : ${result.rows.length} demande(s)</p>
+        <p class="help-text">
+          Conformement a la loi beninoise, vous devez repondre a chaque demande
+          dans un delai maximum d'1 mois.
+        </p>
+      </section>
+
+      ${adminMenu("/admin/rgpd", req.adminSession.csrf)}
+
+      ${requests || `<section class="card"><p>Aucune demande RGPD pour le moment.</p></section>`}
+    `));
+  } catch (error) {
+    console.error("Erreur RGPD :", error.message);
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les demandes RGPD.</h2>"));
+  }
+});
+
+/* ADMIN : SUPPRIMER UN PRO + MARQUER LA DEMANDE TRAITEE */
+
+app.post("/admin/rgpd/:id/supprimer-pro", requireAdmin, verifyCsrf, async (req, res) => {
+  const requestId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(requestId) || requestId < 1) {
+    return res.redirect(303, "/admin/rgpd");
+  }
+
+  try {
+    const reqResult = await pool.query(
+      `SELECT pro_id FROM gdpr_requests WHERE id = $1`,
+      [requestId]
+    );
+
+    if (!reqResult.rows.length) {
+      return res.redirect(303, "/admin/rgpd");
+    }
+
+    const proId = reqResult.rows[0].pro_id;
+
+    if (proId) {
+      const proResult = await pool.query(
+        `SELECT photo_profil_url, photo_identite_url, photo_activite_url
+         FROM professional_applications WHERE id = $1`,
+        [proId]
+      );
+
+      if (proResult.rows.length) {
+        const pro = proResult.rows[0];
+        await deleteFromCloudinary(pro.photo_profil_url);
+        await deleteFromCloudinary(pro.photo_identite_url);
+        await deleteFromCloudinary(pro.photo_activite_url);
+      }
+
+      await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
+    }
+
+    await pool.query(
+      `UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`,
+      [requestId]
+    );
+
+    console.log(`Suppression RGPD demandee (request id=${requestId}) effectuee.`);
+  } catch (error) {
+    console.error("Erreur suppression RGPD :", error.message);
+  }
+
+  res.redirect(303, "/admin/rgpd");
+});
+
+app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/rgpd");
+
+  try {
+    await pool.query(
+      `UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`,
+      [id]
+    );
+  } catch (error) {
+    console.error("Erreur traitement RGPD :", error.message);
+  }
+  res.redirect(303, "/admin/rgpd");
+});
+
+app.post("/admin/rgpd/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/rgpd");
+
+  try {
+    await pool.query(
+      `UPDATE gdpr_requests SET status = 'rejected', processed_at = NOW() WHERE id = $1`,
+      [id]
+    );
+  } catch (error) {
+    console.error("Erreur rejet RGPD :", error.message);
+  }
+  res.redirect(303, "/admin/rgpd");
 });
 
 /* DECONNEXION */
@@ -3017,13 +3044,10 @@ app.get("/a-propos", (req, res) => {
   res.send(page("A propos", `
     <section class="card">
       <h1>A propos de TrouveMoi</h1>
-
       <p><strong>TrouveMoi</strong> est la plateforme beninoise de mise en relation entre les clients et les professionnels qualifies.</p>
-
       <h2>Notre mission</h2>
-      <p>Nous voulons simplifier la recherche de professionnels de confiance au Benin. Trop souvent, trouver un plombier, un electricien ou un couturier fiable prend du temps et passe par le bouche-a-oreille.</p>
+      <p>Nous voulons simplifier la recherche de professionnels de confiance au Benin.</p>
       <p>TrouveMoi centralise les professionnels de votre ville, verifie leur identite et vous permet de les contacter en un clic.</p>
-
       <h2>Nos services</h2>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Annuaire de professionnels verifies</li>
@@ -3031,11 +3055,9 @@ app.get("/a-propos", (req, res) => {
         <li>Contact direct par telephone ou WhatsApp</li>
         <li>Offres d'emploi publiees par des professionnels verifies</li>
       </ul>
-
       <h2>Notre engagement</h2>
-      <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe (photo d'identite et informations verifiees) avant publication.</p>
-      <p>Seuls les professionnels verifies peuvent publier des offres d'emploi, afin de lutter contre les arnaques et de garantir la fiabilite de chaque annonce.</p>
-
+      <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe.</p>
+      <p>Seuls les professionnels verifies peuvent publier des offres d'emploi.</p>
       <p style="margin-top:24px">
         <a class="button" href="/contact">Nous contacter</a>
         <a class="button secondary" href="/">Voir les professionnels</a>
@@ -3050,28 +3072,26 @@ app.get("/conditions", (req, res) => {
       <h1>Conditions d'utilisation</h1>
       <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
-      <h2>1. Acceptation des conditions</h2>
-      <p>En utilisant TrouveMoi, vous acceptez sans reserve les presentes conditions d'utilisation.</p>
+      <h2>1. Acceptation</h2>
+      <p>En utilisant TrouveMoi, vous acceptez sans reserve les presentes conditions.</p>
 
       <h2>2. Nature du service</h2>
-      <p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p>
+      <p>TrouveMoi est une plateforme de mise en relation.</p>
 
       <h2>3. Inscription des professionnels</h2>
-      <p>Les professionnels doivent fournir des informations exactes et a jour. Toute fausse declaration entraine le rejet de la candidature.</p>
+      <p>Les professionnels doivent fournir des informations exactes.</p>
 
       <h2>4. Publication d'offres d'emploi</h2>
-      <p>Seuls les professionnels verifies (ayant recu un code professionnel apres approbation de leur candidature) peuvent publier des offres d'emploi sur TrouveMoi. Toute offre est examinee par l'administration avant publication.</p>
+      <p>Seuls les professionnels verifies peuvent publier des offres.</p>
 
       <h2>5. Responsabilites</h2>
-      <p>TrouveMoi ne peut etre tenu responsable de la qualite des services fournis par les professionnels references.</p>
+      <p>TrouveMoi ne peut etre tenu responsable de la qualite des services.</p>
 
       <h2>6. Utilisation interdite</h2>
-      <p>Il est interdit de :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Publier de fausses informations</li>
         <li>Usurper l'identite d'autrui</li>
         <li>Publier de fausses offres d'emploi</li>
-        <li>Utiliser la plateforme a des fins illicites</li>
       </ul>
 
       <h2>7. Contact</h2>
@@ -3087,44 +3107,107 @@ app.get("/confidentialite", (req, res) => {
       <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
       <h2>1. Donnees collectees</h2>
-      <p>Nous collectons :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Pros : nom, telephone, ville, quartier, metier, description, photos, code professionnel</li>
         <li>Offres : entreprise, contacts, description du poste</li>
         <li>Contact : nom, email, telephone, message</li>
       </ul>
 
-      <h2>2. Utilisation des donnees</h2>
-      <p>Vos donnees sont utilisees pour :</p>
+      <h2>2. Utilisation</h2>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Mettre en relation les clients et les professionnels</li>
         <li>Afficher les profils approuves</li>
         <li>Permettre aux pros verifies de publier des offres</li>
-        <li>Vous contacter en cas de besoin</li>
       </ul>
 
       <h2>3. Protection des photos d'identite</h2>
-      <p>Les photos d'identite sont <strong>strictement privees</strong>. Elles ne sont visibles que par l'administration.</p>
+      <p>Les photos d'identite sont <strong>strictement privees</strong>.</p>
 
       <h2>4. Code professionnel</h2>
-      <p>Le code professionnel est personnel. Il ne doit pas etre partage. Il permet de gerer vos offres d'emploi.</p>
+      <p>Le code professionnel est personnel.</p>
 
       <h2>5. Partage des donnees</h2>
       <p>Nous ne vendons ni ne partageons vos donnees avec des tiers.</p>
 
       <h2>6. Vos droits</h2>
-      <p>Vous pouvez demander l'acces, la modification ou la suppression de vos donnees via le <a href="/contact">formulaire de contact</a>.</p>
+      <p>Conformement a la loi beninoise sur la protection des donnees personnelles,
+      vous disposez des droits suivants :</p>
+      <ul style="margin-left:20px;margin-bottom:16px">
+        <li><strong>Droit d'acces</strong> : consulter toutes vos donnees</li>
+        <li><strong>Droit de rectification</strong> : corriger vos donnees</li>
+        <li><strong>Droit a l'effacement</strong> : demander la suppression de vos donnees</li>
+        <li><strong>Droit d'opposition</strong> : refuser certains traitements (ex : visibilite du numero)</li>
+        <li><strong>Droit a la portabilite</strong> : recuperer vos donnees dans un format lisible</li>
+      </ul>
+      <p>
+        <strong>Comment exercer vos droits ?</strong><br>
+        Les professionnels inscrits peuvent exercer ces droits directement
+        depuis leur espace personnel (<a href="/mon-espace-pro">Mon espace pro</a>).
+        Toute autre personne peut nous contacter via le
+        <a href="/contact">formulaire de contact</a>.
+      </p>
+      <p>
+        Nous nous engageons a repondre a toute demande dans un delai maximum
+        d'<strong>un mois</strong>.
+      </p>
+
+      <h2>7. Cookies</h2>
+      <p>Nous utilisons uniquement des cookies techniques necessaires.</p>
+
+      <h2>8. Autorite de controle</h2>
+      <p>
+        Conformement a la loi beninoise, vous pouvez introduire une reclamation
+        aupres de l'Autorite de Protection des Donnees Personnelles (APDP) du Benin.
+      </p>
     </section>
   `));
 });
 
-app.get("/contact", (req, res) => {
+app.get("/contact", async (req, res) => {
+  const proId = String(req.query.pro || "").trim();
+  let proInfo = null;
+
+  if (proId && /^\d+$/.test(proId)) {
+    try {
+      const proResult = await pool.query(
+        `SELECT full_name, profession FROM professional_applications
+         WHERE id = $1 AND status = 'approved'`,
+        [parseInt(proId, 10)]
+      );
+      if (proResult.rows.length) proInfo = proResult.rows[0];
+    } catch (error) {
+      console.error("Erreur recherche pro :", error.message);
+    }
+  }
+
+  const defaultSubject = proInfo
+    ? `Demande de contact pour ${proInfo.full_name} (${proInfo.profession})`
+    : "";
+
+  const defaultMessage = proInfo
+    ? `Bonjour, je souhaite contacter ${proInfo.full_name} (${proInfo.profession}) via TrouveMoi. Merci de me mettre en relation.`
+    : "";
+
   res.send(page("Contact", `
     <section class="card">
       <h1>Nous contacter</h1>
+
+      ${proInfo ? `
+        <div class="alert alert-info">
+          📩 Vous souhaitez contacter <strong>${escapeHtml(proInfo.full_name)}</strong>
+          (${escapeHtml(proInfo.profession)}). Ce professionnel a choisi de ne pas
+          afficher son numero publiquement. Remplissez ce formulaire, votre demande
+          sera transmise par l'administration.
+          <br><br>
+          <strong>⚠️ Cela peut prendre plusieurs jours.</strong>
+        </div>
+      ` : ""}
+
       <p>Une question, une suggestion, un probleme ? Ecrivez-nous.</p>
 
       <form action="/contact" method="POST">
+        <input type="hidden" name="pro_id" value="${escapeHtml(proId)}">
+
         <label for="name">Votre nom *</label>
         <input id="name" name="name" required maxlength="150">
 
@@ -3135,10 +3218,10 @@ app.get("/contact", (req, res) => {
         <input id="phone" name="phone" type="tel" maxlength="30" placeholder="+229...">
 
         <label for="subject">Sujet *</label>
-        <input id="subject" name="subject" required maxlength="200">
+        <input id="subject" name="subject" required maxlength="200" value="${escapeHtml(defaultSubject)}">
 
         <label for="message">Votre message *</label>
-        <textarea id="message" name="message" required maxlength="5000" rows="6"></textarea>
+        <textarea id="message" name="message" required maxlength="5000" rows="6">${escapeHtml(defaultMessage)}</textarea>
 
         <p class="help-text">Au moins un moyen de contact (email ou telephone) est requis.</p>
 
@@ -3149,13 +3232,19 @@ app.get("/contact", (req, res) => {
 });
 
 app.post("/contact", async (req, res) => {
-  const { name, email, phone, subject, message } = req.body;
+  const { name, email, phone, subject, message, pro_id } = req.body;
 
   const cleanName = typeof name === "string" ? name.trim().slice(0, 150) : "";
   const cleanEmail = typeof email === "string" ? email.trim().slice(0, 254) : "";
   const cleanPhone = typeof phone === "string" ? normalizePhone(phone).slice(0, 30) : "";
   const cleanSubject = typeof subject === "string" ? subject.trim().slice(0, 200) : "";
   const cleanMessage = typeof message === "string" ? message.trim().slice(0, 5000) : "";
+
+  let proIdInt = null;
+
+  if (typeof pro_id === "string" && /^\d+$/.test(pro_id)) {
+    proIdInt = parseInt(pro_id, 10);
+  }
 
   if (!cleanName || !cleanSubject || !cleanMessage || (!cleanEmail && !cleanPhone)) {
     return res.status(400).send(
@@ -3170,32 +3259,18 @@ app.post("/contact", async (req, res) => {
   }
 
   if (cleanEmail && !validEmail(cleanEmail)) {
-    return res.status(400).send(
-      page("E-mail invalide", `
-        <section class="card">
-          <h2>L'adresse e-mail est invalide.</h2>
-          <a href="/contact">Retour au formulaire</a>
-        </section>
-      `)
-    );
+    return res.status(400).send(page("E-mail invalide", `<section class="card"><h2>L'adresse e-mail est invalide.</h2><a href="/contact">Retour</a></section>`));
   }
 
   if (cleanPhone && !validPhone(cleanPhone)) {
-    return res.status(400).send(
-      page("Telephone invalide", `
-        <section class="card">
-          <h2>Le numero de telephone est invalide.</h2>
-          <a href="/contact">Retour au formulaire</a>
-        </section>
-      `)
-    );
+    return res.status(400).send(page("Telephone invalide", `<section class="card"><h2>Le numero de telephone est invalide.</h2><a href="/contact">Retour</a></section>`));
   }
 
   try {
     await pool.query(`
-      INSERT INTO contact_messages (name, email, phone, subject, message, is_read)
-      VALUES ($1, $2, $3, $4, $5, false)
-    `, [cleanName, cleanEmail || null, cleanPhone || null, cleanSubject, cleanMessage]);
+      INSERT INTO contact_messages (name, email, phone, subject, message, is_read, pro_id)
+      VALUES ($1, $2, $3, $4, $5, false, $6)
+    `, [cleanName, cleanEmail || null, cleanPhone || null, cleanSubject, cleanMessage, proIdInt]);
 
     res.status(201).send(
       page("Message envoye", `
@@ -3208,14 +3283,7 @@ app.post("/contact", async (req, res) => {
     );
   } catch (error) {
     console.error("Erreur contact :", error.message);
-    res.status(500).send(
-      page("Erreur", `
-        <section class="card">
-          <h2>Impossible d'envoyer le message.</h2>
-          <p>Veuillez reessayer plus tard.</p>
-        </section>
-      `)
-    );
+    res.status(500).send(page("Erreur", `<section class="card"><h2>Impossible d'envoyer le message.</h2></section>`));
   }
 });
 
@@ -3244,6 +3312,7 @@ async function startServer() {
         id SERIAL PRIMARY KEY,
         full_name VARCHAR(150) NOT NULL,
         phone VARCHAR(30) NOT NULL,
+        phone_public BOOLEAN NOT NULL DEFAULT true,
         city VARCHAR(100) NOT NULL,
         neighborhood VARCHAR(150),
         profession VARCHAR(150) NOT NULL,
@@ -3261,30 +3330,12 @@ async function startServer() {
       )
     `);
 
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ALTER COLUMN npi DROP NOT NULL
-    `);
-
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ADD COLUMN IF NOT EXISTS photo_profil_url TEXT
-    `);
-
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ADD COLUMN IF NOT EXISTS photo_identite_url TEXT
-    `);
-
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ADD COLUMN IF NOT EXISTS photo_activite_url TEXT
-    `);
-
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ADD COLUMN IF NOT EXISTS pro_code VARCHAR(10) UNIQUE
-    `);
+    await pool.query(`ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_profil_url TEXT`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_identite_url TEXT`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code VARCHAR(10) UNIQUE`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS job_offers (
@@ -3312,26 +3363,10 @@ async function startServer() {
       )
     `);
 
-    await pool.query(`
-      ALTER TABLE job_offers
-      ADD COLUMN IF NOT EXISTS pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL
-    `);
-
-    await pool.query(`
-      ALTER TABLE job_offers
-      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP
-    `);
-
-    await pool.query(`
-      ALTER TABLE job_offers
-      DROP CONSTRAINT IF EXISTS job_offers_status_check
-    `);
-
-    await pool.query(`
-      ALTER TABLE job_offers
-      ADD CONSTRAINT job_offers_status_check
-      CHECK (status IN ('pending', 'approved', 'rejected', 'closed'))
-    `);
+    await pool.query(`ALTER TABLE job_offers ADD COLUMN IF NOT EXISTS pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL`);
+    await pool.query(`ALTER TABLE job_offers ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE job_offers DROP CONSTRAINT IF EXISTS job_offers_status_check`);
+    await pool.query(`ALTER TABLE job_offers ADD CONSTRAINT job_offers_status_check CHECK (status IN ('pending', 'approved', 'rejected', 'closed'))`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cities (
@@ -3368,7 +3403,22 @@ async function startServer() {
         subject VARCHAR(200) NOT NULL,
         message TEXT NOT NULL,
         is_read BOOLEAN NOT NULL DEFAULT false,
+        pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS gdpr_requests (
+        id SERIAL PRIMARY KEY,
+        pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL,
+        request_type VARCHAR(30) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        message TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
       )
     `);
 
@@ -3384,217 +3434,62 @@ async function startServer() {
 
     for (const [name, order] of citiesData) {
       await pool.query(
-        `INSERT INTO cities (name, display_order)
-         VALUES ($1, $2)
-         ON CONFLICT (name) DO NOTHING`,
+        `INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`,
         [name, order]
       );
     }
 
     const neighborhoodsData = {
-      "Cotonou": [
-        "Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi",
-        "Godomey", "Gbégamey", "Haie Vive", "Jéricho",
-        "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita",
-        "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo",
-        "Zone des Ambassades", "Dantokpa", "Agla",
-        "Aïdjèdo", "Sikècodji"
-      ],
-      "Abomey-Calavi": [
-        "Calavi centre", "Godomey", "Akassato", "Zinvié",
-        "Togba", "Tankpè", "Hêvié", "Ouèdo",
-        "Cocotomey", "Kpota"
-      ],
-      "Porto-Novo": [
-        "Djègan-Kpèvi", "Ouando", "Akonaboè", "Djassin",
-        "Houinmè", "Sèmè", "Tokpota", "Zounvié",
-        "Avakpa", "Atinkanmey"
-      ],
-      "Parakou": [
-        "Zongo", "Dépôt", "Guéma", "Kpébié",
-        "Madina", "Tourou", "Albarika", "Baparapé",
-        "Titirou"
-      ],
-      "Bohicon": [
-        "Bohicon centre", "Agbangnizoun", "Sèdjè",
-        "Djidja", "Ouèssè", "Kpassè"
-      ],
-      "Natitingou": [
-        "Natitingou centre", "Kanté", "Perma",
-        "Kouandé", "Tchoumi-Tchoumi", "Yokossi"
-      ],
-      "Ouidah": [
-        "Ouidah centre", "Pahou", "Gbéna", "Sè",
-        "Kpomassè", "Avlékété", "Djègbadji"
-      ]
+      "Cotonou": ["Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi", "Godomey", "Gbégamey", "Haie Vive", "Jéricho", "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita", "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo", "Zone des Ambassades", "Dantokpa", "Agla", "Aïdjèdo", "Sikècodji"],
+      "Abomey-Calavi": ["Calavi centre", "Godomey", "Akassato", "Zinvié", "Togba", "Tankpè", "Hêvié", "Ouèdo", "Cocotomey", "Kpota"],
+      "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Akonaboè", "Djassin", "Houinmè", "Sèmè", "Tokpota", "Zounvié", "Avakpa", "Atinkanmey"],
+      "Parakou": ["Zongo", "Dépôt", "Guéma", "Kpébié", "Madina", "Tourou", "Albarika", "Baparapé", "Titirou"],
+      "Bohicon": ["Bohicon centre", "Agbangnizoun", "Sèdjè", "Djidja", "Ouèssè", "Kpassè"],
+      "Natitingou": ["Natitingou centre", "Kanté", "Perma", "Kouandé", "Tchoumi-Tchoumi", "Yokossi"],
+      "Ouidah": ["Ouidah centre", "Pahou", "Gbéna", "Sè", "Kpomassè", "Avlékété", "Djègbadji"]
     };
 
     for (const [cityName, neighborhoods] of Object.entries(neighborhoodsData)) {
-      const cityResult = await pool.query(
-        "SELECT id FROM cities WHERE name = $1",
-        [cityName]
-      );
-
-      if (!cityResult.rows.length) {
-        continue;
-      }
+      const cityResult = await pool.query("SELECT id FROM cities WHERE name = $1", [cityName]);
+      if (!cityResult.rows.length) continue;
 
       const cityId = cityResult.rows[0].id;
 
       for (const neighborhood of neighborhoods) {
         await pool.query(
-          `INSERT INTO neighborhoods (city_id, name)
-           VALUES ($1, $2)
-           ON CONFLICT (city_id, name) DO NOTHING`,
+          `INSERT INTO neighborhoods (city_id, name) VALUES ($1, $2) ON CONFLICT (city_id, name) DO NOTHING`,
           [cityId, neighborhood]
         );
       }
     }
 
     const professionsData = [
-      ["Maçon", "Bâtiment"],
-      ["Plombier", "Bâtiment"],
-      ["Électricien", "Bâtiment"],
-      ["Carreleur", "Bâtiment"],
-      ["Peintre en bâtiment", "Bâtiment"],
-      ["Menuisier bois", "Bâtiment"],
-      ["Menuisier aluminium", "Bâtiment"],
-      ["Soudeur", "Bâtiment"],
-      ["Ferrailleur", "Bâtiment"],
-      ["Charpentier", "Bâtiment"],
-      ["Étanchéiste (toiture)", "Bâtiment"],
-      ["Vitrier", "Bâtiment"],
-
-      ["Femme de ménage", "Maison"],
-      ["Repassage à domicile", "Maison"],
-      ["Cuisinier", "Maison"],
-      ["Cuisinière", "Maison"],
-      ["Gardien", "Maison"],
-      ["Vigile", "Maison"],
-      ["Nounou", "Maison"],
-      ["Garde d'enfants", "Maison"],
-      ["Jardinier", "Maison"],
-      ["Désinsectisation", "Maison"],
-      ["Dératisation", "Maison"],
-      ["Plombier-déboucheur", "Maison"],
-
-      ["Coiffeur", "Beauté"],
-      ["Coiffeuse", "Beauté"],
-      ["Tresseuse", "Beauté"],
-      ["Barbier", "Beauté"],
-      ["Esthéticienne", "Beauté"],
-      ["Maquilleuse", "Beauté"],
-      ["Manucure", "Beauté"],
-      ["Pédicure", "Beauté"],
-      ["Masseur", "Beauté"],
-      ["Masseuse", "Beauté"],
-      ["Tatoueur", "Beauté"],
-
-      ["Couturier", "Couture"],
-      ["Couturière", "Couture"],
-      ["Tailleur", "Couture"],
-      ["Brodeur", "Couture"],
-      ["Retoucheur", "Couture"],
-      ["Styliste modéliste", "Couture"],
-      ["Cordonnier", "Couture"],
-
-      ["Mécanicien auto", "Automobile"],
-      ["Mécanicien moto", "Automobile"],
-      ["Électricien auto", "Automobile"],
-      ["Carrossier", "Automobile"],
-      ["Tôlier", "Automobile"],
-      ["Vulcanisateur", "Automobile"],
-      ["Chauffeur de taxi", "Transport"],
-      ["Chauffeur de moto-taxi", "Transport"],
-      ["Chauffeur personnel", "Transport"],
-      ["Déménageur", "Transport"],
-
-      ["Traiteur", "Restauration"],
-      ["Pâtissier", "Restauration"],
-      ["Boulanger", "Restauration"],
-      ["Vendeur de nourriture", "Restauration"],
-      ["Boucher", "Restauration"],
-      ["Poissonnier", "Restauration"],
-      ["Barista", "Restauration"],
-
-      ["Développeur web", "Informatique"],
-      ["Développeur mobile", "Informatique"],
-      ["Informaticien", "Informatique"],
-      ["Réparateur de téléphone", "Informatique"],
-      ["Réparateur d'ordinateur", "Informatique"],
-      ["Graphiste", "Informatique"],
-      ["Community manager", "Informatique"],
-      ["Photographe", "Informatique"],
-      ["Vidéaste", "Informatique"],
-      ["Ingénieur réseau", "Informatique"],
-
-      ["Professeur de Maths", "Éducation"],
-      ["Professeur de Français", "Éducation"],
-      ["Professeur d'Anglais", "Éducation"],
-      ["Enseignant primaire", "Éducation"],
-      ["Formateur informatique", "Éducation"],
-      ["Coach scolaire", "Éducation"],
-
-      ["Infirmier à domicile", "Santé"],
-      ["Infirmière à domicile", "Santé"],
-      ["Sage-femme", "Santé"],
-      ["Kinésithérapeute", "Santé"],
-      ["Aide-soignant", "Santé"],
-      ["Pharmacien", "Santé"],
-      ["Opticien", "Santé"],
-
-      ["Comptable", "Professionnel"],
-      ["Fiscaliste", "Professionnel"],
-      ["Juriste", "Professionnel"],
-      ["Avocat", "Professionnel"],
-      ["Notaire", "Professionnel"],
-      ["Traducteur", "Professionnel"],
-      ["Rédacteur de contenu", "Professionnel"],
-      ["Secrétaire", "Professionnel"],
-      ["Assistant administratif", "Professionnel"],
-      ["Consultant", "Professionnel"],
-
-      ["Wedding planner", "Événementiel"],
-      ["Décorateur événementiel", "Événementiel"],
-      ["DJ", "Événementiel"],
-      ["Animateur", "Événementiel"],
-      ["MC", "Événementiel"],
-      ["Serveur événementiel", "Événementiel"],
-      ["Sécurité événementielle", "Événementiel"],
-      ["Sonorisation", "Événementiel"],
-
-      ["Agent immobilier", "Immobilier"],
-      ["Courtier", "Immobilier"],
-      ["Serrurier", "Divers"],
-      ["Climatisation", "Divers"],
-      ["Froid", "Divers"],
-      ["Réparation électroménager", "Divers"],
-      ["Antenniste", "Divers"],
-      ["Forgeron", "Divers"],
-      ["Puisatier", "Divers"],
-      ["Agriculteur", "Agriculture"],
-      ["Maraîcher", "Agriculture"],
-      ["Éleveur", "Agriculture"],
-      ["Pêcheur", "Agriculture"],
-      ["Apiculteur", "Agriculture"],
-      ["Prothésiste dentaire", "Santé"]
+      ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"],
+      ["Femme de ménage", "Maison"], ["Repassage à domicile", "Maison"], ["Cuisinier", "Maison"], ["Cuisinière", "Maison"], ["Gardien", "Maison"], ["Vigile", "Maison"], ["Nounou", "Maison"], ["Garde d'enfants", "Maison"], ["Jardinier", "Maison"], ["Désinsectisation", "Maison"], ["Dératisation", "Maison"], ["Plombier-déboucheur", "Maison"],
+      ["Coiffeur", "Beauté"], ["Coiffeuse", "Beauté"], ["Tresseuse", "Beauté"], ["Barbier", "Beauté"], ["Esthéticienne", "Beauté"], ["Maquilleuse", "Beauté"], ["Manucure", "Beauté"], ["Pédicure", "Beauté"], ["Masseur", "Beauté"], ["Masseuse", "Beauté"], ["Tatoueur", "Beauté"],
+      ["Couturier", "Couture"], ["Couturière", "Couture"], ["Tailleur", "Couture"], ["Brodeur", "Couture"], ["Retoucheur", "Couture"], ["Styliste modéliste", "Couture"], ["Cordonnier", "Couture"],
+      ["Mécanicien auto", "Automobile"], ["Mécanicien moto", "Automobile"], ["Électricien auto", "Automobile"], ["Carrossier", "Automobile"], ["Tôlier", "Automobile"], ["Vulcanisateur", "Automobile"], ["Chauffeur de taxi", "Transport"], ["Chauffeur de moto-taxi", "Transport"], ["Chauffeur personnel", "Transport"], ["Déménageur", "Transport"],
+      ["Traiteur", "Restauration"], ["Pâtissier", "Restauration"], ["Boulanger", "Restauration"], ["Vendeur de nourriture", "Restauration"], ["Boucher", "Restauration"], ["Poissonnier", "Restauration"], ["Barista", "Restauration"],
+      ["Développeur web", "Informatique"], ["Développeur mobile", "Informatique"], ["Informaticien", "Informatique"], ["Réparateur de téléphone", "Informatique"], ["Réparateur d'ordinateur", "Informatique"], ["Graphiste", "Informatique"], ["Community manager", "Informatique"], ["Photographe", "Informatique"], ["Vidéaste", "Informatique"], ["Ingénieur réseau", "Informatique"],
+      ["Professeur de Maths", "Éducation"], ["Professeur de Français", "Éducation"], ["Professeur d'Anglais", "Éducation"], ["Enseignant primaire", "Éducation"], ["Formateur informatique", "Éducation"], ["Coach scolaire", "Éducation"],
+      ["Infirmier à domicile", "Santé"], ["Infirmière à domicile", "Santé"], ["Sage-femme", "Santé"], ["Kinésithérapeute", "Santé"], ["Aide-soignant", "Santé"], ["Pharmacien", "Santé"], ["Opticien", "Santé"],
+      ["Comptable", "Professionnel"], ["Fiscaliste", "Professionnel"], ["Juriste", "Professionnel"], ["Avocat", "Professionnel"], ["Notaire", "Professionnel"], ["Traducteur", "Professionnel"], ["Rédacteur de contenu", "Professionnel"], ["Secrétaire", "Professionnel"], ["Assistant administratif", "Professionnel"], ["Consultant", "Professionnel"],
+      ["Wedding planner", "Événementiel"], ["Décorateur événementiel", "Événementiel"], ["DJ", "Événementiel"], ["Animateur", "Événementiel"], ["MC", "Événementiel"], ["Serveur événementiel", "Événementiel"], ["Sécurité événementielle", "Événementiel"], ["Sonorisation", "Événementiel"],
+      ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Serrurier", "Divers"], ["Climatisation", "Divers"], ["Froid", "Divers"], ["Réparation électroménager", "Divers"], ["Antenniste", "Divers"], ["Forgeron", "Divers"], ["Puisatier", "Divers"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Apiculteur", "Agriculture"], ["Prothésiste dentaire", "Santé"]
     ];
 
     let orderCounter = 0;
 
     for (const [name, category] of professionsData) {
       orderCounter += 1;
-
       await pool.query(
-        `INSERT INTO professions (name, category, display_order)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (name) DO NOTHING`,
+        `INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`,
         [name, category, orderCounter]
       );
     }
 
     console.log(
-      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages)."
+      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages, RGPD)."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
