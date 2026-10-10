@@ -1,6 +1,8 @@
 const express = require("express");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,6 +10,78 @@ const PORT = process.env.PORT || 3000;
 if (!process.env.DATABASE_URL) {
   console.error("Erreur : DATABASE_URL n'est pas configuree.");
   process.exit(1);
+}
+
+/* CONFIGURATION CLOUDINARY */
+
+if (
+  !process.env.CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET
+) {
+  console.error(
+    "Erreur : les variables Cloudinary ne sont pas configurees."
+  );
+  process.exit(1);
+}
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
+
+/* CONFIGURATION MULTER */
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 3
+  },
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp"
+    ];
+
+    if (!allowed.includes(file.mimetype)) {
+      return cb(
+        new Error("Format non autorise. Utilisez JPG, PNG ou WEBP.")
+      );
+    }
+
+    cb(null, true);
+  }
+});
+
+/* FONCTION D'UPLOAD CLOUDINARY */
+
+function uploadToCloudinary(buffer, folder, publicId) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: folder,
+        public_id: publicId,
+        resource_type: "image",
+        transformation: [
+          { width: 800, height: 800, crop: "limit" },
+          { quality: "auto" },
+          { fetch_format: "auto" }
+        ]
+      },
+      (error, result) => {
+        if (error) {
+          return reject(error);
+        }
+        resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
 }
 
 const pool = new Pool({
@@ -277,6 +351,18 @@ function page(title, content) {
           background: white;
         }
 
+        input[type="file"] {
+          padding: 10px;
+          background: #f9fafb;
+          border: 2px dashed #ccc;
+          cursor: pointer;
+        }
+
+        input[type="file"]:hover {
+          border-color: #087f5b;
+          background: #f0fdf9;
+        }
+
         button,
         .button {
           display: inline-block;
@@ -337,6 +423,53 @@ function page(title, content) {
 
         .email {
           background: #475467;
+        }
+
+        .photos-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin: 12px 0;
+        }
+
+        .photos-grid img {
+          max-width: 180px;
+          max-height: 180px;
+          border-radius: 8px;
+          border: 2px solid #e5e7eb;
+          object-fit: cover;
+        }
+
+        .photo-profil {
+          border: 3px solid #087f5b !important;
+        }
+
+        .photo-identite {
+          border: 3px solid #b42318 !important;
+        }
+
+        .photo-activite {
+          border: 3px solid #475467 !important;
+        }
+
+        .photo-label {
+          font-size: 12px;
+          color: #667085;
+          text-align: center;
+          margin-top: 4px;
+        }
+
+        .photo-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .help-text {
+          font-size: 13px;
+          color: #667085;
+          margin-top: -8px;
+          margin-bottom: 12px;
         }
 
         @media (max-width: 600px) {
@@ -469,7 +602,9 @@ app.get("/", async (req, res) => {
         experience,
         service_description,
         service_area,
-        availability
+        availability,
+        photo_profil_url,
+        photo_activite_url
       FROM professional_applications
       WHERE status = 'approved'
     `;
@@ -493,6 +628,36 @@ app.get("/", async (req, res) => {
     const professionals = result.rows.map((person) => `
       <article class="card">
         <h2>${escapeHtml(person.profession)}</h2>
+
+        <div class="photos-grid">
+          ${person.photo_profil_url
+            ? `
+              <div class="photo-block">
+                <img
+                  src="${escapeHtml(person.photo_profil_url)}"
+                  alt="Photo de profil"
+                  class="photo-profil"
+                >
+                <div class="photo-label">Profil</div>
+              </div>
+            `
+            : ""
+          }
+
+          ${person.photo_activite_url
+            ? `
+              <div class="photo-block">
+                <img
+                  src="${escapeHtml(person.photo_activite_url)}"
+                  alt="Photo d'activite"
+                  class="photo-activite"
+                >
+                <div class="photo-label">Activite</div>
+              </div>
+            `
+            : ""
+          }
+        </div>
 
         <p>
           <strong>Professionnel :</strong>
@@ -595,7 +760,11 @@ app.get("/devenir-professionnel", (req, res) => {
         Remplissez le formulaire pour soumettre votre candidature.
       </p>
 
-      <form action="/candidatures" method="POST">
+      <form
+        action="/candidatures"
+        method="POST"
+        enctype="multipart/form-data"
+      >
         <label for="full_name">Nom et prenoms *</label>
         <input
           id="full_name"
@@ -676,6 +845,46 @@ app.get("/devenir-professionnel", (req, res) => {
           <option value="A temps partiel">A temps partiel</option>
         </select>
 
+        <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb">
+
+        <h3>Photos obligatoires</h3>
+
+        <p class="help-text">
+          Formats acceptes : JPG, PNG, WEBP. Taille max : 5 Mo par photo.
+        </p>
+
+        <label for="photo_profil">
+          Photo de profil * (visible publiquement)
+        </label>
+        <input
+          id="photo_profil"
+          name="photo_profil"
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+          required
+        >
+
+        <label for="photo_identite">
+          Photo d'identite * (privee, visible uniquement par l'administration)
+        </label>
+        <input
+          id="photo_identite"
+          name="photo_identite"
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+          required
+        >
+
+        <label for="photo_activite">
+          Photo d'activite (optionnelle, visible publiquement)
+        </label>
+        <input
+          id="photo_activite"
+          name="photo_activite"
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
+        >
+
         <button type="submit">Envoyer ma candidature</button>
       </form>
 
@@ -688,104 +897,189 @@ app.get("/devenir-professionnel", (req, res) => {
 
 /* ENREGISTREMENT DES CANDIDATURES PROFESSIONNELLES */
 
-app.post("/candidatures", async (req, res) => {
-  const {
-    full_name,
-    phone,
-    city,
-    neighborhood,
-    profession,
-    experience,
-    service_description,
-    service_area,
-    availability
-  } = req.body;
+app.post(
+  "/candidatures",
+  upload.fields([
+    { name: "photo_profil", maxCount: 1 },
+    { name: "photo_identite", maxCount: 1 },
+    { name: "photo_activite", maxCount: 1 }
+  ]),
+  async (req, res) => {
+    const {
+      full_name,
+      phone,
+      city,
+      neighborhood,
+      profession,
+      experience,
+      service_description,
+      service_area,
+      availability
+    } = req.body;
 
-  if (
-    typeof full_name !== "string" ||
-    typeof phone !== "string" ||
-    typeof city !== "string" ||
-    typeof profession !== "string" ||
-    typeof service_description !== "string" ||
-    !full_name.trim() ||
-    !phone.trim() ||
-    !city.trim() ||
-    !profession.trim() ||
-    !service_description.trim()
-  ) {
-    return res.status(400).send(
-      page(
-        "Informations manquantes",
-        '<section class="card"><h2>Informations manquantes</h2><a href="/devenir-professionnel">Retour au formulaire</a></section>'
-      )
-    );
+    const files = req.files || {};
+    const photoProfil = files.photo_profil?.[0];
+    const photoIdentite = files.photo_identite?.[0];
+    const photoActivite = files.photo_activite?.[0];
+
+    if (
+      typeof full_name !== "string" ||
+      typeof phone !== "string" ||
+      typeof city !== "string" ||
+      typeof profession !== "string" ||
+      typeof service_description !== "string" ||
+      !full_name.trim() ||
+      !phone.trim() ||
+      !city.trim() ||
+      !profession.trim() ||
+      !service_description.trim()
+    ) {
+      return res.status(400).send(
+        page(
+          "Informations manquantes",
+          '<section class="card"><h2>Informations manquantes</h2><a href="/devenir-professionnel">Retour au formulaire</a></section>'
+        )
+      );
+    }
+
+    if (!photoProfil || !photoIdentite) {
+      return res.status(400).send(
+        page(
+          "Photos obligatoires",
+          `
+            <section class="card">
+              <h2>Photos obligatoires manquantes</h2>
+              <p>
+                La photo de profil et la photo d'identite sont obligatoires.
+              </p>
+              <a href="/devenir-professionnel">Retour au formulaire</a>
+            </section>
+          `
+        )
+      );
+    }
+
+    let photoProfilUrl = null;
+    let photoIdentiteUrl = null;
+    let photoActiviteUrl = null;
+
+    try {
+      const timestamp = Date.now();
+
+      const profilResult = await uploadToCloudinary(
+        photoProfil.buffer,
+        "trouvemoi/profils",
+        `profil_${timestamp}`
+      );
+      photoProfilUrl = profilResult.secure_url;
+
+      const identiteResult = await uploadToCloudinary(
+        photoIdentite.buffer,
+        "trouvemoi/identites",
+        `identite_${timestamp}`
+      );
+      photoIdentiteUrl = identiteResult.secure_url;
+
+      if (photoActivite) {
+        const activiteResult = await uploadToCloudinary(
+          photoActivite.buffer,
+          "trouvemoi/activites",
+          `activite_${timestamp}`
+        );
+        photoActiviteUrl = activiteResult.secure_url;
+      }
+    } catch (uploadError) {
+      console.error(
+        "Erreur d'upload Cloudinary :",
+        uploadError.message
+      );
+
+      return res.status(500).send(
+        page(
+          "Erreur d'upload",
+          `
+            <section class="card">
+              <h2>Impossible de televerser les photos.</h2>
+              <p>Veuillez reessayer avec des images plus petites.</p>
+              <a href="/devenir-professionnel">Retour au formulaire</a>
+            </section>
+          `
+        )
+      );
+    }
+
+    try {
+      const result = await pool.query(`
+        INSERT INTO professional_applications (
+          full_name,
+          phone,
+          city,
+          neighborhood,
+          profession,
+          experience,
+          service_description,
+          service_area,
+          availability,
+          npi,
+          photo_profil_url,
+          photo_identite_url,
+          photo_activite_url,
+          status
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11,$12,'pending')
+        RETURNING id
+      `, [
+        full_name.trim().slice(0, 150),
+        phone.trim().slice(0, 30),
+        city.trim().slice(0, 100),
+        typeof neighborhood === "string"
+          ? neighborhood.trim().slice(0, 150) || null
+          : null,
+        profession.trim().slice(0, 150),
+        typeof experience === "string"
+          ? experience.slice(0, 100) || null
+          : null,
+        service_description.trim().slice(0, 3000),
+        typeof service_area === "string"
+          ? service_area.trim().slice(0, 300) || null
+          : null,
+        typeof availability === "string"
+          ? availability.slice(0, 100) || null
+          : null,
+        photoProfilUrl,
+        photoIdentiteUrl,
+        photoActiviteUrl
+      ]);
+
+      res.status(201).send(
+        page(
+          "Candidature envoyee",
+          `
+            <section class="card">
+              <h1>Candidature envoyee avec succes !</h1>
+              <p>Votre candidature a bien ete enregistree.</p>
+              <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
+              <p>Votre profil ne sera visible qu'apres approbation.</p>
+              <a class="button" href="/">Retour a l'accueil</a>
+            </section>
+          `
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erreur lors de l'enregistrement :",
+        error.message
+      );
+
+      res.status(500).send(
+        page(
+          "Erreur",
+          "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>"
+        )
+      );
+    }
   }
-
-  try {
-    const result = await pool.query(`
-      INSERT INTO professional_applications (
-        full_name,
-        phone,
-        city,
-        neighborhood,
-        profession,
-        experience,
-        service_description,
-        service_area,
-        availability,
-        npi,
-        status
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,'pending')
-      RETURNING id
-    `, [
-      full_name.trim().slice(0, 150),
-      phone.trim().slice(0, 30),
-      city.trim().slice(0, 100),
-      typeof neighborhood === "string"
-        ? neighborhood.trim().slice(0, 150) || null
-        : null,
-      profession.trim().slice(0, 150),
-      typeof experience === "string"
-        ? experience.slice(0, 100) || null
-        : null,
-      service_description.trim().slice(0, 3000),
-      typeof service_area === "string"
-        ? service_area.trim().slice(0, 300) || null
-        : null,
-      typeof availability === "string"
-        ? availability.slice(0, 100) || null
-        : null
-    ]);
-
-    res.status(201).send(
-      page(
-        "Candidature envoyee",
-        `
-          <section class="card">
-            <h1>Candidature envoyee avec succes !</h1>
-            <p>Votre candidature a bien ete enregistree.</p>
-            <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
-            <p>Votre profil ne sera visible qu'apres approbation.</p>
-            <a class="button" href="/">Retour a l'accueil</a>
-          </section>
-        `
-      )
-    );
-  } catch (error) {
-    console.error(
-      "Erreur lors de l'enregistrement :",
-      error.message
-    );
-
-    res.status(500).send(
-      page(
-        "Erreur",
-        "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>"
-      )
-    );
-  }
-});
+);
 
 /* PAGE DE RECHERCHE DES EMPLOIS */
 
@@ -1023,1148 +1317,4 @@ app.get("/publier-emploi", (req, res) => {
             <label for="contract_type">Type de contrat *</label>
 
             <select id="contract_type" name="contract_type" required>
-              <option value="">Choisir</option>
-              ${contractOptions}
-            </select>
-
-            <label for="salary">Salaire (facultatif)</label>
-
-            <input
-              id="salary"
-              name="salary"
-              maxlength="100"
-              placeholder="Ex. : 100 000 FCFA/mois"
-            >
-
-            <label for="description">
-              Description du poste *
-            </label>
-
-            <textarea
-              id="description"
-              name="description"
-              required
-              maxlength="8000"
-              rows="6"
-            ></textarea>
-
-            <label for="qualifications">
-              Qualifications et competences recherchees
-            </label>
-
-            <textarea
-              id="qualifications"
-              name="qualifications"
-              maxlength="4000"
-              rows="4"
-            ></textarea>
-
-            <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
-              <legend>
-                Moyens de contact (au moins un obligatoire) *
-              </legend>
-
-              <p>
-                Cochez un ou plusieurs moyens de contact.
-                Remplissez le champ correspondant a chaque moyen choisi.
-              </p>
-
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_phone"
-                  name="use_phone"
-                  value="yes"
-                >
-                Appel direct
-              </label>
-
-              <label for="contact_phone">
-                Numero de telephone
-              </label>
-
-              <input
-                id="contact_phone"
-                name="contact_phone"
-                type="tel"
-                maxlength="30"
-                placeholder="+229..."
-              >
-
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_whatsapp"
-                  name="use_whatsapp"
-                  value="yes"
-                >
-                WhatsApp
-              </label>
-
-              <label for="contact_whatsapp">
-                Numero WhatsApp
-              </label>
-
-              <input
-                id="contact_whatsapp"
-                name="contact_whatsapp"
-                type="tel"
-                maxlength="30"
-                placeholder="+229..."
-              >
-
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_email"
-                  name="use_email"
-                  value="yes"
-                >
-                E-mail
-              </label>
-
-              <label for="contact_email">
-                Adresse e-mail
-              </label>
-
-              <input
-                id="contact_email"
-                name="contact_email"
-                type="email"
-                maxlength="254"
-                placeholder="recrutement@entreprise.com"
-              >
-            </fieldset>
-
-            <label for="deadline">
-              Date limite de candidature (facultatif)
-            </label>
-
-            <input
-              id="deadline"
-              name="deadline"
-              type="date"
-            >
-
-            <button type="submit">
-              Soumettre l'offre gratuitement
-            </button>
-          </form>
-
-          <p>
-            <a href="/emplois">Retour aux offres d'emploi</a>
-          </p>
-        </section>
-
-        <script>
-          const form = document.querySelector('form');
-
-          form.addEventListener('submit', function(event) {
-            const methods = [
-              ['use_phone', 'contact_phone'],
-              ['use_whatsapp', 'contact_whatsapp'],
-              ['use_email', 'contact_email']
-            ];
-
-            const selected = methods.filter(
-              ([check]) => document.getElementById(check).checked
-            );
-
-            if (!selected.length) {
-              event.preventDefault();
-              alert('Choisissez au moins un moyen de contact.');
-              return;
-            }
-
-            const missing = selected.find(
-              ([check, field]) =>
-                !document.getElementById(field).value.trim()
-            );
-
-            if (missing) {
-              event.preventDefault();
-
-              alert(
-                'Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.'
-              );
-            }
-          });
-        </script>
-      `
-    )
-  );
-});
-
-/* ENREGISTREMENT DES OFFRES : EN ATTENTE DE VALIDATION */
-
-app.post("/offres-emploi", async (req, res) => {
-  const {
-    company_name,
-    job_title,
-    city,
-    contract_type,
-    salary,
-    description,
-    qualifications,
-    contact_phone,
-    contact_whatsapp,
-    contact_email,
-    deadline,
-    use_phone,
-    use_whatsapp,
-    use_email
-  } = req.body;
-
-  const company = typeof company_name === "string"
-    ? company_name.trim()
-    : "";
-
-  const title = typeof job_title === "string"
-    ? job_title.trim()
-    : "";
-
-  const jobCity = typeof city === "string"
-    ? city.trim()
-    : "";
-
-  const contract = typeof contract_type === "string"
-    ? contract_type.trim()
-    : "";
-
-  const jobDescription = typeof description === "string"
-    ? description.trim()
-    : "";
-
-  const phone =
-    use_phone === "yes" && typeof contact_phone === "string"
-      ? normalizePhone(contact_phone)
-      : null;
-
-  const whatsapp =
-    use_whatsapp === "yes" && typeof contact_whatsapp === "string"
-      ? normalizePhone(contact_whatsapp)
-      : null;
-
-  const email =
-    use_email === "yes" && typeof contact_email === "string"
-      ? contact_email.trim()
-      : null;
-
-  const jobDeadline =
-    typeof deadline === "string" && deadline.trim()
-      ? deadline.trim()
-      : null;
-
-  if (
-    !company ||
-    !title ||
-    !jobCity ||
-    !jobDescription ||
-    !JOB_CONTRACT_TYPES.includes(contract)
-  ) {
-    return res.status(400).send(
-      page(
-        "Informations manquantes",
-        `
-          <section class="card">
-            <h2>Informations obligatoires manquantes ou invalides.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (
-    company.length > 200 ||
-    title.length > 200 ||
-    jobCity.length > 100 ||
-    jobDescription.length > 8000
-  ) {
-    return res.status(400).send(
-      page(
-        "Informations trop longues",
-        `
-          <section class="card">
-            <h2>Certains champs depassent la longueur autorisee.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (!phone && !whatsapp && !email) {
-    return res.status(400).send(
-      page(
-        "Contact obligatoire",
-        `
-          <section class="card">
-            <h2>
-              Choisissez au moins un moyen de contact et renseignez ses coordonnees.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (phone && !validPhone(phone)) {
-    return res.status(400).send(
-      page(
-        "Telephone invalide",
-        `
-          <section class="card">
-            <h2>
-              Le numero de telephone est invalide.
-              Utilisez l'indicatif international, par exemple +229XXXXXXXX.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (whatsapp && !validPhone(whatsapp)) {
-    return res.status(400).send(
-      page(
-        "WhatsApp invalide",
-        `
-          <section class="card">
-            <h2>
-              Le numero WhatsApp est invalide.
-              Utilisez l'indicatif international, par exemple +229XXXXXXXX.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (email && !validEmail(email)) {
-    return res.status(400).send(
-      page(
-        "E-mail invalide",
-        `
-          <section class="card">
-            <h2>L'adresse e-mail est invalide.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  if (jobDeadline && !/^\d{4}-\d{2}-\d{2}$/.test(jobDeadline)) {
-    return res.status(400).send(
-      page(
-        "Date invalide",
-        `
-          <section class="card">
-            <h2>La date limite est invalide.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
-    );
-  }
-
-  try {
-    await pool.query(`
-      INSERT INTO job_offers (
-        company_name,
-        job_title,
-        city,
-        contract_type,
-        salary,
-        description,
-        qualifications,
-        contact_phone,
-        contact_whatsapp,
-        contact_email,
-        deadline,
-        status
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending')
-    `, [
-      company.slice(0, 200),
-      title.slice(0, 200),
-      jobCity.slice(0, 100),
-      contract,
-      typeof salary === "string"
-        ? salary.trim().slice(0, 100) || null
-        : null,
-      jobDescription.slice(0, 8000),
-      typeof qualifications === "string"
-        ? qualifications.trim().slice(0, 4000) || null
-        : null,
-      phone,
-      whatsapp,
-      email,
-      jobDeadline
-    ]);
-
-    res.status(201).send(
-      page(
-        "Offre soumise",
-        `
-          <section class="card">
-            <h1>Votre offre a bien ete soumise</h1>
-
-            <p>
-              Merci ! Votre offre est en attente de verification
-              par l'administration. Elle ne sera visible qu'apres approbation.
-            </p>
-
-            <a class="button" href="/emplois">
-              Consulter les offres d'emploi
-            </a>
-          </section>
-        `
-      )
-    );
-  } catch (error) {
-    console.error(
-      "Erreur lors de l'enregistrement de l'offre :",
-      error.message
-    );
-
-    res.status(500).send(
-      page(
-        "Erreur",
-        `
-          <section class="card">
-            <h2>Impossible d'enregistrer l'offre pour le moment.</h2>
-            <p>Veuillez reessayer plus tard.</p>
-          </section>
-        `
-      )
-    );
-  }
-});
-
-/* CONNEXION ADMINISTRATEUR */
-
-const loginAttempts = new Map();
-
-app.get("/admin", (req, res) => {
-  const session = verifySessionToken(
-    readCookie(req, SESSION_COOKIE)
-  );
-
-  if (session) {
-    return res.redirect(303, "/admin/candidatures");
-  }
-
-  const content = `
-    <section class="card">
-      <h1>Administration TrouveMoi</h1>
-
-      <p>
-        Connectez-vous pour gerer les candidatures et les offres d'emploi.
-      </p>
-
-      <form action="/admin/login" method="POST">
-        <label for="password">Mot de passe administrateur</label>
-
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          maxlength="300"
-          autocomplete="current-password"
-        >
-
-        <button type="submit">Se connecter</button>
-      </form>
-
-      <p><a href="/">Retour au site</a></p>
-    </section>
-  `;
-
-  res.setHeader("Cache-Control", "no-store");
-  res.send(page("Connexion administrateur", content));
-});
-
-app.post("/admin/login", (req, res) => {
-  const now = Date.now();
-  const address = req.ip || "unknown";
-  const record = loginAttempts.get(address);
-
-  if (record && now - record.startedAt > 15 * 60 * 1000) {
-    loginAttempts.delete(address);
-  }
-
-  const current = loginAttempts.get(address);
-
-  if (current && current.count >= 5) {
-    return res.status(429).send(
-      page(
-        "Trop de tentatives",
-        `
-          <h2>Trop de tentatives de connexion.</h2>
-          <p>Veuillez patienter 15 minutes avant de reessayer.</p>
-        `
-      )
-    );
-  }
-
-  const configuredPassword = process.env.ADMIN_PASSWORD;
-  const submittedPassword = req.body.password;
-
-  if (
-    !configuredPassword ||
-    typeof submittedPassword !== "string" ||
-    !safeEqual(submittedPassword, configuredPassword)
-  ) {
-    if (current) {
-      current.count += 1;
-    } else {
-      loginAttempts.set(address, {
-        count: 1,
-        startedAt: now
-      });
-    }
-
-    return res.status(401).send(
-      page(
-        "Connexion refusee",
-        `
-          <section class="card">
-            <h2>Identifiants incorrects.</h2>
-            <p><a href="/admin">Reessayer</a></p>
-          </section>
-        `
-      )
-    );
-  }
-
-  loginAttempts.delete(address);
-
-  if (
-    !process.env.ADMIN_SESSION_SECRET ||
-    process.env.ADMIN_SESSION_SECRET.length < 32
-  ) {
-    console.error(
-      "ADMIN_SESSION_SECRET est absente ou trop courte."
-    );
-
-    return res.status(500).send(
-      page(
-        "Configuration incomplete",
-        `
-          <h2>
-            La configuration securisee de l'administration est incomplete.
-          </h2>
-        `
-      )
-    );
-  }
-
-  const session = {
-    expiresAt: Date.now() + SESSION_DURATION,
-    csrf: crypto.randomBytes(32).toString("hex")
-  };
-
-  setSessionCookie(res, createSessionToken(session));
-  res.setHeader("Cache-Control", "no-store");
-
-  res.redirect(303, "/admin/candidatures");
-});
-
-/* TABLEAU DE BORD ADMINISTRATEUR : CANDIDATURES PROFESSIONNELLES */
-
-app.get(
-  "/admin/candidatures",
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const result = await pool.query(`
-        SELECT
-          id,
-          full_name,
-          phone,
-          city,
-          neighborhood,
-          profession,
-          experience,
-          service_description,
-          service_area,
-          availability,
-          status,
-          created_at
-        FROM professional_applications
-        ORDER BY
-          CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-          created_at DESC
-        LIMIT 200
-      `);
-
-      const applications = result.rows.map((candidate) => {
-        const statusOptions = ALLOWED_STATUSES.map((status) => `
-          <option
-            value="${status}"
-            ${candidate.status === status ? "selected" : ""}
-          >
-            ${STATUS_LABELS[status]}
-          </option>
-        `).join("");
-
-        return `
-          <article class="card">
-            <h2>${escapeHtml(candidate.full_name)}</h2>
-
-            <p>
-              <strong>Reference :</strong>
-              ${escapeHtml(candidate.id)}
-            </p>
-
-            <p>
-              <strong>Telephone prive :</strong>
-              ${escapeHtml(candidate.phone)}
-            </p>
-
-            <p>
-              <strong>Ville :</strong>
-              ${escapeHtml(candidate.city)}
-            </p>
-
-            <p>
-              <strong>Quartier :</strong>
-              ${escapeHtml(candidate.neighborhood || "Non renseigne")}
-            </p>
-
-            <p>
-              <strong>Profession :</strong>
-              ${escapeHtml(candidate.profession)}
-            </p>
-
-            <p>
-              <strong>Experience :</strong>
-              ${escapeHtml(candidate.experience || "Non renseignee")}
-            </p>
-
-            <p>
-              <strong>Description :</strong>
-              ${escapeHtml(candidate.service_description)}
-            </p>
-
-            <p>
-              <strong>Zone :</strong>
-              ${escapeHtml(candidate.service_area || "Non renseignee")}
-            </p>
-
-            <p>
-              <strong>Disponibilite :</strong>
-              ${escapeHtml(candidate.availability || "Non renseignee")}
-            </p>
-
-            <p>
-              <strong>Statut actuel :</strong>
-              ${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}
-            </p>
-
-            <p class="muted">
-              Reçue le : ${escapeHtml(candidate.created_at)}
-            </p>
-
-            <form
-              action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status"
-              method="POST"
-            >
-              <input
-                type="hidden"
-                name="csrfToken"
-                value="${escapeHtml(req.adminSession.csrf)}"
-              >
-
-              <label for="status-${escapeHtml(candidate.id)}">
-                Changer le statut
-              </label>
-
-              <select
-                id="status-${escapeHtml(candidate.id)}"
-                name="status"
-              >
-                ${statusOptions}
-              </select>
-
-              <button type="submit">
-                Enregistrer le statut
-              </button>
-            </form>
-          </article>
-        `;
-      }).join("");
-
-      res.setHeader("Cache-Control", "no-store");
-
-      res.send(
-        page(
-          "Administration",
-          `
-            <section class="card">
-              <h1>Tableau de bord administrateur</h1>
-
-              <p>
-                Candidatures professionnelles affichees :
-                ${result.rows.length}
-              </p>
-
-              <div class="actions">
-                <a class="button" href="/admin/emplois">
-                  Gerer les offres d'emploi
-                </a>
-
-                <a class="button secondary" href="/emplois">
-                  Voir les offres publiques
-                </a>
-              </div>
-
-              <form action="/admin/logout" method="POST">
-                <input
-                  type="hidden"
-                  name="csrfToken"
-                  value="${escapeHtml(req.adminSession.csrf)}"
-                >
-
-                <button class="secondary" type="submit">
-                  Se deconnecter
-                </button>
-              </form>
-
-              <a href="/">Voir le site public</a>
-            </section>
-
-            ${applications || `
-              <section class="card">
-                <p>Aucune candidature pour le moment.</p>
-              </section>
-            `}
-          `
-        )
-      );
-    } catch (error) {
-      console.error(
-        "Erreur du tableau de bord :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de charger les candidatures.</h2>"
-        )
-      );
-    }
-  }
-);
-
-/* GESTION ADMINISTRATEUR DES OFFRES D'EMPLOI */
-
-app.get("/admin/emplois", requireAdmin, async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT
-        id,
-        company_name,
-        job_title,
-        city,
-        contract_type,
-        salary,
-        description,
-        qualifications,
-        contact_phone,
-        contact_whatsapp,
-        contact_email,
-        deadline,
-        status,
-        created_at
-      FROM job_offers
-      ORDER BY
-        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-        created_at DESC
-      LIMIT 200
-    `);
-
-    const offers = result.rows.map((job) => {
-      const statusOptions = JOB_STATUSES.map((status) => `
-        <option
-          value="${status}"
-          ${job.status === status ? "selected" : ""}
-        >
-          ${JOB_STATUS_LABELS[status]}
-        </option>
-      `).join("");
-
-      return `
-        <article class="card">
-          <h2>${escapeHtml(job.job_title)}</h2>
-
-          <p>
-            <strong>Entreprise/recruteur :</strong>
-            ${escapeHtml(job.company_name)}
-          </p>
-
-          <p>
-            <strong>Ville :</strong>
-            ${escapeHtml(job.city)}
-          </p>
-
-          <p>
-            <strong>Contrat :</strong>
-            ${escapeHtml(job.contract_type)}
-          </p>
-
-          ${job.salary
-            ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>`
-            : ""}
-
-          <p>
-            <strong>Description :</strong>
-            ${escapeHtml(job.description).replace(/\n/g, "<br>")}
-          </p>
-
-          ${job.qualifications
-            ? `<p><strong>Qualifications :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>`
-            : ""}
-
-          <p>
-            <strong>Contact telephone :</strong>
-            ${escapeHtml(job.contact_phone || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Contact WhatsApp :</strong>
-            ${escapeHtml(job.contact_whatsapp || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Contact e-mail :</strong>
-            ${escapeHtml(job.contact_email || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Date limite :</strong>
-            ${escapeHtml(job.deadline || "Non renseignee")}
-          </p>
-
-          <p>
-            <strong>Statut :</strong>
-            ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}
-          </p>
-
-          <form
-            action="/admin/emplois/${encodeURIComponent(job.id)}/status"
-            method="POST"
-          >
-            <input
-              type="hidden"
-              name="csrfToken"
-              value="${escapeHtml(req.adminSession.csrf)}"
-            >
-
-            <label for="job-status-${escapeHtml(job.id)}">
-              Statut de l'offre
-            </label>
-
-            <select
-              id="job-status-${escapeHtml(job.id)}"
-              name="status"
-            >
-              ${statusOptions}
-            </select>
-
-            <button type="submit">
-              Enregistrer le statut
-            </button>
-          </form>
-        </article>
-      `;
-    }).join("");
-
-    res.setHeader("Cache-Control", "no-store");
-
-    res.send(
-      page(
-        "Gestion des offres",
-        `
-          <section class="card">
-            <h1>Gestion des offres d'emploi</h1>
-
-            <p>Offres affichees : ${result.rows.length}</p>
-
-            <a class="button" href="/admin/candidatures">
-              Retour aux candidatures professionnelles
-            </a>
-          </section>
-
-          ${offers || `
-            <section class="card">
-              <p>Aucune offre soumise pour le moment.</p>
-            </section>
-          `}
-        `
-      )
-    );
-  } catch (error) {
-    console.error(
-      "Erreur de gestion des offres :",
-      error.message
-    );
-
-    res.status(500).send(
-      page(
-        "Erreur",
-        "<h2>Impossible de charger les offres.</h2>"
-      )
-    );
-  }
-});
-
-app.post(
-  "/admin/emplois/:id/status",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const status = req.body.status;
-
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.status(400).send(
-        page(
-          "Reference invalide",
-          "<h2>Reference d'offre invalide.</h2>"
-        )
-      );
-    }
-
-    if (!JOB_STATUSES.includes(status)) {
-      return res.status(400).send(
-        page(
-          "Statut invalide",
-          "<h2>Statut non autorise.</h2>"
-        )
-      );
-    }
-
-    try {
-      const result = await pool.query(
-        `
-          UPDATE job_offers
-          SET status = $1
-          WHERE id = $2
-          RETURNING id
-        `,
-        [status, id]
-      );
-
-      if (!result.rowCount) {
-        return res.status(404).send(
-          page(
-            "Offre introuvable",
-            "<h2>Cette offre n'existe pas.</h2>"
-          )
-        );
-      }
-
-      res.redirect(303, "/admin/emplois");
-    } catch (error) {
-      console.error(
-        "Erreur de mise a jour de l'offre :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de modifier le statut de l'offre.</h2>"
-        )
-      );
-    }
-  }
-);
-
-/* CHANGER LE STATUT D'UNE CANDIDATURE PROFESSIONNELLE */
-
-app.post(
-  "/admin/candidatures/:id/status",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const status = req.body.status;
-
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.status(400).send(
-        page(
-          "Reference invalide",
-          "<h2>Reference de candidature invalide.</h2>"
-        )
-      );
-    }
-
-    if (!ALLOWED_STATUSES.includes(status)) {
-      return res.status(400).send(
-        page(
-          "Statut invalide",
-          "<h2>Statut non autorise.</h2>"
-        )
-      );
-    }
-
-    try {
-      const result = await pool.query(
-        `
-          UPDATE professional_applications
-          SET status = $1
-          WHERE id = $2
-          RETURNING id
-        `,
-        [status, id]
-      );
-
-      if (!result.rowCount) {
-        return res.status(404).send(
-          page(
-            "Candidature introuvable",
-            "<h2>Cette candidature n'existe pas.</h2>"
-          )
-        );
-      }
-
-      res.redirect(303, "/admin/candidatures");
-    } catch (error) {
-      console.error(
-        "Erreur de mise a jour :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de modifier le statut.</h2>"
-        )
-      );
-    }
-  }
-);
-
-/* DECONNEXION */
-
-app.post(
-  "/admin/logout",
-  requireAdmin,
-  verifyCsrf,
-  (req, res) => {
-    clearSessionCookie(res);
-    res.setHeader("Cache-Control", "no-store");
-    res.redirect(303, "/admin");
-  }
-);
-
-/* VERIFICATION DU SERVEUR */
-
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    application: "TrouveMoi"
-  });
-});
-
-app.get("/health/database", async (req, res) => {
-  try {
-    await pool.query("SELECT 1");
-
-    res.json({
-      status: "ok",
-      database: "connected",
-      application: "TrouveMoi"
-    });
-  } catch (error) {
-    console.error(
-      "Verification de la base impossible :",
-      error.message
-    );
-
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-      application: "TrouveMoi"
-    });
-  }
-});
-
-/* DEMARRAGE */
-
-async function startServer() {
-  try {
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS professional_applications (
-        id SERIAL PRIMARY KEY,
-        full_name VARCHAR(150) NOT NULL,
-        phone VARCHAR(30) NOT NULL,
-        city VARCHAR(100) NOT NULL,
-        neighborhood VARCHAR(150),
-        profession VARCHAR(150) NOT NULL,
-        experience VARCHAR(100),
-        service_description TEXT NOT NULL,
-        service_area VARCHAR(300),
-        availability VARCHAR(100),
-        npi VARCHAR(100),
-        status VARCHAR(30) NOT NULL DEFAULT 'pending',
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    await pool.query(`
-      ALTER TABLE professional_applications
-      ALTER COLUMN npi DROP NOT NULL
-    `);
-
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS job_offers (
-        id SERIAL PRIMARY KEY,
-        company_name VARCHAR(200) NOT NULL,
-        job_title VARCHAR(200) NOT NULL,
-        city VARCHAR(100) NOT NULL,
-        contract_type VARCHAR(50) NOT NULL,
-        salary VARCHAR(100),
-        description TEXT NOT NULL,
-        qualifications TEXT,
-        contact_phone VARCHAR(30),
-        contact_whatsapp VARCHAR(30),
-        contact_email VARCHAR(254),
-        deadline DATE,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending'
-          CHECK (status IN ('pending', 'approved', 'rejected')),
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        CHECK (
-          contact_phone IS NOT NULL
-          OR contact_whatsapp IS NOT NULL
-          OR contact_email IS NOT NULL
-        )
-      )
-    `);
-
-    console.log(
-      "Tables des candidatures et des offres d'emploi pretes."
-    );
-
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`TrouveMoi demarre sur le port ${PORT}.`);
-    });
-  } catch (error) {
-    console.error("Erreur au demarrage :", error);
-    process.exit(1);
-  }
-}
-
-startServer();
+              <option
