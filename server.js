@@ -612,6 +612,73 @@ function page(title, content) {
           margin: 12px 0;
         }
 
+        /* STATS DASHBOARD */
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .stat-card {
+          background: white;
+          padding: 24px;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          border-left: 4px solid #087f5b;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.warning {
+          border-left-color: #f59e0b;
+        }
+
+        .stat-card.danger {
+          border-left-color: #b42318;
+        }
+
+        .stat-card.info {
+          border-left-color: #3b82f6;
+        }
+
+        .stat-icon {
+          font-size: 32px;
+          margin-bottom: 8px;
+        }
+
+        .stat-number {
+          font-size: 36px;
+          font-weight: 800;
+          color: #1a1a1a;
+          line-height: 1;
+          margin-bottom: 6px;
+        }
+
+        .stat-label {
+          font-size: 14px;
+          color: #667085;
+          font-weight: 500;
+        }
+
+        .stat-link {
+          display: inline-block;
+          margin-top: 10px;
+          font-size: 13px;
+          color: #087f5b;
+          text-decoration: none;
+          font-weight: 600;
+        }
+
+        .stat-link:hover {
+          text-decoration: underline;
+        }
+
         footer {
           background: #1a1a1a;
           color: #ccc;
@@ -702,6 +769,10 @@ function page(title, content) {
 
           .contact-buttons .button {
             flex: 1 1 100%;
+          }
+
+          .stat-number {
+            font-size: 28px;
           }
         }
       </style>
@@ -848,8 +919,6 @@ app.get("/", async (req, res) => {
       .trim()
       .slice(0, 150);
 
-    /* CHARGEMENT DES LISTES POUR LES FILTRES */
-
     const citiesResult = await pool.query(
       "SELECT id, name FROM cities ORDER BY display_order ASC"
     );
@@ -857,8 +926,6 @@ app.get("/", async (req, res) => {
     const professionsResult = await pool.query(
       "SELECT id, name, category FROM professions ORDER BY display_order ASC"
     );
-
-    /* CONSTRUCTION DE LA REQUETE DE RECHERCHE */
 
     let query = `
       SELECT
@@ -897,8 +964,6 @@ app.get("/", async (req, res) => {
     query += " ORDER BY created_at DESC LIMIT 50";
 
     const result = await pool.query(query, values);
-
-    /* CONSTRUCTION DES OPTIONS DES LISTES */
 
     const cityOptions = citiesResult.rows.map((c) => `
       <option
@@ -965,8 +1030,6 @@ app.get("/", async (req, res) => {
           </optgroup>
         `;
       }).join("");
-
-    /* AFFICHAGE DES PROFESSIONNELS */
 
     const professionals = result.rows.map((person) => {
       const phoneClean = normalizePhone(person.phone || "");
@@ -1491,8 +1554,6 @@ app.post(
     const photoIdentite = files.photo_identite?.[0];
     const photoActivite = files.photo_activite?.[0];
 
-    /* DETERMINATION DU QUARTIER FINAL */
-
     let finalNeighborhood = null;
 
     if (neighborhood === "__AUTRE__") {
@@ -1504,8 +1565,6 @@ app.post(
       finalNeighborhood = neighborhood.trim().slice(0, 150);
     }
 
-    /* DETERMINATION DU METIER FINAL */
-
     let finalProfession = null;
 
     if (profession === "__AUTRE__") {
@@ -1516,8 +1575,6 @@ app.post(
     } else if (typeof profession === "string" && profession.trim()) {
       finalProfession = profession.trim().slice(0, 150);
     }
-
-    /* VALIDATION */
 
     if (
       typeof full_name !== "string" ||
@@ -2344,7 +2401,6 @@ app.post("/offres-emploi", async (req, res) => {
       )
     );
   }
-});
 
 /* CONNEXION ADMINISTRATEUR */
 
@@ -2356,7 +2412,7 @@ app.get("/admin", (req, res) => {
   );
 
   if (session) {
-    return res.redirect(303, "/admin/candidatures");
+    return res.redirect(303, "/admin/dashboard");
   }
 
   const content = `
@@ -2474,10 +2530,203 @@ app.post("/admin/login", (req, res) => {
   setSessionCookie(res, createSessionToken(session));
   res.setHeader("Cache-Control", "no-store");
 
-  res.redirect(303, "/admin/candidatures");
+  res.redirect(303, "/admin/dashboard");
 });
 
-/* TABLEAU DE BORD ADMINISTRATEUR : CANDIDATURES PROFESSIONNELLES */
+/* FONCTION : MENU ADMIN */
+
+function adminMenu(current) {
+  const links = [
+    { href: "/admin/dashboard", label: "📊 Tableau de bord" },
+    { href: "/admin/candidatures", label: "📋 Candidatures" },
+    { href: "/admin/emplois", label: "💼 Offres d'emploi" },
+    { href: "/admin/messages", label: "📩 Messages" }
+  ];
+
+  return `
+    <section class="card">
+      <div class="actions">
+        ${links.map((link) => `
+          <a
+            class="button ${current === link.href ? "" : "secondary"}"
+            href="${link.href}"
+          >
+            ${link.label}
+          </a>
+        `).join("")}
+
+        <a class="button secondary" href="/" target="_blank">
+          🌐 Voir le site
+        </a>
+      </div>
+
+      <form
+        action="/admin/logout"
+        method="POST"
+        style="display:inline"
+      >
+        <input
+          type="hidden"
+          name="csrfToken"
+          value="__CSRF__"
+        >
+
+        <button class="danger" type="submit">
+          Se deconnecter
+        </button>
+      </form>
+    </section>
+  `;
+}
+
+/* TABLEAU DE BORD ADMINISTRATEUR */
+
+app.get("/admin/dashboard", requireAdmin, async (req, res) => {
+  try {
+    const prosApproved = await pool.query(
+      "SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'"
+    );
+
+    const prosPending = await pool.query(
+      "SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'"
+    );
+
+    const jobsApproved = await pool.query(
+      "SELECT COUNT(*) FROM job_offers WHERE status = 'approved'"
+    );
+
+    const jobsPending = await pool.query(
+      "SELECT COUNT(*) FROM job_offers WHERE status = 'pending'"
+    );
+
+    const messagesUnread = await pool.query(
+      "SELECT COUNT(*) FROM contact_messages WHERE is_read = false"
+    );
+
+    const messagesTotal = await pool.query(
+      "SELECT COUNT(*) FROM contact_messages"
+    );
+
+    const stats = {
+      prosApproved: Number(prosApproved.rows[0].count),
+      prosPending: Number(prosPending.rows[0].count),
+      jobsApproved: Number(jobsApproved.rows[0].count),
+      jobsPending: Number(jobsPending.rows[0].count),
+      messagesUnread: Number(messagesUnread.rows[0].count),
+      messagesTotal: Number(messagesTotal.rows[0].count)
+    };
+
+    const menuHtml = adminMenu("/admin/dashboard")
+      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
+
+    res.setHeader("Cache-Control", "no-store");
+
+    res.send(
+      page(
+        "Tableau de bord",
+        `
+          <section class="card">
+            <h1>Tableau de bord</h1>
+            <p class="muted">
+              Bienvenue dans votre espace d'administration.
+              Voici un apercu de l'activite de TrouveMoi.
+            </p>
+          </section>
+
+          ${menuHtml}
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-number">${stats.prosApproved}</div>
+              <div class="stat-label">Pros approuves</div>
+              <a class="stat-link" href="/admin/candidatures">
+                Voir les candidatures →
+              </a>
+            </div>
+
+            <div class="stat-card warning">
+              <div class="stat-icon">⏳</div>
+              <div class="stat-number">${stats.prosPending}</div>
+              <div class="stat-label">Candidatures en attente</div>
+              <a class="stat-link" href="/admin/candidatures">
+                Traiter maintenant →
+              </a>
+            </div>
+
+            <div class="stat-card info">
+              <div class="stat-icon">💼</div>
+              <div class="stat-number">${stats.jobsApproved}</div>
+              <div class="stat-label">Offres publiees</div>
+              <a class="stat-link" href="/admin/emplois">
+                Voir les offres →
+              </a>
+            </div>
+
+            <div class="stat-card warning">
+              <div class="stat-icon">📝</div>
+              <div class="stat-number">${stats.jobsPending}</div>
+              <div class="stat-label">Offres en attente</div>
+              <a class="stat-link" href="/admin/emplois">
+                Traiter maintenant →
+              </a>
+            </div>
+
+            <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
+              <div class="stat-icon">📩</div>
+              <div class="stat-number">${stats.messagesUnread}</div>
+              <div class="stat-label">Messages non lus</div>
+              <a class="stat-link" href="/admin/messages">
+                Lire les messages →
+              </a>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-icon">📬</div>
+              <div class="stat-number">${stats.messagesTotal}</div>
+              <div class="stat-label">Messages au total</div>
+              <a class="stat-link" href="/admin/messages">
+                Voir l'historique →
+              </a>
+            </div>
+          </div>
+
+          <section class="card">
+            <h3>Actions rapides</h3>
+
+            <div class="actions">
+              <a class="button" href="/admin/candidatures">
+                Gerer les candidatures
+              </a>
+
+              <a class="button" href="/admin/emplois">
+                Gerer les offres d'emploi
+              </a>
+
+              <a class="button" href="/admin/messages">
+                Voir les messages
+              </a>
+            </div>
+          </section>
+        `
+      )
+    );
+  } catch (error) {
+    console.error(
+      "Erreur du tableau de bord :",
+      error.message
+    );
+
+    res.status(500).send(
+      page(
+        "Erreur",
+        "<h2>Impossible de charger le tableau de bord.</h2>"
+      )
+    );
+  }
+});
+
+/* ADMIN : CANDIDATURES PROFESSIONNELLES */
 
 app.get(
   "/admin/candidatures",
@@ -2653,48 +2902,23 @@ app.get(
         `;
       }).join("");
 
+      const menuHtml = adminMenu("/admin/candidatures")
+        .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
+
       res.setHeader("Cache-Control", "no-store");
 
       res.send(
         page(
-          "Administration",
+          "Candidatures",
           `
             <section class="card">
-              <h1>Tableau de bord administrateur</h1>
-
+              <h1>Candidatures professionnelles</h1>
               <p>
-                Candidatures professionnelles affichees :
-                ${result.rows.length}
+                Total affiche : ${result.rows.length} candidature(s)
               </p>
-
-              <div class="actions">
-                <a class="button" href="/admin/emplois">
-                  Gerer les offres d'emploi
-                </a>
-
-                <a class="button" href="/admin/messages">
-                  Voir les messages
-                </a>
-
-                <a class="button secondary" href="/emplois">
-                  Voir les offres publiques
-                </a>
-              </div>
-
-              <form action="/admin/logout" method="POST">
-                <input
-                  type="hidden"
-                  name="csrfToken"
-                  value="${escapeHtml(req.adminSession.csrf)}"
-                >
-
-                <button class="secondary" type="submit">
-                  Se deconnecter
-                </button>
-              </form>
-
-              <a href="/">Voir le site public</a>
             </section>
+
+            ${menuHtml}
 
             ${applications || `
               <section class="card">
@@ -2720,7 +2944,7 @@ app.get(
   }
 );
 
-/* GESTION ADMINISTRATEUR DES OFFRES D'EMPLOI */
+/* ADMIN : OFFRES D'EMPLOI */
 
 app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
@@ -2843,25 +3067,21 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
+    const menuHtml = adminMenu("/admin/emplois")
+      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(
       page(
-        "Gestion des offres",
+        "Offres d'emploi",
         `
           <section class="card">
             <h1>Gestion des offres d'emploi</h1>
-
-            <p>Offres affichees : ${result.rows.length}</p>
-
-            <a class="button" href="/admin/candidatures">
-              Retour aux candidatures professionnelles
-            </a>
-
-            <a class="button" href="/admin/messages">
-              Voir les messages
-            </a>
+            <p>Total affiche : ${result.rows.length} offre(s)</p>
           </section>
+
+          ${menuHtml}
 
           ${offers || `
             <section class="card">
@@ -2949,7 +3169,7 @@ app.post(
   }
 );
 
-/* CHANGER LE STATUT D'UNE CANDIDATURE PROFESSIONNELLE */
+/* CHANGER LE STATUT D'UNE CANDIDATURE */
 
 app.post(
   "/admin/candidatures/:id/status",
@@ -3014,7 +3234,7 @@ app.post(
   }
 );
 
-/* ADMIN : MESSAGES DE CONTACT */
+/* ADMIN : MESSAGES DE CONTACT (avec boutons Repondre) */
 
 app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
@@ -3035,45 +3255,100 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
       LIMIT 200
     `);
 
-    const messages = result.rows.map((msg) => `
-      <article class="card">
-        <h2>
-          ${msg.is_read ? "📖" : "📩"}
-          ${escapeHtml(msg.subject || "Sans objet")}
-        </h2>
+    const messages = result.rows.map((msg) => {
+      const replyEmail = msg.email
+        ? `
+          <a
+            class="button email"
+            href="mailto:${escapeHtml(msg.email)}?subject=${encodeURIComponent(
+              "Re: " + (msg.subject || "Votre message sur TrouveMoi")
+            )}"
+          >
+            ✉️ Repondre par email
+          </a>
+        `
+        : "";
 
-        <p>
-          <strong>De :</strong>
-          ${escapeHtml(msg.name)}
-        </p>
+      const replyWhatsapp = msg.phone
+        ? `
+          <a
+            class="button whatsapp"
+            href="https://wa.me/${escapeHtml(
+              normalizePhone(msg.phone).replace(/^\+/, "")
+            )}?text=${encodeURIComponent(
+              "Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande")
+            )}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            💬 Repondre par WhatsApp
+          </a>
+        `
+        : "";
 
-        <p>
-          <strong>E-mail :</strong>
-          ${escapeHtml(msg.email || "Non renseigne")}
-        </p>
+      return `
+        <article class="card">
+          <h2>
+            ${msg.is_read ? "📖" : "📩"}
+            ${escapeHtml(msg.subject || "Sans objet")}
+          </h2>
 
-        <p>
-          <strong>Telephone :</strong>
-          ${escapeHtml(msg.phone || "Non renseigne")}
-        </p>
+          <p>
+            <strong>De :</strong>
+            ${escapeHtml(msg.name)}
+          </p>
 
-        <p>
-          <strong>Message :</strong>
-        </p>
+          <p>
+            <strong>E-mail :</strong>
+            ${escapeHtml(msg.email || "Non renseigne")}
+          </p>
 
-        <p style="background:#f9fafb;padding:12px;border-radius:8px">
-          ${escapeHtml(msg.message).replace(/\n/g, "<br>")}
-        </p>
+          <p>
+            <strong>Telephone :</strong>
+            ${escapeHtml(msg.phone || "Non renseigne")}
+          </p>
 
-        <p class="muted">
-          Recu le : ${escapeHtml(msg.created_at)}
-        </p>
+          <p>
+            <strong>Message :</strong>
+          </p>
 
-        ${!msg.is_read
-          ? `
+          <p style="background:#f9fafb;padding:12px;border-radius:8px">
+            ${escapeHtml(msg.message).replace(/\n/g, "<br>")}
+          </p>
+
+          <p class="muted">
+            Recu le : ${escapeHtml(msg.created_at)}
+          </p>
+
+          <div class="actions">
+            ${replyEmail}
+            ${replyWhatsapp}
+
+            ${!msg.is_read
+              ? `
+                <form
+                  action="/admin/messages/${encodeURIComponent(msg.id)}/read"
+                  method="POST"
+                  style="display:inline"
+                >
+                  <input
+                    type="hidden"
+                    name="csrfToken"
+                    value="${escapeHtml(req.adminSession.csrf)}"
+                  >
+
+                  <button class="secondary" type="submit">
+                    ✅ Marquer comme lu
+                  </button>
+                </form>
+              `
+              : ""
+            }
+
             <form
-              action="/admin/messages/${encodeURIComponent(msg.id)}/read"
+              action="/admin/messages/${encodeURIComponent(msg.id)}/delete"
               method="POST"
+              style="display:inline"
             >
               <input
                 type="hidden"
@@ -3081,30 +3356,17 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
                 value="${escapeHtml(req.adminSession.csrf)}"
               >
 
-              <button type="submit">
-                Marquer comme lu
+              <button class="danger" type="submit">
+                🗑️ Supprimer
               </button>
             </form>
-          `
-          : ""
-        }
+          </div>
+        </article>
+      `;
+    }).join("");
 
-        <form
-          action="/admin/messages/${encodeURIComponent(msg.id)}/delete"
-          method="POST"
-        >
-          <input
-            type="hidden"
-            name="csrfToken"
-            value="${escapeHtml(req.adminSession.csrf)}"
-          >
-
-          <button class="danger" type="submit">
-            Supprimer
-          </button>
-        </form>
-      </article>
-    `).join("");
+    const menuHtml = adminMenu("/admin/messages")
+      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
 
     res.setHeader("Cache-Control", "no-store");
 
@@ -3114,31 +3376,10 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
         `
           <section class="card">
             <h1>Messages recus</h1>
-
             <p>Total : ${result.rows.length} message(s)</p>
-
-            <div class="actions">
-              <a class="button" href="/admin/candidatures">
-                Candidatures
-              </a>
-
-              <a class="button" href="/admin/emplois">
-                Offres d'emploi
-              </a>
-            </div>
-
-            <form action="/admin/logout" method="POST">
-              <input
-                type="hidden"
-                name="csrfToken"
-                value="${escapeHtml(req.adminSession.csrf)}"
-              >
-
-              <button class="secondary" type="submit">
-                Se deconnecter
-              </button>
-            </form>
           </section>
+
+          ${menuHtml}
 
           ${messages || `
             <section class="card">
@@ -3287,59 +3528,38 @@ app.get("/conditions", (req, res) => {
       </p>
 
       <h2>1. Acceptation des conditions</h2>
-
       <p>
         En utilisant TrouveMoi, vous acceptez sans reserve les presentes
         conditions d'utilisation.
       </p>
 
       <h2>2. Nature du service</h2>
-
       <p>
         TrouveMoi est une plateforme de mise en relation. Nous ne fournissons
-        pas directement de services professionnels. Nous mettons en relation
-        des clients avec des professionnels independants.
+        pas directement de services professionnels.
       </p>
 
       <h2>3. Inscription des professionnels</h2>
-
       <p>
-        Les professionnels doivent fournir des informations exactes et a jour,
-        ainsi que des photos veritables (profil, identite, activite). Toute
-        fausse declaration entraine le rejet ou le retrait de la candidature.
+        Les professionnels doivent fournir des informations exactes et a jour.
+        Toute fausse declaration entraine le rejet de la candidature.
       </p>
 
       <h2>4. Responsabilites</h2>
-
       <p>
         TrouveMoi ne peut etre tenu responsable de la qualite des services
-        fournis par les professionnels references sur la plateforme. La
-        relation contractuelle s'etablit directement entre le client et le
-        professionnel.
+        fournis par les professionnels references.
       </p>
 
       <h2>5. Utilisation interdite</h2>
-
-      <p>
-        Il est interdit de :
-      </p>
-
+      <p>Il est interdit de :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Publier de fausses informations</li>
         <li>Usurper l'identite d'autrui</li>
         <li>Utiliser la plateforme a des fins illicites</li>
-        <li>Publier du contenu offensant ou illegal</li>
       </ul>
 
-      <h2>6. Modification des conditions</h2>
-
-      <p>
-        Nous nous reservons le droit de modifier ces conditions a tout moment.
-        Les utilisateurs seront informes des changements importants.
-      </p>
-
-      <h2>7. Contact</h2>
-
+      <h2>6. Contact</h2>
       <p>
         Pour toute question : <a href="/contact">formulaire de contact</a>
       </p>
@@ -3359,66 +3579,42 @@ app.get("/confidentialite", (req, res) => {
       </p>
 
       <h2>1. Donnees collectees</h2>
-
-      <p>
-        Nous collectons les donnees suivantes :
-      </p>
-
+      <p>Nous collectons :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
-        <li>Pour les professionnels : nom, telephone, ville, quartier, metier, description, photos</li>
-        <li>Pour les offres d'emploi : nom de l'entreprise, contacts, description du poste</li>
-        <li>Pour le contact : nom, email, telephone, message</li>
+        <li>Pros : nom, telephone, ville, quartier, metier, description, photos</li>
+        <li>Offres : entreprise, contacts, description du poste</li>
+        <li>Contact : nom, email, telephone, message</li>
       </ul>
 
       <h2>2. Utilisation des donnees</h2>
-
-      <p>
-        Vos donnees sont utilisees pour :
-      </p>
-
+      <p>Vos donnees sont utilisees pour :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Mettre en relation les clients et les professionnels</li>
-        <li>Afficher les profils des professionnels approuves</li>
+        <li>Afficher les profils approuves</li>
         <li>Vous contacter en cas de besoin</li>
       </ul>
 
       <h2>3. Protection des photos d'identite</h2>
-
       <p>
-        Les photos d'identite des professionnels sont <strong>strictement
-        privees</strong>. Elles ne sont visibles que par l'administration de
-        TrouveMoi pour verification. Elles ne sont jamais affichees publiquement.
+        Les photos d'identite sont <strong>strictement privees</strong>.
+        Elles ne sont visibles que par l'administration.
       </p>
 
       <h2>4. Partage des donnees</h2>
-
       <p>
         Nous ne vendons ni ne partageons vos donnees avec des tiers.
-        Les coordonnees des professionnels sont visibles publiquement car
-        c'est le but meme du service.
       </p>
 
       <h2>5. Vos droits</h2>
-
       <p>
-        Vous pouvez a tout moment demander :
-      </p>
-
-      <ul style="margin-left:20px;margin-bottom:16px">
-        <li>L'acces a vos donnees</li>
-        <li>La modification de vos donnees</li>
-        <li>La suppression de vos donnees</li>
-      </ul>
-
-      <p>
-        Pour exercer ces droits : <a href="/contact">formulaire de contact</a>
+        Vous pouvez demander l'acces, la modification ou la suppression de
+        vos donnees via le <a href="/contact">formulaire de contact</a>.
       </p>
 
       <h2>6. Cookies</h2>
-
       <p>
-        Nous utilisons uniquement des cookies techniques necessaires au
-        fonctionnement de l'administration (session securisee).
+        Nous utilisons uniquement des cookies techniques necessaires
+        au fonctionnement de l'administration.
       </p>
     </section>
   `;
@@ -3433,7 +3629,6 @@ app.get("/contact", (req, res) => {
 
       <p>
         Une question, une suggestion, un probleme ? Ecrivez-nous.
-        Nous vous repondrons dans les plus brefs delais.
       </p>
 
       <form action="/contact" method="POST">
@@ -3469,7 +3664,6 @@ app.get("/contact", (req, res) => {
           name="subject"
           required
           maxlength="200"
-          placeholder="Ex. : Question sur les inscriptions"
         >
 
         <label for="message">Votre message *</label>
@@ -3536,7 +3730,7 @@ app.post("/contact", async (req, res) => {
             <h2>Informations manquantes</h2>
             <p>
               Le nom, le sujet, le message et au moins un moyen de contact
-              (email ou telephone) sont obligatoires.
+              sont obligatoires.
             </p>
             <a href="/contact">Retour au formulaire</a>
           </section>
@@ -3729,8 +3923,6 @@ async function startServer() {
       )
     `);
 
-    /* TABLE DES VILLES */
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cities (
         id SERIAL PRIMARY KEY,
@@ -3738,8 +3930,6 @@ async function startServer() {
         display_order INTEGER NOT NULL DEFAULT 0
       )
     `);
-
-    /* TABLE DES QUARTIERS */
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS neighborhoods (
@@ -3750,8 +3940,6 @@ async function startServer() {
       )
     `);
 
-    /* TABLE DES METIERS */
-
     await pool.query(`
       CREATE TABLE IF NOT EXISTS professions (
         id SERIAL PRIMARY KEY,
@@ -3760,8 +3948,6 @@ async function startServer() {
         display_order INTEGER NOT NULL DEFAULT 0
       )
     `);
-
-    /* TABLE DES MESSAGES DE CONTACT */
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contact_messages (
@@ -3775,8 +3961,6 @@ async function startServer() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
-
-    /* INSERTION DES VILLES */
 
     const citiesData = [
       ["Cotonou", 1],
@@ -3796,8 +3980,6 @@ async function startServer() {
         [name, order]
       );
     }
-
-    /* INSERTION DES QUARTIERS */
 
     const neighborhoodsData = {
       "Cotonou": [
@@ -3858,8 +4040,6 @@ async function startServer() {
         );
       }
     }
-
-    /* INSERTION DES METIERS */
 
     const professionsData = [
       ["Maçon", "Bâtiment"],
@@ -4004,7 +4184,7 @@ async function startServer() {
     }
 
     console.log(
-      "Tables des candidatures, offres, villes, quartiers, metiers et messages pretes."
+      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages)."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
