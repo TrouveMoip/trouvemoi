@@ -466,6 +466,10 @@ function page(title, content) {
           margin-bottom: 12px;
         }
 
+        .hidden {
+          display: none !important;
+        }
+
         @media (max-width: 600px) {
           body {
             padding: 12px;
@@ -586,6 +590,22 @@ app.get("/", async (req, res) => {
       .trim()
       .slice(0, 100);
 
+    const neighborhood = String(req.query.neighborhood || "")
+      .trim()
+      .slice(0, 150);
+
+    /* CHARGEMENT DES LISTES POUR LES FILTRES */
+
+    const citiesResult = await pool.query(
+      "SELECT id, name FROM cities ORDER BY display_order ASC"
+    );
+
+    const professionsResult = await pool.query(
+      "SELECT id, name, category FROM professions ORDER BY display_order ASC"
+    );
+
+    /* CONSTRUCTION DE LA REQUETE DE RECHERCHE */
+
     let query = `
       SELECT
         id,
@@ -611,13 +631,92 @@ app.get("/", async (req, res) => {
     }
 
     if (city) {
-      values.push(`%${city}%`);
-      query += ` AND city ILIKE $${values.length}`;
+      values.push(city);
+      query += ` AND city = $${values.length}`;
+    }
+
+    if (neighborhood) {
+      values.push(neighborhood);
+      query += ` AND neighborhood = $${values.length}`;
     }
 
     query += " ORDER BY created_at DESC LIMIT 50";
 
     const result = await pool.query(query, values);
+
+    /* CONSTRUCTION DES OPTIONS DES LISTES */
+
+    const cityOptions = citiesResult.rows.map((c) => `
+      <option
+        value="${escapeHtml(c.name)}"
+        ${city === c.name ? "selected" : ""}
+      >
+        ${escapeHtml(c.name)}
+      </option>
+    `).join("");
+
+    /* QUARTIERS DE LA VILLE SELECTIONNEE (si ville choisie) */
+
+    let neighborhoodOptions = "";
+
+    if (city) {
+      const cityResult = await pool.query(
+        "SELECT id FROM cities WHERE name = $1",
+        [city]
+      );
+
+      if (cityResult.rows.length) {
+        const neighborhoodsResult = await pool.query(
+          `SELECT name FROM neighborhoods
+           WHERE city_id = $1
+           ORDER BY name ASC`,
+          [cityResult.rows[0].id]
+        );
+
+        neighborhoodOptions = neighborhoodsResult.rows.map((n) => `
+          <option
+            value="${escapeHtml(n.name)}"
+            ${neighborhood === n.name ? "selected" : ""}
+          >
+            ${escapeHtml(n.name)}
+          </option>
+        `).join("");
+      }
+    }
+
+    /* GROUPEMENT DES METIERS PAR CATEGORIE */
+
+    const professionsByCategory = {};
+
+    for (const p of professionsResult.rows) {
+      const cat = p.category || "Autres";
+
+      if (!professionsByCategory[cat]) {
+        professionsByCategory[cat] = [];
+      }
+
+      professionsByCategory[cat].push(p.name);
+    }
+
+    const professionOptions = Object.entries(professionsByCategory)
+      .map(([category, names]) => {
+        const options = names.map((name) => `
+          <option
+            value="${escapeHtml(name)}"
+            ${profession === name ? "selected" : ""}
+          >
+            ${escapeHtml(name)}
+          </option>
+        `).join("");
+
+        return `
+          <optgroup label="${escapeHtml(category)}">
+            ${options}
+          </optgroup>
+        `;
+      }).join("");
+
+    /* AFFICHAGE DES PROFESSIONNELS */
 
     const professionals = result.rows.map((person) => {
       const phoneClean = normalizePhone(person.phone || "");
@@ -700,6 +799,8 @@ app.get("/", async (req, res) => {
       `;
     }).join("");
 
+    /* CONTENU DE LA PAGE */
+
     const content = `
       <section class="card">
         <h2>Rechercher un professionnel</h2>
@@ -707,21 +808,29 @@ app.get("/", async (req, res) => {
         <form action="/" method="GET">
           <label for="profession">Metier ou service</label>
 
-          <input
-            id="profession"
-            name="profession"
-            value="${escapeHtml(profession)}"
-            placeholder="Exemple : plombier"
-          >
+          <select id="profession" name="profession">
+            <option value="">Tous les metiers</option>
+            ${professionOptions}
+          </select>
 
           <label for="city">Ville</label>
 
-          <input
-            id="city"
-            name="city"
-            value="${escapeHtml(city)}"
-            placeholder="Exemple : Cotonou"
-          >
+          <select id="city" name="city">
+            <option value="">Toutes les villes</option>
+            ${cityOptions}
+          </select>
+
+          ${city && neighborhoodOptions
+            ? `
+              <label for="neighborhood">Quartier</label>
+
+              <select id="neighborhood" name="neighborhood">
+                <option value="">Tous les quartiers</option>
+                ${neighborhoodOptions}
+              </select>
+            `
+            : ""
+          }
 
           <button type="submit">Rechercher</button>
         </form>
@@ -762,148 +871,323 @@ app.get("/", async (req, res) => {
 
 /* FORMULAIRE PROFESSIONNEL */
 
-app.get("/devenir-professionnel", (req, res) => {
-  const content = `
-    <section class="card">
-      <h1>Devenir professionnel sur TrouveMoi</h1>
+app.get("/devenir-professionnel", async (req, res) => {
+  try {
+    const citiesResult = await pool.query(
+      "SELECT id, name FROM cities ORDER BY display_order ASC"
+    );
 
-      <p>
-        Remplissez le formulaire pour soumettre votre candidature.
-      </p>
+    const professionsResult = await pool.query(
+      "SELECT id, name, category FROM professions ORDER BY display_order ASC"
+    );
 
-      <form
-        action="/candidatures"
-        method="POST"
-        enctype="multipart/form-data"
-      >
-        <label for="full_name">Nom et prenoms *</label>
-        <input
-          id="full_name"
-          name="full_name"
-          required
-          maxlength="150"
-        >
+    const cityOptions = citiesResult.rows.map((c) => `
+      <option value="${escapeHtml(c.name)}">
+        ${escapeHtml(c.name)}
+      </option>
+    `).join("");
 
-        <label for="phone">Telephone *</label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          required
-          maxlength="30"
-        >
+    const professionsByCategory = {};
 
-        <label for="city">Ville *</label>
-        <input
-          id="city"
-          name="city"
-          required
-          maxlength="100"
-        >
+    for (const p of professionsResult.rows) {
+      const cat = p.category || "Autres";
 
-        <label for="neighborhood">Quartier</label>
-        <input
-          id="neighborhood"
-          name="neighborhood"
-          maxlength="150"
-        >
+      if (!professionsByCategory[cat]) {
+        professionsByCategory[cat] = [];
+      }
 
-        <label for="profession">Profession ou service propose *</label>
-        <input
-          id="profession"
-          name="profession"
-          required
-          maxlength="150"
-        >
+      professionsByCategory[cat].push(p.name);
+    }
 
-        <label for="experience">Experience</label>
-
-        <select id="experience" name="experience">
-          <option value="">Selectionnez une option</option>
-          <option value="Debutant">Debutant</option>
-          <option value="Moins de 2 ans">Moins de 2 ans</option>
-          <option value="2 a 5 ans">2 a 5 ans</option>
-          <option value="Plus de 5 ans">Plus de 5 ans</option>
-        </select>
-
-        <label for="service_description">
-          Description des services *
-        </label>
-
-        <textarea
-          id="service_description"
-          name="service_description"
-          rows="5"
-          required
-          maxlength="3000"
-        ></textarea>
-
-        <label for="service_area">Zones d'intervention</label>
-        <input
-          id="service_area"
-          name="service_area"
-          maxlength="300"
-        >
-
-        <label for="availability">Disponibilite</label>
-
-        <select id="availability" name="availability">
-          <option value="">Selectionnez une option</option>
-          <option value="Disponible immediatement">
-            Disponible immediatement
+    const professionOptions = Object.entries(professionsByCategory)
+      .map(([category, names]) => {
+        const options = names.map((name) => `
+          <option value="${escapeHtml(name)}">
+            ${escapeHtml(name)}
           </option>
-          <option value="Sur rendez-vous">Sur rendez-vous</option>
-          <option value="A temps partiel">A temps partiel</option>
-        </select>
+        `).join("");
 
-        <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb">
+        return `
+          <optgroup label="${escapeHtml(category)}">
+            ${options}
+          </optgroup>
+        `;
+      }).join("");
 
-        <h3>Photos obligatoires</h3>
+    const content = `
+      <section class="card">
+        <h1>Devenir professionnel sur TrouveMoi</h1>
 
-        <p class="help-text">
-          Formats acceptes : JPG, PNG, WEBP. Taille max : 5 Mo par photo.
+        <p>
+          Remplissez le formulaire pour soumettre votre candidature.
         </p>
 
-        <label for="photo_profil">
-          Photo de profil * (privee, visible uniquement par l'administration)
-        </label>
-        <input
-          id="photo_profil"
-          name="photo_profil"
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          required
+        <form
+          action="/candidatures"
+          method="POST"
+          enctype="multipart/form-data"
         >
+          <label for="full_name">Nom et prenoms *</label>
+          <input
+            id="full_name"
+            name="full_name"
+            required
+            maxlength="150"
+          >
 
-        <label for="photo_identite">
-          Photo d'identite * (privee, visible uniquement par l'administration)
-        </label>
-        <input
-          id="photo_identite"
-          name="photo_identite"
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-          required
-        >
+          <label for="phone">Telephone *</label>
+          <input
+            id="phone"
+            name="phone"
+            type="tel"
+            required
+            maxlength="30"
+          >
 
-        <label for="photo_activite">
-          Photo d'activite (optionnelle, visible publiquement)
-        </label>
-        <input
-          id="photo_activite"
-          name="photo_activite"
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,image/webp"
-        >
+          <label for="city">Ville *</label>
 
-        <button type="submit">Envoyer ma candidature</button>
-      </form>
+          <select id="city" name="city" required>
+            <option value="">Choisissez votre ville</option>
+            ${cityOptions}
+          </select>
 
-      <p><a href="/">Retour a l'accueil</a></p>
-    </section>
-  `;
+          <label for="neighborhood">Quartier</label>
 
-  res.send(page("Devenir professionnel", content));
+          <select id="neighborhood" name="neighborhood">
+            <option value="">Choisissez d'abord une ville</option>
+          </select>
+
+          <div id="neighborhood-other-block" class="hidden">
+            <label for="neighborhood_other">
+              Precisez votre quartier (si non liste)
+            </label>
+            <input
+              id="neighborhood_other"
+              name="neighborhood_other"
+              maxlength="150"
+              placeholder="Ex. : mon quartier"
+            >
+          </div>
+
+          <label for="profession">Profession ou service propose *</label>
+
+          <select id="profession" name="profession" required>
+            <option value="">Choisissez un metier</option>
+            ${professionOptions}
+            <option value="__AUTRE__">Autre (precisez)</option>
+          </select>
+
+          <div id="profession-other-block" class="hidden">
+            <label for="profession_other">
+              Precisez votre metier ou service *
+            </label>
+            <input
+              id="profession_other"
+              name="profession_other"
+              maxlength="150"
+              placeholder="Ex. : reparateur de drones"
+            >
+          </div>
+
+          <label for="experience">Experience</label>
+
+          <select id="experience" name="experience">
+            <option value="">Selectionnez une option</option>
+            <option value="Debutant">Debutant</option>
+            <option value="Moins de 2 ans">Moins de 2 ans</option>
+            <option value="2 a 5 ans">2 a 5 ans</option>
+            <option value="Plus de 5 ans">Plus de 5 ans</option>
+          </select>
+
+          <label for="service_description">
+            Description des services *
+          </label>
+
+          <textarea
+            id="service_description"
+            name="service_description"
+            rows="5"
+            required
+            maxlength="3000"
+          ></textarea>
+
+          <label for="service_area">Zones d'intervention</label>
+          <input
+            id="service_area"
+            name="service_area"
+            maxlength="300"
+          >
+
+          <label for="availability">Disponibilite</label>
+
+          <select id="availability" name="availability">
+            <option value="">Selectionnez une option</option>
+            <option value="Disponible immediatement">
+              Disponible immediatement
+            </option>
+            <option value="Sur rendez-vous">Sur rendez-vous</option>
+            <option value="A temps partiel">A temps partiel</option>
+          </select>
+
+          <hr style="margin:24px 0;border:none;border-top:1px solid #e5e7eb">
+
+          <h3>Photos</h3>
+
+          <p class="help-text">
+            Formats acceptes : JPG, PNG, WEBP. Taille max : 5 Mo par photo.
+          </p>
+
+          <label for="photo_profil">
+            Photo de profil * (privee, visible par l'administration)
+          </label>
+          <input
+            id="photo_profil"
+            name="photo_profil"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            required
+          >
+
+          <label for="photo_identite">
+            Photo d'identite * (privee, visible par l'administration)
+          </label>
+          <input
+            id="photo_identite"
+            name="photo_identite"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            required
+          >
+
+          <label for="photo_activite">
+            Photo d'activite (optionnelle, visible publiquement)
+          </label>
+          <input
+            id="photo_activite"
+            name="photo_activite"
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+          >
+
+          <button type="submit">Envoyer ma candidature</button>
+        </form>
+
+        <p><a href="/">Retour a l'accueil</a></p>
+      </section>
+
+      <script>
+        const citySelect = document.getElementById('city');
+        const neighborhoodSelect = document.getElementById('neighborhood');
+        const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block');
+        const professionSelect = document.getElementById('profession');
+        const professionOtherBlock = document.getElementById('profession-other-block');
+
+        citySelect.addEventListener('change', async function() {
+          const city = citySelect.value;
+
+          neighborhoodSelect.innerHTML = '';
+
+          if (!city) {
+            neighborhoodSelect.innerHTML =
+              '<option value="">Choisissez d\\'abord une ville</option>';
+            neighborhoodOtherBlock.classList.add('hidden');
+            return;
+          }
+
+          neighborhoodSelect.innerHTML =
+            '<option value="">Chargement...</option>';
+
+          try {
+            const response = await fetch(
+              '/api/neighborhoods?city=' + encodeURIComponent(city)
+            );
+
+            const data = await response.json();
+
+            neighborhoodSelect.innerHTML =
+              '<option value="">Choisissez un quartier</option>';
+
+            for (const n of data.neighborhoods) {
+              const opt = document.createElement('option');
+              opt.value = n;
+              opt.textContent = n;
+              neighborhoodSelect.appendChild(opt);
+            }
+
+            const otherOpt = document.createElement('option');
+            otherOpt.value = '__AUTRE__';
+            otherOpt.textContent = 'Autre (precisez)';
+            neighborhoodSelect.appendChild(otherOpt);
+
+            neighborhoodOtherBlock.classList.remove('hidden');
+          } catch (e) {
+            neighborhoodSelect.innerHTML =
+              '<option value="">Erreur de chargement</option>';
+          }
+        });
+
+        neighborhoodSelect.addEventListener('change', function() {
+          if (neighborhoodSelect.value === '__AUTRE__') {
+            neighborhoodOtherBlock.classList.remove('hidden');
+          }
+        });
+
+        professionSelect.addEventListener('change', function() {
+          if (professionSelect.value === '__AUTRE__') {
+            professionOtherBlock.classList.remove('hidden');
+          } else {
+            professionOtherBlock.classList.add('hidden');
+          }
+        });
+      </script>
+    `;
+
+    res.send(page("Devenir professionnel", content));
+  } catch (error) {
+    console.error(
+      "Erreur sur le formulaire professionnel :",
+      error.message
+    );
+
+    res.status(500).send(
+      page("Erreur", "<h2>Une erreur technique est survenue.</h2>")
+    );
+  }
+});
+
+/* API QUARTIERS (pour le chargement dynamique) */
+
+app.get("/api/neighborhoods", async (req, res) => {
+  try {
+    const city = String(req.query.city || "").trim();
+
+    if (!city) {
+      return res.json({ neighborhoods: [] });
+    }
+
+    const cityResult = await pool.query(
+      "SELECT id FROM cities WHERE name = $1",
+      [city]
+    );
+
+    if (!cityResult.rows.length) {
+      return res.json({ neighborhoods: [] });
+    }
+
+    const neighborhoodsResult = await pool.query(
+      `SELECT name FROM neighborhoods
+       WHERE city_id = $1
+       ORDER BY name ASC`,
+      [cityResult.rows[0].id]
+    );
+
+    res.json({
+      neighborhoods: neighborhoodsResult.rows.map((n) => n.name)
+    });
+  } catch (error) {
+    console.error("Erreur API quartiers :", error.message);
+    res.status(500).json({ neighborhoods: [] });
+  }
 });
 
 /* ENREGISTREMENT DES CANDIDATURES PROFESSIONNELLES */
@@ -921,7 +1205,9 @@ app.post(
       phone,
       city,
       neighborhood,
+      neighborhood_other,
       profession,
+      profession_other,
       experience,
       service_description,
       service_area,
@@ -933,22 +1219,58 @@ app.post(
     const photoIdentite = files.photo_identite?.[0];
     const photoActivite = files.photo_activite?.[0];
 
+    /* DETERMINATION DU QUARTIER FINAL */
+
+    let finalNeighborhood = null;
+
+    if (neighborhood === "__AUTRE__") {
+      finalNeighborhood =
+        typeof neighborhood_other === "string"
+          ? neighborhood_other.trim().slice(0, 150) || null
+          : null;
+    } else if (typeof neighborhood === "string" && neighborhood.trim()) {
+      finalNeighborhood = neighborhood.trim().slice(0, 150);
+    }
+
+    /* DETERMINATION DU METIER FINAL */
+
+    let finalProfession = null;
+
+    if (profession === "__AUTRE__") {
+      finalProfession =
+        typeof profession_other === "string"
+          ? profession_other.trim().slice(0, 150) || null
+          : null;
+    } else if (typeof profession === "string" && profession.trim()) {
+      finalProfession = profession.trim().slice(0, 150);
+    }
+
+    /* VALIDATION */
+
     if (
       typeof full_name !== "string" ||
       typeof phone !== "string" ||
       typeof city !== "string" ||
-      typeof profession !== "string" ||
       typeof service_description !== "string" ||
       !full_name.trim() ||
       !phone.trim() ||
       !city.trim() ||
-      !profession.trim() ||
+      !finalProfession ||
       !service_description.trim()
     ) {
       return res.status(400).send(
         page(
           "Informations manquantes",
-          '<section class="card"><h2>Informations manquantes</h2><a href="/devenir-professionnel">Retour au formulaire</a></section>'
+          `
+            <section class="card">
+              <h2>Informations manquantes ou invalides</h2>
+              <p>
+                Verifiez que vous avez bien rempli le nom, le telephone,
+                la ville, le metier et la description.
+              </p>
+              <a href="/devenir-professionnel">Retour au formulaire</a>
+            </section>
+          `
         )
       );
     }
@@ -1043,10 +1365,8 @@ app.post(
         full_name.trim().slice(0, 150),
         phone.trim().slice(0, 30),
         city.trim().slice(0, 100),
-        typeof neighborhood === "string"
-          ? neighborhood.trim().slice(0, 150) || null
-          : null,
-        profession.trim().slice(0, 150),
+        finalNeighborhood,
+        finalProfession,
         typeof experience === "string"
           ? experience.slice(0, 100) || null
           : null,
@@ -1503,7 +1823,7 @@ app.get("/publier-emploi", (req, res) => {
   );
 });
 
-/* ENREGISTREMENT DES OFFRES : EN ATTENTE DE VALIDATION */
+/* ENREGISTREMENT DES OFFRES */
 
 app.post("/offres-emploi", async (req, res) => {
   const {
@@ -2528,8 +2848,270 @@ async function startServer() {
       )
     `);
 
+    /* TABLE DES VILLES */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS cities (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        display_order INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+
+    /* TABLE DES QUARTIERS */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS neighborhoods (
+        id SERIAL PRIMARY KEY,
+        city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+        name VARCHAR(150) NOT NULL,
+        UNIQUE (city_id, name)
+      )
+    `);
+
+    /* TABLE DES METIERS */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS professions (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL UNIQUE,
+        category VARCHAR(100),
+        display_order INTEGER NOT NULL DEFAULT 0
+      )
+    `);
+
+    /* INSERTION DES VILLES */
+
+    const citiesData = [
+      ["Cotonou", 1],
+      ["Abomey-Calavi", 2],
+      ["Porto-Novo", 3],
+      ["Parakou", 4],
+      ["Bohicon", 5],
+      ["Natitingou", 6],
+      ["Ouidah", 7]
+    ];
+
+    for (const [name, order] of citiesData) {
+      await pool.query(
+        `INSERT INTO cities (name, display_order)
+         VALUES ($1, $2)
+         ON CONFLICT (name) DO NOTHING`,
+        [name, order]
+      );
+    }
+
+    /* INSERTION DES QUARTIERS */
+
+    const neighborhoodsData = {
+      "Cotonou": [
+        "Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi",
+        "Godomey", "Gbégamey", "Haie Vive", "Jéricho",
+        "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita",
+        "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo",
+        "Zone des Ambassades", "Dantokpa", "Agla",
+        "Aïdjèdo", "Sikècodji"
+      ],
+      "Abomey-Calavi": [
+        "Calavi centre", "Godomey", "Akassato", "Zinvié",
+        "Togba", "Tankpè", "Hêvié", "Ouèdo",
+        "Cocotomey", "Kpota"
+      ],
+      "Porto-Novo": [
+        "Djègan-Kpèvi", "Ouando", "Akonaboè", "Djassin",
+        "Houinmè", "Sèmè", "Tokpota", "Zounvié",
+        "Avakpa", "Atinkanmey"
+      ],
+      "Parakou": [
+        "Zongo", "Dépôt", "Guéma", "Kpébié",
+        "Madina", "Tourou", "Albarika", "Baparapé",
+        "Titirou"
+      ],
+      "Bohicon": [
+        "Bohicon centre", "Agbangnizoun", "Sèdjè",
+        "Djidja", "Ouèssè", "Kpassè"
+      ],
+      "Natitingou": [
+        "Natitingou centre", "Kanté", "Perma",
+        "Kouandé", "Tchoumi-Tchoumi", "Yokossi"
+      ],
+      "Ouidah": [
+        "Ouidah centre", "Pahou", "Gbéna", "Sè",
+        "Kpomassè", "Avlékété", "Djègbadji"
+      ]
+    };
+
+    for (const [cityName, neighborhoods] of Object.entries(neighborhoodsData)) {
+      const cityResult = await pool.query(
+        "SELECT id FROM cities WHERE name = $1",
+        [cityName]
+      );
+
+      if (!cityResult.rows.length) {
+        continue;
+      }
+
+      const cityId = cityResult.rows[0].id;
+
+      for (const neighborhood of neighborhoods) {
+        await pool.query(
+          `INSERT INTO neighborhoods (city_id, name)
+           VALUES ($1, $2)
+           ON CONFLICT (city_id, name) DO NOTHING`,
+          [cityId, neighborhood]
+        );
+      }
+    }
+
+    /* INSERTION DES METIERS */
+
+    const professionsData = [
+      ["Maçon", "Bâtiment"],
+      ["Plombier", "Bâtiment"],
+      ["Électricien", "Bâtiment"],
+      ["Carreleur", "Bâtiment"],
+      ["Peintre en bâtiment", "Bâtiment"],
+      ["Menuisier bois", "Bâtiment"],
+      ["Menuisier aluminium", "Bâtiment"],
+      ["Soudeur", "Bâtiment"],
+      ["Ferrailleur", "Bâtiment"],
+      ["Charpentier", "Bâtiment"],
+      ["Étanchéiste (toiture)", "Bâtiment"],
+      ["Vitrier", "Bâtiment"],
+
+      ["Femme de ménage", "Maison"],
+      ["Repassage à domicile", "Maison"],
+      ["Cuisinier", "Maison"],
+      ["Cuisinière", "Maison"],
+      ["Gardien", "Maison"],
+      ["Vigile", "Maison"],
+      ["Nounou", "Maison"],
+      ["Garde d'enfants", "Maison"],
+      ["Jardinier", "Maison"],
+      ["Désinsectisation", "Maison"],
+      ["Dératisation", "Maison"],
+      ["Plombier-déboucheur", "Maison"],
+
+      ["Coiffeur", "Beauté"],
+      ["Coiffeuse", "Beauté"],
+      ["Tresseuse", "Beauté"],
+      ["Barbier", "Beauté"],
+      ["Esthéticienne", "Beauté"],
+      ["Maquilleuse", "Beauté"],
+      ["Manucure", "Beauté"],
+      ["Pédicure", "Beauté"],
+      ["Masseur", "Beauté"],
+      ["Masseuse", "Beauté"],
+      ["Tatoueur", "Beauté"],
+
+      ["Couturier", "Couture"],
+      ["Couturière", "Couture"],
+      ["Tailleur", "Couture"],
+      ["Brodeur", "Couture"],
+      ["Retoucheur", "Couture"],
+      ["Styliste modéliste", "Couture"],
+      ["Cordonnier", "Couture"],
+
+      ["Mécanicien auto", "Automobile"],
+      ["Mécanicien moto", "Automobile"],
+      ["Électricien auto", "Automobile"],
+      ["Carrossier", "Automobile"],
+      ["Tôlier", "Automobile"],
+      ["Vulcanisateur", "Automobile"],
+      ["Chauffeur de taxi", "Transport"],
+      ["Chauffeur de moto-taxi", "Transport"],
+      ["Chauffeur personnel", "Transport"],
+      ["Déménageur", "Transport"],
+
+      ["Traiteur", "Restauration"],
+      ["Pâtissier", "Restauration"],
+      ["Boulanger", "Restauration"],
+      ["Vendeur de nourriture", "Restauration"],
+      ["Boucher", "Restauration"],
+      ["Poissonnier", "Restauration"],
+      ["Barista", "Restauration"],
+
+      ["Développeur web", "Informatique"],
+      ["Développeur mobile", "Informatique"],
+      ["Informaticien", "Informatique"],
+      ["Réparateur de téléphone", "Informatique"],
+      ["Réparateur d'ordinateur", "Informatique"],
+      ["Graphiste", "Informatique"],
+      ["Community manager", "Informatique"],
+      ["Photographe", "Informatique"],
+      ["Vidéaste", "Informatique"],
+      ["Ingénieur réseau", "Informatique"],
+
+      ["Professeur de Maths", "Éducation"],
+      ["Professeur de Français", "Éducation"],
+      ["Professeur d'Anglais", "Éducation"],
+      ["Enseignant primaire", "Éducation"],
+      ["Formateur informatique", "Éducation"],
+      ["Coach scolaire", "Éducation"],
+
+      ["Infirmier à domicile", "Santé"],
+      ["Infirmière à domicile", "Santé"],
+      ["Sage-femme", "Santé"],
+      ["Kinésithérapeute", "Santé"],
+      ["Aide-soignant", "Santé"],
+      ["Pharmacien", "Santé"],
+      ["Opticien", "Santé"],
+
+      ["Comptable", "Professionnel"],
+      ["Fiscaliste", "Professionnel"],
+      ["Juriste", "Professionnel"],
+      ["Avocat", "Professionnel"],
+      ["Notaire", "Professionnel"],
+      ["Traducteur", "Professionnel"],
+      ["Rédacteur de contenu", "Professionnel"],
+      ["Secrétaire", "Professionnel"],
+      ["Assistant administratif", "Professionnel"],
+      ["Consultant", "Professionnel"],
+
+      ["Wedding planner", "Événementiel"],
+      ["Décorateur événementiel", "Événementiel"],
+      ["DJ", "Événementiel"],
+      ["Animateur", "Événementiel"],
+      ["MC", "Événementiel"],
+      ["Serveur événementiel", "Événementiel"],
+      ["Sécurité événementielle", "Événementiel"],
+      ["Sonorisation", "Événementiel"],
+
+      ["Agent immobilier", "Immobilier"],
+      ["Courtier", "Immobilier"],
+      ["Serrurier", "Divers"],
+      ["Climatisation", "Divers"],
+      ["Froid", "Divers"],
+      ["Réparation électroménager", "Divers"],
+      ["Antenniste", "Divers"],
+      ["Forgeron", "Divers"],
+      ["Puisatier", "Divers"],
+      ["Agriculteur", "Agriculture"],
+      ["Maraîcher", "Agriculture"],
+      ["Éleveur", "Agriculture"],
+      ["Pêcheur", "Agriculture"],
+      ["Apiculteur", "Agriculture"],
+      ["Prothésiste dentaire", "Santé"]
+    ];
+
+    let orderCounter = 0;
+
+    for (const [name, category] of professionsData) {
+      orderCounter += 1;
+
+      await pool.query(
+        `INSERT INTO professions (name, category, display_order)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (name) DO NOTHING`,
+        [name, category, orderCounter]
+      );
+    }
+
     console.log(
       "Tables des candidatures et des offres d'emploi pretes."
+    );
+    console.log(
+      "Villes, quartiers et metiers charges."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
