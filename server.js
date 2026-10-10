@@ -295,335 +295,169 @@ function page(title, content) {
       <title>${escapeHtml(title)} - TrouveMoi</title>
 
       <style>
-        * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-          padding: 0;
-          background: #f4f7fb;
-          color: #222;
-          line-height: 1.6;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
+          padding: 0; background: #f4f7fb; color: #222;
+          line-height: 1.6; min-height: 100vh;
+          display: flex; flex-direction: column;
         }
 
         header {
           background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
-          color: white;
-          padding: 18px 20px;
+          color: white; padding: 18px 20px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          position: sticky;
-          top: 0;
-          z-index: 100;
+          position: sticky; top: 0; z-index: 100;
         }
 
         .header-content {
-          max-width: 1100px;
-          margin: 0 auto;
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
+          max-width: 1100px; margin: 0 auto;
+          display: flex; flex-wrap: wrap;
+          justify-content: space-between; align-items: center; gap: 12px;
         }
 
         .logo {
-          font-size: 26px;
-          font-weight: 800;
-          color: white;
-          text-decoration: none;
-          letter-spacing: -0.5px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
+          font-size: 26px; font-weight: 800; color: white;
+          text-decoration: none; letter-spacing: -0.5px;
+          display: flex; align-items: center; gap: 8px;
         }
 
-        .logo::before {
-          content: "🔍";
-          font-size: 24px;
-        }
+        .logo::before { content: "🔍"; font-size: 24px; }
 
-        .tagline {
-          font-size: 13px;
-          opacity: 0.9;
-          margin-top: 2px;
-        }
+        .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
 
-        nav {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
+        nav { display: flex; flex-wrap: wrap; gap: 6px; }
 
         nav a {
-          color: white;
-          text-decoration: none;
-          padding: 8px 14px;
-          border-radius: 6px;
-          font-size: 14px;
-          font-weight: 500;
+          color: white; text-decoration: none;
+          padding: 8px 14px; border-radius: 6px;
+          font-size: 14px; font-weight: 500;
           transition: background 0.2s;
         }
 
-        nav a:hover {
-          background: rgba(255,255,255,0.15);
-        }
+        nav a:hover { background: rgba(255,255,255,0.15); }
 
         main {
-          max-width: 1100px;
-          width: 100%;
-          margin: 0 auto;
-          padding: 24px 20px;
-          flex: 1;
+          max-width: 1100px; width: 100%;
+          margin: 0 auto; padding: 24px 20px; flex: 1;
         }
 
         .card {
-          background: white;
-          padding: 24px;
-          margin-bottom: 20px;
+          background: white; padding: 24px; margin-bottom: 20px;
           border-radius: 12px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.06);
           transition: box-shadow 0.2s;
         }
 
-        .card:hover {
-          box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-        }
+        .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 
-        h1 {
-          font-size: 28px;
-          margin-bottom: 16px;
-          color: #087f5b;
-          line-height: 1.3;
-        }
-
-        h2 {
-          font-size: 22px;
-          margin-bottom: 14px;
-          color: #1a1a1a;
-          line-height: 1.3;
-        }
-
-        h3 {
-          font-size: 18px;
-          margin-bottom: 10px;
-          color: #1a1a1a;
-        }
-
-        p {
-          margin-bottom: 12px;
-        }
+        h1 { font-size: 28px; margin-bottom: 16px; color: #087f5b; line-height: 1.3; }
+        h2 { font-size: 22px; margin-bottom: 14px; color: #1a1a1a; line-height: 1.3; }
+        h3 { font-size: 18px; margin-bottom: 10px; color: #1a1a1a; }
+        p { margin-bottom: 12px; }
 
         label {
-          display: block;
-          margin-top: 8px;
-          margin-bottom: 4px;
-          font-weight: 600;
-          font-size: 14px;
-          color: #333;
+          display: block; margin-top: 8px; margin-bottom: 4px;
+          font-weight: 600; font-size: 14px; color: #333;
         }
 
-        input,
-        textarea,
-        select {
-          width: 100%;
-          padding: 12px 14px;
-          margin-bottom: 14px;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          font-size: 15px;
-          font-family: inherit;
-          background: white;
+        input, textarea, select {
+          width: 100%; padding: 12px 14px; margin-bottom: 14px;
+          border: 1px solid #ddd; border-radius: 8px;
+          font-size: 15px; font-family: inherit; background: white;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        input:focus,
-        textarea:focus,
-        select:focus {
-          outline: none;
-          border-color: #087f5b;
+        input:focus, textarea:focus, select:focus {
+          outline: none; border-color: #087f5b;
           box-shadow: 0 0 0 3px rgba(8,127,91,0.1);
         }
 
-        textarea {
-          resize: vertical;
-          min-height: 100px;
-        }
+        textarea { resize: vertical; min-height: 100px; }
 
         input[type="file"] {
-          padding: 10px;
-          background: #f9fafb;
-          border: 2px dashed #ccc;
-          cursor: pointer;
+          padding: 10px; background: #f9fafb;
+          border: 2px dashed #ccc; cursor: pointer;
         }
 
-        input[type="file"]:hover {
-          border-color: #087f5b;
-          background: #f0fdf9;
-        }
+        input[type="file"]:hover { border-color: #087f5b; background: #f0fdf9; }
 
-        input[type="checkbox"] {
-          width: auto;
-          margin-right: 8px;
-        }
+        input[type="checkbox"] { width: auto; margin-right: 8px; }
 
-        button,
-        .button {
-          display: inline-block;
-          border: none;
-          background: #087f5b;
-          color: white;
-          padding: 12px 20px;
-          border-radius: 8px;
-          cursor: pointer;
-          text-decoration: none;
-          text-align: center;
-          font-size: 15px;
-          font-weight: 600;
+        button, .button {
+          display: inline-block; border: none;
+          background: #087f5b; color: white;
+          padding: 12px 20px; border-radius: 8px;
+          cursor: pointer; text-decoration: none;
+          text-align: center; font-size: 15px; font-weight: 600;
           transition: background 0.2s, transform 0.1s;
-          margin-right: 8px;
-          margin-bottom: 8px;
+          margin-right: 8px; margin-bottom: 8px;
         }
 
-        button:hover,
-        .button:hover {
-          background: #0a6b4d;
-          transform: translateY(-1px);
-        }
+        button:hover, .button:hover { background: #0a6b4d; transform: translateY(-1px); }
 
-        .danger {
-          background: #b42318;
-        }
+        .danger { background: #b42318; }
+        .danger:hover { background: #9a1d13; }
 
-        .danger:hover {
-          background: #9a1d13;
-        }
+        .secondary { background: #475467; }
+        .secondary:hover { background: #344054; }
 
-        .secondary {
-          background: #475467;
-        }
-
-        .secondary:hover {
-          background: #344054;
-        }
-
-        .muted {
-          color: #667085;
-          font-size: 14px;
-        }
+        .muted { color: #667085; font-size: 14px; }
 
         .contact-buttons {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-top: 16px;
+          display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
         }
 
-        .contact-buttons .button {
-          flex: 1 1 140px;
-          margin: 0;
-        }
+        .contact-buttons .button { flex: 1 1 140px; margin: 0; }
 
-        .whatsapp {
-          background: #25d366;
-        }
+        .whatsapp { background: #25d366; }
+        .whatsapp:hover { background: #1da851; }
 
-        .whatsapp:hover {
-          background: #1da851;
-        }
+        .email { background: #475467; }
+        .email:hover { background: #344054; }
 
-        .email {
-          background: #475467;
-        }
-
-        .email:hover {
-          background: #344054;
-        }
-
-        .share {
-          background: #4267b2;
-        }
-
-        .share:hover {
-          background: #365899;
-        }
+        .share { background: #4267b2; }
+        .share:hover { background: #365899; }
 
         .photos-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          margin: 16px 0;
+          display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
         }
 
         .photos-grid img {
-          max-width: 280px;
-          max-height: 280px;
-          border-radius: 10px;
-          border: 2px solid #e5e7eb;
+          max-width: 280px; max-height: 280px;
+          border-radius: 10px; border: 2px solid #e5e7eb;
           object-fit: cover;
         }
 
-        .photo-profil {
-          border: 3px solid #087f5b !important;
-        }
-
-        .photo-identite {
-          border: 3px solid #b42318 !important;
-        }
-
-        .photo-activite {
-          border: 3px solid #475467 !important;
-        }
+        .photo-profil { border: 3px solid #087f5b !important; }
+        .photo-identite { border: 3px solid #b42318 !important; }
+        .photo-activite { border: 3px solid #475467 !important; }
 
         .photo-label {
-          font-size: 12px;
-          color: #667085;
-          text-align: center;
-          margin-top: 4px;
-          font-weight: 600;
+          font-size: 12px; color: #667085;
+          text-align: center; margin-top: 4px; font-weight: 600;
         }
 
-        .photo-block {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
+        .photo-block { display: flex; flex-direction: column; align-items: center; }
 
         .help-text {
-          font-size: 13px;
-          color: #667085;
-          margin-bottom: 12px;
-          font-style: italic;
+          font-size: 13px; color: #667085;
+          margin-bottom: 12px; font-style: italic;
         }
 
-        .hidden {
-          display: none !important;
-        }
+        .hidden { display: none !important; }
 
-        .actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin: 12px 0;
-        }
-
-        /* STATS DASHBOARD */
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
-          margin-bottom: 24px;
+          gap: 16px; margin-bottom: 24px;
         }
 
         .stat-card {
-          background: white;
-          padding: 24px;
+          background: white; padding: 24px;
           border-radius: 12px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.06);
           border-left: 4px solid #087f5b;
@@ -635,145 +469,73 @@ function page(title, content) {
           box-shadow: 0 6px 20px rgba(0,0,0,0.1);
         }
 
-        .stat-card.warning {
-          border-left-color: #f59e0b;
-        }
+        .stat-card.warning { border-left-color: #f59e0b; }
+        .stat-card.danger { border-left-color: #b42318; }
+        .stat-card.info { border-left-color: #3b82f6; }
 
-        .stat-card.danger {
-          border-left-color: #b42318;
-        }
-
-        .stat-card.info {
-          border-left-color: #3b82f6;
-        }
-
-        .stat-icon {
-          font-size: 32px;
-          margin-bottom: 8px;
-        }
+        .stat-icon { font-size: 32px; margin-bottom: 8px; }
 
         .stat-number {
-          font-size: 36px;
-          font-weight: 800;
-          color: #1a1a1a;
-          line-height: 1;
-          margin-bottom: 6px;
+          font-size: 36px; font-weight: 800;
+          color: #1a1a1a; line-height: 1; margin-bottom: 6px;
         }
 
         .stat-label {
-          font-size: 14px;
-          color: #667085;
-          font-weight: 500;
+          font-size: 14px; color: #667085; font-weight: 500;
         }
 
         .stat-link {
-          display: inline-block;
-          margin-top: 10px;
-          font-size: 13px;
-          color: #087f5b;
-          text-decoration: none;
-          font-weight: 600;
+          display: inline-block; margin-top: 10px;
+          font-size: 13px; color: #087f5b;
+          text-decoration: none; font-weight: 600;
         }
 
-        .stat-link:hover {
-          text-decoration: underline;
-        }
+        .stat-link:hover { text-decoration: underline; }
 
         footer {
-          background: #1a1a1a;
-          color: #ccc;
-          padding: 32px 20px 20px;
-          margin-top: 40px;
+          background: #1a1a1a; color: #ccc;
+          padding: 32px 20px 20px; margin-top: 40px;
         }
 
         .footer-content {
-          max-width: 1100px;
-          margin: 0 auto;
+          max-width: 1100px; margin: 0 auto;
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
           gap: 24px;
         }
 
         .footer-col h4 {
-          color: white;
-          margin-bottom: 12px;
-          font-size: 15px;
-          text-transform: uppercase;
+          color: white; margin-bottom: 12px;
+          font-size: 15px; text-transform: uppercase;
           letter-spacing: 0.5px;
         }
 
         .footer-col a {
-          display: block;
-          color: #aaa;
-          text-decoration: none;
-          padding: 4px 0;
-          font-size: 14px;
+          display: block; color: #aaa;
+          text-decoration: none; padding: 4px 0; font-size: 14px;
         }
 
-        .footer-col a:hover {
-          color: #0a9d70;
-        }
+        .footer-col a:hover { color: #0a9d70; }
 
         .footer-bottom {
-          max-width: 1100px;
-          margin: 24px auto 0;
-          padding-top: 20px;
-          border-top: 1px solid #333;
-          text-align: center;
-          font-size: 13px;
-          color: #888;
+          max-width: 1100px; margin: 24px auto 0;
+          padding-top: 20px; border-top: 1px solid #333;
+          text-align: center; font-size: 13px; color: #888;
         }
 
         @media (max-width: 600px) {
-          header {
-            padding: 14px 16px;
-          }
-
-          .header-content {
-            flex-direction: column;
-            text-align: center;
-          }
-
-          .logo {
-            font-size: 22px;
-          }
-
-          nav {
-            justify-content: center;
-          }
-
-          nav a {
-            padding: 6px 10px;
-            font-size: 13px;
-          }
-
-          main {
-            padding: 16px 12px;
-          }
-
-          .card {
-            padding: 16px;
-          }
-
-          h1 {
-            font-size: 22px;
-          }
-
-          h2 {
-            font-size: 18px;
-          }
-
-          .photos-grid img {
-            max-width: 100%;
-          }
-
-          .contact-buttons .button {
-            flex: 1 1 100%;
-          }
-
-          .stat-number {
-            font-size: 28px;
-          }
+          header { padding: 14px 16px; }
+          .header-content { flex-direction: column; text-align: center; }
+          .logo { font-size: 22px; }
+          nav { justify-content: center; }
+          nav a { padding: 6px 10px; font-size: 13px; }
+          main { padding: 16px 12px; }
+          .card { padding: 16px; }
+          h1 { font-size: 22px; }
+          h2 { font-size: 18px; }
+          .photos-grid img { max-width: 100%; }
+          .contact-buttons .button { flex: 1 1 100%; }
+          .stat-number { font-size: 28px; }
         }
       </style>
     </head>
@@ -868,8 +630,7 @@ function jobContactButtons(job) {
   }
 
   if (job.contact_whatsapp) {
-    const whatsapp = normalizePhone(job.contact_whatsapp)
-      .replace(/^\+/, "");
+    const whatsapp = normalizePhone(job.contact_whatsapp).replace(/^\+/, "");
 
     buttons.push(`
       <a
@@ -907,17 +668,9 @@ function jobContactButtons(job) {
 
 app.get("/", async (req, res) => {
   try {
-    const profession = String(req.query.profession || "")
-      .trim()
-      .slice(0, 150);
-
-    const city = String(req.query.city || "")
-      .trim()
-      .slice(0, 100);
-
-    const neighborhood = String(req.query.neighborhood || "")
-      .trim()
-      .slice(0, 150);
+    const profession = String(req.query.profession || "").trim().slice(0, 150);
+    const city = String(req.query.city || "").trim().slice(0, 100);
+    const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
 
     const citiesResult = await pool.query(
       "SELECT id, name FROM cities ORDER BY display_order ASC"
@@ -929,16 +682,8 @@ app.get("/", async (req, res) => {
 
     let query = `
       SELECT
-        id,
-        full_name,
-        phone,
-        city,
-        neighborhood,
-        profession,
-        experience,
-        service_description,
-        service_area,
-        availability,
+        id, full_name, phone, city, neighborhood, profession,
+        experience, service_description, service_area, availability,
         photo_activite_url
       FROM professional_applications
       WHERE status = 'approved'
@@ -966,10 +711,7 @@ app.get("/", async (req, res) => {
     const result = await pool.query(query, values);
 
     const cityOptions = citiesResult.rows.map((c) => `
-      <option
-        value="${escapeHtml(c.name)}"
-        ${city === c.name ? "selected" : ""}
-      >
+      <option value="${escapeHtml(c.name)}" ${city === c.name ? "selected" : ""}>
         ${escapeHtml(c.name)}
       </option>
     `).join("");
@@ -978,23 +720,17 @@ app.get("/", async (req, res) => {
 
     if (city) {
       const cityResult = await pool.query(
-        "SELECT id FROM cities WHERE name = $1",
-        [city]
+        "SELECT id FROM cities WHERE name = $1", [city]
       );
 
       if (cityResult.rows.length) {
         const neighborhoodsResult = await pool.query(
-          `SELECT name FROM neighborhoods
-           WHERE city_id = $1
-           ORDER BY name ASC`,
+          `SELECT name FROM neighborhoods WHERE city_id = $1 ORDER BY name ASC`,
           [cityResult.rows[0].id]
         );
 
         neighborhoodOptions = neighborhoodsResult.rows.map((n) => `
-          <option
-            value="${escapeHtml(n.name)}"
-            ${neighborhood === n.name ? "selected" : ""}
-          >
+          <option value="${escapeHtml(n.name)}" ${neighborhood === n.name ? "selected" : ""}>
             ${escapeHtml(n.name)}
           </option>
         `).join("");
@@ -1005,30 +741,19 @@ app.get("/", async (req, res) => {
 
     for (const p of professionsResult.rows) {
       const cat = p.category || "Autres";
-
-      if (!professionsByCategory[cat]) {
-        professionsByCategory[cat] = [];
-      }
-
+      if (!professionsByCategory[cat]) professionsByCategory[cat] = [];
       professionsByCategory[cat].push(p.name);
     }
 
     const professionOptions = Object.entries(professionsByCategory)
       .map(([category, names]) => {
         const options = names.map((name) => `
-          <option
-            value="${escapeHtml(name)}"
-            ${profession === name ? "selected" : ""}
-          >
+          <option value="${escapeHtml(name)}" ${profession === name ? "selected" : ""}>
             ${escapeHtml(name)}
           </option>
         `).join("");
 
-        return `
-          <optgroup label="${escapeHtml(category)}">
-            ${options}
-          </optgroup>
-        `;
+        return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
     const professionals = result.rows.map((person) => {
@@ -1038,44 +763,15 @@ app.get("/", async (req, res) => {
       const shareText = encodeURIComponent(
         "Decouvrez " + person.full_name + " (" + person.profession + ") sur TrouveMoi"
       );
-
-      const shareUrl = encodeURIComponent(
-        "https://trouvemoi-4mk0.onrender.com/"
-      );
+      const shareUrl = encodeURIComponent("https://trouvemoi-4mk0.onrender.com/");
 
       const contactButtons = `
         <div class="contact-buttons">
-          ${phoneClean
-            ? `
-              <a
-                class="button"
-                href="tel:${escapeHtml(phoneClean)}"
-              >
-                📞 Appeler
-              </a>
-
-              <a
-                class="button whatsapp"
-                href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent(
-                  "Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + "."
-                )}"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                💬 WhatsApp
-              </a>
-            `
-            : ""
-          }
-
-          <a
-            class="button share"
-            href="https://wa.me/?text=${shareText}%20-%20${shareUrl}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            📤 Partager
-          </a>
+          ${phoneClean ? `
+            <a class="button" href="tel:${escapeHtml(phoneClean)}">📞 Appeler</a>
+            <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + ".")}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+          ` : ""}
+          <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
         </div>
       `;
 
@@ -1083,49 +779,22 @@ app.get("/", async (req, res) => {
         <article class="card">
           <h2>${escapeHtml(person.profession)}</h2>
 
-          ${person.photo_activite_url
-            ? `
-              <div class="photos-grid">
-                <div class="photo-block">
-                  <img
-                    src="${escapeHtml(person.photo_activite_url)}"
-                    alt="Photo d'activite"
-                    class="photo-activite"
-                  >
-                  <div class="photo-label">Activite</div>
-                </div>
+          ${person.photo_activite_url ? `
+            <div class="photos-grid">
+              <div class="photo-block">
+                <img src="${escapeHtml(person.photo_activite_url)}" alt="Photo d'activite" class="photo-activite">
+                <div class="photo-label">Activite</div>
               </div>
-            `
-            : ""
-          }
+            </div>
+          ` : ""}
 
-          <p>
-            <strong>Professionnel :</strong>
-            ${escapeHtml(person.full_name)}
-          </p>
-
-          <p>
-            <strong>Ville :</strong>
-            ${escapeHtml(person.city)}
-          </p>
-
-          ${person.neighborhood
-            ? `<p><strong>Quartier :</strong> ${escapeHtml(person.neighborhood)}</p>`
-            : ""}
-
-          ${person.experience
-            ? `<p><strong>Experience :</strong> ${escapeHtml(person.experience)}</p>`
-            : ""}
-
+          <p><strong>Professionnel :</strong> ${escapeHtml(person.full_name)}</p>
+          <p><strong>Ville :</strong> ${escapeHtml(person.city)}</p>
+          ${person.neighborhood ? `<p><strong>Quartier :</strong> ${escapeHtml(person.neighborhood)}</p>` : ""}
+          ${person.experience ? `<p><strong>Experience :</strong> ${escapeHtml(person.experience)}</p>` : ""}
           <p>${escapeHtml(person.service_description)}</p>
-
-          ${person.service_area
-            ? `<p><strong>Zone d'intervention :</strong> ${escapeHtml(person.service_area)}</p>`
-            : ""}
-
-          ${person.availability
-            ? `<p><strong>Disponibilite :</strong> ${escapeHtml(person.availability)}</p>`
-            : ""}
+          ${person.service_area ? `<p><strong>Zone d'intervention :</strong> ${escapeHtml(person.service_area)}</p>` : ""}
+          ${person.availability ? `<p><strong>Disponibilite :</strong> ${escapeHtml(person.availability)}</p>` : ""}
 
           ${contactButtons}
         </article>
@@ -1138,50 +807,37 @@ app.get("/", async (req, res) => {
 
         <form action="/" method="GET">
           <label for="profession">Metier ou service</label>
-
           <select id="profession" name="profession">
             <option value="">Tous les metiers</option>
             ${professionOptions}
           </select>
 
           <label for="city">Ville</label>
-
           <select id="city" name="city">
             <option value="">Toutes les villes</option>
             ${cityOptions}
           </select>
 
-          ${city && neighborhoodOptions
-            ? `
-              <label for="neighborhood">Quartier</label>
-
-              <select id="neighborhood" name="neighborhood">
-                <option value="">Tous les quartiers</option>
-                ${neighborhoodOptions}
-              </select>
-            `
-            : ""
-          }
+          ${city && neighborhoodOptions ? `
+            <label for="neighborhood">Quartier</label>
+            <select id="neighborhood" name="neighborhood">
+              <option value="">Tous les quartiers</option>
+              ${neighborhoodOptions}
+            </select>
+          ` : ""}
 
           <button type="submit">Rechercher</button>
         </form>
 
-        <a class="button" href="/devenir-professionnel">
-          Devenir professionnel
-        </a>
-
-        <a class="button secondary" href="/emplois">
-          Consulter les offres d'emploi
-        </a>
+        <a class="button" href="/devenir-professionnel">Devenir professionnel</a>
+        <a class="button secondary" href="/emplois">Consulter les offres d'emploi</a>
       </section>
 
       <h2>Professionnels disponibles (${result.rows.length})</h2>
 
       ${professionals || `
         <section class="card">
-          <p>
-            Aucun professionnel approuve ne correspond a votre recherche.
-          </p>
+          <p>Aucun professionnel approuve ne correspond a votre recherche.</p>
         </section>
       `}
 
@@ -1193,7 +849,6 @@ app.get("/", async (req, res) => {
     res.send(page("Accueil", content));
   } catch (error) {
     console.error("Erreur sur la page d'accueil :", error.message);
-
     res.status(500).send(
       page("Erreur", "<h2>Une erreur technique est survenue.</h2>")
     );
@@ -1213,36 +868,24 @@ app.get("/devenir-professionnel", async (req, res) => {
     );
 
     const cityOptions = citiesResult.rows.map((c) => `
-      <option value="${escapeHtml(c.name)}">
-        ${escapeHtml(c.name)}
-      </option>
+      <option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>
     `).join("");
 
     const professionsByCategory = {};
 
     for (const p of professionsResult.rows) {
       const cat = p.category || "Autres";
-
-      if (!professionsByCategory[cat]) {
-        professionsByCategory[cat] = [];
-      }
-
+      if (!professionsByCategory[cat]) professionsByCategory[cat] = [];
       professionsByCategory[cat].push(p.name);
     }
 
     const professionOptions = Object.entries(professionsByCategory)
       .map(([category, names]) => {
         const options = names.map((name) => `
-          <option value="${escapeHtml(name)}">
-            ${escapeHtml(name)}
-          </option>
+          <option value="${escapeHtml(name)}">${escapeHtml(name)}</option>
         `).join("");
 
-        return `
-          <optgroup label="${escapeHtml(category)}">
-            ${options}
-          </optgroup>
-        `;
+        return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
     const content = `
@@ -1254,56 +897,30 @@ app.get("/devenir-professionnel", async (req, res) => {
           Votre profil sera examine par notre equipe avant publication.
         </p>
 
-        <form
-          action="/candidatures"
-          method="POST"
-          enctype="multipart/form-data"
-        >
+        <form action="/candidatures" method="POST" enctype="multipart/form-data">
           <label for="full_name">Nom et prenoms *</label>
-          <input
-            id="full_name"
-            name="full_name"
-            required
-            maxlength="150"
-          >
+          <input id="full_name" name="full_name" required maxlength="150">
 
           <label for="phone">Telephone *</label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            required
-            maxlength="30"
-            placeholder="+229..."
-          >
+          <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229...">
 
           <label for="city">Ville *</label>
-
           <select id="city" name="city" required>
             <option value="">Choisissez votre ville</option>
             ${cityOptions}
           </select>
 
           <label for="neighborhood">Quartier</label>
-
           <select id="neighborhood" name="neighborhood">
             <option value="">Choisissez d'abord une ville</option>
           </select>
 
           <div id="neighborhood-other-block" class="hidden">
-            <label for="neighborhood_other">
-              Precisez votre quartier
-            </label>
-            <input
-              id="neighborhood_other"
-              name="neighborhood_other"
-              maxlength="150"
-              placeholder="Ex. : mon quartier"
-            >
+            <label for="neighborhood_other">Precisez votre quartier</label>
+            <input id="neighborhood_other" name="neighborhood_other" maxlength="150" placeholder="Ex. : mon quartier">
           </div>
 
           <label for="profession">Profession ou service propose *</label>
-
           <select id="profession" name="profession" required>
             <option value="">Choisissez un metier</option>
             ${professionOptions}
@@ -1311,19 +928,11 @@ app.get("/devenir-professionnel", async (req, res) => {
           </select>
 
           <div id="profession-other-block" class="hidden">
-            <label for="profession_other">
-              Precisez votre metier ou service *
-            </label>
-            <input
-              id="profession_other"
-              name="profession_other"
-              maxlength="150"
-              placeholder="Ex. : reparateur de drones"
-            >
+            <label for="profession_other">Precisez votre metier ou service *</label>
+            <input id="profession_other" name="profession_other" maxlength="150" placeholder="Ex. : reparateur de drones">
           </div>
 
           <label for="experience">Experience</label>
-
           <select id="experience" name="experience">
             <option value="">Selectionnez une option</option>
             <option value="Debutant">Debutant</option>
@@ -1332,34 +941,16 @@ app.get("/devenir-professionnel", async (req, res) => {
             <option value="Plus de 5 ans">Plus de 5 ans</option>
           </select>
 
-          <label for="service_description">
-            Description des services *
-          </label>
-
-          <textarea
-            id="service_description"
-            name="service_description"
-            rows="5"
-            required
-            maxlength="3000"
-            placeholder="Decrivez vos services, votre savoir-faire, vos specialites..."
-          ></textarea>
+          <label for="service_description">Description des services *</label>
+          <textarea id="service_description" name="service_description" rows="5" required maxlength="3000" placeholder="Decrivez vos services, votre savoir-faire, vos specialites..."></textarea>
 
           <label for="service_area">Zones d'intervention</label>
-          <input
-            id="service_area"
-            name="service_area"
-            maxlength="300"
-            placeholder="Ex. : Cotonou et environs"
-          >
+          <input id="service_area" name="service_area" maxlength="300" placeholder="Ex. : Cotonou et environs">
 
           <label for="availability">Disponibilite</label>
-
           <select id="availability" name="availability">
             <option value="">Selectionnez une option</option>
-            <option value="Disponible immediatement">
-              Disponible immediatement
-            </option>
+            <option value="Disponible immediatement">Disponible immediatement</option>
             <option value="Sur rendez-vous">Sur rendez-vous</option>
             <option value="A temps partiel">A temps partiel</option>
           </select>
@@ -1372,37 +963,14 @@ app.get("/devenir-professionnel", async (req, res) => {
             Formats acceptes : JPG, PNG, WEBP. Taille max : 5 Mo par photo.
           </p>
 
-          <label for="photo_profil">
-            Photo de profil * (privee, visible par l'administration)
-          </label>
-          <input
-            id="photo_profil"
-            name="photo_profil"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            required
-          >
+          <label for="photo_profil">Photo de profil * (privee, visible par l'administration)</label>
+          <input id="photo_profil" name="photo_profil" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
 
-          <label for="photo_identite">
-            Photo d'identite * (privee, visible par l'administration)
-          </label>
-          <input
-            id="photo_identite"
-            name="photo_identite"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            required
-          >
+          <label for="photo_identite">Photo d'identite * (privee, visible par l'administration)</label>
+          <input id="photo_identite" name="photo_identite" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" required>
 
-          <label for="photo_activite">
-            Photo d'activite (optionnelle, visible publiquement)
-          </label>
-          <input
-            id="photo_activite"
-            name="photo_activite"
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-          >
+          <label for="photo_activite">Photo d'activite (optionnelle, visible publiquement)</label>
+          <input id="photo_activite" name="photo_activite" type="file" accept="image/jpeg,image/jpg,image/png,image/webp">
 
           <button type="submit">Envoyer ma candidature</button>
         </form>
@@ -1419,28 +987,21 @@ app.get("/devenir-professionnel", async (req, res) => {
 
         citySelect.addEventListener('change', async function() {
           const city = citySelect.value;
-
           neighborhoodSelect.innerHTML = '';
 
           if (!city) {
-            neighborhoodSelect.innerHTML =
-              '<option value="">Choisissez d\\'abord une ville</option>';
+            neighborhoodSelect.innerHTML = '<option value="">Choisissez d\\'abord une ville</option>';
             neighborhoodOtherBlock.classList.add('hidden');
             return;
           }
 
-          neighborhoodSelect.innerHTML =
-            '<option value="">Chargement...</option>';
+          neighborhoodSelect.innerHTML = '<option value="">Chargement...</option>';
 
           try {
-            const response = await fetch(
-              '/api/neighborhoods?city=' + encodeURIComponent(city)
-            );
-
+            const response = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city));
             const data = await response.json();
 
-            neighborhoodSelect.innerHTML =
-              '<option value="">Choisissez un quartier</option>';
+            neighborhoodSelect.innerHTML = '<option value="">Choisissez un quartier</option>';
 
             for (const n of data.neighborhoods) {
               const opt = document.createElement('option');
@@ -1456,8 +1017,7 @@ app.get("/devenir-professionnel", async (req, res) => {
 
             neighborhoodOtherBlock.classList.remove('hidden');
           } catch (e) {
-            neighborhoodSelect.innerHTML =
-              '<option value="">Erreur de chargement</option>';
+            neighborhoodSelect.innerHTML = '<option value="">Erreur de chargement</option>';
           }
         });
 
@@ -1479,18 +1039,14 @@ app.get("/devenir-professionnel", async (req, res) => {
 
     res.send(page("Devenir professionnel", content));
   } catch (error) {
-    console.error(
-      "Erreur sur le formulaire professionnel :",
-      error.message
-    );
-
+    console.error("Erreur sur le formulaire professionnel :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Une erreur technique est survenue.</h2>")
     );
   }
 });
 
-/* API QUARTIERS (pour le chargement dynamique) */
+/* API QUARTIERS */
 
 app.get("/api/neighborhoods", async (req, res) => {
   try {
@@ -1501,8 +1057,7 @@ app.get("/api/neighborhoods", async (req, res) => {
     }
 
     const cityResult = await pool.query(
-      "SELECT id FROM cities WHERE name = $1",
-      [city]
+      "SELECT id FROM cities WHERE name = $1", [city]
     );
 
     if (!cityResult.rows.length) {
@@ -1510,9 +1065,7 @@ app.get("/api/neighborhoods", async (req, res) => {
     }
 
     const neighborhoodsResult = await pool.query(
-      `SELECT name FROM neighborhoods
-       WHERE city_id = $1
-       ORDER BY name ASC`,
+      `SELECT name FROM neighborhoods WHERE city_id = $1 ORDER BY name ASC`,
       [cityResult.rows[0].id]
     );
 
@@ -1525,7 +1078,7 @@ app.get("/api/neighborhoods", async (req, res) => {
   }
 });
 
-/* ENREGISTREMENT DES CANDIDATURES PROFESSIONNELLES */
+/* ENREGISTREMENT DES CANDIDATURES */
 
 app.post(
   "/candidatures",
@@ -1536,17 +1089,9 @@ app.post(
   ]),
   async (req, res) => {
     const {
-      full_name,
-      phone,
-      city,
-      neighborhood,
-      neighborhood_other,
-      profession,
-      profession_other,
-      experience,
-      service_description,
-      service_area,
-      availability
+      full_name, phone, city, neighborhood, neighborhood_other,
+      profession, profession_other, experience, service_description,
+      service_area, availability
     } = req.body;
 
     const files = req.files || {};
@@ -1557,10 +1102,9 @@ app.post(
     let finalNeighborhood = null;
 
     if (neighborhood === "__AUTRE__") {
-      finalNeighborhood =
-        typeof neighborhood_other === "string"
-          ? neighborhood_other.trim().slice(0, 150) || null
-          : null;
+      finalNeighborhood = typeof neighborhood_other === "string"
+        ? neighborhood_other.trim().slice(0, 150) || null
+        : null;
     } else if (typeof neighborhood === "string" && neighborhood.trim()) {
       finalNeighborhood = neighborhood.trim().slice(0, 150);
     }
@@ -1568,10 +1112,9 @@ app.post(
     let finalProfession = null;
 
     if (profession === "__AUTRE__") {
-      finalProfession =
-        typeof profession_other === "string"
-          ? profession_other.trim().slice(0, 150) || null
-          : null;
+      finalProfession = typeof profession_other === "string"
+        ? profession_other.trim().slice(0, 150) || null
+        : null;
     } else if (typeof profession === "string" && profession.trim()) {
       finalProfession = profession.trim().slice(0, 150);
     }
@@ -1588,36 +1131,25 @@ app.post(
       !service_description.trim()
     ) {
       return res.status(400).send(
-        page(
-          "Informations manquantes",
-          `
-            <section class="card">
-              <h2>Informations manquantes ou invalides</h2>
-              <p>
-                Verifiez que vous avez bien rempli le nom, le telephone,
-                la ville, le metier et la description.
-              </p>
-              <a href="/devenir-professionnel">Retour au formulaire</a>
-            </section>
-          `
-        )
+        page("Informations manquantes", `
+          <section class="card">
+            <h2>Informations manquantes ou invalides</h2>
+            <p>Verifiez que vous avez bien rempli le nom, le telephone, la ville, le metier et la description.</p>
+            <a href="/devenir-professionnel">Retour au formulaire</a>
+          </section>
+        `)
       );
     }
 
     if (!photoProfil || !photoIdentite) {
       return res.status(400).send(
-        page(
-          "Photos obligatoires",
-          `
-            <section class="card">
-              <h2>Photos obligatoires manquantes</h2>
-              <p>
-                La photo de profil et la photo d'identite sont obligatoires.
-              </p>
-              <a href="/devenir-professionnel">Retour au formulaire</a>
-            </section>
-          `
-        )
+        page("Photos obligatoires", `
+          <section class="card">
+            <h2>Photos obligatoires manquantes</h2>
+            <p>La photo de profil et la photo d'identite sont obligatoires.</p>
+            <a href="/devenir-professionnel">Retour au formulaire</a>
+          </section>
+        `)
       );
     }
 
@@ -1629,64 +1161,41 @@ app.post(
       const timestamp = Date.now();
 
       const profilResult = await uploadToCloudinary(
-        photoProfil.buffer,
-        "trouvemoi/profils",
-        `profil_${timestamp}`
+        photoProfil.buffer, "trouvemoi/profils", `profil_${timestamp}`
       );
       photoProfilUrl = profilResult.secure_url;
 
       const identiteResult = await uploadToCloudinary(
-        photoIdentite.buffer,
-        "trouvemoi/identites",
-        `identite_${timestamp}`
+        photoIdentite.buffer, "trouvemoi/identites", `identite_${timestamp}`
       );
       photoIdentiteUrl = identiteResult.secure_url;
 
       if (photoActivite) {
         const activiteResult = await uploadToCloudinary(
-          photoActivite.buffer,
-          "trouvemoi/activites",
-          `activite_${timestamp}`
+          photoActivite.buffer, "trouvemoi/activites", `activite_${timestamp}`
         );
         photoActiviteUrl = activiteResult.secure_url;
       }
     } catch (uploadError) {
-      console.error(
-        "Erreur d'upload Cloudinary :",
-        uploadError.message
-      );
+      console.error("Erreur d'upload Cloudinary :", uploadError.message);
 
       return res.status(500).send(
-        page(
-          "Erreur d'upload",
-          `
-            <section class="card">
-              <h2>Impossible de televerser les photos.</h2>
-              <p>Veuillez reessayer avec des images plus petites.</p>
-              <a href="/devenir-professionnel">Retour au formulaire</a>
-            </section>
-          `
-        )
+        page("Erreur d'upload", `
+          <section class="card">
+            <h2>Impossible de televerser les photos.</h2>
+            <p>Veuillez reessayer avec des images plus petites.</p>
+            <a href="/devenir-professionnel">Retour au formulaire</a>
+          </section>
+        `)
       );
     }
 
     try {
       const result = await pool.query(`
         INSERT INTO professional_applications (
-          full_name,
-          phone,
-          city,
-          neighborhood,
-          profession,
-          experience,
-          service_description,
-          service_area,
-          availability,
-          npi,
-          photo_profil_url,
-          photo_identite_url,
-          photo_activite_url,
-          status
+          full_name, phone, city, neighborhood, profession, experience,
+          service_description, service_area, availability, npi,
+          photo_profil_url, photo_identite_url, photo_activite_url, status
         )
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11,$12,'pending')
         RETURNING id
@@ -1696,46 +1205,30 @@ app.post(
         city.trim().slice(0, 100),
         finalNeighborhood,
         finalProfession,
-        typeof experience === "string"
-          ? experience.slice(0, 100) || null
-          : null,
+        typeof experience === "string" ? experience.slice(0, 100) || null : null,
         service_description.trim().slice(0, 3000),
-        typeof service_area === "string"
-          ? service_area.trim().slice(0, 300) || null
-          : null,
-        typeof availability === "string"
-          ? availability.slice(0, 100) || null
-          : null,
+        typeof service_area === "string" ? service_area.trim().slice(0, 300) || null : null,
+        typeof availability === "string" ? availability.slice(0, 100) || null : null,
         photoProfilUrl,
         photoIdentiteUrl,
         photoActiviteUrl
       ]);
 
       res.status(201).send(
-        page(
-          "Candidature envoyee",
-          `
-            <section class="card">
-              <h1>Candidature envoyee avec succes !</h1>
-              <p>Votre candidature a bien ete enregistree.</p>
-              <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
-              <p>Votre profil ne sera visible qu'apres approbation.</p>
-              <a class="button" href="/">Retour a l'accueil</a>
-            </section>
-          `
-        )
+        page("Candidature envoyee", `
+          <section class="card">
+            <h1>Candidature envoyee avec succes !</h1>
+            <p>Votre candidature a bien ete enregistree.</p>
+            <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
+            <p>Votre profil ne sera visible qu'apres approbation.</p>
+            <a class="button" href="/">Retour a l'accueil</a>
+          </section>
+        `)
       );
     } catch (error) {
-      console.error(
-        "Erreur lors de l'enregistrement :",
-        error.message
-      );
-
+      console.error("Erreur lors de l'enregistrement :", error.message);
       res.status(500).send(
-        page(
-          "Erreur",
-          "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>"
-        )
+        page("Erreur", "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>")
       );
     }
   }
@@ -1745,33 +1238,15 @@ app.post(
 
 app.get("/emplois", async (req, res) => {
   try {
-    const keyword = String(req.query.keyword || "")
-      .trim()
-      .slice(0, 150);
-
-    const city = String(req.query.city || "")
-      .trim()
-      .slice(0, 100);
-
-    const contract = String(req.query.contract || "")
-      .trim()
-      .slice(0, 50);
+    const keyword = String(req.query.keyword || "").trim().slice(0, 150);
+    const city = String(req.query.city || "").trim().slice(0, 100);
+    const contract = String(req.query.contract || "").trim().slice(0, 50);
 
     let query = `
       SELECT
-        id,
-        company_name,
-        job_title,
-        city,
-        contract_type,
-        salary,
-        description,
-        qualifications,
-        contact_phone,
-        contact_whatsapp,
-        contact_email,
-        deadline,
-        created_at
+        id, company_name, job_title, city, contract_type, salary,
+        description, qualifications, contact_phone, contact_whatsapp,
+        contact_email, deadline, created_at
       FROM job_offers
       WHERE status = 'approved'
         AND (deadline IS NULL OR deadline >= CURRENT_DATE)
@@ -1781,14 +1256,7 @@ app.get("/emplois", async (req, res) => {
 
     if (keyword) {
       values.push(`%${keyword}%`);
-
-      query += `
-        AND (
-          job_title ILIKE $${values.length}
-          OR company_name ILIKE $${values.length}
-          OR description ILIKE $${values.length}
-        )
-      `;
+      query += ` AND (job_title ILIKE $${values.length} OR company_name ILIKE $${values.length} OR description ILIKE $${values.length})`;
     }
 
     if (city) {
@@ -1808,117 +1276,60 @@ app.get("/emplois", async (req, res) => {
     const jobs = result.rows.map((job) => `
       <article class="card">
         <h2>${escapeHtml(job.job_title)}</h2>
-
-        <p>
-          <strong>Entreprise :</strong>
-          ${escapeHtml(job.company_name)}
-        </p>
-
-        <p>
-          <strong>Ville :</strong>
-          ${escapeHtml(job.city)}
-        </p>
-
-        <p>
-          <strong>Contrat :</strong>
-          ${escapeHtml(job.contract_type)}
-        </p>
-
-        ${job.salary
-          ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>`
-          : ""}
-
-        <p>
-          ${escapeHtml(job.description).replace(/\n/g, "<br>")}
-        </p>
-
-        ${job.qualifications
-          ? `<p><strong>Profil recherche :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>`
-          : ""}
-
-        ${job.deadline
-          ? `<p><strong>Date limite :</strong> ${escapeHtml(job.deadline)}</p>`
-          : ""}
-
+        <p><strong>Entreprise :</strong> ${escapeHtml(job.company_name)}</p>
+        <p><strong>Ville :</strong> ${escapeHtml(job.city)}</p>
+        <p><strong>Contrat :</strong> ${escapeHtml(job.contract_type)}</p>
+        ${job.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>` : ""}
+        <p>${escapeHtml(job.description).replace(/\n/g, "<br>")}</p>
+        ${job.qualifications ? `<p><strong>Profil recherche :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
+        ${job.deadline ? `<p><strong>Date limite :</strong> ${escapeHtml(job.deadline)}</p>` : ""}
         ${jobContactButtons(job)}
       </article>
     `).join("");
 
     const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
-      <option
-        value="${escapeHtml(type)}"
-        ${contract === type ? "selected" : ""}
-      >
+      <option value="${escapeHtml(type)}" ${contract === type ? "selected" : ""}>
         ${escapeHtml(type)}
       </option>
     `).join("");
 
     res.send(
-      page(
-        "Offres d'emploi",
-        `
+      page("Offres d'emploi", `
+        <section class="card">
+          <h1>Rechercher un emploi</h1>
+
+          <form action="/emplois" method="GET">
+            <label for="keyword">Metier, poste ou entreprise</label>
+            <input id="keyword" name="keyword" value="${escapeHtml(keyword)}" placeholder="Ex. : commercial">
+
+            <label for="city">Ville</label>
+            <input id="city" name="city" value="${escapeHtml(city)}" placeholder="Ex. : Cotonou">
+
+            <label for="contract">Type de contrat</label>
+            <select id="contract" name="contract">
+              <option value="">Tous les contrats</option>
+              ${contractOptions}
+            </select>
+
+            <button type="submit">Rechercher</button>
+          </form>
+
+          <a class="button" href="/publier-emploi">Publier gratuitement une offre</a>
+        </section>
+
+        <h2>Offres disponibles (${result.rows.length})</h2>
+
+        ${jobs || `
           <section class="card">
-            <h1>Rechercher un emploi</h1>
-
-            <form action="/emplois" method="GET">
-              <label for="keyword">
-                Metier, poste ou entreprise
-              </label>
-
-              <input
-                id="keyword"
-                name="keyword"
-                value="${escapeHtml(keyword)}"
-                placeholder="Ex. : commercial"
-              >
-
-              <label for="city">Ville</label>
-
-              <input
-                id="city"
-                name="city"
-                value="${escapeHtml(city)}"
-                placeholder="Ex. : Cotonou"
-              >
-
-              <label for="contract">Type de contrat</label>
-
-              <select id="contract" name="contract">
-                <option value="">Tous les contrats</option>
-                ${contractOptions}
-              </select>
-
-              <button type="submit">Rechercher</button>
-            </form>
-
-            <a class="button" href="/publier-emploi">
-              Publier gratuitement une offre
-            </a>
+            <p>Aucune offre ne correspond a votre recherche pour le moment.</p>
           </section>
-
-          <h2>Offres disponibles (${result.rows.length})</h2>
-
-          ${jobs || `
-            <section class="card">
-              <p>
-                Aucune offre ne correspond a votre recherche pour le moment.
-              </p>
-            </section>
-          `}
-        `
-      )
+        `}
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur lors de la recherche d'emplois :",
-      error.message
-    );
-
+    console.error("Erreur lors de la recherche d'emplois :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        "<section class='card'><h2>Impossible de charger les offres d'emploi.</h2></section>"
-      )
+      page("Erreur", "<section class='card'><h2>Impossible de charger les offres d'emploi.</h2></section>")
     );
   }
 });
@@ -1927,228 +1338,93 @@ app.get("/emplois", async (req, res) => {
 
 app.get("/publier-emploi", (req, res) => {
   const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
-    <option value="${escapeHtml(type)}">
-      ${escapeHtml(type)}
-    </option>
+    <option value="${escapeHtml(type)}">${escapeHtml(type)}</option>
   `).join("");
 
   res.send(
-    page(
-      "Publier une offre d'emploi",
-      `
-        <section class="card">
-          <h1>Publier gratuitement une offre d'emploi</h1>
+    page("Publier une offre d'emploi", `
+      <section class="card">
+        <h1>Publier gratuitement une offre d'emploi</h1>
 
-          <p>
-            La publication est gratuite. Votre offre sera verifiee
-            par l'administration avant d'etre visible.
-          </p>
+        <p>La publication est gratuite. Votre offre sera verifiee par l'administration avant d'etre visible.</p>
 
-          <form action="/offres-emploi" method="POST">
-            <label for="company_name">
-              Nom de l'entreprise ou du recruteur *
-            </label>
+        <form action="/offres-emploi" method="POST">
+          <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
+          <input id="company_name" name="company_name" required maxlength="200">
 
-            <input
-              id="company_name"
-              name="company_name"
-              required
-              maxlength="200"
-            >
+          <label for="job_title">Intitule du poste *</label>
+          <input id="job_title" name="job_title" required maxlength="200">
 
-            <label for="job_title">Intitule du poste *</label>
+          <label for="city">Ville *</label>
+          <input id="city" name="city" required maxlength="100">
 
-            <input
-              id="job_title"
-              name="job_title"
-              required
-              maxlength="200"
-            >
+          <label for="contract_type">Type de contrat *</label>
+          <select id="contract_type" name="contract_type" required>
+            <option value="">Choisir</option>
+            ${contractOptions}
+          </select>
 
-            <label for="city">Ville *</label>
+          <label for="salary">Salaire (facultatif)</label>
+          <input id="salary" name="salary" maxlength="100" placeholder="Ex. : 100 000 FCFA/mois">
 
-            <input
-              id="city"
-              name="city"
-              required
-              maxlength="100"
-            >
+          <label for="description">Description du poste *</label>
+          <textarea id="description" name="description" required maxlength="8000" rows="6"></textarea>
 
-            <label for="contract_type">Type de contrat *</label>
+          <label for="qualifications">Qualifications et competences recherchees</label>
+          <textarea id="qualifications" name="qualifications" maxlength="4000" rows="4"></textarea>
 
-            <select id="contract_type" name="contract_type" required>
-              <option value="">Choisir</option>
-              ${contractOptions}
-            </select>
+          <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
+            <legend>Moyens de contact (au moins un obligatoire) *</legend>
 
-            <label for="salary">Salaire (facultatif)</label>
+            <label><input style="width:auto" type="checkbox" id="use_phone" name="use_phone" value="yes"> Appel direct</label>
+            <label for="contact_phone">Numero de telephone</label>
+            <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" placeholder="+229...">
 
-            <input
-              id="salary"
-              name="salary"
-              maxlength="100"
-              placeholder="Ex. : 100 000 FCFA/mois"
-            >
+            <label><input style="width:auto" type="checkbox" id="use_whatsapp" name="use_whatsapp" value="yes"> WhatsApp</label>
+            <label for="contact_whatsapp">Numero WhatsApp</label>
+            <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" placeholder="+229...">
 
-            <label for="description">
-              Description du poste *
-            </label>
+            <label><input style="width:auto" type="checkbox" id="use_email" name="use_email" value="yes"> E-mail</label>
+            <label for="contact_email">Adresse e-mail</label>
+            <input id="contact_email" name="contact_email" type="email" maxlength="254" placeholder="recrutement@entreprise.com">
+          </fieldset>
 
-            <textarea
-              id="description"
-              name="description"
-              required
-              maxlength="8000"
-              rows="6"
-            ></textarea>
+          <label for="deadline">Date limite de candidature (facultatif)</label>
+          <input id="deadline" name="deadline" type="date">
 
-            <label for="qualifications">
-              Qualifications et competences recherchees
-            </label>
+          <button type="submit">Soumettre l'offre gratuitement</button>
+        </form>
 
-            <textarea
-              id="qualifications"
-              name="qualifications"
-              maxlength="4000"
-              rows="4"
-            ></textarea>
+        <p><a href="/emplois">Retour aux offres d'emploi</a></p>
+      </section>
 
-            <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
-              <legend>
-                Moyens de contact (au moins un obligatoire) *
-              </legend>
+      <script>
+        const form = document.querySelector('form');
 
-              <p>
-                Cochez un ou plusieurs moyens de contact.
-                Remplissez le champ correspondant a chaque moyen choisi.
-              </p>
+        form.addEventListener('submit', function(event) {
+          const methods = [
+            ['use_phone', 'contact_phone'],
+            ['use_whatsapp', 'contact_whatsapp'],
+            ['use_email', 'contact_email']
+          ];
 
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_phone"
-                  name="use_phone"
-                  value="yes"
-                >
-                Appel direct
-              </label>
+          const selected = methods.filter(([check]) => document.getElementById(check).checked);
 
-              <label for="contact_phone">
-                Numero de telephone
-              </label>
+          if (!selected.length) {
+            event.preventDefault();
+            alert('Choisissez au moins un moyen de contact.');
+            return;
+          }
 
-              <input
-                id="contact_phone"
-                name="contact_phone"
-                type="tel"
-                maxlength="30"
-                placeholder="+229..."
-              >
+          const missing = selected.find(([check, field]) => !document.getElementById(field).value.trim());
 
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_whatsapp"
-                  name="use_whatsapp"
-                  value="yes"
-                >
-                WhatsApp
-              </label>
-
-              <label for="contact_whatsapp">
-                Numero WhatsApp
-              </label>
-
-              <input
-                id="contact_whatsapp"
-                name="contact_whatsapp"
-                type="tel"
-                maxlength="30"
-                placeholder="+229..."
-              >
-
-              <label>
-                <input
-                  style="width:auto"
-                  type="checkbox"
-                  id="use_email"
-                  name="use_email"
-                  value="yes"
-                >
-                E-mail
-              </label>
-
-              <label for="contact_email">
-                Adresse e-mail
-              </label>
-
-              <input
-                id="contact_email"
-                name="contact_email"
-                type="email"
-                maxlength="254"
-                placeholder="recrutement@entreprise.com"
-              >
-            </fieldset>
-
-            <label for="deadline">
-              Date limite de candidature (facultatif)
-            </label>
-
-            <input
-              id="deadline"
-              name="deadline"
-              type="date"
-            >
-
-            <button type="submit">
-              Soumettre l'offre gratuitement
-            </button>
-          </form>
-
-          <p>
-            <a href="/emplois">Retour aux offres d'emploi</a>
-          </p>
-        </section>
-
-        <script>
-          const form = document.querySelector('form');
-
-          form.addEventListener('submit', function(event) {
-            const methods = [
-              ['use_phone', 'contact_phone'],
-              ['use_whatsapp', 'contact_whatsapp'],
-              ['use_email', 'contact_email']
-            ];
-
-            const selected = methods.filter(
-              ([check]) => document.getElementById(check).checked
-            );
-
-            if (!selected.length) {
-              event.preventDefault();
-              alert('Choisissez au moins un moyen de contact.');
-              return;
-            }
-
-            const missing = selected.find(
-              ([check, field]) =>
-                !document.getElementById(field).value.trim()
-            );
-
-            if (missing) {
-              event.preventDefault();
-
-              alert(
-                'Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.'
-              );
-            }
-          });
-        </script>
-      `
-    )
+          if (missing) {
+            event.preventDefault();
+            alert('Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.');
+          }
+        });
+      </script>
+    `)
   );
 });
 
@@ -2156,194 +1432,105 @@ app.get("/publier-emploi", (req, res) => {
 
 app.post("/offres-emploi", async (req, res) => {
   const {
-    company_name,
-    job_title,
-    city,
-    contract_type,
-    salary,
-    description,
-    qualifications,
-    contact_phone,
-    contact_whatsapp,
-    contact_email,
-    deadline,
-    use_phone,
-    use_whatsapp,
-    use_email
+    company_name, job_title, city, contract_type, salary, description,
+    qualifications, contact_phone, contact_whatsapp, contact_email,
+    deadline, use_phone, use_whatsapp, use_email
   } = req.body;
 
-  const company = typeof company_name === "string"
-    ? company_name.trim()
-    : "";
+  const company = typeof company_name === "string" ? company_name.trim() : "";
+  const title = typeof job_title === "string" ? job_title.trim() : "";
+  const jobCity = typeof city === "string" ? city.trim() : "";
+  const contract = typeof contract_type === "string" ? contract_type.trim() : "";
+  const jobDescription = typeof description === "string" ? description.trim() : "";
 
-  const title = typeof job_title === "string"
-    ? job_title.trim()
-    : "";
+  const phone = use_phone === "yes" && typeof contact_phone === "string" ? normalizePhone(contact_phone) : null;
+  const whatsapp = use_whatsapp === "yes" && typeof contact_whatsapp === "string" ? normalizePhone(contact_whatsapp) : null;
+  const email = use_email === "yes" && typeof contact_email === "string" ? contact_email.trim() : null;
+  const jobDeadline = typeof deadline === "string" && deadline.trim() ? deadline.trim() : null;
 
-  const jobCity = typeof city === "string"
-    ? city.trim()
-    : "";
-
-  const contract = typeof contract_type === "string"
-    ? contract_type.trim()
-    : "";
-
-  const jobDescription = typeof description === "string"
-    ? description.trim()
-    : "";
-
-  const phone =
-    use_phone === "yes" && typeof contact_phone === "string"
-      ? normalizePhone(contact_phone)
-      : null;
-
-  const whatsapp =
-    use_whatsapp === "yes" && typeof contact_whatsapp === "string"
-      ? normalizePhone(contact_whatsapp)
-      : null;
-
-  const email =
-    use_email === "yes" && typeof contact_email === "string"
-      ? contact_email.trim()
-      : null;
-
-  const jobDeadline =
-    typeof deadline === "string" && deadline.trim()
-      ? deadline.trim()
-      : null;
-
-  if (
-    !company ||
-    !title ||
-    !jobCity ||
-    !jobDescription ||
-    !JOB_CONTRACT_TYPES.includes(contract)
-  ) {
+  if (!company || !title || !jobCity || !jobDescription || !JOB_CONTRACT_TYPES.includes(contract)) {
     return res.status(400).send(
-      page(
-        "Informations manquantes",
-        `
-          <section class="card">
-            <h2>Informations obligatoires manquantes ou invalides.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Informations manquantes", `
+        <section class="card">
+          <h2>Informations obligatoires manquantes ou invalides.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
-  if (
-    company.length > 200 ||
-    title.length > 200 ||
-    jobCity.length > 100 ||
-    jobDescription.length > 8000
-  ) {
+  if (company.length > 200 || title.length > 200 || jobCity.length > 100 || jobDescription.length > 8000) {
     return res.status(400).send(
-      page(
-        "Informations trop longues",
-        `
-          <section class="card">
-            <h2>Certains champs depassent la longueur autorisee.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Informations trop longues", `
+        <section class="card">
+          <h2>Certains champs depassent la longueur autorisee.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (!phone && !whatsapp && !email) {
     return res.status(400).send(
-      page(
-        "Contact obligatoire",
-        `
-          <section class="card">
-            <h2>
-              Choisissez au moins un moyen de contact et renseignez ses coordonnees.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Contact obligatoire", `
+        <section class="card">
+          <h2>Choisissez au moins un moyen de contact et renseignez ses coordonnees.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (phone && !validPhone(phone)) {
     return res.status(400).send(
-      page(
-        "Telephone invalide",
-        `
-          <section class="card">
-            <h2>
-              Le numero de telephone est invalide.
-              Utilisez l'indicatif international, par exemple +229XXXXXXXX.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Telephone invalide", `
+        <section class="card">
+          <h2>Le numero de telephone est invalide.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (whatsapp && !validPhone(whatsapp)) {
     return res.status(400).send(
-      page(
-        "WhatsApp invalide",
-        `
-          <section class="card">
-            <h2>
-              Le numero WhatsApp est invalide.
-              Utilisez l'indicatif international, par exemple +229XXXXXXXX.
-            </h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("WhatsApp invalide", `
+        <section class="card">
+          <h2>Le numero WhatsApp est invalide.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (email && !validEmail(email)) {
     return res.status(400).send(
-      page(
-        "E-mail invalide",
-        `
-          <section class="card">
-            <h2>L'adresse e-mail est invalide.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("E-mail invalide", `
+        <section class="card">
+          <h2>L'adresse e-mail est invalide.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (jobDeadline && !/^\d{4}-\d{2}-\d{2}$/.test(jobDeadline)) {
     return res.status(400).send(
-      page(
-        "Date invalide",
-        `
-          <section class="card">
-            <h2>La date limite est invalide.</h2>
-            <a href="/publier-emploi">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Date invalide", `
+        <section class="card">
+          <h2>La date limite est invalide.</h2>
+          <a href="/publier-emploi">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   try {
     await pool.query(`
       INSERT INTO job_offers (
-        company_name,
-        job_title,
-        city,
-        contract_type,
-        salary,
-        description,
-        qualifications,
-        contact_phone,
-        contact_whatsapp,
-        contact_email,
-        deadline,
-        status
+        company_name, job_title, city, contract_type, salary, description,
+        qualifications, contact_phone, contact_whatsapp, contact_email,
+        deadline, status
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending')
     `, [
@@ -2351,65 +1538,40 @@ app.post("/offres-emploi", async (req, res) => {
       title.slice(0, 200),
       jobCity.slice(0, 100),
       contract,
-      typeof salary === "string"
-        ? salary.trim().slice(0, 100) || null
-        : null,
+      typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
-      typeof qualifications === "string"
-        ? qualifications.trim().slice(0, 4000) || null
-        : null,
-      phone,
-      whatsapp,
-      email,
-      jobDeadline
+      typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
+      phone, whatsapp, email, jobDeadline
     ]);
 
     res.status(201).send(
-      page(
-        "Offre soumise",
-        `
-          <section class="card">
-            <h1>Votre offre a bien ete soumise</h1>
-
-            <p>
-              Merci ! Votre offre est en attente de verification
-              par l'administration. Elle ne sera visible qu'apres approbation.
-            </p>
-
-            <a class="button" href="/emplois">
-              Consulter les offres d'emploi
-            </a>
-          </section>
-        `
-      )
+      page("Offre soumise", `
+        <section class="card">
+          <h1>Votre offre a bien ete soumise</h1>
+          <p>Merci ! Votre offre est en attente de verification par l'administration.</p>
+          <a class="button" href="/emplois">Consulter les offres d'emploi</a>
+        </section>
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur lors de l'enregistrement de l'offre :",
-      error.message
-    );
-
+    console.error("Erreur lors de l'enregistrement de l'offre :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        `
-          <section class="card">
-            <h2>Impossible d'enregistrer l'offre pour le moment.</h2>
-            <p>Veuillez reessayer plus tard.</p>
-          </section>
-        `
-      )
+      page("Erreur", `
+        <section class="card">
+          <h2>Impossible d'enregistrer l'offre pour le moment.</h2>
+          <p>Veuillez reessayer plus tard.</p>
+        </section>
+      `)
     );
   }
+});
 
 /* CONNEXION ADMINISTRATEUR */
 
 const loginAttempts = new Map();
 
 app.get("/admin", (req, res) => {
-  const session = verifySessionToken(
-    readCookie(req, SESSION_COOKIE)
-  );
+  const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
 
   if (session) {
     return res.redirect(303, "/admin/dashboard");
@@ -2426,16 +1588,7 @@ app.get("/admin", (req, res) => {
 
       <form action="/admin/login" method="POST">
         <label for="password">Mot de passe administrateur</label>
-
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          maxlength="300"
-          autocomplete="current-password"
-        >
-
+        <input id="password" name="password" type="password" required maxlength="300" autocomplete="current-password">
         <button type="submit">Se connecter</button>
       </form>
 
@@ -2460,65 +1613,42 @@ app.post("/admin/login", (req, res) => {
 
   if (current && current.count >= 5) {
     return res.status(429).send(
-      page(
-        "Trop de tentatives",
-        `
-          <h2>Trop de tentatives de connexion.</h2>
-          <p>Veuillez patienter 15 minutes avant de reessayer.</p>
-        `
-      )
+      page("Trop de tentatives", `
+        <h2>Trop de tentatives de connexion.</h2>
+        <p>Veuillez patienter 15 minutes avant de reessayer.</p>
+      `)
     );
   }
 
   const configuredPassword = process.env.ADMIN_PASSWORD;
   const submittedPassword = req.body.password;
 
-  if (
-    !configuredPassword ||
-    typeof submittedPassword !== "string" ||
-    !safeEqual(submittedPassword, configuredPassword)
-  ) {
+  if (!configuredPassword || typeof submittedPassword !== "string" || !safeEqual(submittedPassword, configuredPassword)) {
     if (current) {
       current.count += 1;
     } else {
-      loginAttempts.set(address, {
-        count: 1,
-        startedAt: now
-      });
+      loginAttempts.set(address, { count: 1, startedAt: now });
     }
 
     return res.status(401).send(
-      page(
-        "Connexion refusee",
-        `
-          <section class="card">
-            <h2>Identifiants incorrects.</h2>
-            <p><a href="/admin">Reessayer</a></p>
-          </section>
-        `
-      )
+      page("Connexion refusee", `
+        <section class="card">
+          <h2>Identifiants incorrects.</h2>
+          <p><a href="/admin">Reessayer</a></p>
+        </section>
+      `)
     );
   }
 
   loginAttempts.delete(address);
 
-  if (
-    !process.env.ADMIN_SESSION_SECRET ||
-    process.env.ADMIN_SESSION_SECRET.length < 32
-  ) {
-    console.error(
-      "ADMIN_SESSION_SECRET est absente ou trop courte."
-    );
+  if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
+    console.error("ADMIN_SESSION_SECRET est absente ou trop courte.");
 
     return res.status(500).send(
-      page(
-        "Configuration incomplete",
-        `
-          <h2>
-            La configuration securisee de l'administration est incomplete.
-          </h2>
-        `
-      )
+      page("Configuration incomplete", `
+        <h2>La configuration securisee de l'administration est incomplete.</h2>
+      `)
     );
   }
 
@@ -2535,7 +1665,7 @@ app.post("/admin/login", (req, res) => {
 
 /* FONCTION : MENU ADMIN */
 
-function adminMenu(current) {
+function adminMenu(current, csrf) {
   const links = [
     { href: "/admin/dashboard", label: "📊 Tableau de bord" },
     { href: "/admin/candidatures", label: "📋 Candidatures" },
@@ -2547,65 +1677,32 @@ function adminMenu(current) {
     <section class="card">
       <div class="actions">
         ${links.map((link) => `
-          <a
-            class="button ${current === link.href ? "" : "secondary"}"
-            href="${link.href}"
-          >
+          <a class="button ${current === link.href ? "" : "secondary"}" href="${link.href}">
             ${link.label}
           </a>
         `).join("")}
 
-        <a class="button secondary" href="/" target="_blank">
-          🌐 Voir le site
-        </a>
+        <a class="button secondary" href="/" target="_blank">🌐 Voir le site</a>
       </div>
 
-      <form
-        action="/admin/logout"
-        method="POST"
-        style="display:inline"
-      >
-        <input
-          type="hidden"
-          name="csrfToken"
-          value="__CSRF__"
-        >
-
-        <button class="danger" type="submit">
-          Se deconnecter
-        </button>
+      <form action="/admin/logout" method="POST" style="display:inline">
+        <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+        <button class="danger" type="submit">Se deconnecter</button>
       </form>
     </section>
   `;
 }
 
-/* TABLEAU DE BORD ADMINISTRATEUR */
+/* TABLEAU DE BORD */
 
 app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   try {
-    const prosApproved = await pool.query(
-      "SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'"
-    );
-
-    const prosPending = await pool.query(
-      "SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'"
-    );
-
-    const jobsApproved = await pool.query(
-      "SELECT COUNT(*) FROM job_offers WHERE status = 'approved'"
-    );
-
-    const jobsPending = await pool.query(
-      "SELECT COUNT(*) FROM job_offers WHERE status = 'pending'"
-    );
-
-    const messagesUnread = await pool.query(
-      "SELECT COUNT(*) FROM contact_messages WHERE is_read = false"
-    );
-
-    const messagesTotal = await pool.query(
-      "SELECT COUNT(*) FROM contact_messages"
-    );
+    const prosApproved = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
+    const prosPending = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'");
+    const jobsApproved = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'approved'");
+    const jobsPending = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'");
+    const messagesUnread = await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false");
+    const messagesTotal = await pool.query("SELECT COUNT(*) FROM contact_messages");
 
     const stats = {
       prosApproved: Number(prosApproved.rows[0].count),
@@ -2616,333 +1713,175 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       messagesTotal: Number(messagesTotal.rows[0].count)
     };
 
-    const menuHtml = adminMenu("/admin/dashboard")
-      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
-
     res.setHeader("Cache-Control", "no-store");
 
     res.send(
-      page(
-        "Tableau de bord",
-        `
-          <section class="card">
-            <h1>Tableau de bord</h1>
-            <p class="muted">
-              Bienvenue dans votre espace d'administration.
-              Voici un apercu de l'activite de TrouveMoi.
-            </p>
-          </section>
+      page("Tableau de bord", `
+        <section class="card">
+          <h1>Tableau de bord</h1>
+          <p class="muted">Bienvenue dans votre espace d'administration. Voici un apercu de l'activite de TrouveMoi.</p>
+        </section>
 
-          ${menuHtml}
+        ${adminMenu("/admin/dashboard", req.adminSession.csrf)}
 
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">👥</div>
-              <div class="stat-number">${stats.prosApproved}</div>
-              <div class="stat-label">Pros approuves</div>
-              <a class="stat-link" href="/admin/candidatures">
-                Voir les candidatures →
-              </a>
-            </div>
-
-            <div class="stat-card warning">
-              <div class="stat-icon">⏳</div>
-              <div class="stat-number">${stats.prosPending}</div>
-              <div class="stat-label">Candidatures en attente</div>
-              <a class="stat-link" href="/admin/candidatures">
-                Traiter maintenant →
-              </a>
-            </div>
-
-            <div class="stat-card info">
-              <div class="stat-icon">💼</div>
-              <div class="stat-number">${stats.jobsApproved}</div>
-              <div class="stat-label">Offres publiees</div>
-              <a class="stat-link" href="/admin/emplois">
-                Voir les offres →
-              </a>
-            </div>
-
-            <div class="stat-card warning">
-              <div class="stat-icon">📝</div>
-              <div class="stat-number">${stats.jobsPending}</div>
-              <div class="stat-label">Offres en attente</div>
-              <a class="stat-link" href="/admin/emplois">
-                Traiter maintenant →
-              </a>
-            </div>
-
-            <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
-              <div class="stat-icon">📩</div>
-              <div class="stat-number">${stats.messagesUnread}</div>
-              <div class="stat-label">Messages non lus</div>
-              <a class="stat-link" href="/admin/messages">
-                Lire les messages →
-              </a>
-            </div>
-
-            <div class="stat-card">
-              <div class="stat-icon">📬</div>
-              <div class="stat-number">${stats.messagesTotal}</div>
-              <div class="stat-label">Messages au total</div>
-              <a class="stat-link" href="/admin/messages">
-                Voir l'historique →
-              </a>
-            </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-number">${stats.prosApproved}</div>
+            <div class="stat-label">Pros approuves</div>
+            <a class="stat-link" href="/admin/candidatures">Voir les candidatures →</a>
           </div>
 
-          <section class="card">
-            <h3>Actions rapides</h3>
+          <div class="stat-card warning">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-number">${stats.prosPending}</div>
+            <div class="stat-label">Candidatures en attente</div>
+            <a class="stat-link" href="/admin/candidatures">Traiter maintenant →</a>
+          </div>
 
-            <div class="actions">
-              <a class="button" href="/admin/candidatures">
-                Gerer les candidatures
-              </a>
+          <div class="stat-card info">
+            <div class="stat-icon">💼</div>
+            <div class="stat-number">${stats.jobsApproved}</div>
+            <div class="stat-label">Offres publiees</div>
+            <a class="stat-link" href="/admin/emplois">Voir les offres →</a>
+          </div>
 
-              <a class="button" href="/admin/emplois">
-                Gerer les offres d'emploi
-              </a>
+          <div class="stat-card warning">
+            <div class="stat-icon">📝</div>
+            <div class="stat-number">${stats.jobsPending}</div>
+            <div class="stat-label">Offres en attente</div>
+            <a class="stat-link" href="/admin/emplois">Traiter maintenant →</a>
+          </div>
 
-              <a class="button" href="/admin/messages">
-                Voir les messages
-              </a>
-            </div>
-          </section>
-        `
-      )
+          <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
+            <div class="stat-icon">📩</div>
+            <div class="stat-number">${stats.messagesUnread}</div>
+            <div class="stat-label">Messages non lus</div>
+            <a class="stat-link" href="/admin/messages">Lire les messages →</a>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-icon">📬</div>
+            <div class="stat-number">${stats.messagesTotal}</div>
+            <div class="stat-label">Messages au total</div>
+            <a class="stat-link" href="/admin/messages">Voir l'historique →</a>
+          </div>
+        </div>
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur du tableau de bord :",
-      error.message
-    );
-
+    console.error("Erreur du tableau de bord :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        "<h2>Impossible de charger le tableau de bord.</h2>"
-      )
+      page("Erreur", "<h2>Impossible de charger le tableau de bord.</h2>")
     );
   }
 });
 
-/* ADMIN : CANDIDATURES PROFESSIONNELLES */
+/* ADMIN : CANDIDATURES */
 
-app.get(
-  "/admin/candidatures",
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const result = await pool.query(`
-        SELECT
-          id,
-          full_name,
-          phone,
-          city,
-          neighborhood,
-          profession,
-          experience,
-          service_description,
-          service_area,
-          availability,
-          status,
-          created_at,
-          photo_profil_url,
-          photo_identite_url,
-          photo_activite_url
-        FROM professional_applications
-        ORDER BY
-          CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-          created_at DESC
-        LIMIT 200
-      `);
+app.get("/admin/candidatures", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id, full_name, phone, city, neighborhood, profession,
+        experience, service_description, service_area, availability,
+        status, created_at, photo_profil_url, photo_identite_url,
+        photo_activite_url
+      FROM professional_applications
+      ORDER BY
+        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
+        created_at DESC
+      LIMIT 200
+    `);
 
-      const applications = result.rows.map((candidate) => {
-        const statusOptions = ALLOWED_STATUSES.map((status) => `
-          <option
-            value="${status}"
-            ${candidate.status === status ? "selected" : ""}
-          >
-            ${STATUS_LABELS[status]}
-          </option>
-        `).join("");
+    const applications = result.rows.map((candidate) => {
+      const statusOptions = ALLOWED_STATUSES.map((status) => `
+        <option value="${status}" ${candidate.status === status ? "selected" : ""}>
+          ${STATUS_LABELS[status]}
+        </option>
+      `).join("");
 
-        const photos = `
-          <div class="photos-grid">
-            ${candidate.photo_profil_url
-              ? `
-                <div class="photo-block">
-                  <img
-                    src="${escapeHtml(candidate.photo_profil_url)}"
-                    alt="Photo de profil"
-                    class="photo-profil"
-                  >
-                  <div class="photo-label">Profil (privee)</div>
-                </div>
-              `
-              : ""
-            }
+      const photos = `
+        <div class="photos-grid">
+          ${candidate.photo_profil_url ? `
+            <div class="photo-block">
+              <img src="${escapeHtml(candidate.photo_profil_url)}" alt="Photo de profil" class="photo-profil">
+              <div class="photo-label">Profil (privee)</div>
+            </div>
+          ` : ""}
 
-            ${candidate.photo_identite_url
-              ? `
-                <div class="photo-block">
-                  <img
-                    src="${escapeHtml(candidate.photo_identite_url)}"
-                    alt="Photo d'identite"
-                    class="photo-identite"
-                  >
-                  <div class="photo-label">Identite (privee)</div>
-                </div>
-              `
-              : ""
-            }
+          ${candidate.photo_identite_url ? `
+            <div class="photo-block">
+              <img src="${escapeHtml(candidate.photo_identite_url)}" alt="Photo d'identite" class="photo-identite">
+              <div class="photo-label">Identite (privee)</div>
+            </div>
+          ` : ""}
 
-            ${candidate.photo_activite_url
-              ? `
-                <div class="photo-block">
-                  <img
-                    src="${escapeHtml(candidate.photo_activite_url)}"
-                    alt="Photo d'activite"
-                    class="photo-activite"
-                  >
-                  <div class="photo-label">Activite (publique)</div>
-                </div>
-              `
-              : ""
-            }
-          </div>
-        `;
+          ${candidate.photo_activite_url ? `
+            <div class="photo-block">
+              <img src="${escapeHtml(candidate.photo_activite_url)}" alt="Photo d'activite" class="photo-activite">
+              <div class="photo-label">Activite (publique)</div>
+            </div>
+          ` : ""}
+        </div>
+      `;
 
-        return `
-          <article class="card">
-            <h2>${escapeHtml(candidate.full_name)}</h2>
+      return `
+        <article class="card">
+          <h2>${escapeHtml(candidate.full_name)}</h2>
+          ${photos}
 
-            ${photos}
+          <p><strong>Reference :</strong> ${escapeHtml(candidate.id)}</p>
+          <p><strong>Telephone prive :</strong> ${escapeHtml(candidate.phone)}</p>
+          <p><strong>Ville :</strong> ${escapeHtml(candidate.city)}</p>
+          <p><strong>Quartier :</strong> ${escapeHtml(candidate.neighborhood || "Non renseigne")}</p>
+          <p><strong>Profession :</strong> ${escapeHtml(candidate.profession)}</p>
+          <p><strong>Experience :</strong> ${escapeHtml(candidate.experience || "Non renseignee")}</p>
+          <p><strong>Description :</strong> ${escapeHtml(candidate.service_description)}</p>
+          <p><strong>Zone :</strong> ${escapeHtml(candidate.service_area || "Non renseignee")}</p>
+          <p><strong>Disponibilite :</strong> ${escapeHtml(candidate.availability || "Non renseignee")}</p>
+          <p><strong>Statut actuel :</strong> ${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}</p>
+          <p class="muted">Recue le : ${escapeHtml(candidate.created_at)}</p>
 
-            <p>
-              <strong>Reference :</strong>
-              ${escapeHtml(candidate.id)}
-            </p>
+          <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status" method="POST">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
 
-            <p>
-              <strong>Telephone prive :</strong>
-              ${escapeHtml(candidate.phone)}
-            </p>
+            <label for="status-${escapeHtml(candidate.id)}">Changer le statut</label>
+            <select id="status-${escapeHtml(candidate.id)}" name="status">
+              ${statusOptions}
+            </select>
 
-            <p>
-              <strong>Ville :</strong>
-              ${escapeHtml(candidate.city)}
-            </p>
+            <button type="submit">Enregistrer le statut</button>
+          </form>
+        </article>
+      `;
+    }).join("");
 
-            <p>
-              <strong>Quartier :</strong>
-              ${escapeHtml(candidate.neighborhood || "Non renseigne")}
-            </p>
+    res.setHeader("Cache-Control", "no-store");
 
-            <p>
-              <strong>Profession :</strong>
-              ${escapeHtml(candidate.profession)}
-            </p>
+    res.send(
+      page("Candidatures", `
+        <section class="card">
+          <h1>Candidatures professionnelles</h1>
+          <p>Total affiche : ${result.rows.length} candidature(s)</p>
+        </section>
 
-            <p>
-              <strong>Experience :</strong>
-              ${escapeHtml(candidate.experience || "Non renseignee")}
-            </p>
+        ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
 
-            <p>
-              <strong>Description :</strong>
-              ${escapeHtml(candidate.service_description)}
-            </p>
-
-            <p>
-              <strong>Zone :</strong>
-              ${escapeHtml(candidate.service_area || "Non renseignee")}
-            </p>
-
-            <p>
-              <strong>Disponibilite :</strong>
-              ${escapeHtml(candidate.availability || "Non renseignee")}
-            </p>
-
-            <p>
-              <strong>Statut actuel :</strong>
-              ${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}
-            </p>
-
-            <p class="muted">
-              Recue le : ${escapeHtml(candidate.created_at)}
-            </p>
-
-            <form
-              action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status"
-              method="POST"
-            >
-              <input
-                type="hidden"
-                name="csrfToken"
-                value="${escapeHtml(req.adminSession.csrf)}"
-              >
-
-              <label for="status-${escapeHtml(candidate.id)}">
-                Changer le statut
-              </label>
-
-              <select
-                id="status-${escapeHtml(candidate.id)}"
-                name="status"
-              >
-                ${statusOptions}
-              </select>
-
-              <button type="submit">
-                Enregistrer le statut
-              </button>
-            </form>
-          </article>
-        `;
-      }).join("");
-
-      const menuHtml = adminMenu("/admin/candidatures")
-        .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
-
-      res.setHeader("Cache-Control", "no-store");
-
-      res.send(
-        page(
-          "Candidatures",
-          `
-            <section class="card">
-              <h1>Candidatures professionnelles</h1>
-              <p>
-                Total affiche : ${result.rows.length} candidature(s)
-              </p>
-            </section>
-
-            ${menuHtml}
-
-            ${applications || `
-              <section class="card">
-                <p>Aucune candidature pour le moment.</p>
-              </section>
-            `}
-          `
-        )
-      );
-    } catch (error) {
-      console.error(
-        "Erreur du tableau de bord :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de charger les candidatures.</h2>"
-        )
-      );
-    }
+        ${applications || `
+          <section class="card">
+            <p>Aucune candidature pour le moment.</p>
+          </section>
+        `}
+      `)
+    );
+  } catch (error) {
+    console.error("Erreur du tableau de bord :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Impossible de charger les candidatures.</h2>")
+    );
   }
-);
+});
 
 /* ADMIN : OFFRES D'EMPLOI */
 
@@ -2950,20 +1889,9 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id,
-        company_name,
-        job_title,
-        city,
-        contract_type,
-        salary,
-        description,
-        qualifications,
-        contact_phone,
-        contact_whatsapp,
-        contact_email,
-        deadline,
-        status,
-        created_at
+        id, company_name, job_title, city, contract_type, salary,
+        description, qualifications, contact_phone, contact_whatsapp,
+        contact_email, deadline, status, created_at
       FROM job_offers
       ORDER BY
         CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
@@ -2973,10 +1901,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
     const offers = result.rows.map((job) => {
       const statusOptions = JOB_STATUSES.map((status) => `
-        <option
-          value="${status}"
-          ${job.status === status ? "selected" : ""}
-        >
+        <option value="${status}" ${job.status === status ? "selected" : ""}>
           ${JOB_STATUS_LABELS[status]}
         </option>
       `).join("");
@@ -2984,270 +1909,140 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       return `
         <article class="card">
           <h2>${escapeHtml(job.job_title)}</h2>
+          <p><strong>Entreprise/recruteur :</strong> ${escapeHtml(job.company_name)}</p>
+          <p><strong>Ville :</strong> ${escapeHtml(job.city)}</p>
+          <p><strong>Contrat :</strong> ${escapeHtml(job.contract_type)}</p>
+          ${job.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>` : ""}
+          <p><strong>Description :</strong> ${escapeHtml(job.description).replace(/\n/g, "<br>")}</p>
+          ${job.qualifications ? `<p><strong>Qualifications :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
+          <p><strong>Contact telephone :</strong> ${escapeHtml(job.contact_phone || "Non fourni")}</p>
+          <p><strong>Contact WhatsApp :</strong> ${escapeHtml(job.contact_whatsapp || "Non fourni")}</p>
+          <p><strong>Contact e-mail :</strong> ${escapeHtml(job.contact_email || "Non fourni")}</p>
+          <p><strong>Date limite :</strong> ${escapeHtml(job.deadline || "Non renseignee")}</p>
+          <p><strong>Statut :</strong> ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}</p>
 
-          <p>
-            <strong>Entreprise/recruteur :</strong>
-            ${escapeHtml(job.company_name)}
-          </p>
+          <form action="/admin/emplois/${encodeURIComponent(job.id)}/status" method="POST">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
 
-          <p>
-            <strong>Ville :</strong>
-            ${escapeHtml(job.city)}
-          </p>
-
-          <p>
-            <strong>Contrat :</strong>
-            ${escapeHtml(job.contract_type)}
-          </p>
-
-          ${job.salary
-            ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>`
-            : ""}
-
-          <p>
-            <strong>Description :</strong>
-            ${escapeHtml(job.description).replace(/\n/g, "<br>")}
-          </p>
-
-          ${job.qualifications
-            ? `<p><strong>Qualifications :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>`
-            : ""}
-
-          <p>
-            <strong>Contact telephone :</strong>
-            ${escapeHtml(job.contact_phone || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Contact WhatsApp :</strong>
-            ${escapeHtml(job.contact_whatsapp || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Contact e-mail :</strong>
-            ${escapeHtml(job.contact_email || "Non fourni")}
-          </p>
-
-          <p>
-            <strong>Date limite :</strong>
-            ${escapeHtml(job.deadline || "Non renseignee")}
-          </p>
-
-          <p>
-            <strong>Statut :</strong>
-            ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}
-          </p>
-
-          <form
-            action="/admin/emplois/${encodeURIComponent(job.id)}/status"
-            method="POST"
-          >
-            <input
-              type="hidden"
-              name="csrfToken"
-              value="${escapeHtml(req.adminSession.csrf)}"
-            >
-
-            <label for="job-status-${escapeHtml(job.id)}">
-              Statut de l'offre
-            </label>
-
-            <select
-              id="job-status-${escapeHtml(job.id)}"
-              name="status"
-            >
+            <label for="job-status-${escapeHtml(job.id)}">Statut de l'offre</label>
+            <select id="job-status-${escapeHtml(job.id)}" name="status">
               ${statusOptions}
             </select>
 
-            <button type="submit">
-              Enregistrer le statut
-            </button>
+            <button type="submit">Enregistrer le statut</button>
           </form>
         </article>
       `;
     }).join("");
 
-    const menuHtml = adminMenu("/admin/emplois")
-      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
-
     res.setHeader("Cache-Control", "no-store");
 
     res.send(
-      page(
-        "Offres d'emploi",
-        `
+      page("Offres d'emploi", `
+        <section class="card">
+          <h1>Gestion des offres d'emploi</h1>
+          <p>Total affiche : ${result.rows.length} offre(s)</p>
+        </section>
+
+        ${adminMenu("/admin/emplois", req.adminSession.csrf)}
+
+        ${offers || `
           <section class="card">
-            <h1>Gestion des offres d'emploi</h1>
-            <p>Total affiche : ${result.rows.length} offre(s)</p>
+            <p>Aucune offre soumise pour le moment.</p>
           </section>
-
-          ${menuHtml}
-
-          ${offers || `
-            <section class="card">
-              <p>Aucune offre soumise pour le moment.</p>
-            </section>
-          `}
-        `
-      )
+        `}
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur de gestion des offres :",
-      error.message
-    );
-
+    console.error("Erreur de gestion des offres :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        "<h2>Impossible de charger les offres.</h2>"
-      )
+      page("Erreur", "<h2>Impossible de charger les offres.</h2>")
     );
   }
 });
 
-app.post(
-  "/admin/emplois/:id/status",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const status = req.body.status;
+app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.body.status;
 
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.status(400).send(
-        page(
-          "Reference invalide",
-          "<h2>Reference d'offre invalide.</h2>"
-        )
-      );
-    }
-
-    if (!JOB_STATUSES.includes(status)) {
-      return res.status(400).send(
-        page(
-          "Statut invalide",
-          "<h2>Statut non autorise.</h2>"
-        )
-      );
-    }
-
-    try {
-      const result = await pool.query(
-        `
-          UPDATE job_offers
-          SET status = $1
-          WHERE id = $2
-          RETURNING id
-        `,
-        [status, id]
-      );
-
-      if (!result.rowCount) {
-        return res.status(404).send(
-          page(
-            "Offre introuvable",
-            "<h2>Cette offre n'existe pas.</h2>"
-          )
-        );
-      }
-
-      res.redirect(303, "/admin/emplois");
-    } catch (error) {
-      console.error(
-        "Erreur de mise a jour de l'offre :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de modifier le statut de l'offre.</h2>"
-        )
-      );
-    }
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).send(
+      page("Reference invalide", "<h2>Reference d'offre invalide.</h2>")
+    );
   }
-);
+
+  if (!JOB_STATUSES.includes(status)) {
+    return res.status(400).send(
+      page("Statut invalide", "<h2>Statut non autorise.</h2>")
+    );
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE job_offers SET status = $1 WHERE id = $2 RETURNING id`,
+      [status, id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).send(
+        page("Offre introuvable", "<h2>Cette offre n'existe pas.</h2>")
+      );
+    }
+
+    res.redirect(303, "/admin/emplois");
+  } catch (error) {
+    console.error("Erreur de mise a jour de l'offre :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>")
+    );
+  }
+});
 
 /* CHANGER LE STATUT D'UNE CANDIDATURE */
 
-app.post(
-  "/admin/candidatures/:id/status",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const status = req.body.status;
+app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.body.status;
 
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.status(400).send(
-        page(
-          "Reference invalide",
-          "<h2>Reference de candidature invalide.</h2>"
-        )
-      );
-    }
-
-    if (!ALLOWED_STATUSES.includes(status)) {
-      return res.status(400).send(
-        page(
-          "Statut invalide",
-          "<h2>Statut non autorise.</h2>"
-        )
-      );
-    }
-
-    try {
-      const result = await pool.query(
-        `
-          UPDATE professional_applications
-          SET status = $1
-          WHERE id = $2
-          RETURNING id
-        `,
-        [status, id]
-      );
-
-      if (!result.rowCount) {
-        return res.status(404).send(
-          page(
-            "Candidature introuvable",
-            "<h2>Cette candidature n'existe pas.</h2>"
-          )
-        );
-      }
-
-      res.redirect(303, "/admin/candidatures");
-    } catch (error) {
-      console.error(
-        "Erreur de mise a jour :",
-        error.message
-      );
-
-      res.status(500).send(
-        page(
-          "Erreur",
-          "<h2>Impossible de modifier le statut.</h2>"
-        )
-      );
-    }
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.status(400).send(
+      page("Reference invalide", "<h2>Reference de candidature invalide.</h2>")
+    );
   }
-);
 
-/* ADMIN : MESSAGES DE CONTACT (avec boutons Repondre) */
+  if (!ALLOWED_STATUSES.includes(status)) {
+    return res.status(400).send(
+      page("Statut invalide", "<h2>Statut non autorise.</h2>")
+    );
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE professional_applications SET status = $1 WHERE id = $2 RETURNING id`,
+      [status, id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).send(
+        page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>")
+      );
+    }
+
+    res.redirect(303, "/admin/candidatures");
+  } catch (error) {
+    console.error("Erreur de mise a jour :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Impossible de modifier le statut.</h2>")
+    );
+  }
+});
+
+/* ADMIN : MESSAGES DE CONTACT */
 
 app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        id,
-        name,
-        email,
-        phone,
-        subject,
-        message,
-        is_read,
-        created_at
+      SELECT id, name, email, phone, subject, message, is_read, created_at
       FROM contact_messages
       ORDER BY
         CASE WHEN is_read = false THEN 0 ELSE 1 END,
@@ -3256,242 +2051,129 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
     `);
 
     const messages = result.rows.map((msg) => {
-      const replyEmail = msg.email
-        ? `
-          <a
-            class="button email"
-            href="mailto:${escapeHtml(msg.email)}?subject=${encodeURIComponent(
-              "Re: " + (msg.subject || "Votre message sur TrouveMoi")
-            )}"
-          >
-            ✉️ Repondre par email
-          </a>
-        `
-        : "";
+      const replyEmail = msg.email ? `
+        <a class="button email" href="mailto:${escapeHtml(msg.email)}?subject=${encodeURIComponent("Re: " + (msg.subject || "Votre message sur TrouveMoi"))}">
+          ✉️ Repondre par email
+        </a>
+      ` : "";
 
-      const replyWhatsapp = msg.phone
-        ? `
-          <a
-            class="button whatsapp"
-            href="https://wa.me/${escapeHtml(
-              normalizePhone(msg.phone).replace(/^\+/, "")
-            )}?text=${encodeURIComponent(
-              "Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande")
-            )}"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            💬 Repondre par WhatsApp
-          </a>
-        `
-        : "";
+      const replyWhatsapp = msg.phone ? `
+        <a class="button whatsapp" href="https://wa.me/${escapeHtml(normalizePhone(msg.phone).replace(/^\+/, ""))}?text=${encodeURIComponent("Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande"))}" target="_blank" rel="noopener noreferrer">
+          💬 Repondre par WhatsApp
+        </a>
+      ` : "";
 
       return `
         <article class="card">
-          <h2>
-            ${msg.is_read ? "📖" : "📩"}
-            ${escapeHtml(msg.subject || "Sans objet")}
-          </h2>
+          <h2>${msg.is_read ? "📖" : "📩"} ${escapeHtml(msg.subject || "Sans objet")}</h2>
 
-          <p>
-            <strong>De :</strong>
-            ${escapeHtml(msg.name)}
-          </p>
-
-          <p>
-            <strong>E-mail :</strong>
-            ${escapeHtml(msg.email || "Non renseigne")}
-          </p>
-
-          <p>
-            <strong>Telephone :</strong>
-            ${escapeHtml(msg.phone || "Non renseigne")}
-          </p>
-
-          <p>
-            <strong>Message :</strong>
-          </p>
-
-          <p style="background:#f9fafb;padding:12px;border-radius:8px">
-            ${escapeHtml(msg.message).replace(/\n/g, "<br>")}
-          </p>
-
-          <p class="muted">
-            Recu le : ${escapeHtml(msg.created_at)}
-          </p>
+          <p><strong>De :</strong> ${escapeHtml(msg.name)}</p>
+          <p><strong>E-mail :</strong> ${escapeHtml(msg.email || "Non renseigne")}</p>
+          <p><strong>Telephone :</strong> ${escapeHtml(msg.phone || "Non renseigne")}</p>
+          <p><strong>Message :</strong></p>
+          <p style="background:#f9fafb;padding:12px;border-radius:8px">${escapeHtml(msg.message).replace(/\n/g, "<br>")}</p>
+          <p class="muted">Recu le : ${escapeHtml(msg.created_at)}</p>
 
           <div class="actions">
             ${replyEmail}
             ${replyWhatsapp}
 
-            ${!msg.is_read
-              ? `
-                <form
-                  action="/admin/messages/${encodeURIComponent(msg.id)}/read"
-                  method="POST"
-                  style="display:inline"
-                >
-                  <input
-                    type="hidden"
-                    name="csrfToken"
-                    value="${escapeHtml(req.adminSession.csrf)}"
-                  >
+            ${!msg.is_read ? `
+              <form action="/admin/messages/${encodeURIComponent(msg.id)}/read" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+                <button class="secondary" type="submit">✅ Marquer comme lu</button>
+              </form>
+            ` : ""}
 
-                  <button class="secondary" type="submit">
-                    ✅ Marquer comme lu
-                  </button>
-                </form>
-              `
-              : ""
-            }
-
-            <form
-              action="/admin/messages/${encodeURIComponent(msg.id)}/delete"
-              method="POST"
-              style="display:inline"
-            >
-              <input
-                type="hidden"
-                name="csrfToken"
-                value="${escapeHtml(req.adminSession.csrf)}"
-              >
-
-              <button class="danger" type="submit">
-                🗑️ Supprimer
-              </button>
+            <form action="/admin/messages/${encodeURIComponent(msg.id)}/delete" method="POST" style="display:inline">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <button class="danger" type="submit">🗑️ Supprimer</button>
             </form>
           </div>
         </article>
       `;
     }).join("");
 
-    const menuHtml = adminMenu("/admin/messages")
-      .replace("__CSRF__", escapeHtml(req.adminSession.csrf));
-
     res.setHeader("Cache-Control", "no-store");
 
     res.send(
-      page(
-        "Messages",
-        `
+      page("Messages", `
+        <section class="card">
+          <h1>Messages recus</h1>
+          <p>Total : ${result.rows.length} message(s)</p>
+        </section>
+
+        ${adminMenu("/admin/messages", req.adminSession.csrf)}
+
+        ${messages || `
           <section class="card">
-            <h1>Messages recus</h1>
-            <p>Total : ${result.rows.length} message(s)</p>
+            <p>Aucun message pour le moment.</p>
           </section>
-
-          ${menuHtml}
-
-          ${messages || `
-            <section class="card">
-              <p>Aucun message pour le moment.</p>
-            </section>
-          `}
-        `
-      )
+        `}
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur de chargement des messages :",
-      error.message
-    );
-
+    console.error("Erreur de chargement des messages :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        "<h2>Impossible de charger les messages.</h2>"
-      )
+      page("Erreur", "<h2>Impossible de charger les messages.</h2>")
     );
   }
 });
 
-app.post(
-  "/admin/messages/:id/read",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
+app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
 
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.redirect(303, "/admin/messages");
-    }
-
-    try {
-      await pool.query(
-        "UPDATE contact_messages SET is_read = true WHERE id = $1",
-        [id]
-      );
-    } catch (error) {
-      console.error("Erreur marquage lu :", error.message);
-    }
-
-    res.redirect(303, "/admin/messages");
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/admin/messages");
   }
-);
 
-app.post(
-  "/admin/messages/:id/delete",
-  requireAdmin,
-  verifyCsrf,
-  async (req, res) => {
-    const id = Number(req.params.id);
-
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.redirect(303, "/admin/messages");
-    }
-
-    try {
-      await pool.query(
-        "DELETE FROM contact_messages WHERE id = $1",
-        [id]
-      );
-    } catch (error) {
-      console.error("Erreur suppression message :", error.message);
-    }
-
-    res.redirect(303, "/admin/messages");
+  try {
+    await pool.query("UPDATE contact_messages SET is_read = true WHERE id = $1", [id]);
+  } catch (error) {
+    console.error("Erreur marquage lu :", error.message);
   }
-);
+
+  res.redirect(303, "/admin/messages");
+});
+
+app.post("/admin/messages/:id/delete", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/admin/messages");
+  }
+
+  try {
+    await pool.query("DELETE FROM contact_messages WHERE id = $1", [id]);
+  } catch (error) {
+    console.error("Erreur suppression message :", error.message);
+  }
+
+  res.redirect(303, "/admin/messages");
+});
 
 /* DECONNEXION */
 
-app.post(
-  "/admin/logout",
-  requireAdmin,
-  verifyCsrf,
-  (req, res) => {
-    clearSessionCookie(res);
-    res.setHeader("Cache-Control", "no-store");
-    res.redirect(303, "/admin");
-  }
-);
+app.post("/admin/logout", requireAdmin, verifyCsrf, (req, res) => {
+  clearSessionCookie(res);
+  res.setHeader("Cache-Control", "no-store");
+  res.redirect(303, "/admin");
+});
 
 /* PAGES STATIQUES */
 
 app.get("/a-propos", (req, res) => {
-  const content = `
+  res.send(page("A propos", `
     <section class="card">
       <h1>A propos de TrouveMoi</h1>
 
-      <p>
-        <strong>TrouveMoi</strong> est la plateforme beninoise de mise en relation
-        entre les clients et les professionnels qualifiés.
-      </p>
+      <p><strong>TrouveMoi</strong> est la plateforme beninoise de mise en relation entre les clients et les professionnels qualifies.</p>
 
       <h2>Notre mission</h2>
-
-      <p>
-        Nous voulons simplifier la recherche de professionnels de confiance
-        au Benin. Trop souvent, trouver un plombier, un electricien ou un
-        couturier fiable prend du temps et passe par le bouche-a-oreille.
-      </p>
-
-      <p>
-        TrouveMoi centralise les professionnels de votre ville, verifie leur
-        identite et vous permet de les contacter en un clic.
-      </p>
+      <p>Nous voulons simplifier la recherche de professionnels de confiance au Benin. Trop souvent, trouver un plombier, un electricien ou un couturier fiable prend du temps et passe par le bouche-a-oreille.</p>
+      <p>TrouveMoi centralise les professionnels de votre ville, verifie leur identite et vous permet de les contacter en un clic.</p>
 
       <h2>Nos services</h2>
-
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Annuaire de professionnels verifies</li>
         <li>Recherche par ville, quartier et metier</li>
@@ -3500,56 +2182,33 @@ app.get("/a-propos", (req, res) => {
       </ul>
 
       <h2>Notre engagement</h2>
-
-      <p>
-        Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe
-        (photo d'identite et informations verifiees) avant publication. Nous
-        nous engageons a fournir une plateforme de qualite et a proteger vos
-        donnees personnelles.
-      </p>
+      <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe (photo d'identite et informations verifiees) avant publication.</p>
 
       <p style="margin-top:24px">
         <a class="button" href="/contact">Nous contacter</a>
         <a class="button secondary" href="/">Voir les professionnels</a>
       </p>
     </section>
-  `;
-
-  res.send(page("A propos", content));
+  `));
 });
 
 app.get("/conditions", (req, res) => {
-  const content = `
+  res.send(page("Conditions d'utilisation", `
     <section class="card">
       <h1>Conditions d'utilisation</h1>
-
-      <p class="muted">
-        Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}
-      </p>
+      <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
       <h2>1. Acceptation des conditions</h2>
-      <p>
-        En utilisant TrouveMoi, vous acceptez sans reserve les presentes
-        conditions d'utilisation.
-      </p>
+      <p>En utilisant TrouveMoi, vous acceptez sans reserve les presentes conditions d'utilisation.</p>
 
       <h2>2. Nature du service</h2>
-      <p>
-        TrouveMoi est une plateforme de mise en relation. Nous ne fournissons
-        pas directement de services professionnels.
-      </p>
+      <p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p>
 
       <h2>3. Inscription des professionnels</h2>
-      <p>
-        Les professionnels doivent fournir des informations exactes et a jour.
-        Toute fausse declaration entraine le rejet de la candidature.
-      </p>
+      <p>Les professionnels doivent fournir des informations exactes et a jour. Toute fausse declaration entraine le rejet de la candidature.</p>
 
       <h2>4. Responsabilites</h2>
-      <p>
-        TrouveMoi ne peut etre tenu responsable de la qualite des services
-        fournis par les professionnels references.
-      </p>
+      <p>TrouveMoi ne peut etre tenu responsable de la qualite des services fournis par les professionnels references.</p>
 
       <h2>5. Utilisation interdite</h2>
       <p>Il est interdit de :</p>
@@ -3560,23 +2219,16 @@ app.get("/conditions", (req, res) => {
       </ul>
 
       <h2>6. Contact</h2>
-      <p>
-        Pour toute question : <a href="/contact">formulaire de contact</a>
-      </p>
+      <p>Pour toute question : <a href="/contact">formulaire de contact</a></p>
     </section>
-  `;
-
-  res.send(page("Conditions d'utilisation", content));
+  `));
 });
 
 app.get("/confidentialite", (req, res) => {
-  const content = `
+  res.send(page("Politique de confidentialite", `
     <section class="card">
       <h1>Politique de confidentialite</h1>
-
-      <p class="muted">
-        Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}
-      </p>
+      <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
       <h2>1. Donnees collectees</h2>
       <p>Nous collectons :</p>
@@ -3595,228 +2247,118 @@ app.get("/confidentialite", (req, res) => {
       </ul>
 
       <h2>3. Protection des photos d'identite</h2>
-      <p>
-        Les photos d'identite sont <strong>strictement privees</strong>.
-        Elles ne sont visibles que par l'administration.
-      </p>
+      <p>Les photos d'identite sont <strong>strictement privees</strong>. Elles ne sont visibles que par l'administration.</p>
 
       <h2>4. Partage des donnees</h2>
-      <p>
-        Nous ne vendons ni ne partageons vos donnees avec des tiers.
-      </p>
+      <p>Nous ne vendons ni ne partageons vos donnees avec des tiers.</p>
 
       <h2>5. Vos droits</h2>
-      <p>
-        Vous pouvez demander l'acces, la modification ou la suppression de
-        vos donnees via le <a href="/contact">formulaire de contact</a>.
-      </p>
+      <p>Vous pouvez demander l'acces, la modification ou la suppression de vos donnees via le <a href="/contact">formulaire de contact</a>.</p>
 
       <h2>6. Cookies</h2>
-      <p>
-        Nous utilisons uniquement des cookies techniques necessaires
-        au fonctionnement de l'administration.
-      </p>
+      <p>Nous utilisons uniquement des cookies techniques necessaires au fonctionnement de l'administration.</p>
     </section>
-  `;
-
-  res.send(page("Politique de confidentialite", content));
+  `));
 });
 
 app.get("/contact", (req, res) => {
-  const content = `
+  res.send(page("Contact", `
     <section class="card">
       <h1>Nous contacter</h1>
 
-      <p>
-        Une question, une suggestion, un probleme ? Ecrivez-nous.
-      </p>
+      <p>Une question, une suggestion, un probleme ? Ecrivez-nous.</p>
 
       <form action="/contact" method="POST">
         <label for="name">Votre nom *</label>
-        <input
-          id="name"
-          name="name"
-          required
-          maxlength="150"
-        >
+        <input id="name" name="name" required maxlength="150">
 
         <label for="email">Votre e-mail</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          maxlength="254"
-          placeholder="vous@exemple.com"
-        >
+        <input id="email" name="email" type="email" maxlength="254" placeholder="vous@exemple.com">
 
         <label for="phone">Votre telephone</label>
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          maxlength="30"
-          placeholder="+229..."
-        >
+        <input id="phone" name="phone" type="tel" maxlength="30" placeholder="+229...">
 
         <label for="subject">Sujet *</label>
-        <input
-          id="subject"
-          name="subject"
-          required
-          maxlength="200"
-        >
+        <input id="subject" name="subject" required maxlength="200">
 
         <label for="message">Votre message *</label>
-        <textarea
-          id="message"
-          name="message"
-          required
-          maxlength="5000"
-          rows="6"
-        ></textarea>
+        <textarea id="message" name="message" required maxlength="5000" rows="6"></textarea>
 
-        <p class="help-text">
-          Au moins un moyen de contact (email ou telephone) est requis.
-        </p>
+        <p class="help-text">Au moins un moyen de contact (email ou telephone) est requis.</p>
 
         <button type="submit">Envoyer le message</button>
       </form>
     </section>
-  `;
-
-  res.send(page("Contact", content));
+  `));
 });
 
 app.post("/contact", async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    subject,
-    message
-  } = req.body;
+  const { name, email, phone, subject, message } = req.body;
 
-  const cleanName = typeof name === "string"
-    ? name.trim().slice(0, 150)
-    : "";
+  const cleanName = typeof name === "string" ? name.trim().slice(0, 150) : "";
+  const cleanEmail = typeof email === "string" ? email.trim().slice(0, 254) : "";
+  const cleanPhone = typeof phone === "string" ? normalizePhone(phone).slice(0, 30) : "";
+  const cleanSubject = typeof subject === "string" ? subject.trim().slice(0, 200) : "";
+  const cleanMessage = typeof message === "string" ? message.trim().slice(0, 5000) : "";
 
-  const cleanEmail = typeof email === "string"
-    ? email.trim().slice(0, 254)
-    : "";
-
-  const cleanPhone = typeof phone === "string"
-    ? normalizePhone(phone).slice(0, 30)
-    : "";
-
-  const cleanSubject = typeof subject === "string"
-    ? subject.trim().slice(0, 200)
-    : "";
-
-  const cleanMessage = typeof message === "string"
-    ? message.trim().slice(0, 5000)
-    : "";
-
-  if (
-    !cleanName ||
-    !cleanSubject ||
-    !cleanMessage ||
-    (!cleanEmail && !cleanPhone)
-  ) {
+  if (!cleanName || !cleanSubject || !cleanMessage || (!cleanEmail && !cleanPhone)) {
     return res.status(400).send(
-      page(
-        "Informations manquantes",
-        `
-          <section class="card">
-            <h2>Informations manquantes</h2>
-            <p>
-              Le nom, le sujet, le message et au moins un moyen de contact
-              sont obligatoires.
-            </p>
-            <a href="/contact">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Informations manquantes", `
+        <section class="card">
+          <h2>Informations manquantes</h2>
+          <p>Le nom, le sujet, le message et au moins un moyen de contact sont obligatoires.</p>
+          <a href="/contact">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (cleanEmail && !validEmail(cleanEmail)) {
     return res.status(400).send(
-      page(
-        "E-mail invalide",
-        `
-          <section class="card">
-            <h2>L'adresse e-mail est invalide.</h2>
-            <a href="/contact">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("E-mail invalide", `
+        <section class="card">
+          <h2>L'adresse e-mail est invalide.</h2>
+          <a href="/contact">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   if (cleanPhone && !validPhone(cleanPhone)) {
     return res.status(400).send(
-      page(
-        "Telephone invalide",
-        `
-          <section class="card">
-            <h2>Le numero de telephone est invalide.</h2>
-            <a href="/contact">Retour au formulaire</a>
-          </section>
-        `
-      )
+      page("Telephone invalide", `
+        <section class="card">
+          <h2>Le numero de telephone est invalide.</h2>
+          <a href="/contact">Retour au formulaire</a>
+        </section>
+      `)
     );
   }
 
   try {
     await pool.query(`
-      INSERT INTO contact_messages (
-        name,
-        email,
-        phone,
-        subject,
-        message,
-        is_read
-      )
+      INSERT INTO contact_messages (name, email, phone, subject, message, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
-    `, [
-      cleanName,
-      cleanEmail || null,
-      cleanPhone || null,
-      cleanSubject,
-      cleanMessage
-    ]);
+    `, [cleanName, cleanEmail || null, cleanPhone || null, cleanSubject, cleanMessage]);
 
     res.status(201).send(
-      page(
-        "Message envoye",
-        `
-          <section class="card">
-            <h1>Message envoye avec succes !</h1>
-            <p>
-              Merci pour votre message. Nous vous repondrons dans les plus
-              brefs delais.
-            </p>
-            <a class="button" href="/">Retour a l'accueil</a>
-          </section>
-        `
-      )
+      page("Message envoye", `
+        <section class="card">
+          <h1>Message envoye avec succes !</h1>
+          <p>Merci pour votre message. Nous vous repondrons dans les plus brefs delais.</p>
+          <a class="button" href="/">Retour a l'accueil</a>
+        </section>
+      `)
     );
   } catch (error) {
-    console.error(
-      "Erreur lors de l'enregistrement du message :",
-      error.message
-    );
-
+    console.error("Erreur lors de l'enregistrement du message :", error.message);
     res.status(500).send(
-      page(
-        "Erreur",
-        `
-          <section class="card">
-            <h2>Impossible d'envoyer le message.</h2>
-            <p>Veuillez reessayer plus tard.</p>
-          </section>
-        `
-      )
+      page("Erreur", `
+        <section class="card">
+          <h2>Impossible d'envoyer le message.</h2>
+          <p>Veuillez reessayer plus tard.</p>
+        </section>
+      `)
     );
   }
 });
@@ -3824,32 +2366,16 @@ app.post("/contact", async (req, res) => {
 /* VERIFICATION DU SERVEUR */
 
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    application: "TrouveMoi"
-  });
+  res.json({ status: "ok", application: "TrouveMoi" });
 });
 
 app.get("/health/database", async (req, res) => {
   try {
     await pool.query("SELECT 1");
-
-    res.json({
-      status: "ok",
-      database: "connected",
-      application: "TrouveMoi"
-    });
+    res.json({ status: "ok", database: "connected", application: "TrouveMoi" });
   } catch (error) {
-    console.error(
-      "Verification de la base impossible :",
-      error.message
-    );
-
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-      application: "TrouveMoi"
-    });
+    console.error("Verification de la base impossible :", error.message);
+    res.status(500).json({ status: "error", database: "disconnected", application: "TrouveMoi" });
   }
 });
 
