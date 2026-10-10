@@ -37,17 +37,10 @@ const upload = multer({
     files: 3
   },
   fileFilter: (req, file, cb) => {
-    const allowed = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/webp"
-    ];
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
     if (!allowed.includes(file.mimetype)) {
-      return cb(
-        new Error("Format non autorise. Utilisez JPG, PNG ou WEBP.")
-      );
+      return cb(new Error("Format non autorise. Utilisez JPG, PNG ou WEBP."));
     }
 
     cb(null, true);
@@ -68,9 +61,7 @@ function uploadToCloudinary(buffer, folder, publicId) {
         ]
       },
       (error, result) => {
-        if (error) {
-          return reject(error);
-        }
+        if (error) return reject(error);
         resolve(result);
       }
     );
@@ -96,6 +87,8 @@ app.disable("x-powered-by");
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
 
+const PRO_COOKIE = "tm_pro_session";
+
 const ALLOWED_STATUSES = [
   "pending",
   "under_review",
@@ -112,12 +105,13 @@ const STATUS_LABELS = {
   corrections_requested: "Corrections demandees"
 };
 
-const JOB_STATUSES = ["pending", "approved", "rejected"];
+const JOB_STATUSES = ["pending", "approved", "rejected", "closed"];
 
 const JOB_STATUS_LABELS = {
   pending: "En attente",
   approved: "Approuvee",
-  rejected: "Refusee"
+  rejected: "Refusee",
+  closed: "Cloturee"
 };
 
 const JOB_CONTRACT_TYPES = [
@@ -130,6 +124,8 @@ const JOB_CONTRACT_TYPES = [
   "Autre"
 ];
 
+const OFFER_DURATION_DAYS = 15;
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => {
     const entities = {
@@ -139,7 +135,6 @@ function escapeHtml(value) {
       '"': "&quot;",
       "'": "&#39;"
     };
-
     return entities[character];
   });
 }
@@ -159,14 +154,10 @@ function createSessionToken(payload) {
   const secret = process.env.ADMIN_SESSION_SECRET;
 
   if (!secret || secret.length < 32) {
-    throw new Error(
-      "ADMIN_SESSION_SECRET doit contenir au moins 32 caracteres."
-    );
+    throw new Error("ADMIN_SESSION_SECRET doit contenir au moins 32 caracteres.");
   }
 
-  const encodedPayload = Buffer
-    .from(JSON.stringify(payload))
-    .toString("base64url");
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
 
   const signature = crypto
     .createHmac("sha256", secret)
@@ -178,15 +169,10 @@ function createSessionToken(payload) {
 
 function verifySessionToken(token) {
   try {
-    if (!token || !process.env.ADMIN_SESSION_SECRET) {
-      return null;
-    }
+    if (!token || !process.env.ADMIN_SESSION_SECRET) return null;
 
     const parts = token.split(".");
-
-    if (parts.length !== 2) {
-      return null;
-    }
+    if (parts.length !== 2) return null;
 
     const [encodedPayload, signature] = parts;
 
@@ -195,18 +181,13 @@ function verifySessionToken(token) {
       .update(encodedPayload)
       .digest("base64url");
 
-    if (!safeEqual(signature, expectedSignature)) {
-      return null;
-    }
+    if (!safeEqual(signature, expectedSignature)) return null;
 
     const payload = JSON.parse(
       Buffer.from(encodedPayload, "base64url").toString("utf8")
     );
 
-    if (
-      payload.expiresAt <= Date.now() ||
-      typeof payload.csrf !== "string"
-    ) {
+    if (payload.expiresAt <= Date.now() || typeof payload.csrf !== "string") {
       return null;
     }
 
@@ -221,17 +202,12 @@ function readCookie(req, name) {
 
   for (const item of cookieHeader.split(";")) {
     const separator = item.indexOf("=");
-
-    if (separator === -1) {
-      continue;
-    }
+    if (separator === -1) continue;
 
     const key = item.slice(0, separator).trim();
     const value = item.slice(separator + 1).trim();
 
-    if (key === name) {
-      return value;
-    }
+    if (key === name) return value;
   }
 
   return null;
@@ -248,6 +224,20 @@ function clearSessionCookie(res) {
   res.setHeader(
     "Set-Cookie",
     `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
+  );
+}
+
+function setProCookie(res, code) {
+  res.setHeader(
+    "Set-Cookie",
+    `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`
+  );
+}
+
+function clearProCookie(res) {
+  res.setHeader(
+    "Set-Cookie",
+    `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
   );
 }
 
@@ -282,6 +272,33 @@ function verifyCsrf(req, res, next) {
   }
 
   next();
+}
+
+function generateProCode() {
+  const digits = Math.floor(10000 + Math.random() * 90000);
+  return `TM${digits}`;
+}
+
+async function generateUniqueProCode() {
+  let code;
+  let exists = true;
+  let attempts = 0;
+
+  while (exists && attempts < 20) {
+    code = generateProCode();
+    const result = await pool.query(
+      "SELECT id FROM professional_applications WHERE pro_code = $1",
+      [code]
+    );
+    exists = result.rows.length > 0;
+    attempts += 1;
+  }
+
+  if (exists) {
+    throw new Error("Impossible de generer un code unique.");
+  }
+
+  return code;
 }
 
 function page(title, content) {
@@ -324,7 +341,6 @@ function page(title, content) {
         }
 
         .logo::before { content: "🔍"; font-size: 24px; }
-
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
 
         nav { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -402,6 +418,12 @@ function page(title, content) {
 
         .secondary { background: #475467; }
         .secondary:hover { background: #344054; }
+
+        .warning { background: #f59e0b; }
+        .warning:hover { background: #d97706; }
+
+        .success { background: #0a9d70; }
+        .success:hover { background: #087f5b; }
 
         .muted { color: #667085; font-size: 14px; }
 
@@ -492,6 +514,63 @@ function page(title, content) {
 
         .stat-link:hover { text-decoration: underline; }
 
+        .pro-code-box {
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          color: white; padding: 24px; border-radius: 12px;
+          text-align: center; margin: 16px 0;
+        }
+
+        .pro-code-value {
+          font-size: 42px; font-weight: 800;
+          letter-spacing: 4px; margin: 12px 0;
+          font-family: "Courier New", monospace;
+        }
+
+        .pro-code-label {
+          font-size: 14px; opacity: 0.9;
+          text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        .badge {
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-approved { background: #d1fae5; color: #065f46; }
+        .badge-rejected { background: #fee2e2; color: #991b1b; }
+        .badge-closed { background: #e5e7eb; color: #374151; }
+
+        .alert {
+          padding: 16px 20px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          border-left: 4px solid;
+        }
+
+        .alert-success {
+          background: #d1fae5;
+          border-color: #0a9d70;
+          color: #065f46;
+        }
+
+        .alert-danger {
+          background: #fee2e2;
+          border-color: #b42318;
+          color: #991b1b;
+        }
+
+        .alert-warning {
+          background: #fef3c7;
+          border-color: #f59e0b;
+          color: #92400e;
+        }
+
         footer {
           background: #1a1a1a; color: #ccc;
           padding: 32px 20px 20px; margin-top: 40px;
@@ -536,6 +615,7 @@ function page(title, content) {
           .photos-grid img { max-width: 100%; }
           .contact-buttons .button { flex: 1 1 100%; }
           .stat-number { font-size: 28px; }
+          .pro-code-value { font-size: 32px; letter-spacing: 2px; }
         }
       </style>
     </head>
@@ -551,7 +631,7 @@ function page(title, content) {
           <nav>
             <a href="/">Professionnels</a>
             <a href="/emplois">Emploi</a>
-            <a href="/publier-emploi">Publier une offre</a>
+            <a href="/mon-espace-pro">Espace pro</a>
             <a href="/contact">Contact</a>
           </nav>
         </div>
@@ -575,7 +655,7 @@ function page(title, content) {
             <a href="/">Professionnels</a>
             <a href="/emplois">Offres d'emploi</a>
             <a href="/devenir-professionnel">Devenir professionnel</a>
-            <a href="/publier-emploi">Publier une offre</a>
+            <a href="/mon-espace-pro">Espace pro</a>
           </div>
 
           <div class="footer-col">
@@ -611,8 +691,7 @@ function validPhone(value) {
 }
 
 function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-    && value.length <= 254;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
 }
 
 function jobContactButtons(job) {
@@ -620,10 +699,7 @@ function jobContactButtons(job) {
 
   if (job.contact_phone) {
     buttons.push(`
-      <a
-        class="button"
-        href="tel:${escapeHtml(normalizePhone(job.contact_phone))}"
-      >
+      <a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">
         Appeler le recruteur
       </a>
     `);
@@ -633,14 +709,7 @@ function jobContactButtons(job) {
     const whatsapp = normalizePhone(job.contact_whatsapp).replace(/^\+/, "");
 
     buttons.push(`
-      <a
-        class="button whatsapp"
-        href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent(
-          "Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations."
-        )}"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
+      <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">
         Contacter sur WhatsApp
       </a>
     `);
@@ -648,12 +717,7 @@ function jobContactButtons(job) {
 
   if (job.contact_email) {
     buttons.push(`
-      <a
-        class="button email"
-        href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent(
-          "Candidature - " + job.job_title
-        )}"
-      >
+      <a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">
         Envoyer un e-mail
       </a>
     `);
@@ -664,7 +728,7 @@ function jobContactButtons(job) {
     : "";
 }
 
-/* PAGE D'ACCUEIL ET RECHERCHE DES PROFESSIONNELS */
+/* PAGE D'ACCUEIL */
 
 app.get("/", async (req, res) => {
   try {
@@ -752,7 +816,6 @@ app.get("/", async (req, res) => {
             ${escapeHtml(name)}
           </option>
         `).join("");
-
         return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
@@ -884,7 +947,6 @@ app.get("/devenir-professionnel", async (req, res) => {
         const options = names.map((name) => `
           <option value="${escapeHtml(name)}">${escapeHtml(name)}</option>
         `).join("");
-
         return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
@@ -895,6 +957,12 @@ app.get("/devenir-professionnel", async (req, res) => {
         <p>
           Remplissez le formulaire pour soumettre votre candidature.
           Votre profil sera examine par notre equipe avant publication.
+        </p>
+
+        <p class="help-text">
+          Une fois approuve, vous recevrez un code professionnel unique
+          (ex : TM12345) qui vous permettra de publier des offres d'emploi
+          depuis votre espace personnel.
         </p>
 
         <form action="/candidatures" method="POST" enctype="multipart/form-data">
@@ -1103,8 +1171,7 @@ app.post(
 
     if (neighborhood === "__AUTRE__") {
       finalNeighborhood = typeof neighborhood_other === "string"
-        ? neighborhood_other.trim().slice(0, 150) || null
-        : null;
+        ? neighborhood_other.trim().slice(0, 150) || null : null;
     } else if (typeof neighborhood === "string" && neighborhood.trim()) {
       finalNeighborhood = neighborhood.trim().slice(0, 150);
     }
@@ -1113,8 +1180,7 @@ app.post(
 
     if (profession === "__AUTRE__") {
       finalProfession = typeof profession_other === "string"
-        ? profession_other.trim().slice(0, 150) || null
-        : null;
+        ? profession_other.trim().slice(0, 150) || null : null;
     } else if (typeof profession === "string" && profession.trim()) {
       finalProfession = profession.trim().slice(0, 150);
     }
@@ -1124,11 +1190,8 @@ app.post(
       typeof phone !== "string" ||
       typeof city !== "string" ||
       typeof service_description !== "string" ||
-      !full_name.trim() ||
-      !phone.trim() ||
-      !city.trim() ||
-      !finalProfession ||
-      !service_description.trim()
+      !full_name.trim() || !phone.trim() || !city.trim() ||
+      !finalProfession || !service_description.trim()
     ) {
       return res.status(400).send(
         page("Informations manquantes", `
@@ -1178,7 +1241,6 @@ app.post(
       }
     } catch (uploadError) {
       console.error("Erreur d'upload Cloudinary :", uploadError.message);
-
       return res.status(500).send(
         page("Erreur d'upload", `
           <section class="card">
@@ -1195,9 +1257,10 @@ app.post(
         INSERT INTO professional_applications (
           full_name, phone, city, neighborhood, profession, experience,
           service_description, service_area, availability, npi,
-          photo_profil_url, photo_identite_url, photo_activite_url, status
+          photo_profil_url, photo_identite_url, photo_activite_url,
+          pro_code, status
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11,$12,'pending')
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10,$11,$12,NULL,'pending')
         RETURNING id
       `, [
         full_name.trim().slice(0, 150),
@@ -1221,6 +1284,10 @@ app.post(
             <p>Votre candidature a bien ete enregistree.</p>
             <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
             <p>Votre profil ne sera visible qu'apres approbation.</p>
+            <p class="help-text">
+              Une fois approuve, vous recevrez un code professionnel unique
+              qui vous permettra de publier des offres d'emploi.
+            </p>
             <a class="button" href="/">Retour a l'accueil</a>
           </section>
         `)
@@ -1234,7 +1301,7 @@ app.post(
   }
 );
 
-/* PAGE DE RECHERCHE DES EMPLOIS */
+/* PAGE DE RECHERCHE DES EMPLOIS (PUBLIQUE) */
 
 app.get("/emplois", async (req, res) => {
   try {
@@ -1246,10 +1313,11 @@ app.get("/emplois", async (req, res) => {
       SELECT
         id, company_name, job_title, city, contract_type, salary,
         description, qualifications, contact_phone, contact_whatsapp,
-        contact_email, deadline, created_at
+        contact_email, deadline, created_at, expires_at
       FROM job_offers
       WHERE status = 'approved'
         AND (deadline IS NULL OR deadline >= CURRENT_DATE)
+        AND (expires_at IS NULL OR expires_at > NOW())
     `;
 
     const values = [];
@@ -1314,7 +1382,7 @@ app.get("/emplois", async (req, res) => {
             <button type="submit">Rechercher</button>
           </form>
 
-          <a class="button" href="/publier-emploi">Publier gratuitement une offre</a>
+          <a class="button" href="/publier-emploi">Publier une offre (pros uniquement)</a>
         </section>
 
         <h2>Offres disponibles (${result.rows.length})</h2>
@@ -1334,29 +1402,59 @@ app.get("/emplois", async (req, res) => {
   }
 });
 
-/* FORMULAIRE DE PUBLICATION D'EMPLOI */
+/* FORMULAIRE DE PUBLICATION D'EMPLOI (PROS UNIQUEMENT) */
 
-app.get("/publier-emploi", (req, res) => {
+app.get("/publier-emploi", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  let proInfo = null;
+
+  if (proCodeCookie) {
+    try {
+      const proResult = await pool.query(
+        `SELECT id, full_name, profession, city
+         FROM professional_applications
+         WHERE pro_code = $1 AND status = 'approved'`,
+        [proCodeCookie]
+      );
+
+      if (proResult.rows.length) {
+        proInfo = proResult.rows[0];
+      }
+    } catch (error) {
+      console.error("Erreur verif pro :", error.message);
+    }
+  }
+
   const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
     <option value="${escapeHtml(type)}">${escapeHtml(type)}</option>
   `).join("");
 
-  res.send(
-    page("Publier une offre d'emploi", `
+  const content = proInfo
+    ? `
       <section class="card">
-        <h1>Publier gratuitement une offre d'emploi</h1>
+        <div class="alert alert-success">
+          ✅ Connecte en tant que <strong>${escapeHtml(proInfo.full_name)}</strong>
+          (${escapeHtml(proInfo.profession)}) — Code : <strong>${escapeHtml(proCodeCookie)}</strong>
+        </div>
 
-        <p>La publication est gratuite. Votre offre sera verifiee par l'administration avant d'etre visible.</p>
+        <h1>Publier une offre d'emploi</h1>
+
+        <p>
+          Votre offre sera examinee par l'administration avant publication.
+          Duree de publication : <strong>${OFFER_DURATION_DAYS} jours</strong>,
+          renouvelable depuis votre espace personnel.
+        </p>
 
         <form action="/offres-emploi" method="POST">
           <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
-          <input id="company_name" name="company_name" required maxlength="200">
+          <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(proInfo.full_name)}">
 
           <label for="job_title">Intitule du poste *</label>
           <input id="job_title" name="job_title" required maxlength="200">
 
           <label for="city">Ville *</label>
-          <input id="city" name="city" required maxlength="100">
+          <input id="city" name="city" required maxlength="100" value="${escapeHtml(proInfo.city)}">
 
           <label for="contract_type">Type de contrat *</label>
           <select id="contract_type" name="contract_type" required>
@@ -1392,10 +1490,10 @@ app.get("/publier-emploi", (req, res) => {
           <label for="deadline">Date limite de candidature (facultatif)</label>
           <input id="deadline" name="deadline" type="date">
 
-          <button type="submit">Soumettre l'offre gratuitement</button>
+          <button type="submit">Soumettre l'offre</button>
         </form>
 
-        <p><a href="/emplois">Retour aux offres d'emploi</a></p>
+        <p><a href="/mon-espace-pro">Mon espace pro</a> — <a href="/emplois">Voir les offres</a></p>
       </section>
 
       <script>
@@ -1424,13 +1522,97 @@ app.get("/publier-emploi", (req, res) => {
           }
         });
       </script>
-    `)
-  );
+    `
+    : `
+      <section class="card">
+        <div class="alert alert-warning">
+          ⚠️ Pour publier une offre d'emploi, vous devez etre un
+          <strong>professionnel approuve sur TrouveMoi</strong>.
+        </div>
+
+        <h1>Publier une offre d'emploi</h1>
+
+        <p>
+          La publication d'offres d'emploi est reservee aux professionnels
+          verifies de la plateforme. Cette regle nous permet de lutter
+          efficacement contre les arnaques.
+        </p>
+
+        <h2>Vous etes deja professionnel sur TrouveMoi ?</h2>
+
+        <p>Connectez-vous avec votre code professionnel :</p>
+
+        <form action="/mon-espace-pro/login" method="POST">
+          <label for="pro_code">Code professionnel</label>
+          <input id="pro_code" name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase">
+
+          <button type="submit">Se connecter</button>
+        </form>
+
+        <h2>Vous n'etes pas encore inscrit ?</h2>
+
+        <p>
+          Inscrivez-vous comme professionnel, faites verifier votre identite,
+          et recevez votre code professionnel unique.
+        </p>
+
+        <a class="button" href="/devenir-professionnel">Devenir professionnel</a>
+        <a class="button secondary" href="/contact">Nous contacter</a>
+      </section>
+    `;
+
+  res.send(page("Publier une offre d'emploi", content));
 });
 
-/* ENREGISTREMENT DES OFFRES */
+/* ENREGISTREMENT DES OFFRES (PROS UNIQUEMENT) */
 
 app.post("/offres-emploi", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.status(403).send(
+      page("Acces refuse", `
+        <section class="card">
+          <h2>Acces refuse</h2>
+          <p>
+            Vous devez etre connecte en tant que professionnel verifie
+            pour publier une offre.
+          </p>
+          <a class="button" href="/publier-emploi">Retour</a>
+        </section>
+      `)
+    );
+  }
+
+  let proInfo = null;
+
+  try {
+    const proResult = await pool.query(
+      `SELECT id, full_name FROM professional_applications
+       WHERE pro_code = $1 AND status = 'approved'`,
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.status(403).send(
+        page("Acces refuse", `
+          <section class="card">
+            <h2>Code professionnel invalide ou compte non approuve.</h2>
+            <a class="button" href="/publier-emploi">Retour</a>
+          </section>
+        `)
+      );
+    }
+
+    proInfo = proResult.rows[0];
+  } catch (error) {
+    console.error("Erreur verif pro POST :", error.message);
+    return res.status(500).send(
+      page("Erreur", "<h2>Erreur technique.</h2>")
+    );
+  }
+
   const {
     company_name, job_title, city, contract_type, salary, description,
     qualifications, contact_phone, contact_whatsapp, contact_email,
@@ -1530,9 +1712,9 @@ app.post("/offres-emploi", async (req, res) => {
       INSERT INTO job_offers (
         company_name, job_title, city, contract_type, salary, description,
         qualifications, contact_phone, contact_whatsapp, contact_email,
-        deadline, status
+        deadline, status, pro_id, expires_at
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending')
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12, NOW() + INTERVAL '${OFFER_DURATION_DAYS} days')
     `, [
       company.slice(0, 200),
       title.slice(0, 200),
@@ -1541,7 +1723,8 @@ app.post("/offres-emploi", async (req, res) => {
       typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
       typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
-      phone, whatsapp, email, jobDeadline
+      phone, whatsapp, email, jobDeadline,
+      proInfo.id
     ]);
 
     res.status(201).send(
@@ -1549,7 +1732,9 @@ app.post("/offres-emploi", async (req, res) => {
         <section class="card">
           <h1>Votre offre a bien ete soumise</h1>
           <p>Merci ! Votre offre est en attente de verification par l'administration.</p>
-          <a class="button" href="/emplois">Consulter les offres d'emploi</a>
+          <p>Duree de publication prevue : ${OFFER_DURATION_DAYS} jours apres approbation.</p>
+          <a class="button" href="/mon-espace-pro">Mon espace pro</a>
+          <a class="button secondary" href="/emplois">Voir les offres</a>
         </section>
       `)
     );
@@ -1564,6 +1749,563 @@ app.post("/offres-emploi", async (req, res) => {
       `)
     );
   }
+});
+
+/* ESPACE PROFESSIONNEL : /mon-espace-pro */
+
+app.get("/mon-espace-pro", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.send(page("Espace pro", `
+      <section class="card">
+        <h1>Mon espace professionnel</h1>
+
+        <p>
+          Connectez-vous avec votre code professionnel pour gerer vos offres d'emploi.
+        </p>
+
+        <form action="/mon-espace-pro/login" method="POST">
+          <label for="pro_code">Code professionnel</label>
+          <input id="pro_code" name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase;font-size:20px;letter-spacing:2px;text-align:center;font-family:'Courier New',monospace">
+
+          <button type="submit">Se connecter</button>
+        </form>
+
+        <p class="help-text" style="margin-top:16px">
+          Pas encore de code ? Vous recevrez votre code apres approbation
+          de votre candidature par l'administration.
+        </p>
+
+        <p>
+          <a href="/devenir-professionnel">Devenir professionnel</a> —
+          <a href="/contact">Contacter l'administration</a>
+        </p>
+      </section>
+    `));
+  }
+
+  let proInfo = null;
+  let offers = [];
+
+  try {
+    const proResult = await pool.query(
+      `SELECT id, full_name, phone, city, neighborhood, profession,
+              experience, service_description, service_area, availability,
+              photo_activite_url, created_at
+       FROM professional_applications
+       WHERE pro_code = $1 AND status = 'approved'`,
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    proInfo = proResult.rows[0];
+
+    const offersResult = await pool.query(
+      `SELECT
+         id, company_name, job_title, city, contract_type, salary,
+         description, qualifications, contact_phone, contact_whatsapp,
+         contact_email, deadline, status, created_at, expires_at
+       FROM job_offers
+       WHERE pro_id = $1
+       ORDER BY created_at DESC`,
+      [proInfo.id]
+    );
+
+    offers = offersResult.rows;
+  } catch (error) {
+    console.error("Erreur espace pro :", error.message);
+    return res.status(500).send(
+      page("Erreur", "<h2>Erreur technique.</h2>")
+    );
+  }
+
+  const now = new Date();
+
+  const offersHtml = offers.map((offer) => {
+    const expired = offer.expires_at && new Date(offer.expires_at) < now;
+    const statusLabel = JOB_STATUS_LABELS[offer.status] || offer.status;
+    const statusClass = `badge-${offer.status}`;
+
+    const isPublic = offer.status === "approved" && !expired;
+
+    return `
+      <article class="card">
+        <h2>${escapeHtml(offer.job_title)}</h2>
+
+        <p>
+          <span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span>
+          ${isPublic ? `<span class="badge badge-approved">En ligne</span>` : ""}
+          ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}
+        </p>
+
+        <p><strong>Entreprise :</strong> ${escapeHtml(offer.company_name)}</p>
+        <p><strong>Ville :</strong> ${escapeHtml(offer.city)}</p>
+        <p><strong>Contrat :</strong> ${escapeHtml(offer.contract_type)}</p>
+        ${offer.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(offer.salary)}</p>` : ""}
+        <p><strong>Description :</strong> ${escapeHtml(offer.description).replace(/\n/g, "<br>")}</p>
+        ${offer.qualifications ? `<p><strong>Qualifications :</strong> ${escapeHtml(offer.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
+        ${offer.deadline ? `<p><strong>Date limite :</strong> ${escapeHtml(offer.deadline)}</p>` : ""}
+
+        ${offer.expires_at ? `
+          <p class="muted">
+            Expire le : ${new Date(offer.expires_at).toLocaleDateString("fr-FR")}
+            ${expired ? "(expiree)" : ""}
+          </p>
+        ` : ""}
+
+        <p class="muted">Creee le : ${new Date(offer.created_at).toLocaleDateString("fr-FR")}</p>
+
+        <div class="actions">
+          ${offer.status === "approved" && !expired ? `
+            <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/close" method="POST" style="display:inline">
+              <button class="warning" type="submit">🔒 Cloturer</button>
+            </form>
+          ` : ""}
+
+          ${offer.status === "closed" ? `
+            <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/reopen" method="POST" style="display:inline">
+              <button class="success" type="submit">🔓 Rouvrir</button>
+            </form>
+          ` : ""}
+
+          ${expired && offer.status !== "closed" ? `
+            <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/renew" method="POST" style="display:inline">
+              <button class="success" type="submit">🔄 Renouveler ${OFFER_DURATION_DAYS}j</button>
+            </form>
+          ` : ""}
+
+          ${offer.status === "approved" && !expired ? `
+            <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/renew" method="POST" style="display:inline">
+              <button class="secondary" type="submit">🔄 Prolonger ${OFFER_DURATION_DAYS}j</button>
+            </form>
+          ` : ""}
+
+          <a class="button secondary" href="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/modifier">
+            ✏️ Modifier
+          </a>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  res.send(page("Mon espace pro", `
+    <section class="card">
+      <h1>Bonjour ${escapeHtml(proInfo.full_name)} 👋</h1>
+
+      <div class="pro-code-box">
+        <div class="pro-code-label">Votre code professionnel</div>
+        <div class="pro-code-value">${escapeHtml(proCodeCookie)}</div>
+        <div class="pro-code-label">Gardez-le precieusement</div>
+      </div>
+
+      <p class="help-text">
+        Ce code vous permet de vous connecter a votre espace et de publier
+        des offres d'emploi. Ne le partagez avec personne.
+      </p>
+
+      <div class="actions">
+        <a class="button" href="/publier-emploi">📢 Publier une offre</a>
+        <a class="button secondary" href="/">🌐 Voir le site</a>
+      </div>
+
+      <form action="/mon-espace-pro/logout" method="POST" style="display:inline">
+        <button class="danger" type="submit">Se deconnecter</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3>Mes informations</h3>
+      <p><strong>Profession :</strong> ${escapeHtml(proInfo.profession)}</p>
+      <p><strong>Ville :</strong> ${escapeHtml(proInfo.city)}</p>
+      ${proInfo.neighborhood ? `<p><strong>Quartier :</strong> ${escapeHtml(proInfo.neighborhood)}</p>` : ""}
+      <p><strong>Telephone :</strong> ${escapeHtml(proInfo.phone)}</p>
+      ${proInfo.experience ? `<p><strong>Experience :</strong> ${escapeHtml(proInfo.experience)}</p>` : ""}
+      <p><strong>Description :</strong> ${escapeHtml(proInfo.service_description)}</p>
+    </section>
+
+    <section class="card">
+      <h2>Mes offres d'emploi (${offers.length})</h2>
+    </section>
+
+    ${offersHtml || `
+      <section class="card">
+        <p class="muted">
+          Vous n'avez pas encore publie d'offre d'emploi.
+        </p>
+        <a class="button" href="/publier-emploi">Publier ma premiere offre</a>
+      </section>
+    `}
+  `));
+});
+
+/* CONNEXION ESPACE PRO */
+
+app.post("/mon-espace-pro/login", async (req, res) => {
+  const code = String(req.body.pro_code || "").trim().toUpperCase();
+
+  if (!/^TM\d{5}$/.test(code)) {
+    return res.status(400).send(
+      page("Code invalide", `
+        <section class="card">
+          <h2>Code invalide</h2>
+          <p>Le code doit etre au format TM12345.</p>
+          <a href="/mon-espace-pro">Reessayer</a>
+        </section>
+      `)
+    );
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT id FROM professional_applications
+       WHERE pro_code = $1 AND status = 'approved'`,
+      [code]
+    );
+
+    if (!result.rows.length) {
+      return res.status(401).send(
+        page("Code incorrect", `
+          <section class="card">
+            <h2>Code incorrect ou compte non approuve</h2>
+            <p>
+              Verifiez votre code ou contactez l'administration
+              si vous pensez qu'il y a une erreur.
+            </p>
+            <a class="button" href="/mon-espace-pro">Reessayer</a>
+            <a class="button secondary" href="/contact">Contacter l'administration</a>
+          </section>
+        `)
+      );
+    }
+
+    setProCookie(res, code);
+    res.redirect(303, "/mon-espace-pro");
+  } catch (error) {
+    console.error("Erreur login pro :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Erreur technique.</h2>")
+    );
+  }
+});
+
+/* DECONNEXION ESPACE PRO */
+
+app.post("/mon-espace-pro/logout", (req, res) => {
+  clearProCookie(res);
+  res.redirect(303, "/mon-espace-pro");
+});
+
+/* CLOTURER UNE OFFRE */
+
+app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const proResult = await pool.query(
+      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    await pool.query(
+      `UPDATE job_offers SET status = 'closed'
+       WHERE id = $1 AND pro_id = $2`,
+      [id, proResult.rows[0].id]
+    );
+  } catch (error) {
+    console.error("Erreur cloture :", error.message);
+  }
+
+  res.redirect(303, "/mon-espace-pro");
+});
+
+/* ROUVRIR UNE OFFRE */
+
+app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const proResult = await pool.query(
+      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    await pool.query(
+      `UPDATE job_offers
+       SET status = 'approved',
+           expires_at = NOW() + INTERVAL '${OFFER_DURATION_DAYS} days'
+       WHERE id = $1 AND pro_id = $2`,
+      [id, proResult.rows[0].id]
+    );
+  } catch (error) {
+    console.error("Erreur reouverture :", error.message);
+  }
+
+  res.redirect(303, "/mon-espace-pro");
+});
+
+/* RENOUVELER UNE OFFRE (+15 jours) */
+
+app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const proResult = await pool.query(
+      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    await pool.query(
+      `UPDATE job_offers
+       SET expires_at = GREATEST(COALESCE(expires_at, NOW()), NOW()) + INTERVAL '${OFFER_DURATION_DAYS} days',
+           status = CASE WHEN status = 'closed' THEN status ELSE 'approved' END
+       WHERE id = $1 AND pro_id = $2`,
+      [id, proResult.rows[0].id]
+    );
+  } catch (error) {
+    console.error("Erreur renouvellement :", error.message);
+  }
+
+  res.redirect(303, "/mon-espace-pro");
+});
+
+/* MODIFIER UNE OFFRE : FORMULAIRE */
+
+app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const proResult = await pool.query(
+      "SELECT id, full_name, city FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    const proInfo = proResult.rows[0];
+
+    const offerResult = await pool.query(
+      `SELECT * FROM job_offers WHERE id = $1 AND pro_id = $2`,
+      [id, proInfo.id]
+    );
+
+    if (!offerResult.rows.length) {
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    const offer = offerResult.rows[0];
+
+    const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
+      <option value="${escapeHtml(type)}" ${offer.contract_type === type ? "selected" : ""}>
+        ${escapeHtml(type)}
+      </option>
+    `).join("");
+
+    res.send(page("Modifier une offre", `
+      <section class="card">
+        <h1>Modifier l'offre</h1>
+        <p class="help-text">
+          Toute modification remettra l'offre en attente de validation
+          par l'administration.
+        </p>
+
+        <form action="/mon-espace-pro/offre/${encodeURIComponent(offer.id)}/modifier" method="POST">
+          <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
+          <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(offer.company_name)}">
+
+          <label for="job_title">Intitule du poste *</label>
+          <input id="job_title" name="job_title" required maxlength="200" value="${escapeHtml(offer.job_title)}">
+
+          <label for="city">Ville *</label>
+          <input id="city" name="city" required maxlength="100" value="${escapeHtml(offer.city)}">
+
+          <label for="contract_type">Type de contrat *</label>
+          <select id="contract_type" name="contract_type" required>
+            <option value="">Choisir</option>
+            ${contractOptions}
+          </select>
+
+          <label for="salary">Salaire (facultatif)</label>
+          <input id="salary" name="salary" maxlength="100" value="${escapeHtml(offer.salary || "")}" placeholder="Ex. : 100 000 FCFA/mois">
+
+          <label for="description">Description du poste *</label>
+          <textarea id="description" name="description" required maxlength="8000" rows="6">${escapeHtml(offer.description)}</textarea>
+
+          <label for="qualifications">Qualifications et competences recherchees</label>
+          <textarea id="qualifications" name="qualifications" maxlength="4000" rows="4">${escapeHtml(offer.qualifications || "")}</textarea>
+
+          <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
+            <legend>Moyens de contact (au moins un obligatoire) *</legend>
+
+            <label><input style="width:auto" type="checkbox" id="use_phone" name="use_phone" value="yes" ${offer.contact_phone ? "checked" : ""}> Appel direct</label>
+            <label for="contact_phone">Numero de telephone</label>
+            <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" value="${escapeHtml(offer.contact_phone || "")}" placeholder="+229...">
+
+            <label><input style="width:auto" type="checkbox" id="use_whatsapp" name="use_whatsapp" value="yes" ${offer.contact_whatsapp ? "checked" : ""}> WhatsApp</label>
+            <label for="contact_whatsapp">Numero WhatsApp</label>
+            <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" value="${escapeHtml(offer.contact_whatsapp || "")}" placeholder="+229...">
+
+            <label><input style="width:auto" type="checkbox" id="use_email" name="use_email" value="yes" ${offer.contact_email ? "checked" : ""}> E-mail</label>
+            <label for="contact_email">Adresse e-mail</label>
+            <input id="contact_email" name="contact_email" type="email" maxlength="254" value="${escapeHtml(offer.contact_email || "")}" placeholder="recrutement@entreprise.com">
+          </fieldset>
+
+          <label for="deadline">Date limite de candidature (facultatif)</label>
+          <input id="deadline" name="deadline" type="date" value="${escapeHtml(offer.deadline || "")}">
+
+          <button type="submit">Enregistrer les modifications</button>
+          <a class="button secondary" href="/mon-espace-pro">Annuler</a>
+        </form>
+      </section>
+    `));
+  } catch (error) {
+    console.error("Erreur modif :", error.message);
+    res.redirect(303, "/mon-espace-pro");
+  }
+});
+
+app.post("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+
+  if (!proCodeCookie) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/mon-espace-pro");
+  }
+
+  try {
+    const proResult = await pool.query(
+      "SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'",
+      [proCodeCookie]
+    );
+
+    if (!proResult.rows.length) {
+      clearProCookie(res);
+      return res.redirect(303, "/mon-espace-pro");
+    }
+
+    const {
+      company_name, job_title, city, contract_type, salary, description,
+      qualifications, contact_phone, contact_whatsapp, contact_email,
+      deadline, use_phone, use_whatsapp, use_email
+    } = req.body;
+
+    const company = typeof company_name === "string" ? company_name.trim() : "";
+    const title = typeof job_title === "string" ? job_title.trim() : "";
+    const jobCity = typeof city === "string" ? city.trim() : "";
+    const contract = typeof contract_type === "string" ? contract_type.trim() : "";
+    const jobDescription = typeof description === "string" ? description.trim() : "";
+
+    const phone = use_phone === "yes" && typeof contact_phone === "string" ? normalizePhone(contact_phone) : null;
+    const whatsapp = use_whatsapp === "yes" && typeof contact_whatsapp === "string" ? normalizePhone(contact_whatsapp) : null;
+    const email = use_email === "yes" && typeof contact_email === "string" ? contact_email.trim() : null;
+    const jobDeadline = typeof deadline === "string" && deadline.trim() ? deadline.trim() : null;
+
+    if (!company || !title || !jobCity || !jobDescription || !JOB_CONTRACT_TYPES.includes(contract)) {
+      return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
+    }
+
+    if (!phone && !whatsapp && !email) {
+      return res.redirect(303, "/mon-espace-pro/offre/" + id + "/modifier");
+    }
+
+    await pool.query(`
+      UPDATE job_offers
+      SET company_name = $1,
+          job_title = $2,
+          city = $3,
+          contract_type = $4,
+          salary = $5,
+          description = $6,
+          qualifications = $7,
+          contact_phone = $8,
+          contact_whatsapp = $9,
+          contact_email = $10,
+          deadline = $11,
+          status = 'pending'
+      WHERE id = $12 AND pro_id = $13
+    `, [
+      company.slice(0, 200),
+      title.slice(0, 200),
+      jobCity.slice(0, 100),
+      contract,
+      typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
+      jobDescription.slice(0, 8000),
+      typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
+      phone, whatsapp, email, jobDeadline,
+      id, proResult.rows[0].id
+    ]);
+  } catch (error) {
+    console.error("Erreur modif POST :", error.message);
+  }
+
+  res.redirect(303, "/mon-espace-pro");
 });
 
 /* CONNEXION ADMINISTRATEUR */
@@ -1644,7 +2386,6 @@ app.post("/admin/login", (req, res) => {
 
   if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
     console.error("ADMIN_SESSION_SECRET est absente ou trop courte.");
-
     return res.status(500).send(
       page("Configuration incomplete", `
         <h2>La configuration securisee de l'administration est incomplete.</h2>
@@ -1699,18 +2440,18 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   try {
     const prosApproved = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
     const prosPending = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'");
-    const jobsApproved = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'approved'");
+    const jobsApproved = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())");
     const jobsPending = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'");
+    const jobsClosed = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'closed'");
     const messagesUnread = await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false");
-    const messagesTotal = await pool.query("SELECT COUNT(*) FROM contact_messages");
 
     const stats = {
       prosApproved: Number(prosApproved.rows[0].count),
       prosPending: Number(prosPending.rows[0].count),
       jobsApproved: Number(jobsApproved.rows[0].count),
       jobsPending: Number(jobsPending.rows[0].count),
-      messagesUnread: Number(messagesUnread.rows[0].count),
-      messagesTotal: Number(messagesTotal.rows[0].count)
+      jobsClosed: Number(jobsClosed.rows[0].count),
+      messagesUnread: Number(messagesUnread.rows[0].count)
     };
 
     res.setHeader("Cache-Control", "no-store");
@@ -1719,7 +2460,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       page("Tableau de bord", `
         <section class="card">
           <h1>Tableau de bord</h1>
-          <p class="muted">Bienvenue dans votre espace d'administration. Voici un apercu de l'activite de TrouveMoi.</p>
+          <p class="muted">Bienvenue dans votre espace d'administration.</p>
         </section>
 
         ${adminMenu("/admin/dashboard", req.adminSession.csrf)}
@@ -1742,7 +2483,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
           <div class="stat-card info">
             <div class="stat-icon">💼</div>
             <div class="stat-number">${stats.jobsApproved}</div>
-            <div class="stat-label">Offres publiees</div>
+            <div class="stat-label">Offres en ligne</div>
             <a class="stat-link" href="/admin/emplois">Voir les offres →</a>
           </div>
 
@@ -1753,18 +2494,18 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
             <a class="stat-link" href="/admin/emplois">Traiter maintenant →</a>
           </div>
 
+          <div class="stat-card">
+            <div class="stat-icon">🔒</div>
+            <div class="stat-number">${stats.jobsClosed}</div>
+            <div class="stat-label">Offres cloturees</div>
+            <a class="stat-link" href="/admin/emplois">Voir →</a>
+          </div>
+
           <div class="stat-card ${stats.messagesUnread > 0 ? "danger" : ""}">
             <div class="stat-icon">📩</div>
             <div class="stat-number">${stats.messagesUnread}</div>
             <div class="stat-label">Messages non lus</div>
             <a class="stat-link" href="/admin/messages">Lire les messages →</a>
-          </div>
-
-          <div class="stat-card">
-            <div class="stat-icon">📬</div>
-            <div class="stat-number">${stats.messagesTotal}</div>
-            <div class="stat-label">Messages au total</div>
-            <a class="stat-link" href="/admin/messages">Voir l'historique →</a>
           </div>
         </div>
       `)
@@ -1777,7 +2518,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
-/* ADMIN : CANDIDATURES */
+/* ADMIN : CANDIDATURES (avec code pro) */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
@@ -1786,7 +2527,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         id, full_name, phone, city, neighborhood, profession,
         experience, service_description, service_area, availability,
         status, created_at, photo_profil_url, photo_identite_url,
-        photo_activite_url
+        photo_activite_url, pro_code
       FROM professional_applications
       ORDER BY
         CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
@@ -1826,6 +2567,18 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         </div>
       `;
 
+      const codeBlock = candidate.pro_code ? `
+        <div class="pro-code-box" style="margin:16px 0">
+          <div class="pro-code-label">Code professionnel</div>
+          <div class="pro-code-value">${escapeHtml(candidate.pro_code)}</div>
+          <div class="pro-code-label">A communiquer au pro</div>
+        </div>
+      ` : `
+        <p class="help-text">
+          Aucun code genere (le pro doit etre approuve pour en recevoir un).
+        </p>
+      `;
+
       return `
         <article class="card">
           <h2>${escapeHtml(candidate.full_name)}</h2>
@@ -1842,6 +2595,8 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           <p><strong>Disponibilite :</strong> ${escapeHtml(candidate.availability || "Non renseignee")}</p>
           <p><strong>Statut actuel :</strong> ${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}</p>
           <p class="muted">Recue le : ${escapeHtml(candidate.created_at)}</p>
+
+          ${codeBlock}
 
           <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status" method="POST">
             <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
@@ -1864,6 +2619,11 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         <section class="card">
           <h1>Candidatures professionnelles</h1>
           <p>Total affiche : ${result.rows.length} candidature(s)</p>
+          <p class="help-text">
+            Lorsque vous approuvez une candidature, un code professionnel
+            unique est genere automatiquement. Communiquez-le au pro
+            (via WhatsApp, telephone, etc.).
+          </p>
         </section>
 
         ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
@@ -1876,26 +2636,29 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
       `)
     );
   } catch (error) {
-    console.error("Erreur du tableau de bord :", error.message);
+    console.error("Erreur candidatures :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Impossible de charger les candidatures.</h2>")
     );
   }
 });
 
-/* ADMIN : OFFRES D'EMPLOI */
+/* ADMIN : OFFRES D'EMPLOI (avec pro et expiration) */
 
 app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        id, company_name, job_title, city, contract_type, salary,
-        description, qualifications, contact_phone, contact_whatsapp,
-        contact_email, deadline, status, created_at
-      FROM job_offers
+        j.id, j.company_name, j.job_title, j.city, j.contract_type,
+        j.salary, j.description, j.qualifications, j.contact_phone,
+        j.contact_whatsapp, j.contact_email, j.deadline, j.status,
+        j.created_at, j.expires_at, j.pro_id,
+        p.full_name AS pro_name, p.pro_code AS pro_code
+      FROM job_offers j
+      LEFT JOIN professional_applications p ON p.id = j.pro_id
       ORDER BY
-        CASE WHEN status = 'pending' THEN 0 ELSE 1 END,
-        created_at DESC
+        CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END,
+        j.created_at DESC
       LIMIT 200
     `);
 
@@ -1906,9 +2669,34 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
         </option>
       `).join("");
 
+      const expired = job.expires_at && new Date(job.expires_at) < new Date();
+
+      const proBlock = job.pro_name ? `
+        <div style="background:#f0fdf9;padding:12px;border-radius:8px;margin:12px 0;border-left:4px solid #087f5b">
+          <p style="margin:0"><strong>📢 Publiee par :</strong> ${escapeHtml(job.pro_name)}</p>
+          ${job.pro_code ? `<p style="margin:4px 0 0 0"><strong>Code pro :</strong> <code>${escapeHtml(job.pro_code)}</code></p>` : ""}
+        </div>
+      ` : `
+        <p class="help-text">⚠️ Publiee avant la mise en place des pros verifies</p>
+      `;
+
+      const expirationBlock = job.expires_at ? `
+        <p><strong>Expire le :</strong> ${new Date(job.expires_at).toLocaleDateString("fr-FR")}
+        ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>
+      ` : "";
+
       return `
         <article class="card">
           <h2>${escapeHtml(job.job_title)}</h2>
+
+          <p>
+            <span class="badge badge-${job.status}">
+              ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}
+            </span>
+          </p>
+
+          ${proBlock}
+
           <p><strong>Entreprise/recruteur :</strong> ${escapeHtml(job.company_name)}</p>
           <p><strong>Ville :</strong> ${escapeHtml(job.city)}</p>
           <p><strong>Contrat :</strong> ${escapeHtml(job.contract_type)}</p>
@@ -1919,7 +2707,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
           <p><strong>Contact WhatsApp :</strong> ${escapeHtml(job.contact_whatsapp || "Non fourni")}</p>
           <p><strong>Contact e-mail :</strong> ${escapeHtml(job.contact_email || "Non fourni")}</p>
           <p><strong>Date limite :</strong> ${escapeHtml(job.deadline || "Non renseignee")}</p>
-          <p><strong>Statut :</strong> ${escapeHtml(JOB_STATUS_LABELS[job.status] || job.status)}</p>
+          ${expirationBlock}
 
           <form action="/admin/emplois/${encodeURIComponent(job.id)}/status" method="POST">
             <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
@@ -1931,6 +2719,13 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
             <button type="submit">Enregistrer le statut</button>
           </form>
+
+          <div class="actions">
+            <form action="/admin/emplois/${encodeURIComponent(job.id)}/renew" method="POST" style="display:inline">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <button class="success" type="submit">🔄 Prolonger ${OFFER_DURATION_DAYS}j</button>
+            </form>
+          </div>
         </article>
       `;
     }).join("");
@@ -1942,6 +2737,10 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
         <section class="card">
           <h1>Gestion des offres d'emploi</h1>
           <p>Total affiche : ${result.rows.length} offre(s)</p>
+          <p class="help-text">
+            Les offres expirent automatiquement apres ${OFFER_DURATION_DAYS} jours.
+            Vous pouvez les prolonger manuellement.
+          </p>
         </section>
 
         ${adminMenu("/admin/emplois", req.adminSession.csrf)}
@@ -1954,12 +2753,38 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       `)
     );
   } catch (error) {
-    console.error("Erreur de gestion des offres :", error.message);
+    console.error("Erreur gestion offres :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Impossible de charger les offres.</h2>")
     );
   }
 });
+
+/* ADMIN : PROLONGER UNE OFFRE */
+
+app.post("/admin/emplois/:id/renew", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isSafeInteger(id) || id < 1) {
+    return res.redirect(303, "/admin/emplois");
+  }
+
+  try {
+    await pool.query(
+      `UPDATE job_offers
+       SET expires_at = GREATEST(COALESCE(expires_at, NOW()), NOW()) + INTERVAL '${OFFER_DURATION_DAYS} days',
+           status = CASE WHEN status = 'pending' THEN status ELSE 'approved' END
+       WHERE id = $1`,
+      [id]
+    );
+  } catch (error) {
+    console.error("Erreur prolongation admin :", error.message);
+  }
+
+  res.redirect(303, "/admin/emplois");
+});
+
+/* ADMIN : CHANGER STATUT OFFRE */
 
 app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
@@ -1978,27 +2803,35 @@ app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res)
   }
 
   try {
-    const result = await pool.query(
-      `UPDATE job_offers SET status = $1 WHERE id = $2 RETURNING id`,
-      [status, id]
-    );
-
-    if (!result.rowCount) {
-      return res.status(404).send(
-        page("Offre introuvable", "<h2>Cette offre n'existe pas.</h2>")
+    if (status === "approved") {
+      await pool.query(
+        `UPDATE job_offers
+         SET status = $1,
+             expires_at = CASE
+               WHEN expires_at IS NULL OR expires_at < NOW()
+                 THEN NOW() + INTERVAL '${OFFER_DURATION_DAYS} days'
+               ELSE expires_at
+             END
+         WHERE id = $2`,
+        [status, id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE job_offers SET status = $1 WHERE id = $2`,
+        [status, id]
       );
     }
 
     res.redirect(303, "/admin/emplois");
   } catch (error) {
-    console.error("Erreur de mise a jour de l'offre :", error.message);
+    console.error("Erreur statut offre :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>")
     );
   }
 });
 
-/* CHANGER LE STATUT D'UNE CANDIDATURE */
+/* ADMIN : CHANGER STATUT CANDIDATURE (genere le code si approuvee) */
 
 app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
@@ -2017,27 +2850,45 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
   }
 
   try {
-    const result = await pool.query(
-      `UPDATE professional_applications SET status = $1 WHERE id = $2 RETURNING id`,
-      [status, id]
+    const existing = await pool.query(
+      "SELECT pro_code FROM professional_applications WHERE id = $1",
+      [id]
     );
 
-    if (!result.rowCount) {
+    if (!existing.rows.length) {
       return res.status(404).send(
         page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>")
       );
     }
 
+    const currentCode = existing.rows[0].pro_code;
+
+    if (status === "approved" && !currentCode) {
+      const newCode = await generateUniqueProCode();
+
+      await pool.query(
+        `UPDATE professional_applications
+         SET status = $1, pro_code = $2
+         WHERE id = $3`,
+        [status, newCode, id]
+      );
+    } else {
+      await pool.query(
+        `UPDATE professional_applications SET status = $1 WHERE id = $2`,
+        [status, id]
+      );
+    }
+
     res.redirect(303, "/admin/candidatures");
   } catch (error) {
-    console.error("Erreur de mise a jour :", error.message);
+    console.error("Erreur statut candidature :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Impossible de modifier le statut.</h2>")
     );
   }
 });
 
-/* ADMIN : MESSAGES DE CONTACT */
+/* ADMIN : MESSAGES */
 
 app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
@@ -2113,7 +2964,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
       `)
     );
   } catch (error) {
-    console.error("Erreur de chargement des messages :", error.message);
+    console.error("Erreur messages :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Impossible de charger les messages.</h2>")
     );
@@ -2178,11 +3029,12 @@ app.get("/a-propos", (req, res) => {
         <li>Annuaire de professionnels verifies</li>
         <li>Recherche par ville, quartier et metier</li>
         <li>Contact direct par telephone ou WhatsApp</li>
-        <li>Offres d'emploi publiees par les entreprises</li>
+        <li>Offres d'emploi publiees par des professionnels verifies</li>
       </ul>
 
       <h2>Notre engagement</h2>
       <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe (photo d'identite et informations verifiees) avant publication.</p>
+      <p>Seuls les professionnels verifies peuvent publier des offres d'emploi, afin de lutter contre les arnaques et de garantir la fiabilite de chaque annonce.</p>
 
       <p style="margin-top:24px">
         <a class="button" href="/contact">Nous contacter</a>
@@ -2207,18 +3059,22 @@ app.get("/conditions", (req, res) => {
       <h2>3. Inscription des professionnels</h2>
       <p>Les professionnels doivent fournir des informations exactes et a jour. Toute fausse declaration entraine le rejet de la candidature.</p>
 
-      <h2>4. Responsabilites</h2>
+      <h2>4. Publication d'offres d'emploi</h2>
+      <p>Seuls les professionnels verifies (ayant recu un code professionnel apres approbation de leur candidature) peuvent publier des offres d'emploi sur TrouveMoi. Toute offre est examinee par l'administration avant publication.</p>
+
+      <h2>5. Responsabilites</h2>
       <p>TrouveMoi ne peut etre tenu responsable de la qualite des services fournis par les professionnels references.</p>
 
-      <h2>5. Utilisation interdite</h2>
+      <h2>6. Utilisation interdite</h2>
       <p>Il est interdit de :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Publier de fausses informations</li>
         <li>Usurper l'identite d'autrui</li>
+        <li>Publier de fausses offres d'emploi</li>
         <li>Utiliser la plateforme a des fins illicites</li>
       </ul>
 
-      <h2>6. Contact</h2>
+      <h2>7. Contact</h2>
       <p>Pour toute question : <a href="/contact">formulaire de contact</a></p>
     </section>
   `));
@@ -2233,7 +3089,7 @@ app.get("/confidentialite", (req, res) => {
       <h2>1. Donnees collectees</h2>
       <p>Nous collectons :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
-        <li>Pros : nom, telephone, ville, quartier, metier, description, photos</li>
+        <li>Pros : nom, telephone, ville, quartier, metier, description, photos, code professionnel</li>
         <li>Offres : entreprise, contacts, description du poste</li>
         <li>Contact : nom, email, telephone, message</li>
       </ul>
@@ -2243,20 +3099,21 @@ app.get("/confidentialite", (req, res) => {
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Mettre en relation les clients et les professionnels</li>
         <li>Afficher les profils approuves</li>
+        <li>Permettre aux pros verifies de publier des offres</li>
         <li>Vous contacter en cas de besoin</li>
       </ul>
 
       <h2>3. Protection des photos d'identite</h2>
       <p>Les photos d'identite sont <strong>strictement privees</strong>. Elles ne sont visibles que par l'administration.</p>
 
-      <h2>4. Partage des donnees</h2>
+      <h2>4. Code professionnel</h2>
+      <p>Le code professionnel est personnel. Il ne doit pas etre partage. Il permet de gerer vos offres d'emploi.</p>
+
+      <h2>5. Partage des donnees</h2>
       <p>Nous ne vendons ni ne partageons vos donnees avec des tiers.</p>
 
-      <h2>5. Vos droits</h2>
+      <h2>6. Vos droits</h2>
       <p>Vous pouvez demander l'acces, la modification ou la suppression de vos donnees via le <a href="/contact">formulaire de contact</a>.</p>
-
-      <h2>6. Cookies</h2>
-      <p>Nous utilisons uniquement des cookies techniques necessaires au fonctionnement de l'administration.</p>
     </section>
   `));
 });
@@ -2265,7 +3122,6 @@ app.get("/contact", (req, res) => {
   res.send(page("Contact", `
     <section class="card">
       <h1>Nous contacter</h1>
-
       <p>Une question, une suggestion, un probleme ? Ecrivez-nous.</p>
 
       <form action="/contact" method="POST">
@@ -2351,7 +3207,7 @@ app.post("/contact", async (req, res) => {
       `)
     );
   } catch (error) {
-    console.error("Erreur lors de l'enregistrement du message :", error.message);
+    console.error("Erreur contact :", error.message);
     res.status(500).send(
       page("Erreur", `
         <section class="card">
@@ -2399,6 +3255,7 @@ async function startServer() {
         photo_profil_url TEXT,
         photo_identite_url TEXT,
         photo_activite_url TEXT,
+        pro_code VARCHAR(10) UNIQUE,
         status VARCHAR(30) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
@@ -2425,6 +3282,11 @@ async function startServer() {
     `);
 
     await pool.query(`
+      ALTER TABLE professional_applications
+      ADD COLUMN IF NOT EXISTS pro_code VARCHAR(10) UNIQUE
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS job_offers (
         id SERIAL PRIMARY KEY,
         company_name VARCHAR(200) NOT NULL,
@@ -2438,8 +3300,9 @@ async function startServer() {
         contact_whatsapp VARCHAR(30),
         contact_email VARCHAR(254),
         deadline DATE,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending'
-          CHECK (status IN ('pending', 'approved', 'rejected')),
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL,
+        expires_at TIMESTAMP,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CHECK (
           contact_phone IS NOT NULL
@@ -2447,6 +3310,27 @@ async function startServer() {
           OR contact_email IS NOT NULL
         )
       )
+    `);
+
+    await pool.query(`
+      ALTER TABLE job_offers
+      ADD COLUMN IF NOT EXISTS pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL
+    `);
+
+    await pool.query(`
+      ALTER TABLE job_offers
+      ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP
+    `);
+
+    await pool.query(`
+      ALTER TABLE job_offers
+      DROP CONSTRAINT IF EXISTS job_offers_status_check
+    `);
+
+    await pool.query(`
+      ALTER TABLE job_offers
+      ADD CONSTRAINT job_offers_status_check
+      CHECK (status IN ('pending', 'approved', 'rejected', 'closed'))
     `);
 
     await pool.query(`
