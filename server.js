@@ -326,8 +326,6 @@ function page(title, content, proConnected) {
           display: flex; flex-direction: column;
         }
 
-        /* HEADER */
-
         header {
           background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
           color: white; padding: 18px 20px;
@@ -361,8 +359,6 @@ function page(title, content, proConnected) {
 
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.15); }
 
-        /* MAIN */
-
         main {
           max-width: 1100px; width: 100%;
           margin: 0 auto; padding: 24px 20px; flex: 1;
@@ -376,8 +372,6 @@ function page(title, content, proConnected) {
         }
 
         .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-
-        /* TITRES HIERARCHISES */
 
         h1 {
           font-size: 28px; margin-bottom: 16px;
@@ -402,12 +396,8 @@ function page(title, content, proConnected) {
 
         p { margin-bottom: 12px; }
 
-        /* LABELS ET VALEURS */
-
         .label { font-weight: 700; color: #1a1a1a; }
         .value { color: #333; }
-
-        /* FORMULAIRES */
 
         label {
           display: block; margin-top: 8px; margin-bottom: 4px;
@@ -437,8 +427,6 @@ function page(title, content, proConnected) {
 
         input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
 
-        /* BOUTONS */
-
         button, .button {
           display: inline-block; border: none;
           background: #087f5b; color: white;
@@ -465,8 +453,6 @@ function page(title, content, proConnected) {
 
         .muted { color: #667085; font-size: 14px; }
 
-        /* BOUTONS DE CONTACT */
-
         .contact-buttons {
           display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
         }
@@ -479,8 +465,6 @@ function page(title, content, proConnected) {
         .email:hover { background: #344054; }
         .share { background: #4267b2; }
         .share:hover { background: #365899; }
-
-        /* PHOTOS */
 
         .photos-grid {
           display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
@@ -511,8 +495,6 @@ function page(title, content, proConnected) {
         .hidden { display: none !important; }
 
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-
-        /* STATS */
 
         .stats-grid {
           display: grid;
@@ -554,8 +536,6 @@ function page(title, content, proConnected) {
 
         .stat-link:hover { text-decoration: underline; }
 
-        /* CODE PRO */
-
         .pro-code-box {
           background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
           color: white; padding: 24px; border-radius: 12px;
@@ -572,8 +552,6 @@ function page(title, content, proConnected) {
           font-size: 14px; opacity: 0.9;
           text-transform: uppercase; letter-spacing: 1px;
         }
-
-        /* BADGES */
 
         .badge {
           display: inline-block;
@@ -592,8 +570,6 @@ function page(title, content, proConnected) {
         .badge-processed { background: #d1fae5; color: #065f46; }
         .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
 
-        /* ALERTES */
-
         .alert {
           padding: 16px 20px; border-radius: 8px;
           margin-bottom: 16px; border-left: 4px solid;
@@ -603,8 +579,6 @@ function page(title, content, proConnected) {
         .alert-danger { background: #fee2e2; border-color: #b42318; color: #991b1b; }
         .alert-warning { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
         .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
-
-        /* BANDEAU PRO CONNECTE - BLEU PROFOND */
 
         .pro-welcome {
           background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
@@ -650,8 +624,6 @@ function page(title, content, proConnected) {
           background: rgba(255,255,255,0.35);
         }
 
-        /* BANDEAU ALERTES ADMIN */
-
         .admin-alerts {
           background: #fff7ed;
           border: 1px solid #fdba74;
@@ -689,8 +661,6 @@ function page(title, content, proConnected) {
         }
 
         .admin-alerts a:hover { text-decoration: underline; }
-
-        /* GRILLE DE CARTES PROS */
 
         .pros-grid {
           display: grid;
@@ -787,8 +757,6 @@ function page(title, content, proConnected) {
 
         .pro-card-button:hover { background: #0a6b4d; }
 
-        /* PAGE PROFIL DETAILLE */
-
         .pro-header {
           background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
           color: white;
@@ -817,8 +785,6 @@ function page(title, content, proConnected) {
           opacity: 0.9;
         }
 
-        /* CHECKBOX BLOCK */
-
         .checkbox-block {
           background: #f9fafb;
           padding: 16px;
@@ -838,8 +804,6 @@ function page(title, content, proConnected) {
         .checkbox-block input[type="radio"] {
           margin-top: 5px;
         }
-
-        /* FOOTER */
 
         footer {
           background: #1a1a1a; color: #ccc;
@@ -871,8 +835,6 @@ function page(title, content, proConnected) {
           padding-top: 20px; border-top: 1px solid #333;
           text-align: center; font-size: 13px; color: #888;
         }
-
-        /* RESPONSIVE */
 
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
@@ -1110,6 +1072,12 @@ app.get("/", async (req, res) => {
       </div>
     ` : "";
 
+    /* CORRECTION : prosCards affiché UNE SEULE FOIS */
+
+    const prosSection = result.rows.length > 0
+      ? `<div class="pros-grid">${prosCards}</div>`
+      : `<section class="card"><p>Aucun professionnel approuve ne correspond a votre recherche.</p></section>`;
+
     const content = `
       ${welcomeBanner}
 
@@ -1146,17 +1114,7 @@ app.get("/", async (req, res) => {
 
       <h2>Professionnels disponibles (${result.rows.length})</h2>
 
-      ${prosCards || `
-        <section class="card">
-          <p>Aucun professionnel approuve ne correspond a votre recherche.</p>
-        </section>
-      `}
-
-      ${result.rows.length ? `
-        <div class="pros-grid">
-          ${prosCards}
-        </div>
-      ` : ""}
+      ${prosSection}
 
       <p style="text-align:center;margin-top:32px">
         <a href="/devenir-professionnel">Proposer mes services</a>
@@ -1226,8 +1184,6 @@ app.get("/pro/:id", async (req, res) => {
       "https://trouvemoi-4mk0.onrender.com/pro/" + person.id
     );
 
-    /* AUTRES PROS DE LA MEME VILLE */
-
     const sameCityResult = await pool.query(
       `SELECT id, full_name, company_name, profession, city, neighborhood, photo_activite_url
        FROM professional_applications
@@ -1236,8 +1192,6 @@ app.get("/pro/:id", async (req, res) => {
       [person.city, person.id]
     );
 
-    /* AUTRES PROS DU MEME METIER */
-
     const sameProfessionResult = await pool.query(
       `SELECT id, full_name, company_name, profession, city, neighborhood, photo_activite_url
        FROM professional_applications
@@ -1245,8 +1199,6 @@ app.get("/pro/:id", async (req, res) => {
        ORDER BY created_at DESC LIMIT 4`,
       [person.profession, person.id]
     );
-
-    /* BOUTONS DE CONTACT */
 
     let contactButtons = "";
 
@@ -1271,8 +1223,6 @@ app.get("/pro/:id", async (req, res) => {
         </div>
       `;
     }
-
-    /* CONSTRUCTION DES CARTES D'AUTRES PROS */
 
     function buildMiniCards(rows) {
       return rows.map((p) => {
@@ -3045,7 +2995,7 @@ app.post("/admin/login", (req, res) => {
   res.redirect(303, "/admin/dashboard");
 });
 
-/* MENU ADMIN (avec badge RGPD) */
+/* MENU ADMIN (avec badges) */
 
 async function adminMenu(current, csrf) {
   let gdprCount = 0;
@@ -3113,8 +3063,6 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       messagesUnread: Number(messagesUnread.rows[0].count),
       gdprPending: Number(gdprPending.rows[0].count)
     };
-
-    /* BANDEAU D'ALERTES */
 
     const alerts = [];
 
@@ -3696,14 +3644,23 @@ app.post("/admin/messages/:id/delete", requireAdmin, verifyCsrf, async (req, res
   res.redirect(303, "/admin/messages");
 });
 
-/* ADMIN : DEMANDES RGPD */
+/* ADMIN : DEMANDES RGPD (VERSION ROBUSTE - CORRIGEE) */
 
 app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT g.id, g.request_type, g.status, g.message, g.created_at, g.processed_at,
-             g.pro_id, p.full_name AS pro_name, p.company_name AS pro_company,
-             p.phone AS pro_phone, p.pro_code AS pro_code
+      SELECT
+        g.id,
+        g.request_type,
+        g.status,
+        g.message,
+        g.created_at,
+        g.processed_at,
+        g.pro_id,
+        p.full_name AS pro_name,
+        p.company_name AS pro_company,
+        p.phone AS pro_phone,
+        p.pro_code AS pro_code
       FROM gdpr_requests g
       LEFT JOIN professional_applications p ON p.id = g.pro_id
       ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC
@@ -3711,23 +3668,36 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
     `);
 
     const requests = result.rows.map((req) => {
-      const typeLabel = GDPR_TYPE_LABELS[req.request_type] || req.request_type;
-      const statusLabel = GDPR_STATUS_LABELS[req.status] || req.status;
+      const typeLabel = GDPR_TYPE_LABELS[req.request_type] || req.request_type || "Type inconnu";
+      const statusLabel = GDPR_STATUS_LABELS[req.status] || req.status || "Statut inconnu";
 
-      const proDisplay = req.pro_company || req.pro_name || "Inconnu";
+      const proDisplay = req.pro_company || req.pro_name || "Professionnel supprime";
 
-      const daysSince = Math.floor(
-        (Date.now() - new Date(req.created_at).getTime()) / (1000 * 60 * 60 * 24)
-      );
+      let daysSince = 0;
+
+      if (req.created_at) {
+        daysSince = Math.floor(
+          (Date.now() - new Date(req.created_at).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (isNaN(daysSince) || daysSince < 0) daysSince = 0;
+      }
 
       const urgency = req.status === "pending"
         ? (daysSince > 20 ? "🔴 URGENT (plus de 20 jours)" : daysSince > 10 ? "🟠 A traiter bientot" : "🟢 Recent")
         : "";
 
+      const createdDisplay = req.created_at
+        ? new Date(req.created_at).toLocaleString("fr-FR")
+        : "Date inconnue";
+
+      const processedDisplay = req.processed_at
+        ? new Date(req.processed_at).toLocaleString("fr-FR")
+        : null;
+
       return `
         <article class="card">
           <h2>
-            <span class="badge badge-${req.status}">${escapeHtml(statusLabel)}</span>
+            <span class="badge badge-${escapeHtml(req.status || "pending")}">${escapeHtml(statusLabel)}</span>
             ${escapeHtml(typeLabel)}
           </h2>
 
@@ -3737,8 +3707,8 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
           ${req.pro_code ? `<p><span class="label">Code pro :</span> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
           ${req.pro_phone ? `<p><span class="label">Telephone :</span> <span class="value">${escapeHtml(req.pro_phone)}</span></p>` : ""}
           <p><span class="label">Message :</span> <span class="value">${escapeHtml(req.message || "Aucun message")}</span></p>
-          <p class="muted">Demande le : ${new Date(req.created_at).toLocaleString("fr-FR")} (il y a ${daysSince} jour(s))</p>
-          ${req.processed_at ? `<p class="muted">Traitee le : ${new Date(req.processed_at).toLocaleString("fr-FR")}</p>` : ""}
+          <p class="muted">Demande le : ${escapeHtml(createdDisplay)} (il y a ${daysSince} jour(s))</p>
+          ${processedDisplay ? `<p class="muted">Traitee le : ${escapeHtml(processedDisplay)}</p>` : ""}
 
           ${req.status === "pending" ? `
             <div class="actions">
@@ -3784,7 +3754,21 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
     `, null));
   } catch (error) {
     console.error("Erreur RGPD :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger les demandes RGPD.</h2>", null));
+    console.error("Stack RGPD :", error.stack);
+
+    res.status(500).send(page("Erreur RGPD", `
+      <section class="card">
+        <h2>Impossible de charger les demandes RGPD</h2>
+        <p><strong>Erreur technique :</strong></p>
+        <p style="background:#fee2e2;padding:12px;border-radius:8px;font-family:monospace">
+          ${escapeHtml(error.message)}
+        </p>
+        <p class="help-text">
+          Copiez ce message d'erreur et envoyez-le a l'administrateur technique.
+        </p>
+        <a class="button" href="/admin/dashboard">Retour au tableau de bord</a>
+      </section>
+    `, null));
   }
 });
 
