@@ -401,10 +401,7 @@ function page(title, content, proConnected) {
           display: block;
           height: 42px;
           width: auto;
-        }
-
-        .logo .logo-text {
-          display: inline;
+          max-width: 100%;
         }
 
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
@@ -487,6 +484,24 @@ function page(title, content, proConnected) {
         input[type="file"]:hover { border-color: #087f5b; background: #f0fdf9; }
 
         input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
+
+        /* CATEGORIES DE METIERS EN GRAS */
+
+        optgroup {
+          font-weight: 800;
+          color: #087f5b;
+          font-style: normal;
+          background: #f0fdf9;
+          padding: 6px 0;
+          font-size: 15px;
+        }
+
+        optgroup option {
+          font-weight: 400;
+          color: #222;
+          background: white;
+          font-size: 15px;
+        }
 
         button, .button {
           display: inline-block; border: none;
@@ -1051,13 +1066,13 @@ function page(title, content, proConnected) {
           .rating-details .stars { font-size: 22px; }
           .star-rating-input label { font-size: 36px; }
 
-          /* LOGO ADAPTATIF : texte cache sur mobile */
-          .logo .logo-text {
-            display: none;
+          /* LOGO ADAPTATIF : version compacte sur mobile, mais texte visible */
+          .logo svg {
+            height: 32px;
           }
 
-          .logo svg {
-            height: 38px;
+          .logo .logo-text {
+            font-size: 18px;
           }
         }
       </style>
@@ -1214,8 +1229,6 @@ app.get("/", async (req, res) => {
         `).join("");
         return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
-
-    /* CARTES PROS AVEC NOTE */
 
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
@@ -1384,8 +1397,6 @@ app.get("/pro/:id", async (req, res) => {
     const reviewsCount = Number(person.reviews_count || 0);
     const avgRating = Number(person.avg_rating || 0);
 
-    /* RECUPERER LES 5 DERNIERS AVIS APPROUVES */
-
     const reviewsResult = await pool.query(
       `SELECT id, author_name, rating, comment, created_at
        FROM reviews
@@ -1444,8 +1455,6 @@ app.get("/pro/:id", async (req, res) => {
       `;
     }
 
-    /* BLOC NOTE MOYENNE */
-
     let ratingHeader = "";
 
     if (reviewsCount > 0) {
@@ -1463,8 +1472,6 @@ app.get("/pro/:id", async (req, res) => {
       `;
     }
 
-    /* BLOC RÉSUMÉ DE LA NOTE */
-
     let ratingSummary = "";
 
     if (reviewsCount > 0) {
@@ -1478,8 +1485,6 @@ app.get("/pro/:id", async (req, res) => {
         </div>
       `;
     }
-
-    /* BLOC LISTE DES AVIS */
 
     const reviewsHtml = reviews.map((rev) => {
       const dateStr = new Date(rev.created_at).toLocaleDateString("fr-FR", {
@@ -1508,8 +1513,6 @@ app.get("/pro/:id", async (req, res) => {
         ${reviewsCount > 5 ? `<p class="muted">Seuls les 5 derniers avis sont affiches.</p>` : ""}
       </section>
     ` : "";
-
-    /* BLOC BOUTON AVIS */
 
     const reviewButton = `
       <section class="card" style="text-align:center">
@@ -2810,8 +2813,6 @@ app.get("/mon-espace-pro", async (req, res) => {
     </article>
   `).join("");
 
-  /* MES AVIS RECUS */
-
   const myReviewsHtml = myReviews.map((rev) => {
     const dateStr = new Date(rev.created_at).toLocaleDateString("fr-FR");
     const statusLabel = REVIEW_STATUS_LABELS[rev.status] || rev.status;
@@ -3809,7 +3810,7 @@ app.post("/admin/avis/:id/approuver", requireAdmin, verifyCsrf, async (req, res)
 
   try {
     await pool.query(
-      `UPDATE reviews SET status = 'approved' WHERE id = $1`,
+      `UPDATE reviews SET status = 'approved', processed_at = NOW() WHERE id = $1`,
       [id]
     );
   } catch (error) {
@@ -3825,7 +3826,7 @@ app.post("/admin/avis/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) =
 
   try {
     await pool.query(
-      `UPDATE reviews SET status = 'rejected' WHERE id = $1`,
+      `UPDATE reviews SET status = 'rejected', processed_at = NOW() WHERE id = $1`,
       [id]
     );
   } catch (error) {
@@ -3860,7 +3861,7 @@ app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) =>
 
   try {
     await pool.query(
-      `UPDATE reviews SET status = $1 WHERE id = $2`,
+      `UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`,
       [status, id]
     );
   } catch (error) {
