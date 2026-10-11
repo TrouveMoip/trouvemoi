@@ -273,6 +273,13 @@ async function getConnectedPro(req) {
   }
 }
 
+function getDisplayName(person) {
+  if (person.company_name && person.company_name.trim()) {
+    return person.company_name.trim();
+  }
+  return person.full_name;
+}
+
 function buildMenu(proConnected) {
   if (proConnected) {
     return `
@@ -373,28 +380,22 @@ function page(title, content, proConnected) {
         /* TITRES HIERARCHISES */
 
         h1 {
-          font-size: 28px;
-          margin-bottom: 16px;
-          color: #087f5b;
-          line-height: 1.3;
+          font-size: 28px; margin-bottom: 16px;
+          color: #087f5b; line-height: 1.3;
           border-left: 5px solid #087f5b;
           padding-left: 14px;
         }
 
         h2 {
-          font-size: 22px;
-          margin-bottom: 14px;
-          color: #1e40af;
-          line-height: 1.3;
+          font-size: 22px; margin-bottom: 14px;
+          color: #1e40af; line-height: 1.3;
           border-left: 4px solid #3b82f6;
           padding-left: 12px;
         }
 
         h3 {
-          font-size: 18px;
-          margin-bottom: 10px;
-          color: #475467;
-          line-height: 1.3;
+          font-size: 18px; margin-bottom: 10px;
+          color: #475467; line-height: 1.3;
           border-left: 3px solid #94a3b8;
           padding-left: 10px;
         }
@@ -403,14 +404,8 @@ function page(title, content, proConnected) {
 
         /* LABELS ET VALEURS */
 
-        .label {
-          font-weight: 700;
-          color: #1a1a1a;
-        }
-
-        .value {
-          color: #333;
-        }
+        .label { font-weight: 700; color: #1a1a1a; }
+        .value { color: #333; }
 
         /* FORMULAIRES */
 
@@ -440,9 +435,7 @@ function page(title, content, proConnected) {
 
         input[type="file"]:hover { border-color: #087f5b; background: #f0fdf9; }
 
-        input[type="checkbox"], input[type="radio"] {
-          width: auto; margin-right: 8px;
-        }
+        input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
 
         /* BOUTONS */
 
@@ -461,16 +454,12 @@ function page(title, content, proConnected) {
 
         .danger { background: #b42318; }
         .danger:hover { background: #9a1d13; }
-
         .secondary { background: #475467; }
         .secondary:hover { background: #344054; }
-
         .warning { background: #f59e0b; }
         .warning:hover { background: #d97706; }
-
         .success { background: #0a9d70; }
         .success:hover { background: #087f5b; }
-
         .info { background: #3b82f6; }
         .info:hover { background: #1e40af; }
 
@@ -486,10 +475,8 @@ function page(title, content, proConnected) {
 
         .whatsapp { background: #25d366; }
         .whatsapp:hover { background: #1da851; }
-
         .email { background: #475467; }
         .email:hover { background: #344054; }
-
         .share { background: #4267b2; }
         .share:hover { background: #365899; }
 
@@ -557,9 +544,7 @@ function page(title, content, proConnected) {
           color: #1a1a1a; line-height: 1; margin-bottom: 6px;
         }
 
-        .stat-label {
-          font-size: 14px; color: #667085; font-weight: 500;
-        }
+        .stat-label { font-size: 14px; color: #667085; font-weight: 500; }
 
         .stat-link {
           display: inline-block; margin-top: 10px;
@@ -605,49 +590,29 @@ function page(title, content, proConnected) {
         .badge-rejected { background: #fee2e2; color: #991b1b; }
         .badge-closed { background: #e5e7eb; color: #374151; }
         .badge-processed { background: #d1fae5; color: #065f46; }
+        .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
 
         /* ALERTES */
 
         .alert {
-          padding: 16px 20px;
-          border-radius: 8px;
-          margin-bottom: 16px;
-          border-left: 4px solid;
+          padding: 16px 20px; border-radius: 8px;
+          margin-bottom: 16px; border-left: 4px solid;
         }
 
-        .alert-success {
-          background: #d1fae5;
-          border-color: #0a9d70;
-          color: #065f46;
-        }
+        .alert-success { background: #d1fae5; border-color: #0a9d70; color: #065f46; }
+        .alert-danger { background: #fee2e2; border-color: #b42318; color: #991b1b; }
+        .alert-warning { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+        .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
 
-        .alert-danger {
-          background: #fee2e2;
-          border-color: #b42318;
-          color: #991b1b;
-        }
-
-        .alert-warning {
-          background: #fef3c7;
-          border-color: #f59e0b;
-          color: #92400e;
-        }
-
-        .alert-info {
-          background: #dbeafe;
-          border-color: #3b82f6;
-          color: #1e40af;
-        }
-
-        /* BANDEAU PRO CONNECTE */
+        /* BANDEAU PRO CONNECTE - BLEU PROFOND */
 
         .pro-welcome {
-          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
           color: white;
-          padding: 24px;
+          padding: 28px;
           border-radius: 12px;
           margin-bottom: 20px;
-          box-shadow: 0 4px 16px rgba(8,127,91,0.2);
+          box-shadow: 0 4px 20px rgba(30,64,175,0.3);
         }
 
         .pro-welcome h2 {
@@ -655,35 +620,201 @@ function page(title, content, proConnected) {
           border: none;
           padding: 0;
           margin-bottom: 8px;
-          font-size: 22px;
+          font-size: 24px;
         }
 
         .pro-welcome p {
           opacity: 0.95;
           margin-bottom: 16px;
+          font-size: 15px;
         }
 
-        .pro-welcome .actions {
-          margin: 0;
-        }
+        .pro-welcome .actions { margin: 0; }
 
         .pro-welcome .button {
           background: white;
-          color: #087f5b;
+          color: #1e40af;
         }
 
         .pro-welcome .button:hover {
-          background: #f0fdf9;
+          background: #f0f4ff;
           transform: translateY(-1px);
         }
 
         .pro-welcome .button.secondary {
-          background: rgba(255,255,255,0.2);
+          background: rgba(255,255,255,0.25);
           color: white;
         }
 
         .pro-welcome .button.secondary:hover {
-          background: rgba(255,255,255,0.3);
+          background: rgba(255,255,255,0.35);
+        }
+
+        /* BANDEAU ALERTES ADMIN */
+
+        .admin-alerts {
+          background: #fff7ed;
+          border: 1px solid #fdba74;
+          border-left: 5px solid #ea580c;
+          padding: 20px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+        }
+
+        .admin-alerts h3 {
+          color: #9a3412;
+          border: none;
+          padding: 0;
+          margin-bottom: 12px;
+          font-size: 17px;
+        }
+
+        .admin-alerts ul {
+          list-style: none;
+          margin: 0;
+        }
+
+        .admin-alerts li {
+          padding: 8px 0;
+          border-bottom: 1px solid #fed7aa;
+          color: #7c2d12;
+        }
+
+        .admin-alerts li:last-child { border-bottom: none; }
+
+        .admin-alerts a {
+          color: #9a3412;
+          font-weight: 700;
+          text-decoration: none;
+        }
+
+        .admin-alerts a:hover { text-decoration: underline; }
+
+        /* GRILLE DE CARTES PROS */
+
+        .pros-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 20px;
+          margin-top: 20px;
+        }
+
+        .pro-card {
+          background: white;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .pro-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .pro-card-image {
+          width: 100%;
+          height: 180px;
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+        }
+
+        .pro-card-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .pro-card-image-placeholder {
+          font-size: 60px;
+          color: white;
+          opacity: 0.5;
+        }
+
+        .pro-card-body {
+          padding: 16px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .pro-card-profession {
+          font-size: 13px;
+          font-weight: 700;
+          color: #087f5b;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 6px;
+        }
+
+        .pro-card-name {
+          font-size: 17px;
+          font-weight: 700;
+          color: #1a1a1a;
+          margin-bottom: 8px;
+          line-height: 1.3;
+        }
+
+        .pro-card-location {
+          font-size: 14px;
+          color: #667085;
+          margin-bottom: 14px;
+        }
+
+        .pro-card-location::before {
+          content: "📍 ";
+        }
+
+        .pro-card-button {
+          display: block;
+          width: 100%;
+          background: #087f5b;
+          color: white;
+          padding: 10px 16px;
+          border-radius: 6px;
+          text-align: center;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 14px;
+          margin-top: auto;
+          transition: background 0.2s;
+        }
+
+        .pro-card-button:hover { background: #0a6b4d; }
+
+        /* PAGE PROFIL DETAILLE */
+
+        .pro-header {
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          color: white;
+          padding: 32px 24px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+        }
+
+        .pro-header h1 {
+          color: white;
+          border: none;
+          padding: 0;
+          font-size: 30px;
+          margin-bottom: 8px;
+        }
+
+        .pro-header .profession {
+          font-size: 18px;
+          opacity: 0.95;
+          margin-bottom: 8px;
+          font-weight: 600;
+        }
+
+        .pro-header .location {
+          font-size: 15px;
+          opacity: 0.9;
         }
 
         /* CHECKBOX BLOCK */
@@ -758,6 +889,8 @@ function page(title, content, proConnected) {
           .contact-buttons .button { flex: 1 1 100%; }
           .stat-number { font-size: 28px; }
           .pro-code-value { font-size: 32px; letter-spacing: 2px; }
+          .pros-grid { grid-template-columns: 1fr; }
+          .pro-header h1 { font-size: 22px; }
         }
       </style>
     </head>
@@ -864,8 +997,8 @@ app.get("/", async (req, res) => {
 
     let query = `
       SELECT
-        id, full_name, phone, phone_public, city, neighborhood, profession,
-        experience, service_description, service_area, availability,
+        id, full_name, company_name, phone, phone_public, city, neighborhood,
+        profession, experience, service_description, service_area, availability,
         photo_activite_url
       FROM professional_applications
       WHERE status = 'approved'
@@ -937,69 +1070,37 @@ app.get("/", async (req, res) => {
         return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
-    const professionals = result.rows.map((person) => {
-      const phoneClean = normalizePhone(person.phone || "");
-      const whatsappNumber = phoneClean.replace(/^\+/, "");
-      const phonePublic = person.phone_public === true;
+    /* CARTES RESUMÉES DES PROS */
 
-      const shareText = encodeURIComponent(
-        "Decouvrez " + person.full_name + " (" + person.profession + ") sur TrouveMoi"
-      );
-      const shareUrl = encodeURIComponent("https://trouvemoi-4mk0.onrender.com/");
+    const prosCards = result.rows.map((person) => {
+      const displayName = getDisplayName(person);
 
-      let contactButtons = "";
-
-      if (phonePublic && phoneClean) {
-        contactButtons = `
-          <div class="contact-buttons">
-            <a class="button" href="tel:${escapeHtml(phoneClean)}">📞 Appeler</a>
-            <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + ".")}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
-            <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
-          </div>
-        `;
-      } else {
-        contactButtons = `
-          <div class="alert alert-info" style="margin-top:16px">
-            📩 Ce professionnel a choisi de ne pas afficher son numero publiquement.
-            Pour le contacter, cliquez ci-dessous. Votre demande sera transmise
-            par l'administration (cela peut prendre quelques jours).
-          </div>
-          <div class="contact-buttons">
-            <a class="button" href="/contact?pro=${encodeURIComponent(person.id)}">📩 Contacter ce professionnel</a>
-            <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
-          </div>
-        `;
-      }
+      const photoHtml = person.photo_activite_url
+        ? `<img src="${escapeHtml(person.photo_activite_url)}" alt="${escapeHtml(person.profession)}">`
+        : `<div class="pro-card-image-placeholder">👤</div>`;
 
       return `
-        <article class="card">
-          <h2>${escapeHtml(person.profession)}</h2>
+        <article class="pro-card">
+          <div class="pro-card-image">
+            ${photoHtml}
+          </div>
 
-          ${person.photo_activite_url ? `
-            <div class="photos-grid">
-              <div class="photo-block">
-                <img src="${escapeHtml(person.photo_activite_url)}" alt="Photo d'activite" class="photo-activite">
-                <div class="photo-label">Activite</div>
-              </div>
-            </div>
-          ` : ""}
+          <div class="pro-card-body">
+            <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
+            <div class="pro-card-name">${escapeHtml(displayName)}</div>
+            <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
 
-          <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(person.full_name)}</span></p>
-          <p><span class="label">Ville :</span> <span class="value">${escapeHtml(person.city)}</span></p>
-          ${person.neighborhood ? `<p><span class="label">Quartier :</span> <span class="value">${escapeHtml(person.neighborhood)}</span></p>` : ""}
-          ${person.experience ? `<p><span class="label">Experience :</span> <span class="value">${escapeHtml(person.experience)}</span></p>` : ""}
-          <p>${escapeHtml(person.service_description)}</p>
-          ${person.service_area ? `<p><span class="label">Zone d'intervention :</span> <span class="value">${escapeHtml(person.service_area)}</span></p>` : ""}
-          ${person.availability ? `<p><span class="label">Disponibilite :</span> <span class="value">${escapeHtml(person.availability)}</span></p>` : ""}
-
-          ${contactButtons}
+            <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">
+              Voir le profil →
+            </a>
+          </div>
         </article>
       `;
     }).join("");
 
     const welcomeBanner = proConnected ? `
       <div class="pro-welcome">
-        <h2>🎉 Bonjour ${escapeHtml(proConnected.pro.full_name)} !</h2>
+        <h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2>
         <p>Votre candidature est approuvee. Vous pouvez des maintenant gerer vos offres d'emploi.</p>
         <div class="actions">
           <a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a>
@@ -1045,13 +1146,19 @@ app.get("/", async (req, res) => {
 
       <h2>Professionnels disponibles (${result.rows.length})</h2>
 
-      ${professionals || `
+      ${prosCards || `
         <section class="card">
           <p>Aucun professionnel approuve ne correspond a votre recherche.</p>
         </section>
       `}
 
-      <p style="text-align:center;margin-top:24px">
+      ${result.rows.length ? `
+        <div class="pros-grid">
+          ${prosCards}
+        </div>
+      ` : ""}
+
+      <p style="text-align:center;margin-top:32px">
         <a href="/devenir-professionnel">Proposer mes services</a>
       </p>
     `;
@@ -1059,6 +1166,192 @@ app.get("/", async (req, res) => {
     res.send(page("Accueil", content, proConnected));
   } catch (error) {
     console.error("Erreur sur la page d'accueil :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)
+    );
+  }
+});
+
+/* PAGE PROFIL DETAILLE D'UN PRO */
+
+app.get("/pro/:id", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.status(404).send(
+        page("Profil introuvable", `
+          <section class="card">
+            <h2>Profil introuvable</h2>
+            <p>Ce professionnel n'existe pas ou n'est plus disponible.</p>
+            <a class="button" href="/">Retour a l'accueil</a>
+          </section>
+        `, proConnected)
+      );
+    }
+
+    const result = await pool.query(
+      `SELECT
+        id, full_name, company_name, phone, phone_public, city, neighborhood,
+        profession, experience, service_description, service_area, availability,
+        photo_activite_url
+       FROM professional_applications
+       WHERE id = $1 AND status = 'approved'`,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).send(
+        page("Profil introuvable", `
+          <section class="card">
+            <h2>Profil introuvable</h2>
+            <p>Ce professionnel n'existe pas ou n'est plus disponible.</p>
+            <a class="button" href="/">Retour a l'accueil</a>
+          </section>
+        `, proConnected)
+      );
+    }
+
+    const person = result.rows[0];
+    const displayName = getDisplayName(person);
+    const phoneClean = normalizePhone(person.phone || "");
+    const whatsappNumber = phoneClean.replace(/^\+/, "");
+    const phonePublic = person.phone_public === true;
+
+    const shareText = encodeURIComponent(
+      "Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi"
+    );
+    const shareUrl = encodeURIComponent(
+      "https://trouvemoi-4mk0.onrender.com/pro/" + person.id
+    );
+
+    /* AUTRES PROS DE LA MEME VILLE */
+
+    const sameCityResult = await pool.query(
+      `SELECT id, full_name, company_name, profession, city, neighborhood, photo_activite_url
+       FROM professional_applications
+       WHERE status = 'approved' AND city = $1 AND id != $2
+       ORDER BY created_at DESC LIMIT 4`,
+      [person.city, person.id]
+    );
+
+    /* AUTRES PROS DU MEME METIER */
+
+    const sameProfessionResult = await pool.query(
+      `SELECT id, full_name, company_name, profession, city, neighborhood, photo_activite_url
+       FROM professional_applications
+       WHERE status = 'approved' AND profession = $1 AND id != $2
+       ORDER BY created_at DESC LIMIT 4`,
+      [person.profession, person.id]
+    );
+
+    /* BOUTONS DE CONTACT */
+
+    let contactButtons = "";
+
+    if (phonePublic && phoneClean) {
+      contactButtons = `
+        <div class="contact-buttons">
+          <a class="button" href="tel:${escapeHtml(phoneClean)}">📞 Appeler</a>
+          <a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi pour votre service de " + person.profession + ".")}" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
+          <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
+        </div>
+      `;
+    } else {
+      contactButtons = `
+        <div class="alert alert-info" style="margin-top:16px">
+          📩 Ce professionnel a choisi de ne pas afficher son numero publiquement.
+          Pour le contacter, cliquez ci-dessous. Votre demande sera transmise
+          par l'administration (cela peut prendre quelques jours).
+        </div>
+        <div class="contact-buttons">
+          <a class="button" href="/contact?pro=${encodeURIComponent(person.id)}">📩 Contacter ce professionnel</a>
+          <a class="button share" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" rel="noopener noreferrer">📤 Partager</a>
+        </div>
+      `;
+    }
+
+    /* CONSTRUCTION DES CARTES D'AUTRES PROS */
+
+    function buildMiniCards(rows) {
+      return rows.map((p) => {
+        const name = getDisplayName(p);
+        const photo = p.photo_activite_url
+          ? `<img src="${escapeHtml(p.photo_activite_url)}" alt="${escapeHtml(p.profession)}">`
+          : `<div class="pro-card-image-placeholder">👤</div>`;
+
+        return `
+          <article class="pro-card">
+            <div class="pro-card-image">
+              ${photo}
+            </div>
+            <div class="pro-card-body">
+              <div class="pro-card-profession">${escapeHtml(p.profession)}</div>
+              <div class="pro-card-name">${escapeHtml(name)}</div>
+              <div class="pro-card-location">${escapeHtml(p.city)}</div>
+              <a class="pro-card-button" href="/pro/${encodeURIComponent(p.id)}">
+                Voir le profil →
+              </a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    const sameCityCards = buildMiniCards(sameCityResult.rows);
+    const sameProfessionCards = buildMiniCards(sameProfessionResult.rows);
+
+    const content = `
+      <div class="pro-header">
+        <h1>${escapeHtml(displayName)}</h1>
+        <div class="profession">${escapeHtml(person.profession)}</div>
+        <div class="location">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+      </div>
+
+      <section class="card">
+        ${person.photo_activite_url ? `
+          <div class="photos-grid">
+            <div class="photo-block">
+              <img src="${escapeHtml(person.photo_activite_url)}" alt="Photo d'activite" class="photo-activite">
+              <div class="photo-label">Activite</div>
+            </div>
+          </div>
+        ` : ""}
+
+        ${person.experience ? `<p><span class="label">Experience :</span> <span class="value">${escapeHtml(person.experience)}</span></p>` : ""}
+
+        <h2>Description des services</h2>
+        <p>${escapeHtml(person.service_description).replace(/\n/g, "<br>")}</p>
+
+        ${person.service_area ? `<p><span class="label">Zone d'intervention :</span> <span class="value">${escapeHtml(person.service_area)}</span></p>` : ""}
+        ${person.availability ? `<p><span class="label">Disponibilite :</span> <span class="value">${escapeHtml(person.availability)}</span></p>` : ""}
+
+        ${contactButtons}
+
+        <p style="margin-top:24px">
+          <a class="button secondary" href="/">← Retour a l'accueil</a>
+        </p>
+      </section>
+
+      ${sameProfessionCards ? `
+        <h2>Autres professionnels en ${escapeHtml(person.profession)}</h2>
+        <div class="pros-grid" style="margin-bottom:24px">
+          ${sameProfessionCards}
+        </div>
+      ` : ""}
+
+      ${sameCityCards ? `
+        <h2>Autres professionnels a ${escapeHtml(person.city)}</h2>
+        <div class="pros-grid" style="margin-bottom:24px">
+          ${sameCityCards}
+        </div>
+      ` : ""}
+    `;
+
+    res.send(page(displayName, content, proConnected));
+  } catch (error) {
+    console.error("Erreur page profil :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)
     );
@@ -1117,6 +1410,13 @@ app.get("/devenir-professionnel", async (req, res) => {
         <form action="/candidatures" method="POST" enctype="multipart/form-data">
           <label for="full_name">Nom et prenoms *</label>
           <input id="full_name" name="full_name" required maxlength="150">
+
+          <label for="company_name">Nom de la societe ou de l'etablissement (facultatif)</label>
+          <input id="company_name" name="company_name" maxlength="200" placeholder="Ex. : Ets Dupont & Fils">
+          <p class="help-text">
+            Si vous remplissez ce champ, c'est ce nom qui apparaitra publiquement sur la plateforme.
+            Sinon, votre nom et prenom s'afficheront.
+          </p>
 
           <label for="phone">Telephone *</label>
           <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229...">
@@ -1401,7 +1701,7 @@ app.post(
   ]),
   async (req, res) => {
     const {
-      full_name, phone, phone_public, city, neighborhood, neighborhood_other,
+      full_name, company_name, phone, phone_public, city, neighborhood, neighborhood_other,
       profession, profession_other, experience, service_description,
       service_area, availability, gdpr_consent,
       contact_preference, whatsapp_number, contact_email
@@ -1560,19 +1860,24 @@ app.post(
 
     const phoneIsPublic = phone_public === "yes";
 
+    const finalCompanyName = typeof company_name === "string" && company_name.trim()
+      ? company_name.trim().slice(0, 200)
+      : null;
+
     try {
       const result = await pool.query(`
         INSERT INTO professional_applications (
-          full_name, phone, phone_public, city, neighborhood, profession,
+          full_name, company_name, phone, phone_public, city, neighborhood, profession,
           experience, service_description, service_area, availability, npi,
           photo_profil_url, photo_identite_url, photo_activite_url,
           contact_preference, whatsapp_number, contact_email,
           pro_code, status
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,$13,$14,$15,$16,NULL,'pending')
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,$14,$15,$16,$17,NULL,'pending')
         RETURNING id
       `, [
         full_name.trim().slice(0, 150),
+        finalCompanyName,
         phone.trim().slice(0, 30),
         phoneIsPublic,
         city.trim().slice(0, 100),
@@ -1769,7 +2074,7 @@ app.get("/publier-emploi", async (req, res) => {
   res.send(page("Publier une offre", `
     <section class="card">
       <div class="alert alert-success">
-        ✅ Connecte en tant que <strong>${escapeHtml(proConnected.pro.full_name)}</strong>
+        ✅ Connecte en tant que <strong>${escapeHtml(getDisplayName(proConnected.pro))}</strong>
         (${escapeHtml(proConnected.pro.profession)}) — Code : <strong>${escapeHtml(proConnected.code)}</strong>
       </div>
 
@@ -1783,7 +2088,7 @@ app.get("/publier-emploi", async (req, res) => {
 
       <form action="/offres-emploi" method="POST">
         <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
-        <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(proConnected.pro.full_name)}">
+        <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(getDisplayName(proConnected.pro))}">
 
         <label for="job_title">Intitule du poste *</label>
         <input id="job_title" name="job_title" required maxlength="200">
@@ -2095,8 +2400,6 @@ app.get("/mon-espace-pro", async (req, res) => {
     ? `<span class="badge badge-approved">Public</span> Votre numero est visible publiquement.`
     : `<span class="badge badge-closed">Prive</span> Votre numero n'est <strong>pas visible</strong> publiquement.`;
 
-  const prefLabel = CONTACT_PREFERENCE_LABELS[proConnected.pro.contact_preference] || "Non defini";
-
   let contactInfoBlock = "";
 
   if (proConnected.pro.contact_preference === "whatsapp" && proConnected.pro.whatsapp_number) {
@@ -2105,9 +2408,15 @@ app.get("/mon-espace-pro", async (req, res) => {
     contactInfoBlock = `<p><span class="label">Reception du code :</span> <span class="value">Email (${escapeHtml(proConnected.pro.contact_email)})</span></p>`;
   }
 
+  const companyBlock = proConnected.pro.company_name
+    ? `<p><span class="label">Societe / Etablissement :</span> <span class="value">${escapeHtml(proConnected.pro.company_name)}</span></p>`
+    : "";
+
+  const displayName = getDisplayName(proConnected.pro);
+
   res.send(page("Mon espace pro", `
     <section class="card">
-      <h1>Bonjour ${escapeHtml(proConnected.pro.full_name)} 👋</h1>
+      <h1>Bonjour ${escapeHtml(displayName)} 👋</h1>
 
       <div class="pro-code-box">
         <div class="pro-code-label">Votre code professionnel</div>
@@ -2132,6 +2441,8 @@ app.get("/mon-espace-pro", async (req, res) => {
 
     <section class="card">
       <h2>Mes informations</h2>
+      ${companyBlock}
+      <p><span class="label">Nom et prenoms :</span> <span class="value">${escapeHtml(proConnected.pro.full_name)}</span></p>
       <p><span class="label">Profession :</span> <span class="value">${escapeHtml(proConnected.pro.profession)}</span></p>
       <p><span class="label">Ville :</span> <span class="value">${escapeHtml(proConnected.pro.city)}</span></p>
       ${proConnected.pro.neighborhood ? `<p><span class="label">Quartier :</span> <span class="value">${escapeHtml(proConnected.pro.neighborhood)}</span></p>` : ""}
@@ -2326,6 +2637,7 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
       plateforme: "TrouveMoi",
       utilisateur: {
         nom: proConnected.pro.full_name,
+        societe: proConnected.pro.company_name,
         telephone: proConnected.pro.phone,
         telephone_public: proConnected.pro.phone_public,
         ville: proConnected.pro.city,
@@ -2733,22 +3045,41 @@ app.post("/admin/login", (req, res) => {
   res.redirect(303, "/admin/dashboard");
 });
 
-/* MENU ADMIN */
+/* MENU ADMIN (avec badge RGPD) */
 
-function adminMenu(current, csrf) {
+async function adminMenu(current, csrf) {
+  let gdprCount = 0;
+  let prosPendingCount = 0;
+
+  try {
+    const gdprResult = await pool.query(
+      "SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'"
+    );
+    gdprCount = Number(gdprResult.rows[0].count);
+
+    const prosResult = await pool.query(
+      "SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'"
+    );
+    prosPendingCount = Number(prosResult.rows[0].count);
+  } catch (error) {
+    console.error("Erreur comptage admin :", error.message);
+  }
+
   const links = [
-    { href: "/admin/dashboard", label: "📊 Tableau de bord" },
-    { href: "/admin/candidatures", label: "📋 Candidatures" },
-    { href: "/admin/emplois", label: "💼 Offres d'emploi" },
-    { href: "/admin/messages", label: "📩 Messages" },
-    { href: "/admin/rgpd", label: "🔐 Demandes RGPD" }
+    { href: "/admin/dashboard", label: "📊 Tableau de bord", badge: 0 },
+    { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount },
+    { href: "/admin/emplois", label: "💼 Offres d'emploi", badge: 0 },
+    { href: "/admin/messages", label: "📩 Messages", badge: 0 },
+    { href: "/admin/rgpd", label: "🔐 Demandes RGPD", badge: gdprCount }
   ];
 
   return `
     <section class="card">
       <div class="actions">
         ${links.map((link) => `
-          <a class="button ${current === link.href ? "" : "secondary"}" href="${link.href}">${link.label}</a>
+          <a class="button ${current === link.href ? "" : "secondary"}" href="${link.href}">
+            ${link.label}${link.badge > 0 ? ` <span class="badge badge-new">${link.badge}</span>` : ""}
+          </a>
         `).join("")}
         <a class="button secondary" href="/" target="_blank">🌐 Voir le site</a>
       </div>
@@ -2783,6 +3114,37 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       gdprPending: Number(gdprPending.rows[0].count)
     };
 
+    /* BANDEAU D'ALERTES */
+
+    const alerts = [];
+
+    if (stats.gdprPending > 0) {
+      alerts.push(`🔐 <strong>${stats.gdprPending}</strong> demande(s) RGPD en attente — <a href="/admin/rgpd">Traiter maintenant</a>`);
+    }
+
+    if (stats.prosPending > 0) {
+      alerts.push(`📋 <strong>${stats.prosPending}</strong> candidature(s) de pro en attente — <a href="/admin/candidatures">Traiter maintenant</a>`);
+    }
+
+    if (stats.jobsPending > 0) {
+      alerts.push(`📝 <strong>${stats.jobsPending}</strong> offre(s) d'emploi en attente — <a href="/admin/emplois">Traiter maintenant</a>`);
+    }
+
+    if (stats.messagesUnread > 0) {
+      alerts.push(`📩 <strong>${stats.messagesUnread}</strong> message(s) non lu(s) — <a href="/admin/messages">Lire les messages</a>`);
+    }
+
+    const alertsBlock = alerts.length > 0 ? `
+      <div class="admin-alerts">
+        <h3>🔔 Vous avez des choses a traiter</h3>
+        <ul>
+          ${alerts.map((a) => `<li>${a}</li>`).join("")}
+        </ul>
+      </div>
+    ` : "";
+
+    const menuHtml = await adminMenu("/admin/dashboard", req.adminSession.csrf);
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(page("Tableau de bord", `
@@ -2791,7 +3153,9 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
         <p class="muted">Bienvenue dans votre espace d'administration.</p>
       </section>
 
-      ${adminMenu("/admin/dashboard", req.adminSession.csrf)}
+      ${alertsBlock}
+
+      ${menuHtml}
 
       <div class="stats-grid">
         <div class="stat-card">
@@ -2801,7 +3165,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
           <a class="stat-link" href="/admin/candidatures">Voir les candidatures →</a>
         </div>
 
-        <div class="stat-card warning">
+        <div class="stat-card ${stats.prosPending > 0 ? "warning" : ""}">
           <div class="stat-icon">⏳</div>
           <div class="stat-number">${stats.prosPending}</div>
           <div class="stat-label">Candidatures en attente</div>
@@ -2815,7 +3179,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
           <a class="stat-link" href="/admin/emplois">Voir les offres →</a>
         </div>
 
-        <div class="stat-card warning">
+        <div class="stat-card ${stats.jobsPending > 0 ? "warning" : ""}">
           <div class="stat-icon">📝</div>
           <div class="stat-number">${stats.jobsPending}</div>
           <div class="stat-label">Offres en attente</div>
@@ -2855,7 +3219,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, full_name, phone, phone_public, city, neighborhood, profession,
+      SELECT id, full_name, company_name, phone, phone_public, city, neighborhood, profession,
              experience, service_description, service_area, availability,
              status, created_at, photo_profil_url, photo_identite_url,
              photo_activite_url, pro_code,
@@ -2899,21 +3263,17 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         </div>
       `;
 
-      /* BLOC : code + bouton d'envoi */
-
       let codeBlock = "";
 
       if (candidate.pro_code) {
         const pref = candidate.contact_preference;
-
         let sendButton = `<p class="help-text">Aucune preference de contact enregistree.</p>`;
 
         if (pref === "whatsapp") {
           const waNumber = candidate.whatsapp_number || candidate.phone;
           const cleanNumber = normalizePhone(waNumber).replace(/^\+/, "");
-
           const waMessage = encodeURIComponent(
-            `Bonjour ${candidate.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement : il vous permet de vous connecter a votre espace pro et de publier des offres d'emploi.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro`
+            `Bonjour ${getDisplayName(candidate)}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement : il vous permet de vous connecter a votre espace pro et de publier des offres d'emploi.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro`
           );
 
           sendButton = `
@@ -2925,7 +3285,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           const emailAddr = candidate.contact_email || "";
           const subject = encodeURIComponent("Votre code professionnel TrouveMoi");
           const body = encodeURIComponent(
-            `Bonjour ${candidate.full_name},\n\nVotre candidature sur TrouveMoi a ete approuvee.\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement : il vous permet de vous connecter a votre espace pro et de publier des offres d'emploi.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro\n\nL'equipe TrouveMoi`
+            `Bonjour ${getDisplayName(candidate)},\n\nVotre candidature sur TrouveMoi a ete approuvee.\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro\n\nL'equipe TrouveMoi`
           );
 
           sendButton = `
@@ -2950,12 +3310,17 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         codeBlock = `<p class="help-text">Aucun code genere (le pro doit etre approuve pour en recevoir un).</p>`;
       }
 
+      const companyBlock = candidate.company_name
+        ? `<p><span class="label">Societe :</span> <span class="value">${escapeHtml(candidate.company_name)}</span></p>`
+        : "";
+
       return `
         <article class="card">
           <h2>${escapeHtml(candidate.full_name)}</h2>
           ${photos}
 
           <p><span class="label">Reference :</span> <span class="value">${escapeHtml(candidate.id)}</span></p>
+          ${companyBlock}
           <p><span class="label">Telephone prive :</span> <span class="value">${escapeHtml(candidate.phone)}</span> ${phoneVisibility}</p>
           <p><span class="label">Ville :</span> <span class="value">${escapeHtml(candidate.city)}</span></p>
           <p><span class="label">Quartier :</span> <span class="value">${escapeHtml(candidate.neighborhood || "Non renseigne")}</span></p>
@@ -2984,6 +3349,8 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
+    const menuHtml = await adminMenu("/admin/candidatures", req.adminSession.csrf);
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(page("Candidatures", `
@@ -2996,7 +3363,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         </p>
       </section>
 
-      ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
+      ${menuHtml}
 
       ${applications || `<section class="card"><p>Aucune candidature pour le moment.</p></section>`}
     `, null));
@@ -3030,8 +3397,6 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
     await pool.query(`DELETE FROM gdpr_requests WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [id]);
-
-    console.log(`Suppression RGPD effectuee pour pro id=${id}`);
   } catch (error) {
     console.error("Erreur suppression RGPD :", error.message);
   }
@@ -3048,7 +3413,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
              j.salary, j.description, j.qualifications, j.contact_phone,
              j.contact_whatsapp, j.contact_email, j.deadline, j.status,
              j.created_at, j.expires_at, j.pro_id,
-             p.full_name AS pro_name, p.pro_code AS pro_code
+             p.full_name AS pro_name, p.company_name AS pro_company, p.pro_code AS pro_code
       FROM job_offers j
       LEFT JOIN professional_applications p ON p.id = j.pro_id
       ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC
@@ -3062,9 +3427,11 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
       const expired = job.expires_at && new Date(job.expires_at) < new Date();
 
+      const proDisplay = job.pro_company || job.pro_name || "Inconnu";
+
       const proBlock = job.pro_name ? `
         <div style="background:#f0fdf9;padding:12px;border-radius:8px;margin:12px 0;border-left:4px solid #087f5b">
-          <p style="margin:0"><span class="label">📢 Publiee par :</span> <span class="value">${escapeHtml(job.pro_name)}</span></p>
+          <p style="margin:0"><span class="label">📢 Publiee par :</span> <span class="value">${escapeHtml(proDisplay)}</span></p>
           ${job.pro_code ? `<p style="margin:4px 0 0 0"><span class="label">Code pro :</span> <code>${escapeHtml(job.pro_code)}</code></p>` : ""}
         </div>
       ` : `<p class="help-text">⚠️ Publiee avant la mise en place des pros verifies</p>`;
@@ -3105,6 +3472,8 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
+    const menuHtml = await adminMenu("/admin/emplois", req.adminSession.csrf);
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(page("Offres d'emploi", `
@@ -3114,7 +3483,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
         <p class="help-text">Les offres expirent automatiquement apres ${OFFER_DURATION_DAYS} jours.</p>
       </section>
 
-      ${adminMenu("/admin/emplois", req.adminSession.csrf)}
+      ${menuHtml}
 
       ${offers || `<section class="card"><p>Aucune offre soumise pour le moment.</p></section>`}
     `, null));
@@ -3229,7 +3598,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT m.id, m.name, m.email, m.phone, m.subject, m.message, m.is_read, m.created_at, m.pro_id,
-             p.full_name AS pro_name, p.profession AS pro_profession
+             p.full_name AS pro_name, p.company_name AS pro_company, p.profession AS pro_profession
       FROM contact_messages m
       LEFT JOIN professional_applications p ON p.id = m.pro_id
       ORDER BY CASE WHEN m.is_read = false THEN 0 ELSE 1 END, m.created_at DESC
@@ -3245,9 +3614,11 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
         <a class="button whatsapp" href="https://wa.me/${escapeHtml(normalizePhone(msg.phone).replace(/^\+/, ""))}?text=${encodeURIComponent("Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande"))}" target="_blank" rel="noopener noreferrer">💬 Repondre par WhatsApp</a>
       ` : "";
 
+      const proDisplay = msg.pro_company || msg.pro_name || "";
+
       const proBlock = msg.pro_id && msg.pro_name ? `
         <div class="alert alert-info">
-          📩 Message concernant le professionnel <strong>${escapeHtml(msg.pro_name)}</strong>
+          📩 Message concernant le professionnel <strong>${escapeHtml(proDisplay)}</strong>
           (${escapeHtml(msg.pro_profession || "")}) — un client souhaite le contacter.
         </div>
       ` : "";
@@ -3281,6 +3652,8 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
+    const menuHtml = await adminMenu("/admin/messages", req.adminSession.csrf);
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(page("Messages", `
@@ -3289,7 +3662,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
         <p>Total : ${result.rows.length} message(s)</p>
       </section>
 
-      ${adminMenu("/admin/messages", req.adminSession.csrf)}
+      ${menuHtml}
 
       ${messages || `<section class="card"><p>Aucun message pour le moment.</p></section>`}
     `, null));
@@ -3329,7 +3702,8 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT g.id, g.request_type, g.status, g.message, g.created_at, g.processed_at,
-             g.pro_id, p.full_name AS pro_name, p.phone AS pro_phone, p.pro_code AS pro_code
+             g.pro_id, p.full_name AS pro_name, p.company_name AS pro_company,
+             p.phone AS pro_phone, p.pro_code AS pro_code
       FROM gdpr_requests g
       LEFT JOIN professional_applications p ON p.id = g.pro_id
       ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC
@@ -3340,6 +3714,16 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
       const typeLabel = GDPR_TYPE_LABELS[req.request_type] || req.request_type;
       const statusLabel = GDPR_STATUS_LABELS[req.status] || req.status;
 
+      const proDisplay = req.pro_company || req.pro_name || "Inconnu";
+
+      const daysSince = Math.floor(
+        (Date.now() - new Date(req.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const urgency = req.status === "pending"
+        ? (daysSince > 20 ? "🔴 URGENT (plus de 20 jours)" : daysSince > 10 ? "🟠 A traiter bientot" : "🟢 Recent")
+        : "";
+
       return `
         <article class="card">
           <h2>
@@ -3347,12 +3731,14 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
             ${escapeHtml(typeLabel)}
           </h2>
 
-          <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(req.pro_name || "Inconnu")}</span></p>
+          ${urgency ? `<p><strong>${urgency}</strong></p>` : ""}
+
+          <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(proDisplay)}</span></p>
           ${req.pro_code ? `<p><span class="label">Code pro :</span> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
           ${req.pro_phone ? `<p><span class="label">Telephone :</span> <span class="value">${escapeHtml(req.pro_phone)}</span></p>` : ""}
           <p><span class="label">Message :</span> <span class="value">${escapeHtml(req.message || "Aucun message")}</span></p>
-          <p class="muted">Demande le : ${escapeHtml(req.created_at)}</p>
-          ${req.processed_at ? `<p class="muted">Traitee le : ${escapeHtml(req.processed_at)}</p>` : ""}
+          <p class="muted">Demande le : ${new Date(req.created_at).toLocaleString("fr-FR")} (il y a ${daysSince} jour(s))</p>
+          ${req.processed_at ? `<p class="muted">Traitee le : ${new Date(req.processed_at).toLocaleString("fr-FR")}</p>` : ""}
 
           ${req.status === "pending" ? `
             <div class="actions">
@@ -3378,6 +3764,8 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
+    const menuHtml = await adminMenu("/admin/rgpd", req.adminSession.csrf);
+
     res.setHeader("Cache-Control", "no-store");
 
     res.send(page("Demandes RGPD", `
@@ -3390,7 +3778,7 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
         </p>
       </section>
 
-      ${adminMenu("/admin/rgpd", req.adminSession.csrf)}
+      ${menuHtml}
 
       ${requests || `<section class="card"><p>Aucune demande RGPD pour le moment.</p></section>`}
     `, null));
@@ -3562,7 +3950,7 @@ app.get("/confidentialite", async (req, res) => {
       <h2>1. Donnees collectees</h2>
       <p>Nous collectons :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
-        <li>Pros : nom, telephone, ville, quartier, metier, description, photos, code professionnel</li>
+        <li>Pros : nom, societe/etablissement (facultatif), telephone, ville, quartier, metier, description, photos, code professionnel</li>
         <li>Offres : entreprise, contacts, description du poste</li>
         <li>Contact : nom, email, telephone, message</li>
       </ul>
@@ -3619,7 +4007,7 @@ app.get("/contact", async (req, res) => {
   if (proId && /^\d+$/.test(proId)) {
     try {
       const proResult = await pool.query(
-        `SELECT full_name, profession FROM professional_applications
+        `SELECT full_name, company_name, profession FROM professional_applications
          WHERE id = $1 AND status = 'approved'`,
         [parseInt(proId, 10)]
       );
@@ -3629,12 +4017,14 @@ app.get("/contact", async (req, res) => {
     }
   }
 
+  const proDisplay = proInfo ? getDisplayName(proInfo) : "";
+
   const defaultSubject = proInfo
-    ? `Demande de contact pour ${proInfo.full_name} (${proInfo.profession})`
+    ? `Demande de contact pour ${proDisplay} (${proInfo.profession})`
     : "";
 
   const defaultMessage = proInfo
-    ? `Bonjour, je souhaite contacter ${proInfo.full_name} (${proInfo.profession}) via TrouveMoi. Merci de me mettre en relation.`
+    ? `Bonjour, je souhaite contacter ${proDisplay} (${proInfo.profession}) via TrouveMoi. Merci de me mettre en relation.`
     : "";
 
   res.send(page("Contact", `
@@ -3643,7 +4033,7 @@ app.get("/contact", async (req, res) => {
 
       ${proInfo ? `
         <div class="alert alert-info">
-          📩 Vous souhaitez contacter <strong>${escapeHtml(proInfo.full_name)}</strong>
+          📩 Vous souhaitez contacter <strong>${escapeHtml(proDisplay)}</strong>
           (${escapeHtml(proInfo.profession)}). Ce professionnel a choisi de ne pas
           afficher son numero publiquement. Remplissez ce formulaire, votre demande
           sera transmise par l'administration.
@@ -3778,10 +4168,13 @@ app.get("/health/database", async (req, res) => {
 
 async function startServer() {
   try {
+    /* TABLE PROS */
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS professional_applications (
         id SERIAL PRIMARY KEY,
         full_name VARCHAR(150) NOT NULL,
+        company_name VARCHAR(200),
         phone VARCHAR(30) NOT NULL,
         phone_public BOOLEAN NOT NULL DEFAULT true,
         city VARCHAR(100) NOT NULL,
@@ -3804,6 +4197,9 @@ async function startServer() {
       )
     `);
 
+    /* MIGRATIONS PROS */
+
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`);
     await pool.query(`ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_profil_url TEXT`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_identite_url TEXT`);
@@ -3813,6 +4209,8 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_preference VARCHAR(20)`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(254)`);
+
+    /* TABLE OFFRES */
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS job_offers (
@@ -3845,6 +4243,8 @@ async function startServer() {
     await pool.query(`ALTER TABLE job_offers DROP CONSTRAINT IF EXISTS job_offers_status_check`);
     await pool.query(`ALTER TABLE job_offers ADD CONSTRAINT job_offers_status_check CHECK (status IN ('pending', 'approved', 'rejected', 'closed'))`);
 
+    /* TABLE VILLES */
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS cities (
         id SERIAL PRIMARY KEY,
@@ -3852,6 +4252,8 @@ async function startServer() {
         display_order INTEGER NOT NULL DEFAULT 0
       )
     `);
+
+    /* TABLE QUARTIERS */
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS neighborhoods (
@@ -3862,6 +4264,8 @@ async function startServer() {
       )
     `);
 
+    /* TABLE METIERS */
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS professions (
         id SERIAL PRIMARY KEY,
@@ -3870,6 +4274,8 @@ async function startServer() {
         display_order INTEGER NOT NULL DEFAULT 0
       )
     `);
+
+    /* TABLE MESSAGES */
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS contact_messages (
@@ -3887,6 +4293,8 @@ async function startServer() {
 
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL`);
 
+    /* TABLE RGPD */
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS gdpr_requests (
         id SERIAL PRIMARY KEY,
@@ -3898,6 +4306,8 @@ async function startServer() {
         processed_at TIMESTAMP
       )
     `);
+
+    /* INSERTION DES VILLES */
 
     const citiesData = [
       ["Cotonou", 1],
@@ -3915,6 +4325,8 @@ async function startServer() {
         [name, order]
       );
     }
+
+    /* INSERTION DES QUARTIERS */
 
     const neighborhoodsData = {
       "Cotonou": ["Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi", "Godomey", "Gbégamey", "Haie Vive", "Jéricho", "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita", "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo", "Zone des Ambassades", "Dantokpa", "Agla", "Aïdjèdo", "Sikècodji"],
@@ -3939,6 +4351,8 @@ async function startServer() {
         );
       }
     }
+
+    /* INSERTION DES METIERS */
 
     const professionsData = [
       ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"],
@@ -3966,7 +4380,7 @@ async function startServer() {
     }
 
     console.log(
-      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages, RGPD, preferences contact)."
+      "Toutes les tables sont pretes (pros, societe, offres, villes, quartiers, metiers, messages, RGPD, preferences contact)."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
