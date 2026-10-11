@@ -67,13 +67,9 @@ async function deleteFromCloudinary(publicId) {
   try {
     const urlParts = publicId.split("/upload/");
     if (urlParts.length < 2) return;
-
     let path = urlParts[1];
-    if (path.startsWith("v")) {
-      path = path.replace(/^v\d+\//, "");
-    }
+    if (path.startsWith("v")) path = path.replace(/^v\d+\//, "");
     const cleanId = path.replace(/\.[^.]+$/, "");
-
     await cloudinary.uploader.destroy(cleanId, { invalidate: true });
   } catch (error) {
     console.error("Erreur suppression Cloudinary :", error.message);
@@ -139,14 +135,18 @@ const JOB_CONTRACT_TYPES = [
 
 const OFFER_DURATION_DAYS = 15;
 
+const CONTACT_PREFERENCES = ["whatsapp", "email"];
+
+const CONTACT_PREFERENCE_LABELS = {
+  whatsapp: "WhatsApp",
+  email: "Email"
+};
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => {
     const entities = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;"
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;"
     };
     return entities[character];
   });
@@ -201,31 +201,19 @@ function readCookie(req, name) {
 }
 
 function setSessionCookie(res, token) {
-  res.setHeader(
-    "Set-Cookie",
-    `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`
-  );
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`);
 }
 
 function clearSessionCookie(res) {
-  res.setHeader(
-    "Set-Cookie",
-    `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
-  );
+  res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`);
 }
 
 function setProCookie(res, code) {
-  res.setHeader(
-    "Set-Cookie",
-    `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`
-  );
+  res.setHeader("Set-Cookie", `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`);
 }
 
 function clearProCookie(res) {
-  res.setHeader(
-    "Set-Cookie",
-    `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
-  );
+  res.setHeader("Set-Cookie", `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`);
 }
 
 function requireAdmin(req, res, next) {
@@ -242,13 +230,9 @@ function requireAdmin(req, res, next) {
 function verifyCsrf(req, res, next) {
   const submittedToken = req.body.csrfToken;
   const sessionToken = req.adminSession?.csrf;
-  if (
-    typeof submittedToken !== "string" ||
-    typeof sessionToken !== "string" ||
-    !safeEqual(submittedToken, sessionToken)
-  ) {
+  if (typeof submittedToken !== "string" || typeof sessionToken !== "string" || !safeEqual(submittedToken, sessionToken)) {
     return res.status(403).send(
-      page("Requete refusee", "<h1>Requete refusee</h1><p>Veuillez actualiser la page et reessayer.</p>")
+      page("Requete refusee", "<h1>Requete refusee</h1><p>Veuillez actualiser la page et reessayer.</p>", null)
     );
   }
   next();
@@ -273,7 +257,49 @@ async function generateUniqueProCode() {
   return code;
 }
 
-function page(title, content) {
+async function getConnectedPro(req) {
+  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  if (!proCodeCookie) return null;
+  try {
+    const result = await pool.query(
+      `SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`,
+      [proCodeCookie]
+    );
+    if (!result.rows.length) return null;
+    return { pro: result.rows[0], code: proCodeCookie };
+  } catch (error) {
+    console.error("Erreur getConnectedPro :", error.message);
+    return null;
+  }
+}
+
+function buildMenu(proConnected) {
+  if (proConnected) {
+    return `
+      <nav>
+        <a href="/">Professionnels</a>
+        <a href="/emplois">Emploi</a>
+        <a href="/mon-espace-pro">Mon espace pro</a>
+        <a href="/publier-emploi">📢 Publier une offre</a>
+        <form action="/mon-espace-pro/logout" method="POST" style="display:inline">
+          <button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit">Deconnexion</button>
+        </form>
+      </nav>
+    `;
+  }
+
+  return `
+    <nav>
+      <a href="/">Professionnels</a>
+      <a href="/emplois">Emploi</a>
+      <a href="/devenir-professionnel">Devenir pro</a>
+      <a href="/mon-espace-pro">Espace pro</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  `;
+}
+
+function page(title, content, proConnected) {
   return `
     <!DOCTYPE html>
     <html lang="fr">
@@ -285,102 +311,449 @@ function page(title, content) {
 
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f4f7fb; color: #222; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%); color: white; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
-        .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
-        .logo { font-size: 26px; font-weight: 800; color: white; text-decoration: none; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+          padding: 0; background: #f4f7fb; color: #222;
+          line-height: 1.6; min-height: 100vh;
+          display: flex; flex-direction: column;
+        }
+
+        /* HEADER */
+
+        header {
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          color: white; padding: 18px 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+          position: sticky; top: 0; z-index: 100;
+        }
+
+        .header-content {
+          max-width: 1100px; margin: 0 auto;
+          display: flex; flex-wrap: wrap;
+          justify-content: space-between; align-items: center; gap: 12px;
+        }
+
+        .logo {
+          font-size: 26px; font-weight: 800; color: white;
+          text-decoration: none; letter-spacing: -0.5px;
+          display: flex; align-items: center; gap: 8px;
+        }
+
         .logo::before { content: "🔍"; font-size: 24px; }
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
-        nav { display: flex; flex-wrap: wrap; gap: 6px; }
-        nav a { color: white; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: background 0.2s; }
-        nav a:hover { background: rgba(255,255,255,0.15); }
-        main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
-        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
+
+        nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+        nav a, nav button {
+          color: white; text-decoration: none;
+          padding: 8px 14px; border-radius: 6px;
+          font-size: 14px; font-weight: 500;
+          transition: background 0.2s;
+        }
+
+        nav a:hover, nav button:hover { background: rgba(255,255,255,0.15); }
+
+        /* MAIN */
+
+        main {
+          max-width: 1100px; width: 100%;
+          margin: 0 auto; padding: 24px 20px; flex: 1;
+        }
+
+        .card {
+          background: white; padding: 24px; margin-bottom: 20px;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          transition: box-shadow 0.2s;
+        }
+
         .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-        h1 { font-size: 28px; margin-bottom: 16px; color: #087f5b; line-height: 1.3; }
-        h2 { font-size: 22px; margin-bottom: 14px; color: #1a1a1a; line-height: 1.3; }
-        h3 { font-size: 18px; margin-bottom: 10px; color: #1a1a1a; }
+
+        /* TITRES HIERARCHISES */
+
+        h1 {
+          font-size: 28px;
+          margin-bottom: 16px;
+          color: #087f5b;
+          line-height: 1.3;
+          border-left: 5px solid #087f5b;
+          padding-left: 14px;
+        }
+
+        h2 {
+          font-size: 22px;
+          margin-bottom: 14px;
+          color: #1e40af;
+          line-height: 1.3;
+          border-left: 4px solid #3b82f6;
+          padding-left: 12px;
+        }
+
+        h3 {
+          font-size: 18px;
+          margin-bottom: 10px;
+          color: #475467;
+          line-height: 1.3;
+          border-left: 3px solid #94a3b8;
+          padding-left: 10px;
+        }
+
         p { margin-bottom: 12px; }
-        label { display: block; margin-top: 8px; margin-bottom: 4px; font-weight: 600; font-size: 14px; color: #333; }
-        input, textarea, select { width: 100%; padding: 12px 14px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: #087f5b; box-shadow: 0 0 0 3px rgba(8,127,91,0.1); }
+
+        /* LABELS ET VALEURS */
+
+        .label {
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+
+        .value {
+          color: #333;
+        }
+
+        /* FORMULAIRES */
+
+        label {
+          display: block; margin-top: 8px; margin-bottom: 4px;
+          font-weight: 600; font-size: 14px; color: #333;
+        }
+
+        input, textarea, select {
+          width: 100%; padding: 12px 14px; margin-bottom: 14px;
+          border: 1px solid #ddd; border-radius: 8px;
+          font-size: 15px; font-family: inherit; background: white;
+          transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus {
+          outline: none; border-color: #087f5b;
+          box-shadow: 0 0 0 3px rgba(8,127,91,0.1);
+        }
+
         textarea { resize: vertical; min-height: 100px; }
-        input[type="file"] { padding: 10px; background: #f9fafb; border: 2px dashed #ccc; cursor: pointer; }
+
+        input[type="file"] {
+          padding: 10px; background: #f9fafb;
+          border: 2px dashed #ccc; cursor: pointer;
+        }
+
         input[type="file"]:hover { border-color: #087f5b; background: #f0fdf9; }
-        input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
-        button, .button { display: inline-block; border: none; background: #087f5b; color: white; padding: 12px 20px; border-radius: 8px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: background 0.2s, transform 0.1s; margin-right: 8px; margin-bottom: 8px; }
+
+        input[type="checkbox"], input[type="radio"] {
+          width: auto; margin-right: 8px;
+        }
+
+        /* BOUTONS */
+
+        button, .button {
+          display: inline-block; border: none;
+          background: #087f5b; color: white;
+          padding: 12px 20px; border-radius: 8px;
+          cursor: pointer; text-decoration: none;
+          text-align: center; font-size: 15px; font-weight: 600;
+          transition: background 0.2s, transform 0.1s;
+          margin-right: 8px; margin-bottom: 8px;
+          font-family: inherit;
+        }
+
         button:hover, .button:hover { background: #0a6b4d; transform: translateY(-1px); }
+
         .danger { background: #b42318; }
         .danger:hover { background: #9a1d13; }
+
         .secondary { background: #475467; }
         .secondary:hover { background: #344054; }
+
         .warning { background: #f59e0b; }
         .warning:hover { background: #d97706; }
+
         .success { background: #0a9d70; }
         .success:hover { background: #087f5b; }
+
+        .info { background: #3b82f6; }
+        .info:hover { background: #1e40af; }
+
         .muted { color: #667085; font-size: 14px; }
-        .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+        /* BOUTONS DE CONTACT */
+
+        .contact-buttons {
+          display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px;
+        }
+
         .contact-buttons .button { flex: 1 1 140px; margin: 0; }
+
         .whatsapp { background: #25d366; }
         .whatsapp:hover { background: #1da851; }
+
         .email { background: #475467; }
         .email:hover { background: #344054; }
+
         .share { background: #4267b2; }
         .share:hover { background: #365899; }
-        .photos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-        .photos-grid img { max-width: 280px; max-height: 280px; border-radius: 10px; border: 2px solid #e5e7eb; object-fit: cover; }
+
+        /* PHOTOS */
+
+        .photos-grid {
+          display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0;
+        }
+
+        .photos-grid img {
+          max-width: 280px; max-height: 280px;
+          border-radius: 10px; border: 2px solid #e5e7eb;
+          object-fit: cover;
+        }
+
         .photo-profil { border: 3px solid #087f5b !important; }
         .photo-identite { border: 3px solid #b42318 !important; }
         .photo-activite { border: 3px solid #475467 !important; }
-        .photo-label { font-size: 12px; color: #667085; text-align: center; margin-top: 4px; font-weight: 600; }
+
+        .photo-label {
+          font-size: 12px; color: #667085;
+          text-align: center; margin-top: 4px; font-weight: 600;
+        }
+
         .photo-block { display: flex; flex-direction: column; align-items: center; }
-        .help-text { font-size: 13px; color: #667085; margin-bottom: 12px; font-style: italic; }
+
+        .help-text {
+          font-size: 13px; color: #667085;
+          margin-bottom: 12px; font-style: italic;
+        }
+
         .hidden { display: none !important; }
+
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #087f5b; transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+
+        /* STATS */
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px; margin-bottom: 24px;
+        }
+
+        .stat-card {
+          background: white; padding: 24px;
+          border-radius: 12px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          border-left: 4px solid #087f5b;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
         .stat-card.warning { border-left-color: #f59e0b; }
         .stat-card.danger { border-left-color: #b42318; }
         .stat-card.info { border-left-color: #3b82f6; }
+
         .stat-icon { font-size: 32px; margin-bottom: 8px; }
-        .stat-number { font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1; margin-bottom: 6px; }
-        .stat-label { font-size: 14px; color: #667085; font-weight: 500; }
-        .stat-link { display: inline-block; margin-top: 10px; font-size: 13px; color: #087f5b; text-decoration: none; font-weight: 600; }
+
+        .stat-number {
+          font-size: 36px; font-weight: 800;
+          color: #1a1a1a; line-height: 1; margin-bottom: 6px;
+        }
+
+        .stat-label {
+          font-size: 14px; color: #667085; font-weight: 500;
+        }
+
+        .stat-link {
+          display: inline-block; margin-top: 10px;
+          font-size: 13px; color: #087f5b;
+          text-decoration: none; font-weight: 600;
+        }
+
         .stat-link:hover { text-decoration: underline; }
-        .pro-code-box { background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 16px 0; }
-        .pro-code-value { font-size: 42px; font-weight: 800; letter-spacing: 4px; margin: 12px 0; font-family: "Courier New", monospace; }
-        .pro-code-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* CODE PRO */
+
+        .pro-code-box {
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          color: white; padding: 24px; border-radius: 12px;
+          text-align: center; margin: 16px 0;
+        }
+
+        .pro-code-value {
+          font-size: 42px; font-weight: 800;
+          letter-spacing: 4px; margin: 12px 0;
+          font-family: "Courier New", monospace;
+        }
+
+        .pro-code-label {
+          font-size: 14px; opacity: 0.9;
+          text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        /* BADGES */
+
+        .badge {
+          display: inline-block;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-approved { background: #d1fae5; color: #065f46; }
         .badge-rejected { background: #fee2e2; color: #991b1b; }
         .badge-closed { background: #e5e7eb; color: #374151; }
         .badge-processed { background: #d1fae5; color: #065f46; }
-        .alert { padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid; }
-        .alert-success { background: #d1fae5; border-color: #0a9d70; color: #065f46; }
-        .alert-danger { background: #fee2e2; border-color: #b42318; color: #991b1b; }
-        .alert-warning { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
-        .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
-        .checkbox-block { background: #f9fafb; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb; }
-        .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; }
-        .checkbox-block input[type="checkbox"] { margin-top: 5px; }
-        footer { background: #1a1a1a; color: #ccc; padding: 32px 20px 20px; margin-top: 40px; }
-        .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
-        .footer-col h4 { color: white; margin-bottom: 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .footer-col a { display: block; color: #aaa; text-decoration: none; padding: 4px 0; font-size: 14px; }
+
+        /* ALERTES */
+
+        .alert {
+          padding: 16px 20px;
+          border-radius: 8px;
+          margin-bottom: 16px;
+          border-left: 4px solid;
+        }
+
+        .alert-success {
+          background: #d1fae5;
+          border-color: #0a9d70;
+          color: #065f46;
+        }
+
+        .alert-danger {
+          background: #fee2e2;
+          border-color: #b42318;
+          color: #991b1b;
+        }
+
+        .alert-warning {
+          background: #fef3c7;
+          border-color: #f59e0b;
+          color: #92400e;
+        }
+
+        .alert-info {
+          background: #dbeafe;
+          border-color: #3b82f6;
+          color: #1e40af;
+        }
+
+        /* BANDEAU PRO CONNECTE */
+
+        .pro-welcome {
+          background: linear-gradient(135deg, #087f5b 0%, #0a9d70 100%);
+          color: white;
+          padding: 24px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          box-shadow: 0 4px 16px rgba(8,127,91,0.2);
+        }
+
+        .pro-welcome h2 {
+          color: white;
+          border: none;
+          padding: 0;
+          margin-bottom: 8px;
+          font-size: 22px;
+        }
+
+        .pro-welcome p {
+          opacity: 0.95;
+          margin-bottom: 16px;
+        }
+
+        .pro-welcome .actions {
+          margin: 0;
+        }
+
+        .pro-welcome .button {
+          background: white;
+          color: #087f5b;
+        }
+
+        .pro-welcome .button:hover {
+          background: #f0fdf9;
+          transform: translateY(-1px);
+        }
+
+        .pro-welcome .button.secondary {
+          background: rgba(255,255,255,0.2);
+          color: white;
+        }
+
+        .pro-welcome .button.secondary:hover {
+          background: rgba(255,255,255,0.3);
+        }
+
+        /* CHECKBOX BLOCK */
+
+        .checkbox-block {
+          background: #f9fafb;
+          padding: 16px;
+          border-radius: 8px;
+          margin: 12px 0;
+          border: 1px solid #e5e7eb;
+        }
+
+        .checkbox-block label {
+          display: flex;
+          align-items: flex-start;
+          margin: 0;
+          font-weight: 500;
+        }
+
+        .checkbox-block input[type="checkbox"],
+        .checkbox-block input[type="radio"] {
+          margin-top: 5px;
+        }
+
+        /* FOOTER */
+
+        footer {
+          background: #1a1a1a; color: #ccc;
+          padding: 32px 20px 20px; margin-top: 40px;
+        }
+
+        .footer-content {
+          max-width: 1100px; margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 24px;
+        }
+
+        .footer-col h4 {
+          color: white; margin-bottom: 12px;
+          font-size: 15px; text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .footer-col a {
+          display: block; color: #aaa;
+          text-decoration: none; padding: 4px 0; font-size: 14px;
+        }
+
         .footer-col a:hover { color: #0a9d70; }
-        .footer-bottom { max-width: 1100px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 13px; color: #888; }
+
+        .footer-bottom {
+          max-width: 1100px; margin: 24px auto 0;
+          padding-top: 20px; border-top: 1px solid #333;
+          text-align: center; font-size: 13px; color: #888;
+        }
+
+        /* RESPONSIVE */
+
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
           .logo { font-size: 22px; }
           nav { justify-content: center; }
-          nav a { padding: 6px 10px; font-size: 13px; }
+          nav a, nav button { padding: 6px 10px; font-size: 13px; }
           main { padding: 16px 12px; }
           .card { padding: 16px; }
           h1 { font-size: 22px; }
           h2 { font-size: 18px; }
+          h3 { font-size: 16px; }
           .photos-grid img { max-width: 100%; }
           .contact-buttons .button { flex: 1 1 100%; }
           .stat-number { font-size: 28px; }
@@ -388,6 +761,7 @@ function page(title, content) {
         }
       </style>
     </head>
+
     <body>
       <header>
         <div class="header-content">
@@ -395,21 +769,22 @@ function page(title, content) {
             <a href="/" class="logo">TrouveMoi</a>
             <div class="tagline">Trouvez le bon professionnel au Benin</div>
           </div>
-          <nav>
-            <a href="/">Professionnels</a>
-            <a href="/emplois">Emploi</a>
-            <a href="/mon-espace-pro">Espace pro</a>
-            <a href="/contact">Contact</a>
-          </nav>
+
+          ${buildMenu(proConnected)}
         </div>
       </header>
-      <main>${content}</main>
+
+      <main>
+        ${content}
+      </main>
+
       <footer>
         <div class="footer-content">
           <div class="footer-col">
             <h4>TrouveMoi</h4>
             <p style="color:#aaa;font-size:14px">La plateforme beninoise de mise en relation entre clients et professionnels.</p>
           </div>
+
           <div class="footer-col">
             <h4>Navigation</h4>
             <a href="/">Professionnels</a>
@@ -417,6 +792,7 @@ function page(title, content) {
             <a href="/devenir-professionnel">Devenir professionnel</a>
             <a href="/mon-espace-pro">Espace pro</a>
           </div>
+
           <div class="footer-col">
             <h4>Informations</h4>
             <a href="/a-propos">A propos</a>
@@ -424,13 +800,17 @@ function page(title, content) {
             <a href="/conditions">Conditions d'utilisation</a>
             <a href="/confidentialite">Politique de confidentialite</a>
           </div>
+
           <div class="footer-col">
             <h4>Contact</h4>
             <a href="/contact">Nous ecrire</a>
             <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
           </div>
         </div>
-        <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
+
+        <div class="footer-bottom">
+          &copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.
+        </div>
       </footer>
     </body>
     </html>
@@ -452,14 +832,14 @@ function validEmail(value) {
 function jobContactButtons(job) {
   const buttons = [];
   if (job.contact_phone) {
-    buttons.push(`<a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">Appeler le recruteur</a>`);
+    buttons.push(`<a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">📞 Appeler le recruteur</a>`);
   }
   if (job.contact_whatsapp) {
     const whatsapp = normalizePhone(job.contact_whatsapp).replace(/^\+/, "");
-    buttons.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">Contacter sur WhatsApp</a>`);
+    buttons.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">💬 Contacter sur WhatsApp</a>`);
   }
   if (job.contact_email) {
-    buttons.push(`<a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">Envoyer un e-mail</a>`);
+    buttons.push(`<a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">✉️ Envoyer un e-mail</a>`);
   }
   return buttons.length ? `<div class="contact-buttons">${buttons.join("")}</div>` : "";
 }
@@ -468,6 +848,8 @@ function jobContactButtons(job) {
 
 app.get("/", async (req, res) => {
   try {
+    const proConnected = await getConnectedPro(req);
+
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
     const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
@@ -602,20 +984,34 @@ app.get("/", async (req, res) => {
             </div>
           ` : ""}
 
-          <p><strong>Professionnel :</strong> ${escapeHtml(person.full_name)}</p>
-          <p><strong>Ville :</strong> ${escapeHtml(person.city)}</p>
-          ${person.neighborhood ? `<p><strong>Quartier :</strong> ${escapeHtml(person.neighborhood)}</p>` : ""}
-          ${person.experience ? `<p><strong>Experience :</strong> ${escapeHtml(person.experience)}</p>` : ""}
+          <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(person.full_name)}</span></p>
+          <p><span class="label">Ville :</span> <span class="value">${escapeHtml(person.city)}</span></p>
+          ${person.neighborhood ? `<p><span class="label">Quartier :</span> <span class="value">${escapeHtml(person.neighborhood)}</span></p>` : ""}
+          ${person.experience ? `<p><span class="label">Experience :</span> <span class="value">${escapeHtml(person.experience)}</span></p>` : ""}
           <p>${escapeHtml(person.service_description)}</p>
-          ${person.service_area ? `<p><strong>Zone d'intervention :</strong> ${escapeHtml(person.service_area)}</p>` : ""}
-          ${person.availability ? `<p><strong>Disponibilite :</strong> ${escapeHtml(person.availability)}</p>` : ""}
+          ${person.service_area ? `<p><span class="label">Zone d'intervention :</span> <span class="value">${escapeHtml(person.service_area)}</span></p>` : ""}
+          ${person.availability ? `<p><span class="label">Disponibilite :</span> <span class="value">${escapeHtml(person.availability)}</span></p>` : ""}
 
           ${contactButtons}
         </article>
       `;
     }).join("");
 
+    const welcomeBanner = proConnected ? `
+      <div class="pro-welcome">
+        <h2>🎉 Bonjour ${escapeHtml(proConnected.pro.full_name)} !</h2>
+        <p>Votre candidature est approuvee. Vous pouvez des maintenant gerer vos offres d'emploi.</p>
+        <div class="actions">
+          <a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a>
+          <a class="button secondary" href="/mon-espace-pro">👁️ Voir mon code</a>
+          <a class="button secondary" href="/publier-emploi">📢 Publier une offre</a>
+        </div>
+      </div>
+    ` : "";
+
     const content = `
+      ${welcomeBanner}
+
       <section class="card">
         <h1>Rechercher un professionnel</h1>
 
@@ -660,11 +1056,11 @@ app.get("/", async (req, res) => {
       </p>
     `;
 
-    res.send(page("Accueil", content));
+    res.send(page("Accueil", content, proConnected));
   } catch (error) {
     console.error("Erreur sur la page d'accueil :", error.message);
     res.status(500).send(
-      page("Erreur", "<h2>Une erreur technique est survenue.</h2>")
+      page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)
     );
   }
 });
@@ -673,6 +1069,8 @@ app.get("/", async (req, res) => {
 
 app.get("/devenir-professionnel", async (req, res) => {
   try {
+    const proConnected = await getConnectedPro(req);
+
     const citiesResult = await pool.query(
       "SELECT id, name FROM cities ORDER BY display_order ASC"
     );
@@ -747,6 +1145,45 @@ app.get("/devenir-professionnel", async (req, res) => {
               <p style="margin-top:8px;margin-bottom:0">
                 <strong>Nous vous recommandons fortement de laisser cette case cochee.</strong>
               </p>
+            </div>
+          </div>
+
+          <h3>Comment souhaitez-vous recevoir votre code professionnel ? *</h3>
+
+          <p class="help-text">
+            Apres approbation de votre candidature, nous vous enverrons votre code
+            professionnel unique. Choisissez le moyen qui vous convient le mieux.
+          </p>
+
+          <div class="checkbox-block">
+            <label>
+              <input type="radio" name="contact_preference" value="whatsapp" required>
+              <span>
+                <strong>📱 Par WhatsApp</strong>
+                <br>
+                <span class="muted">Nous vous enverrons votre code par WhatsApp.</span>
+              </span>
+            </label>
+
+            <div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px">
+              <label for="whatsapp_number">Numero WhatsApp (si different de votre numero principal)</label>
+              <input id="whatsapp_number" name="whatsapp_number" type="tel" maxlength="30" placeholder="+229...">
+            </div>
+          </div>
+
+          <div class="checkbox-block">
+            <label>
+              <input type="radio" name="contact_preference" value="email" required>
+              <span>
+                <strong>✉️ Par email</strong>
+                <br>
+                <span class="muted">Nous vous enverrons votre code par email.</span>
+              </span>
+            </label>
+
+            <div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px">
+              <label for="contact_email">Adresse email *</label>
+              <input id="contact_email" name="contact_email" type="email" maxlength="254" placeholder="vous@exemple.com">
             </div>
           </div>
 
@@ -841,6 +1278,10 @@ app.get("/devenir-professionnel", async (req, res) => {
         const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block');
         const professionSelect = document.getElementById('profession');
         const professionOtherBlock = document.getElementById('profession-other-block');
+        const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]');
+        const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
+        const whatsappNumberBlock = document.getElementById('whatsapp-number-block');
+        const emailBlock = document.getElementById('email-block');
 
         citySelect.addEventListener('change', async function() {
           const city = citySelect.value;
@@ -891,14 +1332,28 @@ app.get("/devenir-professionnel", async (req, res) => {
             professionOtherBlock.classList.add('hidden');
           }
         });
+
+        whatsappRadio.addEventListener('change', function() {
+          if (whatsappRadio.checked) {
+            whatsappNumberBlock.classList.remove('hidden');
+            emailBlock.classList.add('hidden');
+          }
+        });
+
+        emailRadio.addEventListener('change', function() {
+          if (emailRadio.checked) {
+            emailBlock.classList.remove('hidden');
+            whatsappNumberBlock.classList.add('hidden');
+          }
+        });
       </script>
     `;
 
-    res.send(page("Devenir professionnel", content));
+    res.send(page("Devenir professionnel", content, proConnected));
   } catch (error) {
     console.error("Erreur sur le formulaire professionnel :", error.message);
     res.status(500).send(
-      page("Erreur", "<h2>Une erreur technique est survenue.</h2>")
+      page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)
     );
   }
 });
@@ -948,7 +1403,8 @@ app.post(
     const {
       full_name, phone, phone_public, city, neighborhood, neighborhood_other,
       profession, profession_other, experience, service_description,
-      service_area, availability, gdpr_consent
+      service_area, availability, gdpr_consent,
+      contact_preference, whatsapp_number, contact_email
     } = req.body;
 
     const files = req.files || {};
@@ -964,8 +1420,57 @@ app.post(
             <p>Vous devez accepter la Politique de confidentialite pour soumettre votre candidature.</p>
             <a href="/devenir-professionnel">Retour au formulaire</a>
           </section>
-        `)
+        `, null)
       );
+    }
+
+    const pref = typeof contact_preference === "string" ? contact_preference.trim() : "";
+
+    if (!CONTACT_PREFERENCES.includes(pref)) {
+      return res.status(400).send(
+        page("Choix de contact manquant", `
+          <section class="card">
+            <h2>Vous devez choisir comment recevoir votre code</h2>
+            <p>Retournez au formulaire et selectionnez WhatsApp ou Email.</p>
+            <a href="/devenir-professionnel">Retour au formulaire</a>
+          </section>
+        `, null)
+      );
+    }
+
+    let finalWhatsappNumber = null;
+    let finalContactEmail = null;
+
+    if (pref === "whatsapp") {
+      finalWhatsappNumber = typeof whatsapp_number === "string" && whatsapp_number.trim()
+        ? normalizePhone(whatsapp_number).slice(0, 30)
+        : normalizePhone(phone).slice(0, 30);
+
+      if (!validPhone(finalWhatsappNumber)) {
+        return res.status(400).send(
+          page("Numero WhatsApp invalide", `
+            <section class="card">
+              <h2>Le numero WhatsApp est invalide.</h2>
+              <a href="/devenir-professionnel">Retour au formulaire</a>
+            </section>
+          `, null)
+        );
+      }
+    }
+
+    if (pref === "email") {
+      finalContactEmail = typeof contact_email === "string" ? contact_email.trim().slice(0, 254) : "";
+
+      if (!finalContactEmail || !validEmail(finalContactEmail)) {
+        return res.status(400).send(
+          page("Email invalide", `
+            <section class="card">
+              <h2>L'adresse email est invalide.</h2>
+              <a href="/devenir-professionnel">Retour au formulaire</a>
+            </section>
+          `, null)
+        );
+      }
     }
 
     let finalNeighborhood = null;
@@ -1001,7 +1506,7 @@ app.post(
             <p>Verifiez que vous avez bien rempli le nom, le telephone, la ville, le metier et la description.</p>
             <a href="/devenir-professionnel">Retour au formulaire</a>
           </section>
-        `)
+        `, null)
       );
     }
 
@@ -1013,7 +1518,7 @@ app.post(
             <p>La photo de profil et la photo d'identite sont obligatoires.</p>
             <a href="/devenir-professionnel">Retour au formulaire</a>
           </section>
-        `)
+        `, null)
       );
     }
 
@@ -1049,7 +1554,7 @@ app.post(
             <p>Veuillez reessayer avec des images plus petites.</p>
             <a href="/devenir-professionnel">Retour au formulaire</a>
           </section>
-        `)
+        `, null)
       );
     }
 
@@ -1061,9 +1566,10 @@ app.post(
           full_name, phone, phone_public, city, neighborhood, profession,
           experience, service_description, service_area, availability, npi,
           photo_profil_url, photo_identite_url, photo_activite_url,
+          contact_preference, whatsapp_number, contact_email,
           pro_code, status
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,$13,NULL,'pending')
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NULL,$11,$12,$13,$14,$15,$16,NULL,'pending')
         RETURNING id
       `, [
         full_name.trim().slice(0, 150),
@@ -1078,7 +1584,10 @@ app.post(
         typeof availability === "string" ? availability.slice(0, 100) || null : null,
         photoProfilUrl,
         photoIdentiteUrl,
-        photoActiviteUrl
+        photoActiviteUrl,
+        pref,
+        finalWhatsappNumber,
+        finalContactEmail
       ]);
 
       res.status(201).send(
@@ -1086,20 +1595,20 @@ app.post(
           <section class="card">
             <h1>Candidature envoyee avec succes !</h1>
             <p>Votre candidature a bien ete enregistree.</p>
-            <p>Reference : ${escapeHtml(result.rows[0].id)}</p>
+            <p><span class="label">Reference :</span> <span class="value">${escapeHtml(result.rows[0].id)}</span></p>
             <p>Votre profil ne sera visible qu'apres approbation.</p>
             <p class="help-text">
-              Une fois approuve, vous recevrez un code professionnel unique
-              qui vous permettra de publier des offres d'emploi.
+              Une fois approuve, vous recevrez votre code professionnel unique
+              ${pref === "whatsapp" ? "par WhatsApp" : "par email"}.
             </p>
             <a class="button" href="/">Retour a l'accueil</a>
           </section>
-        `)
+        `, null)
       );
     } catch (error) {
       console.error("Erreur lors de l'enregistrement :", error.message);
       res.status(500).send(
-        page("Erreur", "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>")
+        page("Erreur", "<section class='card'><h2>Impossible d'enregistrer la candidature.</h2><p>Veuillez reessayer plus tard.</p></section>", null)
       );
     }
   }
@@ -1109,6 +1618,8 @@ app.post(
 
 app.get("/emplois", async (req, res) => {
   try {
+    const proConnected = await getConnectedPro(req);
+
     const keyword = String(req.query.keyword || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
     const contract = String(req.query.contract || "").trim().slice(0, 50);
@@ -1148,13 +1659,13 @@ app.get("/emplois", async (req, res) => {
     const jobs = result.rows.map((job) => `
       <article class="card">
         <h2>${escapeHtml(job.job_title)}</h2>
-        <p><strong>Entreprise :</strong> ${escapeHtml(job.company_name)}</p>
-        <p><strong>Ville :</strong> ${escapeHtml(job.city)}</p>
-        <p><strong>Contrat :</strong> ${escapeHtml(job.contract_type)}</p>
-        ${job.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>` : ""}
+        <p><span class="label">Entreprise :</span> <span class="value">${escapeHtml(job.company_name)}</span></p>
+        <p><span class="label">Ville :</span> <span class="value">${escapeHtml(job.city)}</span></p>
+        <p><span class="label">Contrat :</span> <span class="value">${escapeHtml(job.contract_type)}</span></p>
+        ${job.salary ? `<p><span class="label">Salaire :</span> <span class="value">${escapeHtml(job.salary)}</span></p>` : ""}
         <p>${escapeHtml(job.description).replace(/\n/g, "<br>")}</p>
-        ${job.qualifications ? `<p><strong>Profil recherche :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
-        ${job.deadline ? `<p><strong>Date limite :</strong> ${escapeHtml(job.deadline)}</p>` : ""}
+        ${job.qualifications ? `<p><span class="label">Profil recherche :</span> <span class="value">${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</span></p>` : ""}
+        ${job.deadline ? `<p><span class="label">Date limite :</span> <span class="value">${escapeHtml(job.deadline)}</span></p>` : ""}
         ${jobContactButtons(job)}
       </article>
     `).join("");
@@ -1196,12 +1707,12 @@ app.get("/emplois", async (req, res) => {
             <p>Aucune offre ne correspond a votre recherche pour le moment.</p>
           </section>
         `}
-      `)
+      `, proConnected)
     );
   } catch (error) {
     console.error("Erreur lors de la recherche d'emplois :", error.message);
     res.status(500).send(
-      page("Erreur", "<section class='card'><h2>Impossible de charger les offres d'emploi.</h2></section>")
+      page("Erreur", "<section class='card'><h2>Impossible de charger les offres d'emploi.</h2></section>", null)
     );
   }
 });
@@ -1209,115 +1720,10 @@ app.get("/emplois", async (req, res) => {
 /* FORMULAIRE DE PUBLICATION D'EMPLOI */
 
 app.get("/publier-emploi", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
-  let proInfo = null;
+  const proConnected = await getConnectedPro(req);
 
-  if (proCodeCookie) {
-    try {
-      const proResult = await pool.query(
-        `SELECT id, full_name, profession, city FROM professional_applications
-         WHERE pro_code = $1 AND status = 'approved'`,
-        [proCodeCookie]
-      );
-      if (proResult.rows.length) proInfo = proResult.rows[0];
-    } catch (error) {
-      console.error("Erreur verif pro :", error.message);
-    }
-  }
-
-  const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
-    <option value="${escapeHtml(type)}">${escapeHtml(type)}</option>
-  `).join("");
-
-  const content = proInfo
-    ? `
-      <section class="card">
-        <div class="alert alert-success">
-          ✅ Connecte en tant que <strong>${escapeHtml(proInfo.full_name)}</strong>
-          (${escapeHtml(proInfo.profession)}) — Code : <strong>${escapeHtml(proCodeCookie)}</strong>
-        </div>
-
-        <h1>Publier une offre d'emploi</h1>
-
-        <p>
-          Votre offre sera examinee par l'administration avant publication.
-          Duree de publication : <strong>${OFFER_DURATION_DAYS} jours</strong>,
-          renouvelable depuis votre espace personnel.
-        </p>
-
-        <form action="/offres-emploi" method="POST">
-          <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
-          <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(proInfo.full_name)}">
-
-          <label for="job_title">Intitule du poste *</label>
-          <input id="job_title" name="job_title" required maxlength="200">
-
-          <label for="city">Ville *</label>
-          <input id="city" name="city" required maxlength="100" value="${escapeHtml(proInfo.city)}">
-
-          <label for="contract_type">Type de contrat *</label>
-          <select id="contract_type" name="contract_type" required>
-            <option value="">Choisir</option>
-            ${contractOptions}
-          </select>
-
-          <label for="salary">Salaire (facultatif)</label>
-          <input id="salary" name="salary" maxlength="100" placeholder="Ex. : 100 000 FCFA/mois">
-
-          <label for="description">Description du poste *</label>
-          <textarea id="description" name="description" required maxlength="8000" rows="6"></textarea>
-
-          <label for="qualifications">Qualifications et competences recherchees</label>
-          <textarea id="qualifications" name="qualifications" maxlength="4000" rows="4"></textarea>
-
-          <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
-            <legend>Moyens de contact (au moins un obligatoire) *</legend>
-
-            <label><input style="width:auto" type="checkbox" id="use_phone" name="use_phone" value="yes"> Appel direct</label>
-            <label for="contact_phone">Numero de telephone</label>
-            <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" placeholder="+229...">
-
-            <label><input style="width:auto" type="checkbox" id="use_whatsapp" name="use_whatsapp" value="yes"> WhatsApp</label>
-            <label for="contact_whatsapp">Numero WhatsApp</label>
-            <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" placeholder="+229...">
-
-            <label><input style="width:auto" type="checkbox" id="use_email" name="use_email" value="yes"> E-mail</label>
-            <label for="contact_email">Adresse e-mail</label>
-            <input id="contact_email" name="contact_email" type="email" maxlength="254" placeholder="recrutement@entreprise.com">
-          </fieldset>
-
-          <label for="deadline">Date limite de candidature (facultatif)</label>
-          <input id="deadline" name="deadline" type="date">
-
-          <button type="submit">Soumettre l'offre</button>
-        </form>
-
-        <p><a href="/mon-espace-pro">Mon espace pro</a> — <a href="/emplois">Voir les offres</a></p>
-      </section>
-
-      <script>
-        const form = document.querySelector('form');
-        form.addEventListener('submit', function(event) {
-          const methods = [
-            ['use_phone', 'contact_phone'],
-            ['use_whatsapp', 'contact_whatsapp'],
-            ['use_email', 'contact_email']
-          ];
-          const selected = methods.filter(([check]) => document.getElementById(check).checked);
-          if (!selected.length) {
-            event.preventDefault();
-            alert('Choisissez au moins un moyen de contact.');
-            return;
-          }
-          const missing = selected.find(([check, field]) => !document.getElementById(field).value.trim());
-          if (missing) {
-            event.preventDefault();
-            alert('Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.');
-          }
-        });
-      </script>
-    `
-    : `
+  if (!proConnected) {
+    return res.send(page("Publier une offre", `
       <section class="card">
         <div class="alert alert-warning">
           ⚠️ Pour publier une offre d'emploi, vous devez etre un
@@ -1353,17 +1759,109 @@ app.get("/publier-emploi", async (req, res) => {
         <a class="button" href="/devenir-professionnel">Devenir professionnel</a>
         <a class="button secondary" href="/contact">Nous contacter</a>
       </section>
-    `;
+    `, null));
+  }
 
-  res.send(page("Publier une offre d'emploi", content));
+  const contractOptions = JOB_CONTRACT_TYPES.map((type) => `
+    <option value="${escapeHtml(type)}">${escapeHtml(type)}</option>
+  `).join("");
+
+  res.send(page("Publier une offre", `
+    <section class="card">
+      <div class="alert alert-success">
+        ✅ Connecte en tant que <strong>${escapeHtml(proConnected.pro.full_name)}</strong>
+        (${escapeHtml(proConnected.pro.profession)}) — Code : <strong>${escapeHtml(proConnected.code)}</strong>
+      </div>
+
+      <h1>Publier une offre d'emploi</h1>
+
+      <p>
+        Votre offre sera examinee par l'administration avant publication.
+        Duree de publication : <strong>${OFFER_DURATION_DAYS} jours</strong>,
+        renouvelable depuis votre espace personnel.
+      </p>
+
+      <form action="/offres-emploi" method="POST">
+        <label for="company_name">Nom de l'entreprise ou du recruteur *</label>
+        <input id="company_name" name="company_name" required maxlength="200" value="${escapeHtml(proConnected.pro.full_name)}">
+
+        <label for="job_title">Intitule du poste *</label>
+        <input id="job_title" name="job_title" required maxlength="200">
+
+        <label for="city">Ville *</label>
+        <input id="city" name="city" required maxlength="100" value="${escapeHtml(proConnected.pro.city)}">
+
+        <label for="contract_type">Type de contrat *</label>
+        <select id="contract_type" name="contract_type" required>
+          <option value="">Choisir</option>
+          ${contractOptions}
+        </select>
+
+        <label for="salary">Salaire (facultatif)</label>
+        <input id="salary" name="salary" maxlength="100" placeholder="Ex. : 100 000 FCFA/mois">
+
+        <label for="description">Description du poste *</label>
+        <textarea id="description" name="description" required maxlength="8000" rows="6"></textarea>
+
+        <label for="qualifications">Qualifications et competences recherchees</label>
+        <textarea id="qualifications" name="qualifications" maxlength="4000" rows="4"></textarea>
+
+        <fieldset style="border:1px solid #ddd;border-radius:8px;padding:14px">
+          <legend>Moyens de contact (au moins un obligatoire) *</legend>
+
+          <label><input style="width:auto" type="checkbox" id="use_phone" name="use_phone" value="yes"> Appel direct</label>
+          <label for="contact_phone">Numero de telephone</label>
+          <input id="contact_phone" name="contact_phone" type="tel" maxlength="30" placeholder="+229...">
+
+          <label><input style="width:auto" type="checkbox" id="use_whatsapp" name="use_whatsapp" value="yes"> WhatsApp</label>
+          <label for="contact_whatsapp">Numero WhatsApp</label>
+          <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="30" placeholder="+229...">
+
+          <label><input style="width:auto" type="checkbox" id="use_email" name="use_email" value="yes"> E-mail</label>
+          <label for="contact_email">Adresse e-mail</label>
+          <input id="contact_email" name="contact_email" type="email" maxlength="254" placeholder="recrutement@entreprise.com">
+        </fieldset>
+
+        <label for="deadline">Date limite de candidature (facultatif)</label>
+        <input id="deadline" name="deadline" type="date">
+
+        <button type="submit">Soumettre l'offre</button>
+      </form>
+
+      <p><a href="/mon-espace-pro">Mon espace pro</a> — <a href="/emplois">Voir les offres</a></p>
+    </section>
+
+    <script>
+      const form = document.querySelector('form');
+      form.addEventListener('submit', function(event) {
+        const methods = [
+          ['use_phone', 'contact_phone'],
+          ['use_whatsapp', 'contact_whatsapp'],
+          ['use_email', 'contact_email']
+        ];
+        const selected = methods.filter(([check]) => document.getElementById(check).checked);
+        if (!selected.length) {
+          event.preventDefault();
+          alert('Choisissez au moins un moyen de contact.');
+          return;
+        }
+        const missing = selected.find(([check, field]) => !document.getElementById(field).value.trim());
+        if (missing) {
+          event.preventDefault();
+          alert('Veuillez renseigner les coordonnees de chaque moyen de contact selectionne.');
+        }
+      });
+    </script>
+  `, proConnected));
 });
 
 /* ENREGISTREMENT DES OFFRES */
 
 app.post("/offres-emploi", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const proConnected = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!proConnected) {
+    clearProCookie(res);
     return res.status(403).send(
       page("Acces refuse", `
         <section class="card">
@@ -1371,35 +1869,8 @@ app.post("/offres-emploi", async (req, res) => {
           <p>Vous devez etre connecte en tant que professionnel verifie pour publier une offre.</p>
           <a class="button" href="/publier-emploi">Retour</a>
         </section>
-      `)
+      `, null)
     );
-  }
-
-  let proInfo = null;
-
-  try {
-    const proResult = await pool.query(
-      `SELECT id, full_name FROM professional_applications
-       WHERE pro_code = $1 AND status = 'approved'`,
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.status(403).send(
-        page("Acces refuse", `
-          <section class="card">
-            <h2>Code professionnel invalide ou compte non approuve.</h2>
-            <a class="button" href="/publier-emploi">Retour</a>
-          </section>
-        `)
-      );
-    }
-
-    proInfo = proResult.rows[0];
-  } catch (error) {
-    console.error("Erreur verif pro POST :", error.message);
-    return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
   }
 
   const {
@@ -1426,7 +1897,7 @@ app.post("/offres-emploi", async (req, res) => {
           <h2>Informations obligatoires manquantes ou invalides.</h2>
           <a href="/publier-emploi">Retour au formulaire</a>
         </section>
-      `)
+      `, proConnected)
     );
   }
 
@@ -1437,31 +1908,7 @@ app.post("/offres-emploi", async (req, res) => {
           <h2>Choisissez au moins un moyen de contact et renseignez ses coordonnees.</h2>
           <a href="/publier-emploi">Retour au formulaire</a>
         </section>
-      `)
-    );
-  }
-
-  if (phone && !validPhone(phone)) {
-    return res.status(400).send(
-      page("Telephone invalide", `
-        <section class="card"><h2>Le numero de telephone est invalide.</h2><a href="/publier-emploi">Retour</a></section>
-      `)
-    );
-  }
-
-  if (whatsapp && !validPhone(whatsapp)) {
-    return res.status(400).send(
-      page("WhatsApp invalide", `
-        <section class="card"><h2>Le numero WhatsApp est invalide.</h2><a href="/publier-emploi">Retour</a></section>
-      `)
-    );
-  }
-
-  if (email && !validEmail(email)) {
-    return res.status(400).send(
-      page("E-mail invalide", `
-        <section class="card"><h2>L'adresse e-mail est invalide.</h2><a href="/publier-emploi">Retour</a></section>
-      `)
+      `, proConnected)
     );
   }
 
@@ -1478,7 +1925,7 @@ app.post("/offres-emploi", async (req, res) => {
       typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
       typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
-      phone, whatsapp, email, jobDeadline, proInfo.id
+      phone, whatsapp, email, jobDeadline, proConnected.pro.id
     ]);
 
     res.status(201).send(
@@ -1490,7 +1937,7 @@ app.post("/offres-emploi", async (req, res) => {
           <a class="button" href="/mon-espace-pro">Mon espace pro</a>
           <a class="button secondary" href="/emplois">Voir les offres</a>
         </section>
-      `)
+      `, proConnected)
     );
   } catch (error) {
     console.error("Erreur lors de l'enregistrement de l'offre :", error.message);
@@ -1500,7 +1947,7 @@ app.post("/offres-emploi", async (req, res) => {
           <h2>Impossible d'enregistrer l'offre pour le moment.</h2>
           <p>Veuillez reessayer plus tard.</p>
         </section>
-      `)
+      `, proConnected)
     );
   }
 });
@@ -1508,9 +1955,9 @@ app.post("/offres-emploi", async (req, res) => {
 /* ESPACE PROFESSIONNEL */
 
 app.get("/mon-espace-pro", async (req, res) => {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
+  const proConnected = await getConnectedPro(req);
 
-  if (!proCodeCookie) {
+  if (!proConnected) {
     return res.send(page("Espace pro", `
       <section class="card">
         <h1>Mon espace professionnel</h1>
@@ -1532,30 +1979,13 @@ app.get("/mon-espace-pro", async (req, res) => {
           <a href="/contact">Contacter l'administration</a>
         </p>
       </section>
-    `));
+    `, null));
   }
 
-  let proInfo = null;
   let offers = [];
   let gdprRequests = [];
 
   try {
-    const proResult = await pool.query(
-      `SELECT id, full_name, phone, phone_public, city, neighborhood, profession,
-              experience, service_description, service_area, availability,
-              photo_activite_url, created_at
-       FROM professional_applications
-       WHERE pro_code = $1 AND status = 'approved'`,
-      [proCodeCookie]
-    );
-
-    if (!proResult.rows.length) {
-      clearProCookie(res);
-      return res.redirect(303, "/mon-espace-pro");
-    }
-
-    proInfo = proResult.rows[0];
-
     const offersResult = await pool.query(
       `SELECT id, company_name, job_title, city, contract_type, salary,
               description, qualifications, contact_phone, contact_whatsapp,
@@ -1563,7 +1993,7 @@ app.get("/mon-espace-pro", async (req, res) => {
        FROM job_offers
        WHERE pro_id = $1
        ORDER BY created_at DESC`,
-      [proInfo.id]
+      [proConnected.pro.id]
     );
 
     offers = offersResult.rows;
@@ -1574,13 +2004,13 @@ app.get("/mon-espace-pro", async (req, res) => {
        WHERE pro_id = $1
        ORDER BY created_at DESC
        LIMIT 20`,
-      [proInfo.id]
+      [proConnected.pro.id]
     );
 
     gdprRequests = gdprResult.rows;
   } catch (error) {
     console.error("Erreur espace pro :", error.message);
-    return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
+    return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected));
   }
 
   const now = new Date();
@@ -1600,13 +2030,13 @@ app.get("/mon-espace-pro", async (req, res) => {
           ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}
         </p>
 
-        <p><strong>Entreprise :</strong> ${escapeHtml(offer.company_name)}</p>
-        <p><strong>Ville :</strong> ${escapeHtml(offer.city)}</p>
-        <p><strong>Contrat :</strong> ${escapeHtml(offer.contract_type)}</p>
-        ${offer.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(offer.salary)}</p>` : ""}
-        <p><strong>Description :</strong> ${escapeHtml(offer.description).replace(/\n/g, "<br>")}</p>
-        ${offer.qualifications ? `<p><strong>Qualifications :</strong> ${escapeHtml(offer.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
-        ${offer.deadline ? `<p><strong>Date limite :</strong> ${escapeHtml(offer.deadline)}</p>` : ""}
+        <p><span class="label">Entreprise :</span> <span class="value">${escapeHtml(offer.company_name)}</span></p>
+        <p><span class="label">Ville :</span> <span class="value">${escapeHtml(offer.city)}</span></p>
+        <p><span class="label">Contrat :</span> <span class="value">${escapeHtml(offer.contract_type)}</span></p>
+        ${offer.salary ? `<p><span class="label">Salaire :</span> <span class="value">${escapeHtml(offer.salary)}</span></p>` : ""}
+        <p><span class="label">Description :</span> <span class="value">${escapeHtml(offer.description).replace(/\n/g, "<br>")}</span></p>
+        ${offer.qualifications ? `<p><span class="label">Qualifications :</span> <span class="value">${escapeHtml(offer.qualifications).replace(/\n/g, "<br>")}</span></p>` : ""}
+        ${offer.deadline ? `<p><span class="label">Date limite :</span> <span class="value">${escapeHtml(offer.deadline)}</span></p>` : ""}
 
         ${offer.expires_at ? `
           <p class="muted">
@@ -1661,17 +2091,27 @@ app.get("/mon-espace-pro", async (req, res) => {
     </article>
   `).join("");
 
-  const phoneStatus = proInfo.phone_public
+  const phoneStatus = proConnected.pro.phone_public
     ? `<span class="badge badge-approved">Public</span> Votre numero est visible publiquement.`
-    : `<span class="badge badge-closed">Prive</span> Votre numero n'est <strong>pas visible</strong> publiquement. Les clients doivent passer par l'administration.`;
+    : `<span class="badge badge-closed">Prive</span> Votre numero n'est <strong>pas visible</strong> publiquement.`;
+
+  const prefLabel = CONTACT_PREFERENCE_LABELS[proConnected.pro.contact_preference] || "Non defini";
+
+  let contactInfoBlock = "";
+
+  if (proConnected.pro.contact_preference === "whatsapp" && proConnected.pro.whatsapp_number) {
+    contactInfoBlock = `<p><span class="label">Reception du code :</span> <span class="value">WhatsApp (${escapeHtml(proConnected.pro.whatsapp_number)})</span></p>`;
+  } else if (proConnected.pro.contact_preference === "email" && proConnected.pro.contact_email) {
+    contactInfoBlock = `<p><span class="label">Reception du code :</span> <span class="value">Email (${escapeHtml(proConnected.pro.contact_email)})</span></p>`;
+  }
 
   res.send(page("Mon espace pro", `
     <section class="card">
-      <h1>Bonjour ${escapeHtml(proInfo.full_name)} 👋</h1>
+      <h1>Bonjour ${escapeHtml(proConnected.pro.full_name)} 👋</h1>
 
       <div class="pro-code-box">
         <div class="pro-code-label">Votre code professionnel</div>
-        <div class="pro-code-value">${escapeHtml(proCodeCookie)}</div>
+        <div class="pro-code-value">${escapeHtml(proConnected.code)}</div>
         <div class="pro-code-label">Gardez-le precieusement</div>
       </div>
 
@@ -1691,14 +2131,15 @@ app.get("/mon-espace-pro", async (req, res) => {
     </section>
 
     <section class="card">
-      <h3>Mes informations</h3>
-      <p><strong>Profession :</strong> ${escapeHtml(proInfo.profession)}</p>
-      <p><strong>Ville :</strong> ${escapeHtml(proInfo.city)}</p>
-      ${proInfo.neighborhood ? `<p><strong>Quartier :</strong> ${escapeHtml(proInfo.neighborhood)}</p>` : ""}
-      <p><strong>Telephone :</strong> ${escapeHtml(proInfo.phone)}</p>
-      <p><strong>Visibilite du numero :</strong> ${phoneStatus}</p>
-      ${proInfo.experience ? `<p><strong>Experience :</strong> ${escapeHtml(proInfo.experience)}</p>` : ""}
-      <p><strong>Description :</strong> ${escapeHtml(proInfo.service_description)}</p>
+      <h2>Mes informations</h2>
+      <p><span class="label">Profession :</span> <span class="value">${escapeHtml(proConnected.pro.profession)}</span></p>
+      <p><span class="label">Ville :</span> <span class="value">${escapeHtml(proConnected.pro.city)}</span></p>
+      ${proConnected.pro.neighborhood ? `<p><span class="label">Quartier :</span> <span class="value">${escapeHtml(proConnected.pro.neighborhood)}</span></p>` : ""}
+      <p><span class="label">Telephone :</span> <span class="value">${escapeHtml(proConnected.pro.phone)}</span></p>
+      <p><span class="label">Visibilite du numero :</span> ${phoneStatus}</p>
+      ${contactInfoBlock}
+      ${proConnected.pro.experience ? `<p><span class="label">Experience :</span> <span class="value">${escapeHtml(proConnected.pro.experience)}</span></p>` : ""}
+      <p><span class="label">Description :</span> <span class="value">${escapeHtml(proConnected.pro.service_description)}</span></p>
 
       <div class="actions">
         <a class="button secondary" href="/mon-espace-pro/modifier-telephone">Modifier la visibilite de mon numero</a>
@@ -1736,7 +2177,7 @@ app.get("/mon-espace-pro", async (req, res) => {
         ${gdprHtml}
       ` : ""}
     </section>
-  `));
+  `, proConnected));
 });
 
 /* CONNEXION ESPACE PRO */
@@ -1752,7 +2193,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
           <p>Le code doit etre au format TM12345.</p>
           <a href="/mon-espace-pro">Reessayer</a>
         </section>
-      `)
+      `, null)
     );
   }
 
@@ -1771,7 +2212,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
             <a class="button" href="/mon-espace-pro">Reessayer</a>
             <a class="button secondary" href="/contact">Contacter l'administration</a>
           </section>
-        `)
+        `, null)
       );
     }
 
@@ -1779,7 +2220,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
     res.redirect(303, "/mon-espace-pro");
   } catch (error) {
     console.error("Erreur login pro :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
   }
 });
 
@@ -1790,31 +2231,12 @@ app.post("/mon-espace-pro/logout", (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-/* RECHARGEMENT UTIL : recup pro connecte */
-
-async function getConnectedPro(req) {
-  const proCodeCookie = readCookie(req, PRO_COOKIE);
-  if (!proCodeCookie) return null;
-
-  try {
-    const result = await pool.query(
-      `SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`,
-      [proCodeCookie]
-    );
-    if (!result.rows.length) return null;
-    return { pro: result.rows[0], code: proCodeCookie };
-  } catch (error) {
-    console.error("Erreur getConnectedPro :", error.message);
-    return null;
-  }
-}
-
 /* MODIFIER VISIBILITE DU TELEPHONE */
 
 app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
@@ -1830,7 +2252,7 @@ app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
       <form action="/mon-espace-pro/modifier-telephone" method="POST">
         <div class="checkbox-block">
           <label>
-            <input type="checkbox" name="phone_public" value="yes" ${data.pro.phone_public ? "checked" : ""}>
+            <input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}>
             <span>
               <strong>J'accepte que mon numero soit visible publiquement</strong>
               <br>
@@ -1849,13 +2271,13 @@ app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
         <a class="button secondary" href="/mon-espace-pro">Annuler</a>
       </form>
     </section>
-  `));
+  `, proConnected));
 });
 
 app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
@@ -1865,7 +2287,7 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   try {
     await pool.query(
       `UPDATE professional_applications SET phone_public = $1 WHERE id = $2`,
-      [phonePublic, data.pro.id]
+      [phonePublic, proConnected.pro.id]
     );
   } catch (error) {
     console.error("Erreur maj visibilite :", error.message);
@@ -1874,12 +2296,12 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-/* TELECHARGER MES DONNEES (droit d'acces + portabilite) */
+/* TELECHARGER MES DONNEES */
 
 app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
@@ -1890,36 +2312,39 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
               description, qualifications, contact_phone, contact_whatsapp,
               contact_email, deadline, status, created_at, expires_at
        FROM job_offers WHERE pro_id = $1`,
-      [data.pro.id]
+      [proConnected.pro.id]
     );
 
     const gdprResult = await pool.query(
       `SELECT id, request_type, status, created_at, processed_at
        FROM gdpr_requests WHERE pro_id = $1`,
-      [data.pro.id]
+      [proConnected.pro.id]
     );
 
     const exportData = {
       export_date: new Date().toISOString(),
       plateforme: "TrouveMoi",
       utilisateur: {
-        nom: data.pro.full_name,
-        telephone: data.pro.phone,
-        telephone_public: data.pro.phone_public,
-        ville: data.pro.city,
-        quartier: data.pro.neighborhood,
-        profession: data.pro.profession,
-        experience: data.pro.experience,
-        description: data.pro.service_description,
-        zone_intervention: data.pro.service_area,
-        disponibilite: data.pro.availability,
-        code_professionnel: data.code,
-        date_inscription: data.pro.created_at
+        nom: proConnected.pro.full_name,
+        telephone: proConnected.pro.phone,
+        telephone_public: proConnected.pro.phone_public,
+        ville: proConnected.pro.city,
+        quartier: proConnected.pro.neighborhood,
+        profession: proConnected.pro.profession,
+        experience: proConnected.pro.experience,
+        description: proConnected.pro.service_description,
+        zone_intervention: proConnected.pro.service_area,
+        disponibilite: proConnected.pro.availability,
+        code_professionnel: proConnected.code,
+        preference_contact: proConnected.pro.contact_preference,
+        whatsapp_number: proConnected.pro.whatsapp_number,
+        contact_email: proConnected.pro.contact_email,
+        date_inscription: proConnected.pro.created_at
       },
       photos: {
-        profil_privee: data.pro.photo_profil_url,
-        identite_privee: data.pro.photo_identite_url,
-        activite_publique: data.pro.photo_activite_url
+        profil_privee: proConnected.pro.photo_profil_url,
+        identite_privee: proConnected.pro.photo_identite_url,
+        activite_publique: proConnected.pro.photo_activite_url
       },
       offres_emploi: offersResult.rows,
       demandes_rgpd: gdprResult.rows
@@ -1928,21 +2353,21 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="trouvemoi-donnees-${data.code}.json"`
+      `attachment; filename="trouvemoi-donnees-${proConnected.code}.json"`
     );
     res.send(JSON.stringify(exportData, null, 2));
   } catch (error) {
     console.error("Erreur export donnees :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de generer l'export.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de generer l'export.</h2>", proConnected));
   }
 });
 
 /* DEMANDE DE SUPPRESSION DE COMPTE */
 
 app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
@@ -1951,7 +2376,7 @@ app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
     const existing = await pool.query(
       `SELECT id FROM gdpr_requests
        WHERE pro_id = $1 AND request_type = 'deletion' AND status = 'pending'`,
-      [data.pro.id]
+      [proConnected.pro.id]
     );
 
     if (existing.rows.length) {
@@ -1963,13 +2388,13 @@ app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
           <p>Votre demande sera traitee par l'administration dans les plus brefs delais.</p>
           <a class="button" href="/mon-espace-pro">Retour a mon espace</a>
         </section>
-      `));
+      `, proConnected));
     }
 
     await pool.query(
       `INSERT INTO gdpr_requests (pro_id, request_type, status, message)
        VALUES ($1, 'deletion', 'pending', $2)`,
-      [data.pro.id, "Demande de suppression de compte depuis l'espace pro"]
+      [proConnected.pro.id, "Demande de suppression de compte depuis l'espace pro"]
     );
 
     res.send(page("Demande envoyee", `
@@ -1980,38 +2405,32 @@ app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
           L'administration de TrouveMoi va traiter votre demande. Cela peut prendre
           <strong>quelques jours</strong>.
         </p>
-        <p>
-          Vous serez notifie par WhatsApp ou telephone lorsque votre compte sera supprime.
-        </p>
         <a class="button" href="/mon-espace-pro">Retour a mon espace</a>
       </section>
-    `));
+    `, proConnected));
   } catch (error) {
     console.error("Erreur demande suppression :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected));
   }
 });
 
 /* CLOTURER UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/mon-espace-pro");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro");
 
   try {
     await pool.query(
       `UPDATE job_offers SET status = 'closed' WHERE id = $1 AND pro_id = $2`,
-      [id, data.pro.id]
+      [id, proConnected.pro.id]
     );
   } catch (error) {
     console.error("Erreur cloture :", error.message);
@@ -2023,18 +2442,15 @@ app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
 /* ROUVRIR UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/mon-espace-pro");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro");
 
   try {
     await pool.query(
@@ -2042,7 +2458,7 @@ app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
        SET status = 'approved',
            expires_at = NOW() + INTERVAL '${OFFER_DURATION_DAYS} days'
        WHERE id = $1 AND pro_id = $2`,
-      [id, data.pro.id]
+      [id, proConnected.pro.id]
     );
   } catch (error) {
     console.error("Erreur reouverture :", error.message);
@@ -2054,18 +2470,15 @@ app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => {
 /* RENOUVELER UNE OFFRE */
 
 app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/mon-espace-pro");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro");
 
   try {
     await pool.query(
@@ -2073,7 +2486,7 @@ app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
        SET expires_at = GREATEST(COALESCE(expires_at, NOW()), NOW()) + INTERVAL '${OFFER_DURATION_DAYS} days',
            status = CASE WHEN status = 'closed' THEN status ELSE 'approved' END
        WHERE id = $1 AND pro_id = $2`,
-      [id, data.pro.id]
+      [id, proConnected.pro.id]
     );
   } catch (error) {
     console.error("Erreur renouvellement :", error.message);
@@ -2085,28 +2498,23 @@ app.post("/mon-espace-pro/offre/:id/renew", async (req, res) => {
 /* MODIFIER UNE OFFRE */
 
 app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/mon-espace-pro");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro");
 
   try {
     const offerResult = await pool.query(
       `SELECT * FROM job_offers WHERE id = $1 AND pro_id = $2`,
-      [id, data.pro.id]
+      [id, proConnected.pro.id]
     );
 
-    if (!offerResult.rows.length) {
-      return res.redirect(303, "/mon-espace-pro");
-    }
+    if (!offerResult.rows.length) return res.redirect(303, "/mon-espace-pro");
 
     const offer = offerResult.rows[0];
 
@@ -2171,7 +2579,7 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
           <a class="button secondary" href="/mon-espace-pro">Annuler</a>
         </form>
       </section>
-    `));
+    `, proConnected));
   } catch (error) {
     console.error("Erreur modif :", error.message);
     res.redirect(303, "/mon-espace-pro");
@@ -2179,18 +2587,15 @@ app.get("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
 });
 
 app.post("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
-  const data = await getConnectedPro(req);
+  const proConnected = await getConnectedPro(req);
 
-  if (!data) {
+  if (!proConnected) {
     clearProCookie(res);
     return res.redirect(303, "/mon-espace-pro");
   }
 
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/mon-espace-pro");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro");
 
   const {
     company_name, job_title, city, contract_type, salary, description,
@@ -2230,7 +2635,7 @@ app.post("/mon-espace-pro/offre/:id/modifier", async (req, res) => {
       typeof salary === "string" ? salary.trim().slice(0, 100) || null : null,
       jobDescription.slice(0, 8000),
       typeof qualifications === "string" ? qualifications.trim().slice(0, 4000) || null : null,
-      phone, whatsapp, email, jobDeadline, id, data.pro.id
+      phone, whatsapp, email, jobDeadline, id, proConnected.pro.id
     ]);
   } catch (error) {
     console.error("Erreur modif POST :", error.message);
@@ -2266,7 +2671,7 @@ app.get("/admin", (req, res) => {
   `;
 
   res.setHeader("Cache-Control", "no-store");
-  res.send(page("Connexion administrateur", content));
+  res.send(page("Connexion administrateur", content, null));
 });
 
 app.post("/admin/login", (req, res) => {
@@ -2285,7 +2690,7 @@ app.post("/admin/login", (req, res) => {
       page("Trop de tentatives", `
         <h2>Trop de tentatives de connexion.</h2>
         <p>Veuillez patienter 15 minutes avant de reessayer.</p>
-      `)
+      `, null)
     );
   }
 
@@ -2305,7 +2710,7 @@ app.post("/admin/login", (req, res) => {
           <h2>Identifiants incorrects.</h2>
           <p><a href="/admin">Reessayer</a></p>
         </section>
-      `)
+      `, null)
     );
   }
 
@@ -2314,7 +2719,7 @@ app.post("/admin/login", (req, res) => {
   if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
     console.error("ADMIN_SESSION_SECRET est absente ou trop courte.");
     return res.status(500).send(
-      page("Configuration incomplete", `<h2>La configuration securisee de l'administration est incomplete.</h2>`)
+      page("Configuration incomplete", `<h2>La configuration securisee de l'administration est incomplete.</h2>`, null)
     );
   }
 
@@ -2438,10 +2843,10 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
           <a class="stat-link" href="/admin/rgpd">Traiter →</a>
         </div>
       </div>
-    `));
+    `, null));
   } catch (error) {
     console.error("Erreur du tableau de bord :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger le tableau de bord.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger le tableau de bord.</h2>", null));
   }
 });
 
@@ -2453,7 +2858,8 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
       SELECT id, full_name, phone, phone_public, city, neighborhood, profession,
              experience, service_description, service_area, availability,
              status, created_at, photo_profil_url, photo_identite_url,
-             photo_activite_url, pro_code
+             photo_activite_url, pro_code,
+             contact_preference, whatsapp_number, contact_email
       FROM professional_applications
       ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC
       LIMIT 200
@@ -2493,29 +2899,72 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         </div>
       `;
 
-      const codeBlock = candidate.pro_code ? `
-        <div class="pro-code-box" style="margin:16px 0">
-          <div class="pro-code-label">Code professionnel</div>
-          <div class="pro-code-value">${escapeHtml(candidate.pro_code)}</div>
-          <div class="pro-code-label">A communiquer au pro</div>
-        </div>
-      ` : `<p class="help-text">Aucun code genere (le pro doit etre approuve pour en recevoir un).</p>`;
+      /* BLOC : code + bouton d'envoi */
+
+      let codeBlock = "";
+
+      if (candidate.pro_code) {
+        const pref = candidate.contact_preference;
+
+        let sendButton = `<p class="help-text">Aucune preference de contact enregistree.</p>`;
+
+        if (pref === "whatsapp") {
+          const waNumber = candidate.whatsapp_number || candidate.phone;
+          const cleanNumber = normalizePhone(waNumber).replace(/^\+/, "");
+
+          const waMessage = encodeURIComponent(
+            `Bonjour ${candidate.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement : il vous permet de vous connecter a votre espace pro et de publier des offres d'emploi.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro`
+          );
+
+          sendButton = `
+            <p><span class="label">Preference :</span> <span class="value">📱 WhatsApp</span></p>
+            <p class="muted">Numero : ${escapeHtml(waNumber)}</p>
+            <a class="button whatsapp" href="https://wa.me/${escapeHtml(cleanNumber)}?text=${waMessage}" target="_blank" rel="noopener noreferrer">📱 Envoyer le code par WhatsApp</a>
+          `;
+        } else if (pref === "email") {
+          const emailAddr = candidate.contact_email || "";
+          const subject = encodeURIComponent("Votre code professionnel TrouveMoi");
+          const body = encodeURIComponent(
+            `Bonjour ${candidate.full_name},\n\nVotre candidature sur TrouveMoi a ete approuvee.\n\nVotre code professionnel est : ${candidate.pro_code}\n\nConservez-le precieusement : il vous permet de vous connecter a votre espace pro et de publier des offres d'emploi.\n\nEspace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro\n\nL'equipe TrouveMoi`
+          );
+
+          sendButton = `
+            <p><span class="label">Preference :</span> <span class="value">✉️ Email</span></p>
+            <p class="muted">Adresse : ${escapeHtml(emailAddr)}</p>
+            <a class="button email" href="mailto:${escapeHtml(emailAddr)}?subject=${subject}&body=${body}">✉️ Envoyer le code par email</a>
+          `;
+        }
+
+        codeBlock = `
+          <div class="pro-code-box" style="margin:16px 0">
+            <div class="pro-code-label">Code professionnel</div>
+            <div class="pro-code-value">${escapeHtml(candidate.pro_code)}</div>
+            <div class="pro-code-label">A communiquer au pro</div>
+          </div>
+          <div class="card" style="background:#f0fdf9;border:1px solid #0a9d70">
+            <h3 style="margin-top:0">📤 Envoyer le code au professionnel</h3>
+            ${sendButton}
+          </div>
+        `;
+      } else {
+        codeBlock = `<p class="help-text">Aucun code genere (le pro doit etre approuve pour en recevoir un).</p>`;
+      }
 
       return `
         <article class="card">
           <h2>${escapeHtml(candidate.full_name)}</h2>
           ${photos}
 
-          <p><strong>Reference :</strong> ${escapeHtml(candidate.id)}</p>
-          <p><strong>Telephone prive :</strong> ${escapeHtml(candidate.phone)} ${phoneVisibility}</p>
-          <p><strong>Ville :</strong> ${escapeHtml(candidate.city)}</p>
-          <p><strong>Quartier :</strong> ${escapeHtml(candidate.neighborhood || "Non renseigne")}</p>
-          <p><strong>Profession :</strong> ${escapeHtml(candidate.profession)}</p>
-          <p><strong>Experience :</strong> ${escapeHtml(candidate.experience || "Non renseignee")}</p>
-          <p><strong>Description :</strong> ${escapeHtml(candidate.service_description)}</p>
-          <p><strong>Zone :</strong> ${escapeHtml(candidate.service_area || "Non renseignee")}</p>
-          <p><strong>Disponibilite :</strong> ${escapeHtml(candidate.availability || "Non renseignee")}</p>
-          <p><strong>Statut actuel :</strong> ${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}</p>
+          <p><span class="label">Reference :</span> <span class="value">${escapeHtml(candidate.id)}</span></p>
+          <p><span class="label">Telephone prive :</span> <span class="value">${escapeHtml(candidate.phone)}</span> ${phoneVisibility}</p>
+          <p><span class="label">Ville :</span> <span class="value">${escapeHtml(candidate.city)}</span></p>
+          <p><span class="label">Quartier :</span> <span class="value">${escapeHtml(candidate.neighborhood || "Non renseigne")}</span></p>
+          <p><span class="label">Profession :</span> <span class="value">${escapeHtml(candidate.profession)}</span></p>
+          <p><span class="label">Experience :</span> <span class="value">${escapeHtml(candidate.experience || "Non renseignee")}</span></p>
+          <p><span class="label">Description :</span> <span class="value">${escapeHtml(candidate.service_description)}</span></p>
+          <p><span class="label">Zone :</span> <span class="value">${escapeHtml(candidate.service_area || "Non renseignee")}</span></p>
+          <p><span class="label">Disponibilite :</span> <span class="value">${escapeHtml(candidate.availability || "Non renseignee")}</span></p>
+          <p><span class="label">Statut actuel :</span> <span class="value">${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}</span></p>
           <p class="muted">Recue le : ${escapeHtml(candidate.created_at)}</p>
 
           ${codeBlock}
@@ -2543,27 +2992,25 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         <p>Total affiche : ${result.rows.length} candidature(s)</p>
         <p class="help-text">
           Lorsque vous approuvez une candidature, un code professionnel unique est genere automatiquement.
+          Utilisez le bouton WhatsApp ou Email pour lui envoyer son code.
         </p>
       </section>
 
       ${adminMenu("/admin/candidatures", req.adminSession.csrf)}
 
       ${applications || `<section class="card"><p>Aucune candidature pour le moment.</p></section>`}
-    `));
+    `, null));
   } catch (error) {
     console.error("Erreur candidatures :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger les candidatures.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les candidatures.</h2>", null));
   }
 });
 
-/* ADMIN : SUPPRIMER DEFINITIVEMENT UNE CANDIDATURE (RGPD) */
+/* ADMIN : SUPPRIMER DEFINITIVEMENT UNE CANDIDATURE */
 
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/admin/candidatures");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
 
   try {
     const proResult = await pool.query(
@@ -2572,9 +3019,7 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
       [id]
     );
 
-    if (!proResult.rows.length) {
-      return res.redirect(303, "/admin/candidatures");
-    }
+    if (!proResult.rows.length) return res.redirect(303, "/admin/candidatures");
 
     const pro = proResult.rows[0];
 
@@ -2619,8 +3064,8 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
       const proBlock = job.pro_name ? `
         <div style="background:#f0fdf9;padding:12px;border-radius:8px;margin:12px 0;border-left:4px solid #087f5b">
-          <p style="margin:0"><strong>📢 Publiee par :</strong> ${escapeHtml(job.pro_name)}</p>
-          ${job.pro_code ? `<p style="margin:4px 0 0 0"><strong>Code pro :</strong> <code>${escapeHtml(job.pro_code)}</code></p>` : ""}
+          <p style="margin:0"><span class="label">📢 Publiee par :</span> <span class="value">${escapeHtml(job.pro_name)}</span></p>
+          ${job.pro_code ? `<p style="margin:4px 0 0 0"><span class="label">Code pro :</span> <code>${escapeHtml(job.pro_code)}</code></p>` : ""}
         </div>
       ` : `<p class="help-text">⚠️ Publiee avant la mise en place des pros verifies</p>`;
 
@@ -2631,17 +3076,17 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
           ${proBlock}
 
-          <p><strong>Entreprise/recruteur :</strong> ${escapeHtml(job.company_name)}</p>
-          <p><strong>Ville :</strong> ${escapeHtml(job.city)}</p>
-          <p><strong>Contrat :</strong> ${escapeHtml(job.contract_type)}</p>
-          ${job.salary ? `<p><strong>Salaire :</strong> ${escapeHtml(job.salary)}</p>` : ""}
-          <p><strong>Description :</strong> ${escapeHtml(job.description).replace(/\n/g, "<br>")}</p>
-          ${job.qualifications ? `<p><strong>Qualifications :</strong> ${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</p>` : ""}
-          <p><strong>Contact telephone :</strong> ${escapeHtml(job.contact_phone || "Non fourni")}</p>
-          <p><strong>Contact WhatsApp :</strong> ${escapeHtml(job.contact_whatsapp || "Non fourni")}</p>
-          <p><strong>Contact e-mail :</strong> ${escapeHtml(job.contact_email || "Non fourni")}</p>
-          <p><strong>Date limite :</strong> ${escapeHtml(job.deadline || "Non renseignee")}</p>
-          ${job.expires_at ? `<p><strong>Expire le :</strong> ${new Date(job.expires_at).toLocaleDateString("fr-FR")} ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>` : ""}
+          <p><span class="label">Entreprise/recruteur :</span> <span class="value">${escapeHtml(job.company_name)}</span></p>
+          <p><span class="label">Ville :</span> <span class="value">${escapeHtml(job.city)}</span></p>
+          <p><span class="label">Contrat :</span> <span class="value">${escapeHtml(job.contract_type)}</span></p>
+          ${job.salary ? `<p><span class="label">Salaire :</span> <span class="value">${escapeHtml(job.salary)}</span></p>` : ""}
+          <p><span class="label">Description :</span> <span class="value">${escapeHtml(job.description).replace(/\n/g, "<br>")}</span></p>
+          ${job.qualifications ? `<p><span class="label">Qualifications :</span> <span class="value">${escapeHtml(job.qualifications).replace(/\n/g, "<br>")}</span></p>` : ""}
+          <p><span class="label">Contact telephone :</span> <span class="value">${escapeHtml(job.contact_phone || "Non fourni")}</span></p>
+          <p><span class="label">Contact WhatsApp :</span> <span class="value">${escapeHtml(job.contact_whatsapp || "Non fourni")}</span></p>
+          <p><span class="label">Contact e-mail :</span> <span class="value">${escapeHtml(job.contact_email || "Non fourni")}</span></p>
+          <p><span class="label">Date limite :</span> <span class="value">${escapeHtml(job.deadline || "Non renseignee")}</span></p>
+          ${job.expires_at ? `<p><span class="label">Expire le :</span> <span class="value">${new Date(job.expires_at).toLocaleDateString("fr-FR")}</span> ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>` : ""}
 
           <form action="/admin/emplois/${encodeURIComponent(job.id)}/status" method="POST">
             <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
@@ -2672,10 +3117,10 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       ${adminMenu("/admin/emplois", req.adminSession.csrf)}
 
       ${offers || `<section class="card"><p>Aucune offre soumise pour le moment.</p></section>`}
-    `));
+    `, null));
   } catch (error) {
     console.error("Erreur gestion offres :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger les offres.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les offres.</h2>", null));
   }
 });
 
@@ -2683,10 +3128,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
 app.post("/admin/emplois/:id/renew", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
-
-  if (!Number.isSafeInteger(id) || id < 1) {
-    return res.redirect(303, "/admin/emplois");
-  }
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/emplois");
 
   try {
     await pool.query(
@@ -2710,11 +3152,11 @@ app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res)
   const status = req.body.status;
 
   if (!Number.isSafeInteger(id) || id < 1) {
-    return res.status(400).send(page("Reference invalide", "<h2>Reference d'offre invalide.</h2>"));
+    return res.status(400).send(page("Reference invalide", "<h2>Reference d'offre invalide.</h2>", null));
   }
 
   if (!JOB_STATUSES.includes(status)) {
-    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>"));
+    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>", null));
   }
 
   try {
@@ -2737,7 +3179,7 @@ app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res)
     res.redirect(303, "/admin/emplois");
   } catch (error) {
     console.error("Erreur statut offre :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut de l'offre.</h2>", null));
   }
 });
 
@@ -2748,18 +3190,18 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
   const status = req.body.status;
 
   if (!Number.isSafeInteger(id) || id < 1) {
-    return res.status(400).send(page("Reference invalide", "<h2>Reference de candidature invalide.</h2>"));
+    return res.status(400).send(page("Reference invalide", "<h2>Reference de candidature invalide.</h2>", null));
   }
 
   if (!ALLOWED_STATUSES.includes(status)) {
-    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>"));
+    return res.status(400).send(page("Statut invalide", "<h2>Statut non autorise.</h2>", null));
   }
 
   try {
     const existing = await pool.query("SELECT pro_code FROM professional_applications WHERE id = $1", [id]);
 
     if (!existing.rows.length) {
-      return res.status(404).send(page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>"));
+      return res.status(404).send(page("Candidature introuvable", "<h2>Cette candidature n'existe pas.</h2>", null));
     }
 
     const currentCode = existing.rows[0].pro_code;
@@ -2777,7 +3219,7 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
     res.redirect(303, "/admin/candidatures");
   } catch (error) {
     console.error("Erreur statut candidature :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de modifier le statut.</h2>", null));
   }
 });
 
@@ -2786,9 +3228,11 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
 app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, email, phone, subject, message, is_read, created_at
-      FROM contact_messages
-      ORDER BY CASE WHEN is_read = false THEN 0 ELSE 1 END, created_at DESC
+      SELECT m.id, m.name, m.email, m.phone, m.subject, m.message, m.is_read, m.created_at, m.pro_id,
+             p.full_name AS pro_name, p.profession AS pro_profession
+      FROM contact_messages m
+      LEFT JOIN professional_applications p ON p.id = m.pro_id
+      ORDER BY CASE WHEN m.is_read = false THEN 0 ELSE 1 END, m.created_at DESC
       LIMIT 200
     `);
 
@@ -2801,13 +3245,21 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
         <a class="button whatsapp" href="https://wa.me/${escapeHtml(normalizePhone(msg.phone).replace(/^\+/, ""))}?text=${encodeURIComponent("Bonjour " + msg.name + ", suite a votre message sur TrouveMoi concernant : " + (msg.subject || "votre demande"))}" target="_blank" rel="noopener noreferrer">💬 Repondre par WhatsApp</a>
       ` : "";
 
+      const proBlock = msg.pro_id && msg.pro_name ? `
+        <div class="alert alert-info">
+          📩 Message concernant le professionnel <strong>${escapeHtml(msg.pro_name)}</strong>
+          (${escapeHtml(msg.pro_profession || "")}) — un client souhaite le contacter.
+        </div>
+      ` : "";
+
       return `
         <article class="card">
           <h2>${msg.is_read ? "📖" : "📩"} ${escapeHtml(msg.subject || "Sans objet")}</h2>
-          <p><strong>De :</strong> ${escapeHtml(msg.name)}</p>
-          <p><strong>E-mail :</strong> ${escapeHtml(msg.email || "Non renseigne")}</p>
-          <p><strong>Telephone :</strong> ${escapeHtml(msg.phone || "Non renseigne")}</p>
-          <p><strong>Message :</strong></p>
+          ${proBlock}
+          <p><span class="label">De :</span> <span class="value">${escapeHtml(msg.name)}</span></p>
+          <p><span class="label">E-mail :</span> <span class="value">${escapeHtml(msg.email || "Non renseigne")}</span></p>
+          <p><span class="label">Telephone :</span> <span class="value">${escapeHtml(msg.phone || "Non renseigne")}</span></p>
+          <p><span class="label">Message :</span></p>
           <p style="background:#f9fafb;padding:12px;border-radius:8px">${escapeHtml(msg.message).replace(/\n/g, "<br>")}</p>
           <p class="muted">Recu le : ${escapeHtml(msg.created_at)}</p>
 
@@ -2840,10 +3292,10 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
       ${adminMenu("/admin/messages", req.adminSession.csrf)}
 
       ${messages || `<section class="card"><p>Aucun message pour le moment.</p></section>`}
-    `));
+    `, null));
   } catch (error) {
     console.error("Erreur messages :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger les messages.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les messages.</h2>", null));
   }
 });
 
@@ -2895,10 +3347,10 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
             ${escapeHtml(typeLabel)}
           </h2>
 
-          <p><strong>Professionnel :</strong> ${escapeHtml(req.pro_name || "Inconnu")}</p>
-          ${req.pro_code ? `<p><strong>Code pro :</strong> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
-          ${req.pro_phone ? `<p><strong>Telephone :</strong> ${escapeHtml(req.pro_phone)}</p>` : ""}
-          <p><strong>Message :</strong> ${escapeHtml(req.message || "Aucun message")}</p>
+          <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(req.pro_name || "Inconnu")}</span></p>
+          ${req.pro_code ? `<p><span class="label">Code pro :</span> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
+          ${req.pro_phone ? `<p><span class="label">Telephone :</span> <span class="value">${escapeHtml(req.pro_phone)}</span></p>` : ""}
+          <p><span class="label">Message :</span> <span class="value">${escapeHtml(req.message || "Aucun message")}</span></p>
           <p class="muted">Demande le : ${escapeHtml(req.created_at)}</p>
           ${req.processed_at ? `<p class="muted">Traitee le : ${escapeHtml(req.processed_at)}</p>` : ""}
 
@@ -2941,10 +3393,10 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
       ${adminMenu("/admin/rgpd", req.adminSession.csrf)}
 
       ${requests || `<section class="card"><p>Aucune demande RGPD pour le moment.</p></section>`}
-    `));
+    `, null));
   } catch (error) {
     console.error("Erreur RGPD :", error.message);
-    res.status(500).send(page("Erreur", "<h2>Impossible de charger les demandes RGPD.</h2>"));
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les demandes RGPD.</h2>", null));
   }
 });
 
@@ -2952,20 +3404,11 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
 
 app.post("/admin/rgpd/:id/supprimer-pro", requireAdmin, verifyCsrf, async (req, res) => {
   const requestId = Number(req.params.id);
-
-  if (!Number.isSafeInteger(requestId) || requestId < 1) {
-    return res.redirect(303, "/admin/rgpd");
-  }
+  if (!Number.isSafeInteger(requestId) || requestId < 1) return res.redirect(303, "/admin/rgpd");
 
   try {
-    const reqResult = await pool.query(
-      `SELECT pro_id FROM gdpr_requests WHERE id = $1`,
-      [requestId]
-    );
-
-    if (!reqResult.rows.length) {
-      return res.redirect(303, "/admin/rgpd");
-    }
+    const reqResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [requestId]);
+    if (!reqResult.rows.length) return res.redirect(303, "/admin/rgpd");
 
     const proId = reqResult.rows[0].pro_id;
 
@@ -2991,8 +3434,6 @@ app.post("/admin/rgpd/:id/supprimer-pro", requireAdmin, verifyCsrf, async (req, 
       `UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`,
       [requestId]
     );
-
-    console.log(`Suppression RGPD demandee (request id=${requestId}) effectuee.`);
   } catch (error) {
     console.error("Erreur suppression RGPD :", error.message);
   }
@@ -3040,14 +3481,18 @@ app.post("/admin/logout", requireAdmin, verifyCsrf, (req, res) => {
 
 /* PAGES STATIQUES */
 
-app.get("/a-propos", (req, res) => {
+app.get("/a-propos", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+
   res.send(page("A propos", `
     <section class="card">
       <h1>A propos de TrouveMoi</h1>
       <p><strong>TrouveMoi</strong> est la plateforme beninoise de mise en relation entre les clients et les professionnels qualifies.</p>
+
       <h2>Notre mission</h2>
-      <p>Nous voulons simplifier la recherche de professionnels de confiance au Benin.</p>
+      <p>Nous voulons simplifier la recherche de professionnels de confiance au Benin. Trop souvent, trouver un plombier, un electricien ou un couturier fiable prend du temps et passe par le bouche-a-oreille.</p>
       <p>TrouveMoi centralise les professionnels de votre ville, verifie leur identite et vous permet de les contacter en un clic.</p>
+
       <h2>Nos services</h2>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Annuaire de professionnels verifies</li>
@@ -3055,83 +3500,93 @@ app.get("/a-propos", (req, res) => {
         <li>Contact direct par telephone ou WhatsApp</li>
         <li>Offres d'emploi publiees par des professionnels verifies</li>
       </ul>
+
       <h2>Notre engagement</h2>
-      <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe.</p>
-      <p>Seuls les professionnels verifies peuvent publier des offres d'emploi.</p>
+      <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe (photo d'identite et informations verifiees) avant publication.</p>
+      <p>Seuls les professionnels verifies peuvent publier des offres d'emploi, afin de lutter contre les arnaques et de garantir la fiabilite de chaque annonce.</p>
+
       <p style="margin-top:24px">
         <a class="button" href="/contact">Nous contacter</a>
         <a class="button secondary" href="/">Voir les professionnels</a>
       </p>
     </section>
-  `));
+  `, proConnected));
 });
 
-app.get("/conditions", (req, res) => {
+app.get("/conditions", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+
   res.send(page("Conditions d'utilisation", `
     <section class="card">
       <h1>Conditions d'utilisation</h1>
       <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
-      <h2>1. Acceptation</h2>
-      <p>En utilisant TrouveMoi, vous acceptez sans reserve les presentes conditions.</p>
+      <h2>1. Acceptation des conditions</h2>
+      <p>En utilisant TrouveMoi, vous acceptez sans reserve les presentes conditions d'utilisation.</p>
 
       <h2>2. Nature du service</h2>
-      <p>TrouveMoi est une plateforme de mise en relation.</p>
+      <p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p>
 
       <h2>3. Inscription des professionnels</h2>
-      <p>Les professionnels doivent fournir des informations exactes.</p>
+      <p>Les professionnels doivent fournir des informations exactes et a jour. Toute fausse declaration entraine le rejet de la candidature.</p>
 
       <h2>4. Publication d'offres d'emploi</h2>
-      <p>Seuls les professionnels verifies peuvent publier des offres.</p>
+      <p>Seuls les professionnels verifies (ayant recu un code professionnel apres approbation de leur candidature) peuvent publier des offres d'emploi sur TrouveMoi. Toute offre est examinee par l'administration avant publication.</p>
 
       <h2>5. Responsabilites</h2>
-      <p>TrouveMoi ne peut etre tenu responsable de la qualite des services.</p>
+      <p>TrouveMoi ne peut etre tenu responsable de la qualite des services fournis par les professionnels references.</p>
 
       <h2>6. Utilisation interdite</h2>
+      <p>Il est interdit de :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Publier de fausses informations</li>
         <li>Usurper l'identite d'autrui</li>
         <li>Publier de fausses offres d'emploi</li>
+        <li>Utiliser la plateforme a des fins illicites</li>
       </ul>
 
       <h2>7. Contact</h2>
       <p>Pour toute question : <a href="/contact">formulaire de contact</a></p>
     </section>
-  `));
+  `, proConnected));
 });
 
-app.get("/confidentialite", (req, res) => {
+app.get("/confidentialite", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+
   res.send(page("Politique de confidentialite", `
     <section class="card">
       <h1>Politique de confidentialite</h1>
       <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
 
       <h2>1. Donnees collectees</h2>
+      <p>Nous collectons :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Pros : nom, telephone, ville, quartier, metier, description, photos, code professionnel</li>
         <li>Offres : entreprise, contacts, description du poste</li>
         <li>Contact : nom, email, telephone, message</li>
       </ul>
 
-      <h2>2. Utilisation</h2>
+      <h2>2. Utilisation des donnees</h2>
+      <p>Vos donnees sont utilisees pour :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Mettre en relation les clients et les professionnels</li>
         <li>Afficher les profils approuves</li>
         <li>Permettre aux pros verifies de publier des offres</li>
+        <li>Vous contacter en cas de besoin</li>
       </ul>
 
       <h2>3. Protection des photos d'identite</h2>
-      <p>Les photos d'identite sont <strong>strictement privees</strong>.</p>
+      <p>Les photos d'identite sont <strong>strictement privees</strong>. Elles ne sont visibles que par l'administration.</p>
 
       <h2>4. Code professionnel</h2>
-      <p>Le code professionnel est personnel.</p>
+      <p>Le code professionnel est personnel. Il ne doit pas etre partage. Il permet de gerer vos offres d'emploi.</p>
 
       <h2>5. Partage des donnees</h2>
       <p>Nous ne vendons ni ne partageons vos donnees avec des tiers.</p>
 
       <h2>6. Vos droits</h2>
-      <p>Conformement a la loi beninoise sur la protection des donnees personnelles,
-      vous disposez des droits suivants :</p>
+      <p>Conformement a la loi beninoise sur la protection des donnees personnelles, vous disposez des droits suivants :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li><strong>Droit d'acces</strong> : consulter toutes vos donnees</li>
         <li><strong>Droit de rectification</strong> : corriger vos donnees</li>
@@ -3141,29 +3596,23 @@ app.get("/confidentialite", (req, res) => {
       </ul>
       <p>
         <strong>Comment exercer vos droits ?</strong><br>
-        Les professionnels inscrits peuvent exercer ces droits directement
-        depuis leur espace personnel (<a href="/mon-espace-pro">Mon espace pro</a>).
-        Toute autre personne peut nous contacter via le
-        <a href="/contact">formulaire de contact</a>.
+        Les professionnels inscrits peuvent exercer ces droits directement depuis leur espace personnel
+        (<a href="/mon-espace-pro">Mon espace pro</a>).
+        Toute autre personne peut nous contacter via le <a href="/contact">formulaire de contact</a>.
       </p>
-      <p>
-        Nous nous engageons a repondre a toute demande dans un delai maximum
-        d'<strong>un mois</strong>.
-      </p>
+      <p>Nous nous engageons a repondre a toute demande dans un delai maximum d'<strong>un mois</strong>.</p>
 
       <h2>7. Cookies</h2>
-      <p>Nous utilisons uniquement des cookies techniques necessaires.</p>
+      <p>Nous utilisons uniquement des cookies techniques necessaires au fonctionnement de l'administration.</p>
 
       <h2>8. Autorite de controle</h2>
-      <p>
-        Conformement a la loi beninoise, vous pouvez introduire une reclamation
-        aupres de l'Autorite de Protection des Donnees Personnelles (APDP) du Benin.
-      </p>
+      <p>Conformement a la loi beninoise, vous pouvez introduire une reclamation aupres de l'Autorite de Protection des Donnees Personnelles (APDP) du Benin.</p>
     </section>
-  `));
+  `, proConnected));
 });
 
 app.get("/contact", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
   const proId = String(req.query.pro || "").trim();
   let proInfo = null;
 
@@ -3228,10 +3677,11 @@ app.get("/contact", async (req, res) => {
         <button type="submit">Envoyer le message</button>
       </form>
     </section>
-  `));
+  `, proConnected));
 });
 
 app.post("/contact", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
   const { name, email, phone, subject, message, pro_id } = req.body;
 
   const cleanName = typeof name === "string" ? name.trim().slice(0, 150) : "";
@@ -3254,16 +3704,30 @@ app.post("/contact", async (req, res) => {
           <p>Le nom, le sujet, le message et au moins un moyen de contact sont obligatoires.</p>
           <a href="/contact">Retour au formulaire</a>
         </section>
-      `)
+      `, proConnected)
     );
   }
 
   if (cleanEmail && !validEmail(cleanEmail)) {
-    return res.status(400).send(page("E-mail invalide", `<section class="card"><h2>L'adresse e-mail est invalide.</h2><a href="/contact">Retour</a></section>`));
+    return res.status(400).send(
+      page("E-mail invalide", `
+        <section class="card">
+          <h2>L'adresse e-mail est invalide.</h2>
+          <a href="/contact">Retour au formulaire</a>
+        </section>
+      `, proConnected)
+    );
   }
 
   if (cleanPhone && !validPhone(cleanPhone)) {
-    return res.status(400).send(page("Telephone invalide", `<section class="card"><h2>Le numero de telephone est invalide.</h2><a href="/contact">Retour</a></section>`));
+    return res.status(400).send(
+      page("Telephone invalide", `
+        <section class="card">
+          <h2>Le numero de telephone est invalide.</h2>
+          <a href="/contact">Retour au formulaire</a>
+        </section>
+      `, proConnected)
+    );
   }
 
   try {
@@ -3279,11 +3743,18 @@ app.post("/contact", async (req, res) => {
           <p>Merci pour votre message. Nous vous repondrons dans les plus brefs delais.</p>
           <a class="button" href="/">Retour a l'accueil</a>
         </section>
-      `)
+      `, proConnected)
     );
   } catch (error) {
     console.error("Erreur contact :", error.message);
-    res.status(500).send(page("Erreur", `<section class="card"><h2>Impossible d'envoyer le message.</h2></section>`));
+    res.status(500).send(
+      page("Erreur", `
+        <section class="card">
+          <h2>Impossible d'envoyer le message.</h2>
+          <p>Veuillez reessayer plus tard.</p>
+        </section>
+      `, proConnected)
+    );
   }
 });
 
@@ -3324,6 +3795,9 @@ async function startServer() {
         photo_profil_url TEXT,
         photo_identite_url TEXT,
         photo_activite_url TEXT,
+        contact_preference VARCHAR(20),
+        whatsapp_number VARCHAR(30),
+        contact_email VARCHAR(254),
         pro_code VARCHAR(10) UNIQUE,
         status VARCHAR(30) NOT NULL DEFAULT 'pending',
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -3336,6 +3810,9 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code VARCHAR(10) UNIQUE`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_preference VARCHAR(20)`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(254)`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS job_offers (
@@ -3489,7 +3966,7 @@ async function startServer() {
     }
 
     console.log(
-      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages, RGPD)."
+      "Toutes les tables sont pretes (pros, offres, villes, quartiers, metiers, messages, RGPD, preferences contact)."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
