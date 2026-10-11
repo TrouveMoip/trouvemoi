@@ -274,10 +274,11 @@ async function getConnectedPro(req) {
 }
 
 function getDisplayName(person) {
+  if (!person) return "";
   if (person.company_name && person.company_name.trim()) {
     return person.company_name.trim();
   }
-  return person.full_name;
+  return person.full_name || "";
 }
 
 function buildMenu(proConnected) {
@@ -2995,6 +2996,15 @@ app.post("/admin/login", (req, res) => {
   res.redirect(303, "/admin/dashboard");
 });
 
+/* FONCTION : RECUPERER LE CSRF DE MANIERE SECURISEE */
+
+function getCsrf(req) {
+  if (req.adminSession && typeof req.adminSession.csrf === "string") {
+    return req.adminSession.csrf;
+  }
+  return "";
+}
+
 /* MENU ADMIN (avec badges) */
 
 async function adminMenu(current, csrf) {
@@ -3014,6 +3024,8 @@ async function adminMenu(current, csrf) {
   } catch (error) {
     console.error("Erreur comptage admin :", error.message);
   }
+
+  const safeCsrf = csrf || "";
 
   const links = [
     { href: "/admin/dashboard", label: "📊 Tableau de bord", badge: 0 },
@@ -3035,7 +3047,7 @@ async function adminMenu(current, csrf) {
       </div>
 
       <form action="/admin/logout" method="POST" style="display:inline">
-        <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+        <input type="hidden" name="csrfToken" value="${escapeHtml(safeCsrf)}">
         <button class="danger" type="submit">Se deconnecter</button>
       </form>
     </section>
@@ -3091,7 +3103,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       </div>
     ` : "";
 
-    const menuHtml = await adminMenu("/admin/dashboard", req.adminSession.csrf);
+    const menuHtml = await adminMenu("/admin/dashboard", getCsrf(req));
 
     res.setHeader("Cache-Control", "no-store");
 
@@ -3166,6 +3178,8 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
+    const csrf = getCsrf(req);
+
     const result = await pool.query(`
       SELECT id, full_name, company_name, phone, phone_public, city, neighborhood, profession,
              experience, service_description, service_area, availability,
@@ -3283,21 +3297,21 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           ${codeBlock}
 
           <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/status" method="POST">
-            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
             <label for="status-${escapeHtml(candidate.id)}">Changer le statut</label>
             <select id="status-${escapeHtml(candidate.id)}" name="status">${statusOptions}</select>
             <button type="submit">Enregistrer le statut</button>
           </form>
 
           <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/supprimer" method="POST" style="margin-top:12px">
-            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
             <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel ? Cette action est irreversible (compte + photos + offres).');">🗑️ Supprimer definitivement</button>
           </form>
         </article>
       `;
     }).join("");
 
-    const menuHtml = await adminMenu("/admin/candidatures", req.adminSession.csrf);
+    const menuHtml = await adminMenu("/admin/candidatures", csrf);
 
     res.setHeader("Cache-Control", "no-store");
 
@@ -3356,6 +3370,8 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
 
 app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
+    const csrf = getCsrf(req);
+
     const result = await pool.query(`
       SELECT j.id, j.company_name, j.job_title, j.city, j.contract_type,
              j.salary, j.description, j.qualifications, j.contact_phone,
@@ -3404,7 +3420,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
           ${job.expires_at ? `<p><span class="label">Expire le :</span> <span class="value">${new Date(job.expires_at).toLocaleDateString("fr-FR")}</span> ${expired ? `<span class="badge badge-rejected">Expiree</span>` : ""}</p>` : ""}
 
           <form action="/admin/emplois/${encodeURIComponent(job.id)}/status" method="POST">
-            <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
             <label for="job-status-${escapeHtml(job.id)}">Statut de l'offre</label>
             <select id="job-status-${escapeHtml(job.id)}" name="status">${statusOptions}</select>
             <button type="submit">Enregistrer le statut</button>
@@ -3412,7 +3428,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 
           <div class="actions">
             <form action="/admin/emplois/${encodeURIComponent(job.id)}/renew" method="POST" style="display:inline">
-              <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
               <button class="success" type="submit">🔄 Prolonger ${OFFER_DURATION_DAYS}j</button>
             </form>
           </div>
@@ -3420,7 +3436,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
-    const menuHtml = await adminMenu("/admin/emplois", req.adminSession.csrf);
+    const menuHtml = await adminMenu("/admin/emplois", csrf);
 
     res.setHeader("Cache-Control", "no-store");
 
@@ -3544,6 +3560,8 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
 
 app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
+    const csrf = getCsrf(req);
+
     const result = await pool.query(`
       SELECT m.id, m.name, m.email, m.phone, m.subject, m.message, m.is_read, m.created_at, m.pro_id,
              p.full_name AS pro_name, p.company_name AS pro_company, p.profession AS pro_profession
@@ -3587,12 +3605,12 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
             ${replyWhatsapp}
             ${!msg.is_read ? `
               <form action="/admin/messages/${encodeURIComponent(msg.id)}/read" method="POST" style="display:inline">
-                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
                 <button class="secondary" type="submit">✅ Marquer comme lu</button>
               </form>
             ` : ""}
             <form action="/admin/messages/${encodeURIComponent(msg.id)}/delete" method="POST" style="display:inline">
-              <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
               <button class="danger" type="submit">🗑️ Supprimer</button>
             </form>
           </div>
@@ -3600,7 +3618,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
-    const menuHtml = await adminMenu("/admin/messages", req.adminSession.csrf);
+    const menuHtml = await adminMenu("/admin/messages", csrf);
 
     res.setHeader("Cache-Control", "no-store");
 
@@ -3648,6 +3666,8 @@ app.post("/admin/messages/:id/delete", requireAdmin, verifyCsrf, async (req, res
 
 app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   try {
+    const csrf = getCsrf(req);
+
     const result = await pool.query(`
       SELECT
         g.id,
@@ -3667,65 +3687,65 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
       LIMIT 200
     `);
 
-    const requests = result.rows.map((req) => {
-      const typeLabel = GDPR_TYPE_LABELS[req.request_type] || req.request_type || "Type inconnu";
-      const statusLabel = GDPR_STATUS_LABELS[req.status] || req.status || "Statut inconnu";
+    const requests = result.rows.map((req2) => {
+      const typeLabel = GDPR_TYPE_LABELS[req2.request_type] || req2.request_type || "Type inconnu";
+      const statusLabel = GDPR_STATUS_LABELS[req2.status] || req2.status || "Statut inconnu";
 
-      const proDisplay = req.pro_company || req.pro_name || "Professionnel supprime";
+      const proDisplay = req2.pro_company || req2.pro_name || "Professionnel supprime";
 
       let daysSince = 0;
 
-      if (req.created_at) {
+      if (req2.created_at) {
         daysSince = Math.floor(
-          (Date.now() - new Date(req.created_at).getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - new Date(req2.created_at).getTime()) / (1000 * 60 * 60 * 24)
         );
         if (isNaN(daysSince) || daysSince < 0) daysSince = 0;
       }
 
-      const urgency = req.status === "pending"
+      const urgency = req2.status === "pending"
         ? (daysSince > 20 ? "🔴 URGENT (plus de 20 jours)" : daysSince > 10 ? "🟠 A traiter bientot" : "🟢 Recent")
         : "";
 
-      const createdDisplay = req.created_at
-        ? new Date(req.created_at).toLocaleString("fr-FR")
+      const createdDisplay = req2.created_at
+        ? new Date(req2.created_at).toLocaleString("fr-FR")
         : "Date inconnue";
 
-      const processedDisplay = req.processed_at
-        ? new Date(req.processed_at).toLocaleString("fr-FR")
+      const processedDisplay = req2.processed_at
+        ? new Date(req2.processed_at).toLocaleString("fr-FR")
         : null;
 
       return `
         <article class="card">
           <h2>
-            <span class="badge badge-${escapeHtml(req.status || "pending")}">${escapeHtml(statusLabel)}</span>
+            <span class="badge badge-${escapeHtml(req2.status || "pending")}">${escapeHtml(statusLabel)}</span>
             ${escapeHtml(typeLabel)}
           </h2>
 
           ${urgency ? `<p><strong>${urgency}</strong></p>` : ""}
 
           <p><span class="label">Professionnel :</span> <span class="value">${escapeHtml(proDisplay)}</span></p>
-          ${req.pro_code ? `<p><span class="label">Code pro :</span> <code>${escapeHtml(req.pro_code)}</code></p>` : ""}
-          ${req.pro_phone ? `<p><span class="label">Telephone :</span> <span class="value">${escapeHtml(req.pro_phone)}</span></p>` : ""}
-          <p><span class="label">Message :</span> <span class="value">${escapeHtml(req.message || "Aucun message")}</span></p>
+          ${req2.pro_code ? `<p><span class="label">Code pro :</span> <code>${escapeHtml(req2.pro_code)}</code></p>` : ""}
+          ${req2.pro_phone ? `<p><span class="label">Telephone :</span> <span class="value">${escapeHtml(req2.pro_phone)}</span></p>` : ""}
+          <p><span class="label">Message :</span> <span class="value">${escapeHtml(req2.message || "Aucun message")}</span></p>
           <p class="muted">Demande le : ${escapeHtml(createdDisplay)} (il y a ${daysSince} jour(s))</p>
           ${processedDisplay ? `<p class="muted">Traitee le : ${escapeHtml(processedDisplay)}</p>` : ""}
 
-          ${req.status === "pending" ? `
+          ${req2.status === "pending" ? `
             <div class="actions">
-              ${req.request_type === "deletion" && req.pro_id ? `
-                <form action="/admin/rgpd/${encodeURIComponent(req.id)}/supprimer-pro" method="POST" style="display:inline">
-                  <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              ${req2.request_type === "deletion" && req2.pro_id ? `
+                <form action="/admin/rgpd/${encodeURIComponent(req2.id)}/supprimer-pro" method="POST" style="display:inline">
+                  <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
                   <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel et toutes ses donnees ? Action irreversible.');">🗑️ Supprimer le pro + marquer traitee</button>
                 </form>
               ` : ""}
 
-              <form action="/admin/rgpd/${encodeURIComponent(req.id)}/traiter" method="POST" style="display:inline">
-                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <form action="/admin/rgpd/${encodeURIComponent(req2.id)}/traiter" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
                 <button class="success" type="submit">✅ Marquer comme traitee</button>
               </form>
 
-              <form action="/admin/rgpd/${encodeURIComponent(req.id)}/rejeter" method="POST" style="display:inline">
-                <input type="hidden" name="csrfToken" value="${escapeHtml(req.adminSession.csrf)}">
+              <form action="/admin/rgpd/${encodeURIComponent(req2.id)}/rejeter" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
                 <button class="secondary" type="submit">❌ Rejeter</button>
               </form>
             </div>
@@ -3734,7 +3754,7 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
       `;
     }).join("");
 
-    const menuHtml = await adminMenu("/admin/rgpd", req.adminSession.csrf);
+    const menuHtml = await adminMenu("/admin/rgpd", csrf);
 
     res.setHeader("Cache-Control", "no-store");
 
