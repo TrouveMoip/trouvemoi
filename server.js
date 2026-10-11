@@ -112,6 +112,14 @@ const JOB_STATUS_LABELS = {
   closed: "Cloturee"
 };
 
+const REVIEW_STATUSES = ["pending", "approved", "rejected"];
+
+const REVIEW_STATUS_LABELS = {
+  pending: "En attente",
+  approved: "Approuve",
+  rejected: "Rejete"
+};
+
 const GDPR_REQUEST_TYPES = ["access", "deletion", "rectification", "opposition"];
 
 const GDPR_TYPE_LABELS = {
@@ -281,6 +289,45 @@ function getDisplayName(person) {
   return person.full_name || "";
 }
 
+function getCsrf(req) {
+  if (req.adminSession && typeof req.adminSession.csrf === "string") {
+    return req.adminSession.csrf;
+  }
+  return "";
+}
+
+function renderStars(rating) {
+  const full = Math.floor(rating);
+  const hasHalf = (rating - full) >= 0.5;
+  let html = "";
+
+  for (let i = 1; i <= 5; i++) {
+    if (i <= full) {
+      html += "★";
+    } else if (i === full + 1 && hasHalf) {
+      html += "⯨";
+    } else {
+      html += "☆";
+    }
+  }
+
+  return html;
+}
+
+function renderLogo() {
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="180" height="45" style="display:inline-block;vertical-align:middle;max-width:100%">
+      <circle cx="22" cy="22" r="15" fill="none" stroke="white" stroke-width="3.5"/>
+      <line x1="33" y1="33" x2="43" y2="43" stroke="white" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="17" cy="19" r="3" fill="white"/>
+      <path d="M 12 28 Q 12 23 17 23 Q 22 23 22 28 Z" fill="white"/>
+      <circle cx="27" cy="19" r="3" fill="white" opacity="0.85"/>
+      <path d="M 22 28 Q 22 23 27 23 Q 32 23 32 28 Z" fill="white" opacity="0.85"/>
+      <text x="55" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="22" font-weight="800" fill="white" letter-spacing="-0.5" class="logo-text">TrouveMoi</text>
+    </svg>
+  `;
+}
+
 function buildMenu(proConnected) {
   if (proConnected) {
     return `
@@ -307,6 +354,8 @@ function buildMenu(proConnected) {
   `;
 }
 
+/* FONCTION : PAGE HTML */
+
 function page(title, content, proConnected) {
   return `
     <!DOCTYPE html>
@@ -315,6 +364,8 @@ function page(title, content, proConnected) {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="description" content="TrouveMoi - La plateforme de mise en relation entre clients et professionnels au Benin.">
+      <meta name="theme-color" content="#087f5b">
+      <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%23087f5b'/%3E%3Ccircle cx='22' cy='22' r='10' fill='none' stroke='white' stroke-width='3'/%3E%3Cline x1='29' y1='29' x2='37' y2='37' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3Ccircle cx='19' cy='20' r='2.5' fill='white'/%3E%3Ccircle cx='25' cy='20' r='2.5' fill='white' opacity='0.85'/%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
 
       <style>
@@ -341,12 +392,21 @@ function page(title, content, proConnected) {
         }
 
         .logo {
-          font-size: 26px; font-weight: 800; color: white;
-          text-decoration: none; letter-spacing: -0.5px;
-          display: flex; align-items: center; gap: 8px;
+          display: inline-flex;
+          align-items: center;
+          text-decoration: none;
         }
 
-        .logo::before { content: "🔍"; font-size: 24px; }
+        .logo svg {
+          display: block;
+          height: 42px;
+          width: auto;
+        }
+
+        .logo .logo-text {
+          display: inline;
+        }
+
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
 
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -606,24 +666,14 @@ function page(title, content, proConnected) {
 
         .pro-welcome .actions { margin: 0; }
 
-        .pro-welcome .button {
-          background: white;
-          color: #1e40af;
-        }
-
-        .pro-welcome .button:hover {
-          background: #f0f4ff;
-          transform: translateY(-1px);
-        }
+        .pro-welcome .button { background: white; color: #1e40af; }
+        .pro-welcome .button:hover { background: #f0f4ff; transform: translateY(-1px); }
 
         .pro-welcome .button.secondary {
           background: rgba(255,255,255,0.25);
           color: white;
         }
-
-        .pro-welcome .button.secondary:hover {
-          background: rgba(255,255,255,0.35);
-        }
+        .pro-welcome .button.secondary:hover { background: rgba(255,255,255,0.35); }
 
         .admin-alerts {
           background: #fff7ed;
@@ -642,10 +692,7 @@ function page(title, content, proConnected) {
           font-size: 17px;
         }
 
-        .admin-alerts ul {
-          list-style: none;
-          margin: 0;
-        }
+        .admin-alerts ul { list-style: none; margin: 0; }
 
         .admin-alerts li {
           padding: 8px 0;
@@ -655,12 +702,7 @@ function page(title, content, proConnected) {
 
         .admin-alerts li:last-child { border-bottom: none; }
 
-        .admin-alerts a {
-          color: #9a3412;
-          font-weight: 700;
-          text-decoration: none;
-        }
-
+        .admin-alerts a { color: #9a3412; font-weight: 700; text-decoration: none; }
         .admin-alerts a:hover { text-decoration: underline; }
 
         .pros-grid {
@@ -695,17 +737,9 @@ function page(title, content, proConnected) {
           overflow: hidden;
         }
 
-        .pro-card-image img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
+        .pro-card-image img { width: 100%; height: 100%; object-fit: cover; }
 
-        .pro-card-image-placeholder {
-          font-size: 60px;
-          color: white;
-          opacity: 0.5;
-        }
+        .pro-card-image-placeholder { font-size: 60px; color: white; opacity: 0.5; }
 
         .pro-card-body {
           padding: 16px;
@@ -734,11 +768,33 @@ function page(title, content, proConnected) {
         .pro-card-location {
           font-size: 14px;
           color: #667085;
-          margin-bottom: 14px;
+          margin-bottom: 10px;
         }
 
-        .pro-card-location::before {
-          content: "📍 ";
+        .pro-card-location::before { content: "📍 "; }
+
+        .pro-card-rating {
+          font-size: 15px;
+          color: #f59e0b;
+          font-weight: 600;
+          margin-bottom: 12px;
+          letter-spacing: 1px;
+        }
+
+        .pro-card-rating .reviews-count {
+          color: #667085;
+          font-weight: 400;
+          font-size: 13px;
+          letter-spacing: 0;
+          margin-left: 6px;
+        }
+
+        .pro-card-rating .no-rating {
+          color: #94a3b8;
+          font-weight: 400;
+          font-style: italic;
+          font-size: 13px;
+          letter-spacing: 0;
         }
 
         .pro-card-button {
@@ -784,6 +840,144 @@ function page(title, content, proConnected) {
         .pro-header .location {
           font-size: 15px;
           opacity: 0.9;
+        }
+
+        .pro-header .rating-large {
+          font-size: 22px;
+          color: #fef3c7;
+          margin-top: 12px;
+          font-weight: 700;
+          letter-spacing: 2px;
+        }
+
+        .pro-header .rating-large .reviews-count {
+          color: rgba(255,255,255,0.85);
+          font-weight: 400;
+          font-size: 15px;
+          letter-spacing: 0;
+          margin-left: 8px;
+        }
+
+        /* AVIS */
+
+        .review-item {
+          background: #f9fafb;
+          padding: 16px;
+          border-radius: 10px;
+          margin-bottom: 14px;
+          border-left: 4px solid #f59e0b;
+        }
+
+        .review-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+
+        .review-author {
+          font-weight: 700;
+          color: #1a1a1a;
+        }
+
+        .review-stars {
+          color: #f59e0b;
+          font-size: 18px;
+          letter-spacing: 2px;
+        }
+
+        .review-date {
+          font-size: 13px;
+          color: #94a3b8;
+        }
+
+        .review-comment {
+          color: #333;
+          margin-top: 8px;
+          line-height: 1.6;
+        }
+
+        .rating-summary {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          padding: 24px;
+          background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+          border-radius: 12px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .rating-big-number {
+          font-size: 52px;
+          font-weight: 800;
+          color: #92400e;
+          line-height: 1;
+        }
+
+        .rating-details { flex: 1; min-width: 180px; }
+
+        .rating-details .stars {
+          font-size: 28px;
+          color: #f59e0b;
+          letter-spacing: 3px;
+        }
+
+        .rating-details .count {
+          font-size: 14px;
+          color: #78350f;
+          margin-top: 4px;
+          font-weight: 600;
+        }
+
+        .btn-review {
+          background: #f59e0b;
+          color: white;
+        }
+
+        .btn-review:hover {
+          background: #d97706;
+        }
+
+        /* FORMULAIRE ETOILES */
+
+        .star-rating-input {
+          display: flex;
+          flex-direction: row-reverse;
+          justify-content: flex-end;
+          gap: 6px;
+          margin-bottom: 16px;
+          width: auto;
+        }
+
+        .star-rating-input input {
+          display: none;
+        }
+
+        .star-rating-input label {
+          font-size: 44px;
+          color: #d1d5db;
+          cursor: pointer;
+          transition: color 0.2s, transform 0.1s;
+          margin: 0;
+          padding: 0;
+          line-height: 1;
+          font-weight: normal;
+        }
+
+        .star-rating-input label:hover {
+          transform: scale(1.1);
+        }
+
+        .star-rating-input input:checked ~ label {
+          color: #f59e0b;
+        }
+
+        .star-rating-input label:hover,
+        .star-rating-input label:hover ~ label {
+          color: #f59e0b;
         }
 
         .checkbox-block {
@@ -840,7 +1034,6 @@ function page(title, content, proConnected) {
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
-          .logo { font-size: 22px; }
           nav { justify-content: center; }
           nav a, nav button { padding: 6px 10px; font-size: 13px; }
           main { padding: 16px 12px; }
@@ -854,6 +1047,18 @@ function page(title, content, proConnected) {
           .pro-code-value { font-size: 32px; letter-spacing: 2px; }
           .pros-grid { grid-template-columns: 1fr; }
           .pro-header h1 { font-size: 22px; }
+          .rating-big-number { font-size: 40px; }
+          .rating-details .stars { font-size: 22px; }
+          .star-rating-input label { font-size: 36px; }
+
+          /* LOGO ADAPTATIF : texte cache sur mobile */
+          .logo .logo-text {
+            display: none;
+          }
+
+          .logo svg {
+            height: 38px;
+          }
         }
       </style>
     </head>
@@ -862,7 +1067,9 @@ function page(title, content, proConnected) {
       <header>
         <div class="header-content">
           <div>
-            <a href="/" class="logo">TrouveMoi</a>
+            <a href="/" class="logo" aria-label="TrouveMoi">
+              ${renderLogo()}
+            </a>
             <div class="tagline">Trouvez le bon professionnel au Benin</div>
           </div>
 
@@ -913,33 +1120,6 @@ function page(title, content, proConnected) {
   `;
 }
 
-function normalizePhone(value) {
-  return String(value || "").trim().replace(/[()\s.-]/g, "");
-}
-
-function validPhone(value) {
-  return /^\+?[0-9]{8,15}$/.test(value);
-}
-
-function validEmail(value) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
-}
-
-function jobContactButtons(job) {
-  const buttons = [];
-  if (job.contact_phone) {
-    buttons.push(`<a class="button" href="tel:${escapeHtml(normalizePhone(job.contact_phone))}">📞 Appeler le recruteur</a>`);
-  }
-  if (job.contact_whatsapp) {
-    const whatsapp = normalizePhone(job.contact_whatsapp).replace(/^\+/, "");
-    buttons.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsapp)}?text=${encodeURIComponent("Bonjour, j'ai consulte votre offre d'emploi sur TrouveMoi et je souhaite obtenir plus d'informations.")}" target="_blank" rel="noopener noreferrer">💬 Contacter sur WhatsApp</a>`);
-  }
-  if (job.contact_email) {
-    buttons.push(`<a class="button email" href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}">✉️ Envoyer un e-mail</a>`);
-  }
-  return buttons.length ? `<div class="contact-buttons">${buttons.join("")}</div>` : "";
-}
-
 /* PAGE D'ACCUEIL */
 
 app.get("/", async (req, res) => {
@@ -960,31 +1140,33 @@ app.get("/", async (req, res) => {
 
     let query = `
       SELECT
-        id, full_name, company_name, phone, phone_public, city, neighborhood,
-        profession, experience, service_description, service_area, availability,
-        photo_activite_url
-      FROM professional_applications
-      WHERE status = 'approved'
+        p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood,
+        p.profession, p.experience, p.service_description, p.service_area, p.availability,
+        p.photo_activite_url,
+        (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count,
+        (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating
+      FROM professional_applications p
+      WHERE p.status = 'approved'
     `;
 
     const values = [];
 
     if (profession) {
       values.push(`%${profession}%`);
-      query += ` AND profession ILIKE $${values.length}`;
+      query += ` AND p.profession ILIKE $${values.length}`;
     }
 
     if (city) {
       values.push(city);
-      query += ` AND city = $${values.length}`;
+      query += ` AND p.city = $${values.length}`;
     }
 
     if (neighborhood) {
       values.push(neighborhood);
-      query += ` AND neighborhood = $${values.length}`;
+      query += ` AND p.neighborhood = $${values.length}`;
     }
 
-    query += " ORDER BY created_at DESC LIMIT 50";
+    query += " ORDER BY p.created_at DESC LIMIT 50";
 
     const result = await pool.query(query, values);
 
@@ -1033,14 +1215,33 @@ app.get("/", async (req, res) => {
         return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
       }).join("");
 
-    /* CARTES RESUMÉES DES PROS */
+    /* CARTES PROS AVEC NOTE */
 
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
+      const reviewsCount = Number(person.reviews_count || 0);
+      const avgRating = Number(person.avg_rating || 0);
 
       const photoHtml = person.photo_activite_url
         ? `<img src="${escapeHtml(person.photo_activite_url)}" alt="${escapeHtml(person.profession)}">`
         : `<div class="pro-card-image-placeholder">👤</div>`;
+
+      let ratingHtml = "";
+
+      if (reviewsCount > 0) {
+        ratingHtml = `
+          <div class="pro-card-rating">
+            ${renderStars(avgRating)}
+            <span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>
+          </div>
+        `;
+      } else {
+        ratingHtml = `
+          <div class="pro-card-rating">
+            <span class="no-rating">Pas encore d'avis</span>
+          </div>
+        `;
+      }
 
       return `
         <article class="pro-card">
@@ -1052,6 +1253,8 @@ app.get("/", async (req, res) => {
             <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
             <div class="pro-card-name">${escapeHtml(displayName)}</div>
             <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+
+            ${ratingHtml}
 
             <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">
               Voir le profil →
@@ -1072,8 +1275,6 @@ app.get("/", async (req, res) => {
         </div>
       </div>
     ` : "";
-
-    /* CORRECTION : prosCards affiché UNE SEULE FOIS */
 
     const prosSection = result.rows.length > 0
       ? `<div class="pros-grid">${prosCards}</div>`
@@ -1152,11 +1353,13 @@ app.get("/pro/:id", async (req, res) => {
 
     const result = await pool.query(
       `SELECT
-        id, full_name, company_name, phone, phone_public, city, neighborhood,
-        profession, experience, service_description, service_area, availability,
-        photo_activite_url
-       FROM professional_applications
-       WHERE id = $1 AND status = 'approved'`,
+        p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood,
+        p.profession, p.experience, p.service_description, p.service_area, p.availability,
+        p.photo_activite_url,
+        (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count,
+        (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating
+       FROM professional_applications p
+       WHERE p.id = $1 AND p.status = 'approved'`,
       [id]
     );
 
@@ -1177,6 +1380,22 @@ app.get("/pro/:id", async (req, res) => {
     const phoneClean = normalizePhone(person.phone || "");
     const whatsappNumber = phoneClean.replace(/^\+/, "");
     const phonePublic = person.phone_public === true;
+
+    const reviewsCount = Number(person.reviews_count || 0);
+    const avgRating = Number(person.avg_rating || 0);
+
+    /* RECUPERER LES 5 DERNIERS AVIS APPROUVES */
+
+    const reviewsResult = await pool.query(
+      `SELECT id, author_name, rating, comment, created_at
+       FROM reviews
+       WHERE pro_id = $1 AND status = 'approved'
+       ORDER BY created_at DESC
+       LIMIT 5`,
+      [id]
+    );
+
+    const reviews = reviewsResult.rows;
 
     const shareText = encodeURIComponent(
       "Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi"
@@ -1225,6 +1444,86 @@ app.get("/pro/:id", async (req, res) => {
       `;
     }
 
+    /* BLOC NOTE MOYENNE */
+
+    let ratingHeader = "";
+
+    if (reviewsCount > 0) {
+      ratingHeader = `
+        <div class="rating-large">
+          ${renderStars(avgRating)}
+          <span class="reviews-count">${avgRating.toFixed(1)} / 5 (${reviewsCount} avis)</span>
+        </div>
+      `;
+    } else {
+      ratingHeader = `
+        <div class="rating-large" style="color:rgba(255,255,255,0.7);font-size:16px;letter-spacing:0">
+          Pas encore d'avis
+        </div>
+      `;
+    }
+
+    /* BLOC RÉSUMÉ DE LA NOTE */
+
+    let ratingSummary = "";
+
+    if (reviewsCount > 0) {
+      ratingSummary = `
+        <div class="rating-summary">
+          <div class="rating-big-number">${avgRating.toFixed(1)}</div>
+          <div class="rating-details">
+            <div class="stars">${renderStars(avgRating)}</div>
+            <div class="count">Base sur ${reviewsCount} avis client${reviewsCount > 1 ? "s" : ""}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* BLOC LISTE DES AVIS */
+
+    const reviewsHtml = reviews.map((rev) => {
+      const dateStr = new Date(rev.created_at).toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      });
+
+      return `
+        <div class="review-item">
+          <div class="review-header">
+            <div class="review-author">${escapeHtml(rev.author_name)}</div>
+            <div class="review-stars">${renderStars(rev.rating)}</div>
+          </div>
+          <div class="review-date">${escapeHtml(dateStr)}</div>
+          ${rev.comment ? `<div class="review-comment">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}
+        </div>
+      `;
+    }).join("");
+
+    const reviewsSection = reviews.length > 0 ? `
+      <section class="card">
+        <h2>Avis des clients (${reviewsCount})</h2>
+        ${ratingSummary}
+        ${reviewsHtml}
+        ${reviewsCount > 5 ? `<p class="muted">Seuls les 5 derniers avis sont affiches.</p>` : ""}
+      </section>
+    ` : "";
+
+    /* BLOC BOUTON AVIS */
+
+    const reviewButton = `
+      <section class="card" style="text-align:center">
+        <h3>Vous avez fait appel a ce professionnel ?</h3>
+        <p class="help-text">
+          Partagez votre experience en laissant un avis. Votre avis sera verifie
+          par notre equipe avant publication.
+        </p>
+        <a class="button btn-review" href="/pro/${encodeURIComponent(person.id)}/avis">
+          ⭐ Laisser un avis
+        </a>
+      </section>
+    `;
+
     function buildMiniCards(rows) {
       return rows.map((p) => {
         const name = getDisplayName(p);
@@ -1258,6 +1557,7 @@ app.get("/pro/:id", async (req, res) => {
         <h1>${escapeHtml(displayName)}</h1>
         <div class="profession">${escapeHtml(person.profession)}</div>
         <div class="location">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+        ${ratingHeader}
       </div>
 
       <section class="card">
@@ -1285,6 +1585,10 @@ app.get("/pro/:id", async (req, res) => {
         </p>
       </section>
 
+      ${reviewsSection}
+
+      ${reviewButton}
+
       ${sameProfessionCards ? `
         <h2>Autres professionnels en ${escapeHtml(person.profession)}</h2>
         <div class="pros-grid" style="margin-bottom:24px">
@@ -1305,6 +1609,153 @@ app.get("/pro/:id", async (req, res) => {
     console.error("Erreur page profil :", error.message);
     res.status(500).send(
       page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)
+    );
+  }
+});
+
+/* FORMULAIRE POUR LAISSER UN AVIS */
+
+app.get("/pro/:id/avis", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.redirect(303, "/");
+    }
+
+    const result = await pool.query(
+      `SELECT id, full_name, company_name, profession, city
+       FROM professional_applications
+       WHERE id = $1 AND status = 'approved'`,
+      [id]
+    );
+
+    if (!result.rows.length) {
+      return res.redirect(303, "/");
+    }
+
+    const person = result.rows[0];
+    const displayName = getDisplayName(person);
+
+    const content = `
+      <section class="card">
+        <h1>Laisser un avis</h1>
+
+        <div class="alert alert-info">
+          ⭐ Vous allez laisser un avis sur
+          <strong>${escapeHtml(displayName)}</strong>
+          (${escapeHtml(person.profession)} - ${escapeHtml(person.city)}).
+        </div>
+
+        <p class="help-text">
+          Votre avis sera examine par notre equipe avant publication.
+          Merci de rester courtois et honnete.
+        </p>
+
+        <form action="/pro/${encodeURIComponent(person.id)}/avis" method="POST">
+          <label for="author_name">Votre nom *</label>
+          <input id="author_name" name="author_name" required maxlength="100" placeholder="Ex : Jean D.">
+
+          <label>Votre note *</label>
+          <div class="star-rating-input">
+            <input type="radio" id="star5" name="rating" value="5" required>
+            <label for="star5" title="Excellent">★</label>
+
+            <input type="radio" id="star4" name="rating" value="4">
+            <label for="star4" title="Tres bien">★</label>
+
+            <input type="radio" id="star3" name="rating" value="3">
+            <label for="star3" title="Bien">★</label>
+
+            <input type="radio" id="star2" name="rating" value="2">
+            <label for="star2" title="Moyen">★</label>
+
+            <input type="radio" id="star1" name="rating" value="1">
+            <label for="star1" title="Mauvais">★</label>
+          </div>
+
+          <label for="comment">Votre commentaire (facultatif)</label>
+          <textarea id="comment" name="comment" maxlength="1000" rows="5" placeholder="Decrivez votre experience..."></textarea>
+
+          <button type="submit">Envoyer mon avis</button>
+          <a class="button secondary" href="/pro/${encodeURIComponent(person.id)}">Annuler</a>
+        </form>
+      </section>
+    `;
+
+    res.send(page("Laisser un avis", content, proConnected));
+  } catch (error) {
+    console.error("Erreur formulaire avis :", error.message);
+    res.redirect(303, "/");
+  }
+});
+
+/* ENREGISTREMENT DE L'AVIS */
+
+app.post("/pro/:id/avis", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.redirect(303, "/");
+    }
+
+    const proResult = await pool.query(
+      `SELECT id, full_name, company_name, profession FROM professional_applications
+       WHERE id = $1 AND status = 'approved'`,
+      [id]
+    );
+
+    if (!proResult.rows.length) {
+      return res.redirect(303, "/");
+    }
+
+    const person = proResult.rows[0];
+    const displayName = getDisplayName(person);
+
+    const authorName = String(req.body.author_name || "").trim().slice(0, 100);
+    const rating = parseInt(req.body.rating, 10);
+    const comment = String(req.body.comment || "").trim().slice(0, 1000);
+
+    if (!authorName || !rating || rating < 1 || rating > 5) {
+      return res.status(400).send(
+        page("Avis invalide", `
+          <section class="card">
+            <h2>Avis invalide</h2>
+            <p>Le nom et la note (1 a 5 etoiles) sont obligatoires.</p>
+            <a class="button" href="/pro/${encodeURIComponent(person.id)}/avis">Retour au formulaire</a>
+          </section>
+        `, proConnected)
+      );
+    }
+
+    await pool.query(
+      `INSERT INTO reviews (pro_id, author_name, rating, comment, status)
+       VALUES ($1, $2, $3, $4, 'pending')`,
+      [person.id, authorName, rating, comment || null]
+    );
+
+    res.send(page("Avis envoye", `
+      <section class="card">
+        <h1>Merci pour votre avis !</h1>
+        <p>
+          Votre avis sur <strong>${escapeHtml(displayName)}</strong>
+          a bien ete enregistre.
+        </p>
+        <p class="help-text">
+          Il sera examine par notre equipe avant publication.
+          Vous pouvez voir les autres avis des maintenant.
+        </p>
+        <a class="button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil</a>
+        <a class="button secondary" href="/">Retour a l'accueil</a>
+      </section>
+    `, proConnected));
+  } catch (error) {
+    console.error("Erreur enregistrement avis :", error.message);
+    res.status(500).send(
+      page("Erreur", "<h2>Impossible d'enregistrer votre avis pour le moment.</h2>", null)
     );
   }
 });
@@ -2240,6 +2691,7 @@ app.get("/mon-espace-pro", async (req, res) => {
 
   let offers = [];
   let gdprRequests = [];
+  let myReviews = [];
 
   try {
     const offersResult = await pool.query(
@@ -2264,6 +2716,17 @@ app.get("/mon-espace-pro", async (req, res) => {
     );
 
     gdprRequests = gdprResult.rows;
+
+    const reviewsResult = await pool.query(
+      `SELECT id, author_name, rating, comment, status, created_at
+       FROM reviews
+       WHERE pro_id = $1
+       ORDER BY created_at DESC
+       LIMIT 10`,
+      [proConnected.pro.id]
+    );
+
+    myReviews = reviewsResult.rows;
   } catch (error) {
     console.error("Erreur espace pro :", error.message);
     return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected));
@@ -2347,6 +2810,27 @@ app.get("/mon-espace-pro", async (req, res) => {
     </article>
   `).join("");
 
+  /* MES AVIS RECUS */
+
+  const myReviewsHtml = myReviews.map((rev) => {
+    const dateStr = new Date(rev.created_at).toLocaleDateString("fr-FR");
+    const statusLabel = REVIEW_STATUS_LABELS[rev.status] || rev.status;
+
+    return `
+      <div class="review-item">
+        <div class="review-header">
+          <div class="review-author">${escapeHtml(rev.author_name)}</div>
+          <div>
+            <span class="badge badge-${rev.status}">${escapeHtml(statusLabel)}</span>
+          </div>
+        </div>
+        <div class="review-stars">${renderStars(rev.rating)}</div>
+        <div class="review-date">${escapeHtml(dateStr)}</div>
+        ${rev.comment ? `<div class="review-comment">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+
   const phoneStatus = proConnected.pro.phone_public
     ? `<span class="badge badge-approved">Public</span> Votre numero est visible publiquement.`
     : `<span class="badge badge-closed">Prive</span> Votre numero n'est <strong>pas visible</strong> publiquement.`;
@@ -2406,6 +2890,14 @@ app.get("/mon-espace-pro", async (req, res) => {
       <div class="actions">
         <a class="button secondary" href="/mon-espace-pro/modifier-telephone">Modifier la visibilite de mon numero</a>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>Mes avis recus (${myReviews.length})</h2>
+      <p class="help-text">
+        Les avis sont d'abord examines par l'administration avant publication sur votre profil.
+      </p>
+      ${myReviewsHtml || `<p class="muted">Vous n'avez pas encore recu d'avis.</p>`}
     </section>
 
     <section class="card">
@@ -2583,6 +3075,12 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
       [proConnected.pro.id]
     );
 
+    const reviewsResult = await pool.query(
+      `SELECT id, author_name, rating, comment, status, created_at
+       FROM reviews WHERE pro_id = $1`,
+      [proConnected.pro.id]
+    );
+
     const exportData = {
       export_date: new Date().toISOString(),
       plateforme: "TrouveMoi",
@@ -2610,6 +3108,7 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
         activite_publique: proConnected.pro.photo_activite_url
       },
       offres_emploi: offersResult.rows,
+      avis_recus: reviewsResult.rows,
       demandes_rgpd: gdprResult.rows
     };
 
@@ -2996,20 +3495,12 @@ app.post("/admin/login", (req, res) => {
   res.redirect(303, "/admin/dashboard");
 });
 
-/* FONCTION : RECUPERER LE CSRF DE MANIERE SECURISEE */
-
-function getCsrf(req) {
-  if (req.adminSession && typeof req.adminSession.csrf === "string") {
-    return req.adminSession.csrf;
-  }
-  return "";
-}
-
-/* MENU ADMIN (avec badges) */
+/* MENU ADMIN */
 
 async function adminMenu(current, csrf) {
   let gdprCount = 0;
   let prosPendingCount = 0;
+  let reviewsPendingCount = 0;
 
   try {
     const gdprResult = await pool.query(
@@ -3021,6 +3512,11 @@ async function adminMenu(current, csrf) {
       "SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'"
     );
     prosPendingCount = Number(prosResult.rows[0].count);
+
+    const reviewsResult = await pool.query(
+      "SELECT COUNT(*) FROM reviews WHERE status = 'pending'"
+    );
+    reviewsPendingCount = Number(reviewsResult.rows[0].count);
   } catch (error) {
     console.error("Erreur comptage admin :", error.message);
   }
@@ -3030,6 +3526,7 @@ async function adminMenu(current, csrf) {
   const links = [
     { href: "/admin/dashboard", label: "📊 Tableau de bord", badge: 0 },
     { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount },
+    { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount },
     { href: "/admin/emplois", label: "💼 Offres d'emploi", badge: 0 },
     { href: "/admin/messages", label: "📩 Messages", badge: 0 },
     { href: "/admin/rgpd", label: "🔐 Demandes RGPD", badge: gdprCount }
@@ -3065,6 +3562,8 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
     const jobsClosed = await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'closed'");
     const messagesUnread = await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false");
     const gdprPending = await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'");
+    const reviewsApproved = await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'approved'");
+    const reviewsPending = await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'");
 
     const stats = {
       prosApproved: Number(prosApproved.rows[0].count),
@@ -3073,10 +3572,16 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       jobsPending: Number(jobsPending.rows[0].count),
       jobsClosed: Number(jobsClosed.rows[0].count),
       messagesUnread: Number(messagesUnread.rows[0].count),
-      gdprPending: Number(gdprPending.rows[0].count)
+      gdprPending: Number(gdprPending.rows[0].count),
+      reviewsApproved: Number(reviewsApproved.rows[0].count),
+      reviewsPending: Number(reviewsPending.rows[0].count)
     };
 
     const alerts = [];
+
+    if (stats.reviewsPending > 0) {
+      alerts.push(`⭐ <strong>${stats.reviewsPending}</strong> avis en attente de moderation — <a href="/admin/avis">Moderer maintenant</a>`);
+    }
 
     if (stats.gdprPending > 0) {
       alerts.push(`🔐 <strong>${stats.gdprPending}</strong> demande(s) RGPD en attente — <a href="/admin/rgpd">Traiter maintenant</a>`);
@@ -3133,6 +3638,20 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
         </div>
 
         <div class="stat-card info">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-number">${stats.reviewsApproved}</div>
+          <div class="stat-label">Avis publies</div>
+          <a class="stat-link" href="/admin/avis">Voir les avis →</a>
+        </div>
+
+        <div class="stat-card ${stats.reviewsPending > 0 ? "warning" : ""}">
+          <div class="stat-icon">🔍</div>
+          <div class="stat-number">${stats.reviewsPending}</div>
+          <div class="stat-label">Avis en attente</div>
+          <a class="stat-link" href="/admin/avis">Moderer →</a>
+        </div>
+
+        <div class="stat-card info">
           <div class="stat-icon">💼</div>
           <div class="stat-number">${stats.jobsApproved}</div>
           <div class="stat-label">Offres en ligne</div>
@@ -3174,6 +3693,183 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
+/* ADMIN : AVIS (MODERATION) */
+
+app.get("/admin/avis", requireAdmin, async (req, res) => {
+  try {
+    const csrf = getCsrf(req);
+
+    const result = await pool.query(`
+      SELECT r.id, r.author_name, r.rating, r.comment, r.status, r.created_at,
+             r.pro_id,
+             p.full_name AS pro_name, p.company_name AS pro_company,
+             p.profession AS pro_profession, p.city AS pro_city, p.pro_code AS pro_code
+      FROM reviews r
+      LEFT JOIN professional_applications p ON p.id = r.pro_id
+      ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC
+      LIMIT 200
+    `);
+
+    const reviews = result.rows.map((rev) => {
+      const proDisplay = rev.pro_company || rev.pro_name || "Pro inconnu";
+
+      const statusOptions = REVIEW_STATUSES.map((status) => `
+        <option value="${status}" ${rev.status === status ? "selected" : ""}>
+          ${REVIEW_STATUS_LABELS[status]}
+        </option>
+      `).join("");
+
+      const createdDisplay = rev.created_at
+        ? new Date(rev.created_at).toLocaleString("fr-FR")
+        : "Date inconnue";
+
+      return `
+        <article class="card">
+          <h2>
+            <span class="badge badge-${escapeHtml(rev.status)}">${escapeHtml(REVIEW_STATUS_LABELS[rev.status] || rev.status)}</span>
+            Avis de ${escapeHtml(rev.author_name)}
+          </h2>
+
+          <div class="review-stars" style="font-size:22px;margin-bottom:12px">${renderStars(rev.rating)}</div>
+
+          <p><span class="label">Note :</span> <span class="value">${rev.rating} / 5</span></p>
+
+          <div style="background:#f0fdf9;padding:12px;border-radius:8px;margin:12px 0;border-left:4px solid #087f5b">
+            <p style="margin:0"><span class="label">📢 Concerne :</span> <span class="value">${escapeHtml(proDisplay)}</span></p>
+            <p style="margin:4px 0 0 0"><span class="label">Profession :</span> <span class="value">${escapeHtml(rev.pro_profession || "Non renseignee")}</span></p>
+            <p style="margin:4px 0 0 0"><span class="label">Ville :</span> <span class="value">${escapeHtml(rev.pro_city || "Non renseignee")}</span></p>
+            ${rev.pro_code ? `<p style="margin:4px 0 0 0"><span class="label">Code pro :</span> <code>${escapeHtml(rev.pro_code)}</code></p>` : ""}
+          </div>
+
+          ${rev.comment ? `
+            <p><span class="label">Commentaire :</span></p>
+            <p style="background:#f9fafb;padding:12px;border-radius:8px">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</p>
+          ` : `<p class="muted">Aucun commentaire.</p>`}
+
+          <p class="muted">Recu le : ${escapeHtml(createdDisplay)}</p>
+
+          <div class="actions">
+            ${rev.status !== "approved" ? `
+              <form action="/admin/avis/${encodeURIComponent(rev.id)}/approuver" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+                <button class="success" type="submit">✅ Approuver</button>
+              </form>
+            ` : ""}
+
+            ${rev.status !== "rejected" ? `
+              <form action="/admin/avis/${encodeURIComponent(rev.id)}/rejeter" method="POST" style="display:inline">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+                <button class="warning" type="submit">❌ Rejeter</button>
+              </form>
+            ` : ""}
+
+            <form action="/admin/avis/${encodeURIComponent(rev.id)}/supprimer" method="POST" style="display:inline">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+              <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT cet avis ? Action irreversible.');">🗑️ Supprimer</button>
+            </form>
+          </div>
+
+          <form action="/admin/avis/${encodeURIComponent(rev.id)}/statut" method="POST" style="margin-top:12px">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <label for="review-status-${escapeHtml(rev.id)}">Changer le statut</label>
+            <select id="review-status-${escapeHtml(rev.id)}" name="status">${statusOptions}</select>
+            <button type="submit">Enregistrer le statut</button>
+          </form>
+        </article>
+      `;
+    }).join("");
+
+    const menuHtml = await adminMenu("/admin/avis", csrf);
+
+    res.setHeader("Cache-Control", "no-store");
+
+    res.send(page("Avis", `
+      <section class="card">
+        <h1>Moderation des avis</h1>
+        <p>Total affiche : ${result.rows.length} avis</p>
+        <p class="help-text">
+          Seuls les avis <strong>approuves</strong> sont visibles publiquement sur les profils des pros.
+          Verifiez que les avis sont respectueux et coherents avant d'approuver.
+        </p>
+      </section>
+
+      ${menuHtml}
+
+      ${reviews || `<section class="card"><p>Aucun avis pour le moment.</p></section>`}
+    `, null));
+  } catch (error) {
+    console.error("Erreur avis :", error.message);
+    res.status(500).send(page("Erreur", "<h2>Impossible de charger les avis.</h2>", null));
+  }
+});
+
+app.post("/admin/avis/:id/approuver", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
+
+  try {
+    await pool.query(
+      `UPDATE reviews SET status = 'approved' WHERE id = $1`,
+      [id]
+    );
+  } catch (error) {
+    console.error("Erreur approbation avis :", error.message);
+  }
+
+  res.redirect(303, "/admin/avis");
+});
+
+app.post("/admin/avis/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
+
+  try {
+    await pool.query(
+      `UPDATE reviews SET status = 'rejected' WHERE id = $1`,
+      [id]
+    );
+  } catch (error) {
+    console.error("Erreur rejet avis :", error.message);
+  }
+
+  res.redirect(303, "/admin/avis");
+});
+
+app.post("/admin/avis/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
+
+  try {
+    await pool.query(`DELETE FROM reviews WHERE id = $1`, [id]);
+  } catch (error) {
+    console.error("Erreur suppression avis :", error.message);
+  }
+
+  res.redirect(303, "/admin/avis");
+});
+
+app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.body.status;
+
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
+
+  if (!REVIEW_STATUSES.includes(status)) {
+    return res.redirect(303, "/admin/avis");
+  }
+
+  try {
+    await pool.query(
+      `UPDATE reviews SET status = $1 WHERE id = $2`,
+      [status, id]
+    );
+  } catch (error) {
+    console.error("Erreur statut avis :", error.message);
+  }
+
+  res.redirect(303, "/admin/avis");
+});
+
 /* ADMIN : CANDIDATURES */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
@@ -3185,7 +3881,9 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
              experience, service_description, service_area, availability,
              status, created_at, photo_profil_url, photo_identite_url,
              photo_activite_url, pro_code,
-             contact_preference, whatsapp_number, contact_email
+             contact_preference, whatsapp_number, contact_email,
+             (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = professional_applications.id AND r.status = 'approved') AS reviews_count,
+             (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = professional_applications.id AND r.status = 'approved') AS avg_rating
       FROM professional_applications
       ORDER BY CASE WHEN status = 'pending' THEN 0 ELSE 1 END, created_at DESC
       LIMIT 200
@@ -3276,6 +3974,22 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         ? `<p><span class="label">Societe :</span> <span class="value">${escapeHtml(candidate.company_name)}</span></p>`
         : "";
 
+      const reviewsCount = Number(candidate.reviews_count || 0);
+      const avgRating = Number(candidate.avg_rating || 0);
+
+      let ratingBlock = "";
+
+      if (reviewsCount > 0) {
+        ratingBlock = `
+          <p><span class="label">Note moyenne :</span>
+            <span style="color:#f59e0b;font-size:18px">${renderStars(avgRating)}</span>
+            <span class="value">${avgRating.toFixed(1)} / 5 (${reviewsCount} avis)</span>
+          </p>
+        `;
+      } else {
+        ratingBlock = `<p class="muted">Pas encore d'avis</p>`;
+      }
+
       return `
         <article class="card">
           <h2>${escapeHtml(candidate.full_name)}</h2>
@@ -3292,6 +4006,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           <p><span class="label">Zone :</span> <span class="value">${escapeHtml(candidate.service_area || "Non renseignee")}</span></p>
           <p><span class="label">Disponibilite :</span> <span class="value">${escapeHtml(candidate.availability || "Non renseignee")}</span></p>
           <p><span class="label">Statut actuel :</span> <span class="value">${escapeHtml(STATUS_LABELS[candidate.status] || candidate.status)}</span></p>
+          ${ratingBlock}
           <p class="muted">Recue le : ${escapeHtml(candidate.created_at)}</p>
 
           ${codeBlock}
@@ -3305,7 +4020,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
           <form action="/admin/candidatures/${encodeURIComponent(candidate.id)}/supprimer" method="POST" style="margin-top:12px">
             <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
-            <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel ? Cette action est irreversible (compte + photos + offres).');">🗑️ Supprimer definitivement</button>
+            <button class="danger" type="submit" onclick="return confirm('Supprimer DEFINITIVEMENT ce professionnel ? Cette action est irreversible (compte + photos + offres + avis).');">🗑️ Supprimer definitivement</button>
           </form>
         </article>
       `;
@@ -3356,11 +4071,12 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
     await deleteFromCloudinary(pro.photo_identite_url);
     await deleteFromCloudinary(pro.photo_activite_url);
 
+    await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM gdpr_requests WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [id]);
   } catch (error) {
-    console.error("Erreur suppression RGPD :", error.message);
+    console.error("Erreur suppression pro :", error.message);
   }
 
   res.redirect(303, "/admin/candidatures");
@@ -3662,7 +4378,7 @@ app.post("/admin/messages/:id/delete", requireAdmin, verifyCsrf, async (req, res
   res.redirect(303, "/admin/messages");
 });
 
-/* ADMIN : DEMANDES RGPD (VERSION ROBUSTE - CORRIGEE) */
+/* ADMIN : DEMANDES RGPD */
 
 app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   try {
@@ -3670,17 +4386,10 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
 
     const result = await pool.query(`
       SELECT
-        g.id,
-        g.request_type,
-        g.status,
-        g.message,
-        g.created_at,
-        g.processed_at,
+        g.id, g.request_type, g.status, g.message, g.created_at, g.processed_at,
         g.pro_id,
-        p.full_name AS pro_name,
-        p.company_name AS pro_company,
-        p.phone AS pro_phone,
-        p.pro_code AS pro_code
+        p.full_name AS pro_name, p.company_name AS pro_company,
+        p.phone AS pro_phone, p.pro_code AS pro_code
       FROM gdpr_requests g
       LEFT JOIN professional_applications p ON p.id = g.pro_id
       ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC
@@ -3774,7 +4483,6 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
     `, null));
   } catch (error) {
     console.error("Erreur RGPD :", error.message);
-    console.error("Stack RGPD :", error.stack);
 
     res.status(500).send(page("Erreur RGPD", `
       <section class="card">
@@ -3782,9 +4490,6 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
         <p><strong>Erreur technique :</strong></p>
         <p style="background:#fee2e2;padding:12px;border-radius:8px;font-family:monospace">
           ${escapeHtml(error.message)}
-        </p>
-        <p class="help-text">
-          Copiez ce message d'erreur et envoyez-le a l'administrateur technique.
         </p>
         <a class="button" href="/admin/dashboard">Retour au tableau de bord</a>
       </section>
@@ -3818,6 +4523,7 @@ app.post("/admin/rgpd/:id/supprimer-pro", requireAdmin, verifyCsrf, async (req, 
         await deleteFromCloudinary(pro.photo_activite_url);
       }
 
+      await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
       await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
       await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
     }
@@ -3891,11 +4597,13 @@ app.get("/a-propos", async (req, res) => {
         <li>Recherche par ville, quartier et metier</li>
         <li>Contact direct par telephone ou WhatsApp</li>
         <li>Offres d'emploi publiees par des professionnels verifies</li>
+        <li>Avis clients moderes</li>
       </ul>
 
       <h2>Notre engagement</h2>
       <p>Chaque professionnel inscrit sur TrouveMoi est verifie par notre equipe (photo d'identite et informations verifiees) avant publication.</p>
       <p>Seuls les professionnels verifies peuvent publier des offres d'emploi, afin de lutter contre les arnaques et de garantir la fiabilite de chaque annonce.</p>
+      <p>Les avis clients sont moderes par notre equipe pour garantir leur authenticite.</p>
 
       <p style="margin-top:24px">
         <a class="button" href="/contact">Nous contacter</a>
@@ -3925,19 +4633,23 @@ app.get("/conditions", async (req, res) => {
       <h2>4. Publication d'offres d'emploi</h2>
       <p>Seuls les professionnels verifies (ayant recu un code professionnel apres approbation de leur candidature) peuvent publier des offres d'emploi sur TrouveMoi. Toute offre est examinee par l'administration avant publication.</p>
 
-      <h2>5. Responsabilites</h2>
+      <h2>5. Avis clients</h2>
+      <p>Les avis laisses sur TrouveMoi sont moderes par notre equipe avant publication. Tout avis injurieux, diffamatoire, faux ou non conforme aux presentes conditions sera rejete ou supprime.</p>
+
+      <h2>6. Responsabilites</h2>
       <p>TrouveMoi ne peut etre tenu responsable de la qualite des services fournis par les professionnels references.</p>
 
-      <h2>6. Utilisation interdite</h2>
+      <h2>7. Utilisation interdite</h2>
       <p>Il est interdit de :</p>
       <ul style="margin-left:20px;margin-bottom:16px">
         <li>Publier de fausses informations</li>
         <li>Usurper l'identite d'autrui</li>
         <li>Publier de fausses offres d'emploi</li>
+        <li>Publier de faux avis</li>
         <li>Utiliser la plateforme a des fins illicites</li>
       </ul>
 
-      <h2>7. Contact</h2>
+      <h2>8. Contact</h2>
       <p>Pour toute question : <a href="/contact">formulaire de contact</a></p>
     </section>
   `, proConnected));
@@ -3957,6 +4669,7 @@ app.get("/confidentialite", async (req, res) => {
         <li>Pros : nom, societe/etablissement (facultatif), telephone, ville, quartier, metier, description, photos, code professionnel</li>
         <li>Offres : entreprise, contacts, description du poste</li>
         <li>Contact : nom, email, telephone, message</li>
+        <li>Avis : nom de l'auteur, note, commentaire</li>
       </ul>
 
       <h2>2. Utilisation des donnees</h2>
@@ -3965,6 +4678,7 @@ app.get("/confidentialite", async (req, res) => {
         <li>Mettre en relation les clients et les professionnels</li>
         <li>Afficher les profils approuves</li>
         <li>Permettre aux pros verifies de publier des offres</li>
+        <li>Afficher les avis clients moderes</li>
         <li>Vous contacter en cas de besoin</li>
       </ul>
 
@@ -4311,6 +5025,32 @@ async function startServer() {
       )
     `);
 
+    /* TABLE AVIS */
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE,
+        author_name VARCHAR(100) NOT NULL,
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending', 'approved', 'rejected')),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        processed_at TIMESTAMP
+      )
+    `);
+
+    /* INDEX pour accelerer les requetes */
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)
+    `);
+
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)
+    `);
+
     /* INSERTION DES VILLES */
 
     const citiesData = [
@@ -4384,7 +5124,7 @@ async function startServer() {
     }
 
     console.log(
-      "Toutes les tables sont pretes (pros, societe, offres, villes, quartiers, metiers, messages, RGPD, preferences contact)."
+      "Toutes les tables sont pretes (pros, societe, offres, villes, quartiers, metiers, messages, RGPD, preferences contact, avis)."
     );
 
     app.listen(PORT, "0.0.0.0", () => {
