@@ -437,9 +437,10 @@ app.get("/", async (req, res) => {
     const city = String(req.query.city || "").trim().slice(0, 100);
     const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
     
-    const page = Math.max(1, parseInt(req.query.page) || 1);
+    // ✅ CORRECTION ICI : On utilise currentPage au lieu de page
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12;
-    const offset = (page - 1) * limit;
+    const offset = (currentPage - 1) * limit;
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
@@ -530,7 +531,9 @@ app.get("/", async (req, res) => {
     `;
 
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p>Aucun professionnel approuve ne correspond a votre recherche.</p></section>`;
-    const paginationHtml = renderPagination(page, totalPages, "/", { profession, city, neighborhood });
+    
+    // ✅ CORRECTION ICI : On utilise currentPage
+    const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
     const content = `
       ${welcomeBanner}
@@ -711,9 +714,10 @@ app.get("/emplois", async (req, res) => {
   const keyword = String(req.query.keyword || "").trim();
   const city = String(req.query.city || "").trim();
   
-  const page = Math.max(1, parseInt(req.query.page) || 1);
+  // ✅ CORRECTION ICI : On utilise currentPage au lieu de page
+  const currentPage = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 10;
-  const offset = (page - 1) * limit;
+  const offset = (currentPage - 1) * limit;
 
   let whereClause = ` WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())`;
   const values = [];
@@ -745,7 +749,8 @@ app.get("/emplois", async (req, res) => {
     </div>
   `;
   
-  const paginationHtml = renderPagination(page, totalPages, "/emplois", { keyword, city });
+  // ✅ CORRECTION ICI : On utilise currentPage
+  const paginationHtml = renderPagination(currentPage, totalPages, "/emplois", { keyword, city });
 
   res.send(page("Emploi", `
     ${alerteEmploi}
