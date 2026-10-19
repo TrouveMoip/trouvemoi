@@ -59,7 +59,7 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.disable("x-powered-by");
-app.set("trust proxy", 1); // ✅ Correctif : IP réelle derrière proxy (Render/Heroku)
+app.set("trust proxy", 1);
 
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
@@ -83,8 +83,8 @@ const CONTACT_PREFERENCES = ["whatsapp", "email"];
 const loginAttempts = new Map();
 const resetAttempts = new Map();
 const trackingAttempts = new Map();
-const contactAttempts = new Map(); // ✅ Anti-spam /contact
-const reviewAttempts = new Map();  // ✅ Anti-spam /avis
+const contactAttempts = new Map();
+const reviewAttempts = new Map();
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
@@ -127,7 +127,6 @@ function requireAdmin(req, res, next) {
   req.adminSession = session; next();
 }
 
-// ✅ Correctif : CSRF robuste (n'accepte plus "" == "")
 function verifyCsrf(req, res, next) {
   const csrf = req.adminSession?.csrf;
   if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) {
@@ -136,7 +135,6 @@ function verifyCsrf(req, res, next) {
   next();
 }
 
-// ✅ Correctif : randomInt crypto au lieu de Math.random
 function generateProCode() { return `TM${crypto.randomInt(10000, 100000)}`; }
 async function generateUniqueProCode() {
   let code, exists = true, attempts = 0;
@@ -165,7 +163,6 @@ function renderStars(rating) {
   return html;
 }
 
-// ✅ AJOUT : Badge Vérifié KYC
 function renderKycBadge(size) {
   const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
@@ -188,7 +185,6 @@ function buildMenu(proConnected) {
   }
   return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/contact">Contact</a></nav>`;
 }
-
 function page(title, content, proConnected) {
   return `
     <!DOCTYPE html>
@@ -213,29 +209,23 @@ function page(title, content, proConnected) {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f4f7fb; color: #222; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
-
         header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
         .logo svg { display: block; height: 42px; width: auto; max-width: 100%; }
         .tagline { font-size: 13px; opacity: 0.9; margin-top: 2px; }
-
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: background 0.2s; }
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.15); }
-
         main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
         .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); transition: box-shadow 0.2s; }
         .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-
         h1 { font-size: 28px; margin-bottom: 16px; color: #1e40af; line-height: 1.3; border-left: 5px solid #1e40af; padding-left: 14px; }
         h2 { font-size: 22px; margin-bottom: 14px; color: #1e3a8a; line-height: 1.3; border-left: 4px solid #3b82f6; padding-left: 12px; }
         h3 { font-size: 18px; margin-bottom: 10px; color: #475467; line-height: 1.3; border-left: 3px solid #94a3b8; padding-left: 10px; }
         p { margin-bottom: 12px; }
-
         .label { font-weight: 700; color: #1a1a1a; }
         .value { color: #333; }
-
         label { display: block; margin-top: 8px; margin-bottom: 4px; font-weight: 600; font-size: 14px; color: #333; }
         input, textarea, select { width: 100%; padding: 12px 14px; margin-bottom: 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
@@ -243,26 +233,21 @@ function page(title, content, proConnected) {
         input[type="file"] { padding: 10px; background: #f9fafb; border: 2px dashed #ccc; cursor: pointer; }
         input[type="file"]:hover { border-color: #2563eb; background: #eff6ff; }
         input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
-        
         optgroup { font-weight: 800; color: #1e40af; font-style: normal; background: #eff6ff; padding: 6px 0; font-size: 15px; }
         optgroup option { font-weight: 400; color: #222; background: white; font-size: 15px; }
-
         button, .button { display: inline-block; border: none; background: #2563eb; color: white; padding: 12px 20px; border-radius: 8px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: background 0.2s, transform 0.1s; margin-right: 8px; margin-bottom: 8px; font-family: inherit; }
         button:hover, .button:hover { background: #1d4ed8; transform: translateY(-1px); }
-
         .danger { background: #b42318; } .danger:hover { background: #9a1d13; }
         .secondary { background: #475467; } .secondary:hover { background: #344054; }
         .warning { background: #f59e0b; } .warning:hover { background: #d97706; }
         .success { background: #0a9d70; } .success:hover { background: #087f5b; }
         .info { background: #3b82f6; } .info:hover { background: #1e40af; }
         .muted { color: #667085; font-size: 14px; }
-
         .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
         .contact-buttons .button { flex: 1 1 140px; margin: 0; }
         .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; }
         .email { background: #475467; } .email:hover { background: #344054; }
         .share { background: #4267b2; } .share:hover { background: #365899; }
-
         .photos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
         .photos-grid img { max-width: 280px; max-height: 280px; border-radius: 10px; border: 2px solid #e5e7eb; object-fit: cover; }
         .photo-profil { border: 3px solid #2563eb !important; }
@@ -271,11 +256,9 @@ function page(title, content, proConnected) {
         .photo-kyc { border: 3px solid #f59e0b !important; }
         .photo-label { font-size: 12px; color: #667085; text-align: center; margin-top: 4px; font-weight: 600; }
         .photo-block { display: flex; flex-direction: column; align-items: center; }
-
         .help-text { font-size: 13px; color: #667085; margin-bottom: 12px; font-style: italic; }
         .hidden { display: none !important; }
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .stat-card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #2563eb; transition: transform 0.2s, box-shadow 0.2s; }
         .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
@@ -284,11 +267,9 @@ function page(title, content, proConnected) {
         .stat-number { font-size: 36px; font-weight: 800; color: #1a1a1a; line-height: 1; margin-bottom: 6px; }
         .stat-label { font-size: 14px; color: #667085; font-weight: 500; }
         .stat-link { display: inline-block; margin-top: 10px; font-size: 13px; color: #2563eb; text-decoration: none; font-weight: 600; }
-
         .pro-code-box { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 16px 0; }
         .pro-code-value { font-size: 42px; font-weight: 800; letter-spacing: 4px; margin: 12px 0; font-family: "Courier New", monospace; }
         .pro-code-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
-
         .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-pending { background: #fef3c7; color: #92400e; }
         .badge-approved { background: #d1fae5; color: #065f46; }
@@ -296,37 +277,14 @@ function page(title, content, proConnected) {
         .badge-closed { background: #e5e7eb; color: #374151; }
         .badge-processed { background: #d1fae5; color: #065f46; }
         .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
-
-        .badge-verified {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          background: linear-gradient(135deg, #0a9d70 0%, #087f5b 100%);
-          color: white;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          box-shadow: 0 2px 6px rgba(10,157,112,0.3);
-        }
-        .badge-verified::before {
-          content: "✓";
-          font-size: 13px;
-          font-weight: 900;
-        }
-        .badge-verified-lg {
-          font-size: 13px;
-          padding: 6px 14px;
-        }
-
+        .badge-verified { display: inline-flex; align-items: center; gap: 4px; background: linear-gradient(135deg, #0a9d70 0%, #087f5b 100%); color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; box-shadow: 0 2px 6px rgba(10,157,112,0.3); }
+        .badge-verified::before { content: "✓"; font-size: 13px; font-weight: 900; }
+        .badge-verified-lg { font-size: 13px; padding: 6px 14px; }
         .alert { padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid; }
         .alert-success { background: #d1fae5; border-color: #0a9d70; color: #065f46; }
         .alert-danger { background: #fee2e2; border-color: #b42318; color: #991b1b; }
         .alert-warning { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
         .alert-info { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
-
         .pro-welcome { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 28px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.3); }
         .pro-welcome h2 { color: white; border: none; padding: 0; margin-bottom: 8px; font-size: 24px; }
         .pro-welcome p { opacity: 0.95; margin-bottom: 16px; font-size: 15px; }
@@ -334,13 +292,11 @@ function page(title, content, proConnected) {
         .pro-welcome .button { background: white; color: #1e40af; }
         .pro-welcome .button:hover { background: #eff6ff; transform: translateY(-1px); }
         .pro-welcome .button.secondary { background: rgba(255,255,255,0.25); color: white; }
-
         .admin-alerts { background: #fff7ed; border: 1px solid #fdba74; border-left: 5px solid #ea580c; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         .admin-alerts h3 { color: #9a3412; border: none; padding: 0; margin-bottom: 12px; font-size: 17px; }
         .admin-alerts ul { list-style: none; margin: 0; }
         .admin-alerts li { padding: 8px 0; border-bottom: 1px solid #fed7aa; color: #7c2d12; }
         .admin-alerts a { color: #9a3412; font-weight: 700; text-decoration: none; }
-
         .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-top: 20px; }
         .pro-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
         .pro-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
@@ -357,47 +313,39 @@ function page(title, content, proConnected) {
         .pro-card-rating .no-rating { color: #94a3b8; font-weight: 400; font-style: italic; font-size: 13px; letter-spacing: 0; }
         .pro-card-button { display: block; width: 100%; background: #2563eb; color: white; padding: 10px 16px; border-radius: 6px; text-align: center; text-decoration: none; font-weight: 600; font-size: 14px; margin-top: auto; transition: background 0.2s; }
         .pro-card-button:hover { background: #1d4ed8; }
-
         .pro-header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 32px 24px; border-radius: 12px; margin-bottom: 20px; }
         .pro-header h1 { color: white; border: none; padding: 0; font-size: 30px; margin-bottom: 8px; }
         .pro-header .profession { font-size: 18px; opacity: 0.95; margin-bottom: 8px; font-weight: 600; }
         .pro-header .location { font-size: 15px; opacity: 0.9; }
         .pro-header .rating-large { font-size: 22px; color: #fef3c7; margin-top: 12px; font-weight: 700; letter-spacing: 2px; }
         .pro-header .rating-large .reviews-count { color: rgba(255,255,255,0.85); font-weight: 400; font-size: 15px; letter-spacing: 0; margin-left: 8px; }
-
         .review-item { background: #f9fafb; padding: 16px; border-radius: 10px; margin-bottom: 14px; border-left: 4px solid #f59e0b; }
         .review-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
         .review-author { font-weight: 700; color: #1a1a1a; }
         .review-stars { color: #f59e0b; font-size: 18px; letter-spacing: 2px; }
         .review-date { font-size: 13px; color: #94a3b8; }
         .review-comment { color: #333; margin-top: 8px; line-height: 1.6; }
-
         .rating-summary { display: flex; align-items: center; gap: 24px; padding: 24px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; margin-bottom: 20px; flex-wrap: wrap; }
         .rating-big-number { font-size: 52px; font-weight: 800; color: #92400e; line-height: 1; }
         .rating-details { flex: 1; min-width: 180px; }
         .rating-details .stars { font-size: 28px; color: #f59e0b; letter-spacing: 3px; }
         .rating-details .count { font-size: 14px; color: #78350f; margin-top: 4px; font-weight: 600; }
-
         .btn-review { background: #f59e0b; color: white; }
         .btn-review:hover { background: #d97706; }
-
         .star-rating-input { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 6px; margin-bottom: 16px; width: auto; }
         .star-rating-input input { display: none; }
         .star-rating-input label { font-size: 44px; color: #d1d5db; cursor: pointer; transition: color 0.2s, transform 0.1s; margin: 0; padding: 0; line-height: 1; font-weight: normal; }
         .star-rating-input label:hover { transform: scale(1.1); }
         .star-rating-input input:checked ~ label { color: #f59e0b; }
         .star-rating-input label:hover, .star-rating-input label:hover ~ label { color: #f59e0b; }
-
         .checkbox-block { background: #f9fafb; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb; }
         .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; }
-
         footer { background: #1a1a1a; color: #ccc; padding: 32px 20px 20px; margin-top: 40px; }
         .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
         .footer-col h4 { color: white; margin-bottom: 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
         .footer-col a { display: block; color: #aaa; text-decoration: none; padding: 4px 0; font-size: 14px; }
         .footer-col a:hover { color: #3b82f6; }
         .footer-bottom { max-width: 1100px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 13px; color: #888; }
-
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
@@ -451,6 +399,35 @@ function jobContactButtons(job) {
   return b.length ? `<div class="contact-buttons">${b.join("")}</div>` : "";
 }
 
+// ✅ Générateur de boutons de pagination
+function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
+  if (totalPages <= 1) return "";
+  
+  const buildUrl = (pageNum) => {
+    const params = new URLSearchParams(queryParams);
+    params.set("page", pageNum);
+    return `${baseUrl}?${params.toString()}`;
+  };
+
+  let html = `<div style="display:flex; justify-content:center; align-items:center; gap:15px; margin: 30px 0; flex-wrap: wrap;">`;
+  
+  if (currentPage > 1) {
+    html += `<a href="${buildUrl(currentPage - 1)}" class="button secondary" style="margin:0">← Précédent</a>`;
+  } else {
+    html += `<span class="button secondary" style="margin:0; opacity:0.5; cursor:not-allowed;">← Précédent</span>`;
+  }
+
+  html += `<span style="font-weight:bold; color:#475467;">Page ${currentPage} sur ${totalPages}</span>`;
+
+  if (currentPage < totalPages) {
+    html += `<a href="${buildUrl(currentPage + 1)}" class="button secondary" style="margin:0">Suivant →</a>`;
+  } else {
+    html += `<span class="button secondary" style="margin:0; opacity:0.5; cursor:not-allowed;">Suivant →</span>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
 /* PAGE D'ACCUEIL */
 
 app.get("/", async (req, res) => {
@@ -459,25 +436,36 @@ app.get("/", async (req, res) => {
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
     const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
+    
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 12;
+    const offset = (page - 1) * limit;
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
-    let query = `
+    let whereClause = ` WHERE p.status = 'approved'`;
+    const values = [];
+    if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
+    if (city) { values.push(city); whereClause += ` AND p.city = $${values.length}`; }
+    if (neighborhood) { values.push(neighborhood); whereClause += ` AND p.neighborhood = $${values.length}`; }
+
+    const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
+    const totalPros = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalPros / limit);
+
+    const queryValues = [...values, limit, offset];
+    const query = `
       SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood,
         p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url,
         (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count,
         (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating
-      FROM professional_applications p WHERE p.status = 'approved'
+      FROM professional_applications p 
+      ${whereClause}
+      ORDER BY p.created_at DESC 
+      LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}
     `;
-
-    const values = [];
-    if (profession) { values.push(`%${profession}%`); query += ` AND p.profession ILIKE $${values.length}`; }
-    if (city) { values.push(city); query += ` AND p.city = $${values.length}`; }
-    if (neighborhood) { values.push(neighborhood); query += ` AND p.neighborhood = $${values.length}`; }
-    query += " ORDER BY p.created_at DESC LIMIT 50";
-
-    const result = await pool.query(query, values);
+    const result = await pool.query(query, queryValues);
 
     const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}" ${city === c.name ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
     let neighborhoodOptions = "";
@@ -542,6 +530,7 @@ app.get("/", async (req, res) => {
     `;
 
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p>Aucun professionnel approuve ne correspond a votre recherche.</p></section>`;
+    const paginationHtml = renderPagination(page, totalPages, "/", { profession, city, neighborhood });
 
     const content = `
       ${welcomeBanner}
@@ -559,8 +548,9 @@ app.get("/", async (req, res) => {
         <a class="button" href="/devenir-professionnel">Devenir professionnel</a>
         <a class="button secondary" href="/emplois">Consulter les offres d'emploi</a>
       </section>
-      <h2>Professionnels disponibles (${result.rows.length})</h2>
+      <h2>Professionnels disponibles (${totalPros})</h2>
       ${prosSection}
+      ${paginationHtml}
     `;
     res.send(page("Accueil", content, proConnected));
   } catch (error) {
@@ -685,17 +675,14 @@ app.get("/pro/:id/avis", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ Correctif : validation rating + vérification pro approuvé + RATE LIMITING
+// ✅ Rate Limiting et validation sur les avis
 app.post("/pro/:id/avis", async (req, res) => {
-  // ✅ RATE LIMITING : 5 avis max / heure / IP
   const ip = req.ip || "unknown";
   const now = Date.now();
   const attempts = reviewAttempts.get(ip) || { count: 0, startedAt: now };
   if (now - attempts.startedAt > 60 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
   if (attempts.count >= 5) {
-    return res.status(429).send(page("Trop de tentatives", 
-      "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Vous avez envoyé trop d'avis récemment. Veuillez patienter 1 heure avant de réessayer.</p><a class='button' href='/'>Accueil</a></section>", 
-      null));
+    return res.status(429).send(page("Trop de tentatives", "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Vous avez envoyé trop d'avis récemment. Veuillez patienter 1 heure avant de réessayer.</p><a class='button' href='/'>Accueil</a></section>", null));
   }
   attempts.count++;
   reviewAttempts.set(ip, attempts);
@@ -723,14 +710,23 @@ app.get("/emplois", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const keyword = String(req.query.keyword || "").trim();
   const city = String(req.query.city || "").trim();
+  
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 10;
+  const offset = (page - 1) * limit;
 
-  let query = `SELECT * FROM job_offers WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())`;
+  let whereClause = ` WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())`;
   const values = [];
-  if (keyword) { values.push(`%${keyword}%`); query += ` AND (job_title ILIKE $${values.length} OR company_name ILIKE $${values.length})`; }
-  if (city) { values.push(`%${city}%`); query += ` AND city ILIKE $${values.length}`; }
-  query += " ORDER BY created_at DESC LIMIT 100";
+  if (keyword) { values.push(`%${keyword}%`); whereClause += ` AND (job_title ILIKE $${values.length} OR company_name ILIKE $${values.length})`; }
+  if (city) { values.push(`%${city}%`); whereClause += ` AND city ILIKE $${values.length}`; }
 
-  const result = await pool.query(query, values);
+  const countResult = await pool.query(`SELECT COUNT(*) FROM job_offers ${whereClause}`, values);
+  const totalJobs = parseInt(countResult.rows[0].count);
+  const totalPages = Math.ceil(totalJobs / limit);
+
+  const queryValues = [...values, limit, offset];
+  const query = `SELECT * FROM job_offers ${whereClause} ORDER BY created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+  const result = await pool.query(query, queryValues);
 
   const jobs = result.rows.map((job) => `
     <article class="card">
@@ -748,6 +744,8 @@ app.get("/emplois", async (req, res) => {
       <strong>⚠️ RAPPEL :</strong> Si un recruteur vous demande de l'argent avant l'entretien, veuillez signaler ce recruteur en nous envoyant directement un message en cliquant sur le bouton <strong>"Contact"</strong> de la page d'accueil.
     </div>
   `;
+  
+  const paginationHtml = renderPagination(page, totalPages, "/emplois", { keyword, city });
 
   res.send(page("Emploi", `
     ${alerteEmploi}
@@ -760,11 +758,11 @@ app.get("/emplois", async (req, res) => {
       </form>
       <a class="button" href="/publier-emploi">Publier une offre</a>
     </section>
-    <h2>Offres disponibles (${result.rows.length})</h2>
+    <h2>Offres disponibles (${totalJobs})</h2>
     ${jobs || `<section class="card"><p>Aucune offre.</p></section>`}
+    ${paginationHtml}
   `, proConnected));
 });
-
 /* FORMULAIRE PROFESSIONNEL */
 
 app.get("/devenir-professionnel", async (req, res) => {
@@ -961,7 +959,7 @@ app.post("/candidatures", upload.fields([
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
-  // ✅ DÉTECTION DE DOUBLON SÉCURISÉE (Nom + Société + Téléphone)
+  // ✅ DÉTECTION DE DOUBLON SÉCURISÉE
   const safeName = String(full_name || "").trim().toLowerCase();
   const safeCompany = String(company_name || "").trim().toLowerCase();
   const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
@@ -991,10 +989,8 @@ app.post("/candidatures", upload.fields([
     }
   } catch (dbError) {
     console.error("Erreur vérification doublon :", dbError.message);
-    // En cas d'erreur DB, on laisse passer pour ne pas bloquer les inscriptions légitimes
   }
 
-  // ✅ Correctif : validation contact_preference
   if (!CONTACT_PREFERENCES.includes(contact_preference)) {
     return res.status(400).send(page("Erreur", "<h2>Preference de contact invalide.</h2>", null));
   }
@@ -1026,7 +1022,6 @@ app.post("/candidatures", upload.fields([
       photoActiviteUrl = actResult.secure_url;
     }
 
-    // ✅ Correctif : tracking_code avec crypto.randomInt
     const trackingCode = `SUIVI-${crypto.randomInt(1000, 10000)}`;
 
     const result = await pool.query(`
@@ -1054,7 +1049,6 @@ app.post("/candidatures", upload.fields([
     `, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Impossible d'enregistrer.</h2>", null)); }
 });
-
 /* SUIVI DE DOSSIER (POUR LES CORRECTIONS) */
 
 app.get("/suivi-dossier", (req, res) => {
@@ -1140,7 +1134,7 @@ app.post("/suivi-dossier", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ Correctif : vérification du tracking_code pour éviter l'usurpation
+// ✅ Vérification du tracking_code pour éviter l'usurpation
 app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send(page("Erreur", "<h2>ID invalide.</h2>", null));
@@ -1149,7 +1143,6 @@ app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", 
   const trackingCode = String(req.body.tracking_code || "").trim().toUpperCase();
   
   try {
-    // Vérifier que le tracking_code correspond bien au dossier
     const check = await pool.query("SELECT tracking_code FROM professional_applications WHERE id = $1", [id]);
     if (!check.rows.length || check.rows[0].tracking_code !== trackingCode) {
       return res.status(403).send(page("Erreur", "<h2>Acces refuse.</h2>", null));
@@ -1297,7 +1290,7 @@ app.post("/mon-espace-pro/login", async (req, res) => {
 
 app.post("/mon-espace-pro/logout", (req, res) => { clearProCookie(res); res.redirect(303, "/mon-espace-pro"); });
 
-/* ✅ NOUVEAU : Auto-réinitialisation du code pro par le propriétaire du dossier */
+/* ✅ Auto-réinitialisation du code pro par le propriétaire du dossier */
 app.get("/mon-espace-pro/reinitialiser", (req, res) => {
   res.send(page("Réinitialiser mon code", `
     <section class="card">
@@ -1386,7 +1379,7 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-// ✅ Correctif : inclure les messages de contact dans l'export RGPD
+// ✅ Inclure les messages de contact dans l'export RGPD
 app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1443,7 +1436,7 @@ app.get("/publier-emploi", async (req, res) => {
   res.send(page("Publier", `<section class="card"><h1>Nouvelle offre</h1><form action="/offres-emploi" method="POST"><label>Entreprise *</label><input name="company_name" required maxlength="200" value="${escapeHtml(getDisplayName(proConnected.pro))}"><label>Poste *</label><input name="job_title" required maxlength="200"><label>Ville *</label><input name="city" required maxlength="100" value="${escapeHtml(proConnected.pro.city)}"><label>Contrat *</label><select name="contract_type" required><option value="">Choisir</option>${contractOptions}</select><label>Description *</label><textarea name="description" required maxlength="5000"></textarea><button>Soumettre</button></form><p><a href="/mon-espace-pro">Retour</a></p></section>`, proConnected));
 });
 
-// ✅ Correctif : validation contract_type
+// ✅ Validation contract_type
 app.post("/offres-emploi", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1622,7 +1615,7 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
   res.redirect(303, "/admin/candidatures");
 });
 
-// ✅ NOUVEAU : Régénération du code pro par l'admin
+// ✅ Régénération du code pro par l'admin
 app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
@@ -1650,7 +1643,6 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
   
   if (proResult.rows.length) {
     const p = proResult.rows[0];
-    // ✅ Correctif : Promise.allSettled pour ne pas bloquer si une suppression échoue
     await Promise.allSettled([p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url].map(url => deleteFromCloudinary(url)));
   }
   
@@ -1680,7 +1672,6 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
   res.send(page("Avis", `<section class="card"><h1>Moderation des avis</h1></section>${menu}${reviews || '<section class="card"><p class="muted">Aucun avis.</p></section>'}`, null));
 });
 
-// ✅ Correctif : processed_at renseigné
 app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
   if (REVIEW_STATUSES.includes(req.body.status)) {
     await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
@@ -1749,7 +1740,6 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   res.send(page("RGPD", `<section class="card"><h1>RGPD</h1></section>${menu}${reqs || '<section class="card"><p class="muted">Aucune demande.</p></section>'}`, null));
 });
 
-// ✅ Correctif : processed_at renseigné
 app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
   await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [Number(req.params.id)]);
   res.redirect(303, "/admin/rgpd");
