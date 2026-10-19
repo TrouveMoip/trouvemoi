@@ -79,10 +79,12 @@ const JOB_CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Interim", "Freelance", "Appr
 const OFFER_DURATION_DAYS = 15;
 const CONTACT_PREFERENCES = ["whatsapp", "email"];
 
-// ✅ Correctif : Maps anti-bruteforce
+// ✅ Maps anti-bruteforce et anti-spam
 const loginAttempts = new Map();
 const resetAttempts = new Map();
 const trackingAttempts = new Map();
+const contactAttempts = new Map(); // ✅ Anti-spam /contact
+const reviewAttempts = new Map();  // ✅ Anti-spam /avis
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
@@ -199,6 +201,15 @@ function page(title, content, proConnected) {
       <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%231e40af'/%3E%3Ccircle cx='22' cy='22' r='10' fill='none' stroke='white' stroke-width='3'/%3E%3Cline x1='29' y1='29' x2='37' y2='37' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
 
+      <!-- ✅ GOOGLE ANALYTICS (GA4) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-6YQ5R6M4ET');
+      </script>
+
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f4f7fb; color: #222; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
@@ -286,7 +297,6 @@ function page(title, content, proConnected) {
         .badge-processed { background: #d1fae5; color: #065f46; }
         .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
 
-        /* ✅ AJOUT : Badge Vérifié KYC */
         .badge-verified {
           display: inline-flex;
           align-items: center;
@@ -502,7 +512,6 @@ app.get("/", async (req, res) => {
         ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
         : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
 
-      // ✅ AJOUT : Badge KYC affiché sur la carte
       return `
         <article class="pro-card">
           <div class="pro-card-image">${photoHtml}</div>
@@ -619,7 +628,6 @@ app.get("/pro/:id", async (req, res) => {
     const reviewsSection = reviews.length > 0 ? `<section class="card"><h2>Avis des clients (${reviewsCount})</h2>${ratingSummary}${reviewsHtml}</section>` : "";
     const reviewButton = `<section class="card" style="text-align:center"><h3>Vous avez fait appel a ce professionnel ?</h3><a class="button btn-review" href="/pro/${person.id}/avis">⭐ Laisser un avis</a></section>`;
 
-    // ✅ AJOUT : Badge KYC dans l'en-tête du profil
     const content = `
       <div class="pro-header">
         <h1>${escapeHtml(displayName)}</h1>
@@ -677,8 +685,21 @@ app.get("/pro/:id/avis", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ Correctif : validation rating + vérification pro approuvé
+// ✅ Correctif : validation rating + vérification pro approuvé + RATE LIMITING
 app.post("/pro/:id/avis", async (req, res) => {
+  // ✅ RATE LIMITING : 5 avis max / heure / IP
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const attempts = reviewAttempts.get(ip) || { count: 0, startedAt: now };
+  if (now - attempts.startedAt > 60 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
+  if (attempts.count >= 5) {
+    return res.status(429).send(page("Trop de tentatives", 
+      "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Vous avez envoyé trop d'avis récemment. Veuillez patienter 1 heure avant de réessayer.</p><a class='button' href='/'>Accueil</a></section>", 
+      null));
+  }
+  attempts.count++;
+  reviewAttempts.set(ip, attempts);
+
   try {
     const proId = Number(req.params.id);
     if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
@@ -1810,8 +1831,21 @@ app.get("/contact", async (req, res) => {
   `, proConnected));
 });
 
-// ✅ Correctif : validation pro_id + troncature des champs
+// ✅ Correctif : validation pro_id + troncature des champs + RATE LIMITING
 app.post("/contact", async (req, res) => {
+  // ✅ RATE LIMITING : 3 messages max / heure / IP
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const attempts = contactAttempts.get(ip) || { count: 0, startedAt: now };
+  if (now - attempts.startedAt > 60 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
+  if (attempts.count >= 3) {
+    return res.status(429).send(page("Trop de tentatives", 
+      "<section class='card'><h1>⏳ Trop de messages</h1><p>Vous avez envoyé trop de messages récemment. Veuillez patienter 1 heure.</p><a class='button' href='/'>Accueil</a></section>", 
+      null));
+  }
+  attempts.count++;
+  contactAttempts.set(ip, attempts);
+
   const { name, email, phone, subject, message, pro_id } = req.body;
   if (!name || !subject || !message || (!email && !phone)) {
     return res.status(400).send(page("Erreur", "<section class='card'><h2>Informations manquantes.</h2><a href='/contact'>Retour</a></section>", null));
