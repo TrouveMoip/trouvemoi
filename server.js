@@ -79,6 +79,11 @@ const JOB_CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Interim", "Freelance", "Appr
 const OFFER_DURATION_DAYS = 15;
 const CONTACT_PREFERENCES = ["whatsapp", "email"];
 
+// ✅ Correctif : Maps anti-bruteforce
+const loginAttempts = new Map();
+const resetAttempts = new Map();
+const trackingAttempts = new Map();
+
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
 
@@ -158,7 +163,7 @@ function renderStars(rating) {
   return html;
 }
 
-// ✅ AJOUT APPROCHE A : Badge Vérifié KYC
+// ✅ AJOUT : Badge Vérifié KYC
 function renderKycBadge(size) {
   const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
@@ -281,7 +286,7 @@ function page(title, content, proConnected) {
         .badge-processed { background: #d1fae5; color: #065f46; }
         .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
 
-        /* ✅ AJOUT APPROCHE A : Badge Vérifié KYC */
+        /* ✅ AJOUT : Badge Vérifié KYC */
         .badge-verified {
           display: inline-flex;
           align-items: center;
@@ -497,6 +502,7 @@ app.get("/", async (req, res) => {
         ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
         : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
 
+      // ✅ AJOUT : Badge KYC affiché sur la carte
       return `
         <article class="pro-card">
           <div class="pro-card-image">${photoHtml}</div>
@@ -613,6 +619,7 @@ app.get("/pro/:id", async (req, res) => {
     const reviewsSection = reviews.length > 0 ? `<section class="card"><h2>Avis des clients (${reviewsCount})</h2>${ratingSummary}${reviewsHtml}</section>` : "";
     const reviewButton = `<section class="card" style="text-align:center"><h3>Vous avez fait appel a ce professionnel ?</h3><a class="button btn-review" href="/pro/${person.id}/avis">⭐ Laisser un avis</a></section>`;
 
+    // ✅ AJOUT : Badge KYC dans l'en-tête du profil
     const content = `
       <div class="pro-header">
         <h1>${escapeHtml(displayName)}</h1>
@@ -922,7 +929,7 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-/* ENREGISTREMENT CANDIDATURES (AVEC KYC) */
+/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON) */
 app.post("/candidatures", upload.fields([
   { name: "photo_profil", maxCount: 1 },
   { name: "photo_identite", maxCount: 1 },
@@ -932,6 +939,39 @@ app.post("/candidatures", upload.fields([
   const { full_name, company_name, phone, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email } = req.body;
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
+
+  // ✅ DÉTECTION DE DOUBLON SÉCURISÉE (Nom + Société + Téléphone)
+  const safeName = String(full_name || "").trim().toLowerCase();
+  const safeCompany = String(company_name || "").trim().toLowerCase();
+  const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
+
+  try {
+    const duplicateCheck = await pool.query(
+      `SELECT id FROM professional_applications 
+       WHERE LOWER(TRIM(full_name)) = $1 
+       AND LOWER(TRIM(COALESCE(company_name, ''))) = $2 
+       AND REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $3
+       AND status IN ('pending', 'under_review', 'approved', 'corrections_requested')`,
+      [safeName, safeCompany, safePhone]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      return res.status(409).send(page("Inscription impossible", `
+        <section class="card">
+          <h1 style="color:#b42318; border-left-color:#b42318">⚠️ Inscription impossible</h1>
+          <p><strong>Impossible de s'enregistrer deux fois.</strong></p>
+          <p>Si vous ne vous êtes jamais enregistré sur cette plateforme, veuillez nous contacter directement pour plus d'assistance.</p>
+          <div class="actions" style="margin-top:20px">
+            <a class="button" href="/contact">📩 Nous contacter</a>
+            <a class="button secondary" href="/">Retour à l'accueil</a>
+          </div>
+        </section>
+      `, null));
+    }
+  } catch (dbError) {
+    console.error("Erreur vérification doublon :", dbError.message);
+    // En cas d'erreur DB, on laisse passer pour ne pas bloquer les inscriptions légitimes
+  }
 
   // ✅ Correctif : validation contact_preference
   if (!CONTACT_PREFERENCES.includes(contact_preference)) {
@@ -1011,6 +1051,19 @@ app.get("/suivi-dossier", (req, res) => {
 });
 
 app.post("/suivi-dossier", async (req, res) => {
+  // ✅ Anti-bruteforce du code de suivi
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const attempts = trackingAttempts.get(ip) || { count: 0, startedAt: now };
+  if (now - attempts.startedAt > 15 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
+  if (attempts.count >= 10) {
+    return res.status(429).send(page("Trop de tentatives", 
+      "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Veuillez patienter 15 minutes avant de réessayer.</p></section>", 
+      null));
+  }
+  attempts.count++;
+  trackingAttempts.set(ip, attempts);
+
   try {
     const code = String(req.body.tracking_code || "").trim().toUpperCase();
     if (!code) return res.redirect(303, "/suivi-dossier");
@@ -1110,6 +1163,7 @@ app.get("/mon-espace-pro", async (req, res) => {
           <button type="submit">Se connecter</button>
         </form>
         <p style="margin-top:20px"><a href="/suivi-dossier">Mon dossier est en attente ? Suivre mon dossier</a></p>
+        <p style="margin-top:10px"><a href="/mon-espace-pro/reinitialiser" style="color:#b42318">🔐 Mon code a fuité / Je l'ai perdu</a></p>
       </section>
     `, null));
   }
@@ -1222,6 +1276,81 @@ app.post("/mon-espace-pro/login", async (req, res) => {
 
 app.post("/mon-espace-pro/logout", (req, res) => { clearProCookie(res); res.redirect(303, "/mon-espace-pro"); });
 
+/* ✅ NOUVEAU : Auto-réinitialisation du code pro par le propriétaire du dossier */
+app.get("/mon-espace-pro/reinitialiser", (req, res) => {
+  res.send(page("Réinitialiser mon code", `
+    <section class="card">
+      <h1>🔐 Réinitialiser mon code professionnel</h1>
+      <p>Pour des raisons de sécurité, entrez votre <strong>code de suivi</strong> (SUIVI-XXXX) reçu lors de votre inscription. Un nouveau code professionnel vous sera attribué immédiatement.</p>
+      <form action="/mon-espace-pro/reinitialiser" method="POST">
+        <label>Code de suivi *</label>
+        <input name="tracking_code" required maxlength="20" style="text-transform:uppercase" placeholder="SUIVI-XXXX">
+        <button type="submit" class="warning">🔄 Générer un nouveau code</button>
+      </form>
+      <div class="alert alert-warning" style="margin-top:16px">
+        ⚠️ Votre ancien code sera immédiatement désactivé et ne pourra plus être utilisé.
+      </div>
+      <p style="margin-top:16px"><a href="/mon-espace-pro">← Retour à la connexion</a></p>
+    </section>
+  `, null));
+});
+
+app.post("/mon-espace-pro/reinitialiser", async (req, res) => {
+  // ✅ Anti-bruteforce
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const attempts = resetAttempts.get(ip) || { count: 0, startedAt: now };
+  if (now - attempts.startedAt > 15 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
+  if (attempts.count >= 5) {
+    return res.status(429).send(page("Trop de tentatives", 
+      "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Veuillez patienter 15 minutes avant de réessayer.</p></section>", 
+      null));
+  }
+  attempts.count++;
+  resetAttempts.set(ip, attempts);
+
+  const code = String(req.body.tracking_code || "").trim().toUpperCase();
+  if (!code) return res.redirect(303, "/mon-espace-pro/reinitialiser");
+  
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name FROM professional_applications WHERE tracking_code = $1 AND status = 'approved'`,
+      [code]
+    );
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", 
+        "<section class='card'><h2>Code de suivi introuvable ou dossier non approuvé.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a></section>", 
+        null));
+    }
+    
+    const newCode = await generateUniqueProCode();
+    await pool.query(
+      `UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`,
+      [newCode, result.rows[0].id]
+    );
+    
+    res.send(page("Nouveau code généré", `
+      <section class="card">
+        <h1>✅ Nouveau code généré</h1>
+        <p>Votre ancien code est désormais <strong>invalide</strong>.</p>
+        <div class="pro-code-box">
+          <div class="pro-code-label">Votre nouveau code professionnel</div>
+          <div class="pro-code-value">${escapeHtml(newCode)}</div>
+        </div>
+        <div class="alert alert-warning">
+          <strong>⚠️ Notez ce code immédiatement.</strong> Il ne sera plus affiché.
+        </div>
+        <div class="actions" style="margin-top:20px">
+          <a class="button" href="/mon-espace-pro">Se connecter maintenant</a>
+        </div>
+      </section>
+    `, null));
+  } catch (e) {
+    console.error("Erreur réinitialisation :", e.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
+  }
+});
+
 app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1310,8 +1439,6 @@ app.post("/offres-emploi", async (req, res) => {
 
 /* ADMINISTRATION */
 
-const loginAttempts = new Map();
-
 app.get("/admin", (req, res) => {
   const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
   if (session) return res.redirect(303, "/admin/dashboard");
@@ -1385,11 +1512,10 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   `, null));
 });
 
-/* ADMIN CANDIDATURES (AVEC BOUTON WHATSAPP) */
+/* ADMIN CANDIDATURES (AVEC BOUTON WHATSAPP + REGENERATION) */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  // ✅ Correctif : ORDER BY lisible
   const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC`);
 
   const applications = result.rows.map(c => {
@@ -1416,6 +1542,14 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         <div class="card" style="background:#f0fdf9;border:1px solid #0a9d70">
           <h3 style="margin-top:0">📤 Envoyer le code au professionnel</h3>
           <a class="button whatsapp" href="https://wa.me/${escapeHtml(cleanNumber)}?text=${waMessage}" target="_blank">📱 Envoyer par WhatsApp</a>
+        </div>
+        <div class="card" style="background:#fff7ed;border:1px solid #fdba74;margin-top:12px">
+          <h3 style="margin-top:0;color:#9a3412">🔄 Régénérer le code</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:10px">Utile si le professionnel a perdu son code ou s'il a fuité. L'ancien code sera immédiatement désactivé.</p>
+          <form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" onsubmit="return confirm('Régénérer le code ? L ancien sera invalidé immédiatement.')">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <button class="warning" type="submit">🔄 Générer un nouveau code</button>
+          </form>
         </div>
       `;
     }
@@ -1465,6 +1599,28 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
     await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
   }
   res.redirect(303, "/admin/candidatures");
+});
+
+// ✅ NOUVEAU : Régénération du code pro par l'admin
+app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
+  
+  try {
+    const check = await pool.query("SELECT id, status FROM professional_applications WHERE id = $1", [id]);
+    if (!check.rows.length || check.rows[0].status !== "approved") {
+      return res.redirect(303, "/admin/candidatures");
+    }
+    const newCode = await generateUniqueProCode();
+    await pool.query(
+      `UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`,
+      [newCode, id]
+    );
+    res.redirect(303, "/admin/candidatures");
+  } catch (e) {
+    console.error("Erreur régénération code :", e.message);
+    res.redirect(303, "/admin/candidatures");
+  }
 });
 
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
@@ -1738,7 +1894,7 @@ async function startServer() {
       )
     `);
 
-    /* MIGRATIONS POUR BASES EXISTANTES (chaque migration est protégée) */
+    /* MIGRATIONS POUR BASES EXISTANTES */
     const migrations = [
       `ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
@@ -1749,7 +1905,8 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(254)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
-      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code_updated_at TIMESTAMP`
     ];
     for (const q of migrations) {
       try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); }
@@ -1842,7 +1999,7 @@ async function startServer() {
       }
     }
 
-    console.log("Toutes les tables sont pretes (KYC et suivi inclus).");
+    console.log("Toutes les tables sont pretes (KYC, suivi et anti-doublon inclus).");
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`TrouveMoi demarre sur le port ${PORT}.`);
