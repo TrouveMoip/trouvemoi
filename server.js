@@ -961,7 +961,16 @@ app.post("/suivi-dossier", async (req, res) => {
 
   let statusHtml = "";
   if (pro.status === 'pending') statusHtml = `<div class="alert alert-info">⏳ Votre dossier est en cours d'examen.</div>`;
-  else if (pro.status === 'approved') statusHtml = `<div class="alert alert-success">✅ Votre dossier a été approuvé ! Vous pouvez vous connecter sur votre espace pro avec votre code.</div>`;
+  else if (pro.status === 'approved') {
+    statusHtml = `
+      <div class="alert alert-success">
+        ✅ Votre dossier a été approuvé !<br><br>
+        <strong>Votre code professionnel est : <span style="font-size:20px">${escapeHtml(pro.pro_code)}</span></strong><br><br>
+        Vous pouvez vous connecter sur votre espace pro avec ce code.
+        <div style="margin-top:15px"><a class="button success" href="/mon-espace-pro">Se connecter à mon espace pro</a></div>
+      </div>
+    `;
+  }
   else if (pro.status === 'rejected') statusHtml = `<div class="alert alert-danger">❌ Votre dossier a été refusé. Motif : ${escapeHtml(pro.rejection_reason || "Non spécifié")}</div>`;
   else if (pro.status === 'corrections_requested') {
     statusHtml = `
@@ -1281,7 +1290,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   `, null));
 });
 
-/* ADMIN CANDIDATURES (AVEC KYC ET MOTIF) */
+/* ADMIN CANDIDATURES (AVEC BOUTON WHATSAPP) */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
@@ -1297,7 +1306,23 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
         ${c.photo_activite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_activite_url)}" class="photo-activite"><div class="photo-label">Activite</div></div>` : ""}
       </div>`;
     
-    let codeBlock = c.pro_code ? `<div class="pro-code-box"><div class="pro-code-value">${escapeHtml(c.pro_code)}</div></div>` : "";
+    let codeBlock = "";
+    if (c.pro_code) {
+      const waNumber = c.whatsapp_number || c.phone;
+      const cleanNumber = waNumber.replace(/[()\s.-]/g, "").replace(/^\+/, "");
+      const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${c.pro_code}\n\nConservez-le precieusement pour vous connecter a votre espace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro`);
+      
+      codeBlock = `
+        <div class="pro-code-box" style="margin:16px 0">
+          <div class="pro-code-label">Code professionnel</div>
+          <div class="pro-code-value">${escapeHtml(c.pro_code)}</div>
+        </div>
+        <div class="card" style="background:#f0fdf9;border:1px solid #0a9d70">
+          <h3 style="margin-top:0">📤 Envoyer le code au professionnel</h3>
+          <a class="button whatsapp" href="https://wa.me/${escapeHtml(cleanNumber)}?text=${waMessage}" target="_blank">📱 Envoyer par WhatsApp</a>
+        </div>
+      `;
+    }
 
     return `
       <article class="card">
@@ -1495,7 +1520,7 @@ app.get("/confidentialite", async (req, res) => {
       <p class="muted">Derniere mise a jour : ${new Date().toLocaleDateString("fr-FR")}</p>
       <h2>1. Donnees collectees</h2><p>Nom, telephone, ville, metier, photos, avis, messages.</p>
       <h2>2. Utilisation</h2><p>Mise en relation, affichage des profils, gestion des offres et avis.</p>
-      <h2>3. Protection</h2><p>Les photos d'identite et les photos de verification KYC sont strictement privees.</p>
+      <h2>3. Protection</h2><p>Les photos d'identite et les photos de verification KYC sont strictement privees et accessibles uniquement aux administrateurs pour validation.</p>
       <h2>4. Vos droits</h2><p>Vous disposez des droits d'acces, rectification, suppression et opposition. Contactez-nous via le <a href="/contact">formulaire de contact</a>.</p>
     </section>
   `, proConnected));
@@ -1504,18 +1529,17 @@ app.get("/confidentialite", async (req, res) => {
 app.get("/contact", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const proId = String(req.query.pro || "").trim();
-  
   res.send(page("Contact", `
     <section class="card">
       <h1>Nous contacter</h1>
       <p>Une question, une suggestion, un probleme ? Ecrivez-nous.</p>
       <form action="/contact" method="POST">
         <input type="hidden" name="pro_id" value="${escapeHtml(proId)}">
-        <label>Votre nom *</label><input name="name" required>
-        <label>Votre email</label><input type="email" name="email">
-        <label>Votre telephone</label><input type="tel" name="phone">
-        <label>Sujet *</label><input name="subject" required>
-        <label>Message *</label><textarea name="message" required rows="6"></textarea>
+        <label>Votre nom *</label><input name="name" required maxlength="150">
+        <label>Votre email</label><input type="email" name="email" maxlength="254">
+        <label>Votre telephone</label><input type="tel" name="phone" maxlength="30">
+        <label>Sujet *</label><input name="subject" required maxlength="200">
+        <label>Message *</label><textarea name="message" required rows="6" maxlength="5000"></textarea>
         <button type="submit">Envoyer</button>
       </form>
     </section>
@@ -1525,19 +1549,63 @@ app.get("/contact", async (req, res) => {
 app.post("/contact", async (req, res) => {
   const { name, email, phone, subject, message, pro_id } = req.body;
   if (!name || !subject || !message || (!email && !phone)) {
-    return res.status(400).send(page("Erreur", "<section class='card'><h2>Informations manquantes.</h2></section>", null));
+    return res.status(400).send(page("Erreur", "<section class='card'><h2>Informations manquantes.</h2><a href='/contact'>Retour</a></section>", null));
   }
   try {
-    const proIdInt = /^\d+$/.test(pro_id) ? parseInt(pro_id, 10) : null;
-    await pool.query(`INSERT INTO contact_messages (name, email, phone, subject, message, pro_id) VALUES ($1, $2, $3, $4, $5, $6)`, [name, email || null, phone || null, subject, message, proIdInt]);
-    res.send(page("Succes", "<section class='card'><h1>Message envoye !</h1><a href='/'>Retour</a></section>", null));
-  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur d'envoi.</h2>", null)); }
+    let proIdInt = null;
+    if (/^\d+$/.test(String(pro_id || ""))) {
+      const candidate = parseInt(pro_id, 10);
+      if (Number.isSafeInteger(candidate) && candidate > 0) {
+        const exists = await pool.query("SELECT 1 FROM professional_applications WHERE id = $1 AND status = 'approved'", [candidate]);
+        if (exists.rows.length) proIdInt = candidate;
+      }
+    }
+    await pool.query(
+      `INSERT INTO contact_messages (name, email, phone, subject, message, pro_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [String(name).slice(0, 150), email ? String(email).slice(0, 254) : null, phone ? String(phone).slice(0, 30) : null, String(subject).slice(0, 200), String(message).slice(0, 5000), proIdInt]
+    );
+    res.send(page("Succes", "<section class='card'><h1>Message envoye !</h1><p>Nous vous repondrons dans les plus brefs delais.</p><a class='button' href='/'>Retour a l'accueil</a></section>", null));
+  } catch (e) {
+    console.error("Erreur /contact :", e.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur d'envoi.</h2>", null));
+  }
 });
 
-app.get("/health", (req, res) => res.json({ status: "ok", application: "TrouveMoi" }));
+/* HEALTH CHECKS */
+app.get("/health", (req, res) => res.json({ status: "ok", application: "TrouveMoi", time: new Date().toISOString() }));
 app.get("/health/database", async (req, res) => {
   try { await pool.query("SELECT 1"); res.json({ status: "ok", database: "connected" }); }
-  catch (e) { res.status(500).json({ status: "error" }); }
+  catch (e) { res.status(500).json({ status: "error", message: "database unreachable" }); }
+});
+
+/* SITEMAP + ROBOTS */
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /suivi-dossier\nSitemap: ${req.protocol}://${req.get("host")}/sitemap.xml`);
+});
+
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const base = `${req.protocol}://${req.get("host")}`;
+    const pros = await pool.query(`SELECT id, updated_at FROM professional_applications WHERE status = 'approved' LIMIT 1000`);
+    const urls = [
+      `${base}/`, `${base}/emplois`, `${base}/devenir-professionnel`, `${base}/a-propos`, `${base}/contact`, `${base}/conditions`, `${base}/confidentialite`,
+      ...pros.rows.map(p => `${base}/pro/${p.id}`)
+    ];
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${u}</loc></url>`).join("\n")}\n</urlset>`;
+    res.type("application/xml").send(xml);
+  } catch (e) { res.status(500).send("error"); }
+});
+
+/* 404 + GESTION GLOBALE DES ERREURS */
+app.use((req, res) => {
+  res.status(404).send(page("Introuvable", "<section class='card'><h1>404 - Page introuvable</h1><p>La page demandee n'existe pas.</p><a class='button' href='/'>Retour a l'accueil</a></section>", null));
+});
+
+app.use((err, req, res, next) => {
+  console.error("Erreur non geree :", err.message);
+  if (err.code === "LIMIT_FILE_SIZE") return res.status(413).send(page("Erreur", "<h2>Fichier trop volumineux (max 5 Mo).</h2>", null));
+  if (err.message?.includes("Format non autorise")) return res.status(400).send(page("Erreur", "<h2>Format d'image non autorise.</h2>", null));
+  res.status(500).send(page("Erreur", "<section class='card'><h1>Une erreur est survenue</h1><p>Veuillez reessayer plus tard.</p><a class='button' href='/'>Accueil</a></section>", null));
 });
 
 /* DEMARRAGE */
@@ -1555,15 +1623,27 @@ async function startServer() {
         photo_kyc_url TEXT, photo_activite_url TEXT, contact_preference VARCHAR(20), 
         whatsapp_number VARCHAR(30), contact_email VARCHAR(254), pro_code VARCHAR(10) UNIQUE, 
         tracking_code VARCHAR(20) UNIQUE, rejection_reason TEXT,
-        status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    /* MIGRATIONS (Pour les bases existantes) */
-    await pool.query(`ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`);
-    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`);
-    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20) UNIQUE`);
-    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`);
+    /* MIGRATIONS POUR BASES EXISTANTES */
+    const migrations = [
+      `ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_preference VARCHAR(20)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(254)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20) UNIQUE`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`
+    ];
+    for (const q of migrations) {
+      try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); }
+    }
 
     /* TABLE OFFRES */
     await pool.query(`CREATE TABLE IF NOT EXISTS job_offers (
@@ -1594,6 +1674,10 @@ async function startServer() {
     /* INDEX */
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_city_profession ON professional_applications(city, profession)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_offers(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON contact_messages(is_read)`);
 
     /* DONNEES DE BASE (Villes) */
     const checkCities = await pool.query("SELECT COUNT(*) FROM cities");
@@ -1660,3 +1744,4 @@ async function startServer() {
 }
 
 startServer();
+
