@@ -59,6 +59,7 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.disable("x-powered-by");
+app.set("trust proxy", 1); // ✅ Correctif : IP réelle derrière proxy (Render/Heroku)
 
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
@@ -119,12 +120,17 @@ function requireAdmin(req, res, next) {
   req.adminSession = session; next();
 }
 
+// ✅ Correctif : CSRF robuste (n'accepte plus "" == "")
 function verifyCsrf(req, res, next) {
-  if (!safeEqual(req.body.csrfToken || "", req.adminSession?.csrf || "")) return res.status(403).send(page("Refuse", "<h1>Erreur CSRF</h1>", null));
+  const csrf = req.adminSession?.csrf;
+  if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) {
+    return res.status(403).send(page("Refuse", "<h1>Erreur CSRF</h1>", null));
+  }
   next();
 }
 
-function generateProCode() { return `TM${Math.floor(10000 + Math.random() * 90000)}`; }
+// ✅ Correctif : randomInt crypto au lieu de Math.random
+function generateProCode() { return `TM${crypto.randomInt(10000, 100000)}`; }
 async function generateUniqueProCode() {
   let code, exists = true, attempts = 0;
   while (exists && attempts < 20) {
@@ -150,6 +156,12 @@ function renderStars(rating) {
   const full = Math.floor(rating), half = (rating - full) >= 0.5;
   for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆";
   return html;
+}
+
+// ✅ AJOUT APPROCHE A : Badge Vérifié KYC
+function renderKycBadge(size) {
+  const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
+  return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
 }
 
 function renderLogo() {
@@ -268,6 +280,31 @@ function page(title, content, proConnected) {
         .badge-closed { background: #e5e7eb; color: #374151; }
         .badge-processed { background: #d1fae5; color: #065f46; }
         .badge-new { background: #b42318; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
+
+        /* ✅ AJOUT APPROCHE A : Badge Vérifié KYC */
+        .badge-verified {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: linear-gradient(135deg, #0a9d70 0%, #087f5b 100%);
+          color: white;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          box-shadow: 0 2px 6px rgba(10,157,112,0.3);
+        }
+        .badge-verified::before {
+          content: "✓";
+          font-size: 13px;
+          font-weight: 900;
+        }
+        .badge-verified-lg {
+          font-size: 13px;
+          padding: 6px 14px;
+        }
 
         .alert { padding: 16px 20px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid; }
         .alert-success { background: #d1fae5; border-color: #0a9d70; color: #065f46; }
@@ -467,6 +504,7 @@ app.get("/", async (req, res) => {
             <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
             <div class="pro-card-name">${escapeHtml(displayName)}</div>
             <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+            <div style="margin-bottom:8px">${renderKycBadge()}</div>
             ${ratingHtml}
             <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
           </div>
@@ -580,6 +618,7 @@ app.get("/pro/:id", async (req, res) => {
         <h1>${escapeHtml(displayName)}</h1>
         <div class="profession">${escapeHtml(person.profession)}</div>
         <div class="location">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+        <div style="margin-top:10px">${renderKycBadge("lg")}</div>
         ${ratingHeader}
       </div>
       <section class="card">
@@ -600,39 +639,54 @@ app.get("/pro/:id", async (req, res) => {
 /* FORMULAIRE AVIS */
 
 app.get("/pro/:id/avis", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const id = Number(req.params.id);
-  const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
-  if (!result.rows.length) return res.redirect(303, "/");
-  const person = result.rows[0];
-  const displayName = getDisplayName(person);
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+    const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const person = result.rows[0];
+    const displayName = getDisplayName(person);
 
-  res.send(page("Avis", `
-    <section class="card">
-      <h1>Laisser un avis</h1>
-      <div class="alert alert-info">⭐ Vous laissez un avis sur <strong>${escapeHtml(displayName)}</strong>.</div>
-      <form action="/pro/${person.id}/avis" method="POST">
-        <label>Votre nom *</label><input name="author_name" required>
-        <label>Note *</label>
-        <div class="star-rating-input">
-          <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
-          <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
-          <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
-          <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
-          <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
-        </div>
-        <label>Commentaire</label><textarea name="comment" rows="4"></textarea>
-        <button type="submit">Envoyer</button>
-        <a class="button secondary" href="/pro/${person.id}">Annuler</a>
-      </form>
-    </section>
-  `, proConnected));
+    res.send(page("Avis", `
+      <section class="card">
+        <h1>Laisser un avis</h1>
+        <div class="alert alert-info">⭐ Vous laissez un avis sur <strong>${escapeHtml(displayName)}</strong>.</div>
+        <form action="/pro/${person.id}/avis" method="POST">
+          <label>Votre nom *</label><input name="author_name" required maxlength="100">
+          <label>Note *</label>
+          <div class="star-rating-input">
+            <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
+            <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
+            <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
+            <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
+            <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
+          </div>
+          <label>Commentaire</label><textarea name="comment" rows="4" maxlength="3000"></textarea>
+          <button type="submit">Envoyer</button>
+          <a class="button secondary" href="/pro/${person.id}">Annuler</a>
+        </form>
+      </section>
+    `, proConnected));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
+// ✅ Correctif : validation rating + vérification pro approuvé
 app.post("/pro/:id/avis", async (req, res) => {
-  const { author_name, rating, comment } = req.body;
-  await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status) VALUES ($1, $2, $3, $4, 'pending')`, [Number(req.params.id), author_name, Number(rating), comment]);
-  res.send(page("Succes", "<section class='card'><h1>Merci !</h1><p>Votre avis sera examine.</p><a href='/'>Retour</a></section>", null));
+  try {
+    const proId = Number(req.params.id);
+    if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
+    const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
+    if (!check.rows.length) return res.redirect(303, "/");
+    const ratingNum = Number(req.body.rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).send(page("Erreur", "<h2>Note invalide (1 a 5).</h2>", null));
+    }
+    const author = String(req.body.author_name || "").trim().slice(0, 100);
+    if (!author) return res.status(400).send(page("Erreur", "<h2>Nom requis.</h2>", null));
+    const comment = String(req.body.comment || "").slice(0, 3000);
+    await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status) VALUES ($1, $2, $3, $4, 'pending')`, [proId, author, ratingNum, comment]);
+    res.send(page("Succes", "<section class='card'><h1>Merci !</h1><p>Votre avis sera examine.</p><a href='/'>Retour</a></section>", null));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
 /* PAGE EMPLOIS */
@@ -802,7 +856,7 @@ app.get("/devenir-professionnel", async (req, res) => {
           <input id="photo_identite" name="photo_identite" type="file" accept="image/*" required>
 
           <label for="photo_kyc">3. Photo de verification (Vous + Piece d'identite) * (privee)</label>
-          <div style="background:#eff6ff; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px dashed #3b82f6; text-align:center;">
+          <div style="background:#eff6ff; padding:15px; border-radius:8px; margin-bottom:15px; border:1px dashed #3b82f6; text-align:center;">
             <p style="font-size:13px; margin-bottom:10px; color:#1e40af;"><strong>Exemple de photo :</strong> Prenez une photo de vous, de face, en tenant votre pièce à côté de votre visage. Sans lunettes ni chapeau.</p>
             <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" alt="Exemple KYC" style="max-width:180px; border-radius:8px; border:2px solid #3b82f6;">
           </div>
@@ -879,6 +933,11 @@ app.post("/candidatures", upload.fields([
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
+  // ✅ Correctif : validation contact_preference
+  if (!CONTACT_PREFERENCES.includes(contact_preference)) {
+    return res.status(400).send(page("Erreur", "<h2>Preference de contact invalide.</h2>", null));
+  }
+
   const files = req.files || {};
   const photoProfil = files.photo_profil?.[0];
   const photoIdentite = files.photo_identite?.[0];
@@ -906,7 +965,8 @@ app.post("/candidatures", upload.fields([
       photoActiviteUrl = actResult.secure_url;
     }
 
-    const trackingCode = `SUIVI-${Math.floor(1000 + Math.random() * 9000)}`;
+    // ✅ Correctif : tracking_code avec crypto.randomInt
+    const trackingCode = `SUIVI-${crypto.randomInt(1000, 10000)}`;
 
     const result = await pool.query(`
       INSERT INTO professional_applications (
@@ -943,7 +1003,7 @@ app.get("/suivi-dossier", (req, res) => {
       <p>Entrez le code de suivi reçu lors de votre inscription.</p>
       <form action="/suivi-dossier" method="POST">
         <label>Code de suivi (ex: SUIVI-1234) *</label>
-        <input name="tracking_code" required placeholder="SUIVI-XXXX">
+        <input name="tracking_code" required placeholder="SUIVI-XXXX" maxlength="20" style="text-transform:uppercase">
         <button type="submit">Voir mon dossier</button>
       </form>
     </section>
@@ -951,60 +1011,76 @@ app.get("/suivi-dossier", (req, res) => {
 });
 
 app.post("/suivi-dossier", async (req, res) => {
-  const code = String(req.body.tracking_code || "").trim().toUpperCase();
-  const result = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [code]);
-  
-  if (!result.rows.length) {
-    return res.send(page("Erreur", `<section class="card"><h2>Code introuvable.</h2><a href="/suivi-dossier">Réessayer</a></section>`, null));
-  }
-  const pro = result.rows[0];
+  try {
+    const code = String(req.body.tracking_code || "").trim().toUpperCase();
+    if (!code) return res.redirect(303, "/suivi-dossier");
+    
+    const result = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [code]);
+    
+    if (!result.rows.length) {
+      return res.send(page("Erreur", `<section class="card"><h2>Code introuvable.</h2><a href="/suivi-dossier">Réessayer</a></section>`, null));
+    }
+    const pro = result.rows[0];
 
-  let statusHtml = "";
-  if (pro.status === 'pending') statusHtml = `<div class="alert alert-info">⏳ Votre dossier est en cours d'examen.</div>`;
-  else if (pro.status === 'approved') {
-    statusHtml = `
-      <div class="alert alert-success">
-        ✅ Votre dossier a été approuvé !<br><br>
-        <strong>Votre code professionnel est : <span style="font-size:20px">${escapeHtml(pro.pro_code)}</span></strong><br><br>
-        Vous pouvez vous connecter sur votre espace pro avec ce code.
-        <div style="margin-top:15px"><a class="button success" href="/mon-espace-pro">Se connecter à mon espace pro</a></div>
-      </div>
-    `;
-  }
-  else if (pro.status === 'rejected') statusHtml = `<div class="alert alert-danger">❌ Votre dossier a été refusé. Motif : ${escapeHtml(pro.rejection_reason || "Non spécifié")}</div>`;
-  else if (pro.status === 'corrections_requested') {
-    statusHtml = `
-      <div class="alert alert-warning">
-        <h3 style="margin-top:0">⚠️ Corrections demandées</h3>
-        <p><strong>Motif :</strong> ${escapeHtml(pro.rejection_reason)}</p>
-        <p>Veuillez corriger votre dossier et le renvoyer.</p>
-        <button onclick="document.getElementById('form-correct').classList.remove('hidden')">Corriger mon dossier</button>
-      </div>
-      <div id="form-correct" class="hidden" style="margin-top:20px">
-        <form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data">
-          <label>Nouvelle photo d'identité (optionnel)</label>
-          <input type="file" name="photo_identite" accept="image/*">
-          <label>Nouvelle photo KYC (optionnel)</label>
-          <input type="file" name="photo_kyc" accept="image/*">
-          <button type="submit" class="success">Renvoyer pour validation</button>
-        </form>
-      </div>
-    `;
-  }
+    let statusHtml = "";
+    if (pro.status === 'pending') statusHtml = `<div class="alert alert-info">⏳ Votre dossier est en cours d'examen.</div>`;
+    else if (pro.status === 'approved') {
+      statusHtml = `
+        <div class="alert alert-success">
+          ✅ Votre dossier a été approuvé !<br><br>
+          <strong>Votre code professionnel est : <span style="font-size:20px">${escapeHtml(pro.pro_code)}</span></strong><br><br>
+          Vous pouvez vous connecter sur votre espace pro avec ce code.
+          <div style="margin-top:15px"><a class="button success" href="/mon-espace-pro">Se connecter à mon espace pro</a></div>
+        </div>
+      `;
+    }
+    else if (pro.status === 'rejected') statusHtml = `<div class="alert alert-danger">❌ Votre dossier a été refusé. Motif : ${escapeHtml(pro.rejection_reason || "Non spécifié")}</div>`;
+    else if (pro.status === 'corrections_requested') {
+      statusHtml = `
+        <div class="alert alert-warning">
+          <h3 style="margin-top:0">⚠️ Corrections demandées</h3>
+          <p><strong>Motif :</strong> ${escapeHtml(pro.rejection_reason)}</p>
+          <p>Veuillez corriger votre dossier et le renvoyer.</p>
+          <button onclick="document.getElementById('form-correct').classList.remove('hidden')">Corriger mon dossier</button>
+        </div>
+        <div id="form-correct" class="hidden" style="margin-top:20px">
+          <form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="tracking_code" value="${escapeHtml(pro.tracking_code)}">
+            <label>Nouvelle photo d'identité (optionnel)</label>
+            <input type="file" name="photo_identite" accept="image/*">
+            <label>Nouvelle photo KYC (optionnel)</label>
+            <input type="file" name="photo_kyc" accept="image/*">
+            <button type="submit" class="success">Renvoyer pour validation</button>
+          </form>
+        </div>
+      `;
+    }
 
-  res.send(page("Mon dossier", `
-    <section class="card">
-      <h1>Dossier de ${escapeHtml(pro.full_name)}</h1>
-      ${statusHtml}
-      <p style="margin-top:20px"><a href="/suivi-dossier">Retour</a></p>
-    </section>
-  `, null));
+    res.send(page("Mon dossier", `
+      <section class="card">
+        <h1>Dossier de ${escapeHtml(pro.full_name)}</h1>
+        ${statusHtml}
+        <p style="margin-top:20px"><a href="/suivi-dossier">Retour</a></p>
+      </section>
+    `, null));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
+// ✅ Correctif : vérification du tracking_code pour éviter l'usurpation
 app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
   const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send(page("Erreur", "<h2>ID invalide.</h2>", null));
+  
   const files = req.files || {};
+  const trackingCode = String(req.body.tracking_code || "").trim().toUpperCase();
+  
   try {
+    // Vérifier que le tracking_code correspond bien au dossier
+    const check = await pool.query("SELECT tracking_code FROM professional_applications WHERE id = $1", [id]);
+    if (!check.rows.length || check.rows[0].tracking_code !== trackingCode) {
+      return res.status(403).send(page("Erreur", "<h2>Acces refuse.</h2>", null));
+    }
+
     if (files.photo_identite?.[0]) {
       const res1 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_corr_${Date.now()}`);
       await pool.query(`UPDATE professional_applications SET photo_identite_url = $1 WHERE id = $2`, [res1.secure_url, id]);
@@ -1015,7 +1091,7 @@ app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", 
     }
     await pool.query(`UPDATE professional_applications SET status = 'pending', rejection_reason = NULL WHERE id = $1`, [id]);
     res.send(page("Succes", "<section class='card'><h1>Dossier mis à jour !</h1><p>Il est de nouveau en attente d'examen.</p><a href='/'>Accueil</a></section>", null));
-  } catch (e) { res.status(500).send("Erreur"); }
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
 /* ESPACE PRO */
@@ -1160,17 +1236,28 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
+// ✅ Correctif : inclure les messages de contact dans l'export RGPD
 app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  const offersResult = await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1`, [proConnected.pro.id]);
-  const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
-  const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
   
-  const exportData = { utilisateur: proConnected.pro, offres: offersResult.rows, demandes: gdprResult.rows, avis: reviewsResult.rows };
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`);
-  res.send(JSON.stringify(exportData, null, 2));
+  try {
+    const offersResult = await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1`, [proConnected.pro.id]);
+    const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
+    const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
+    const messagesResult = await pool.query(`SELECT id, name, email, phone, subject, message, created_at FROM contact_messages WHERE pro_id = $1`, [proConnected.pro.id]);
+    
+    const exportData = { 
+      utilisateur: proConnected.pro, 
+      offres: offersResult.rows, 
+      demandes: gdprResult.rows, 
+      avis: reviewsResult.rows,
+      messages_recus: messagesResult.rows
+    };
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`);
+    res.send(JSON.stringify(exportData, null, 2));
+  } catch (e) { res.status(500).send("Erreur lors de l'export."); }
 });
 
 app.post("/mon-espace-pro/demande-suppression", async (req, res) => {
@@ -1203,14 +1290,22 @@ app.get("/publier-emploi", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const contractOptions = JOB_CONTRACT_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
-  res.send(page("Publier", `<section class="card"><h1>Nouvelle offre</h1><form action="/offres-emploi" method="POST"><label>Entreprise *</label><input name="company_name" required value="${escapeHtml(getDisplayName(proConnected.pro))}"><label>Poste *</label><input name="job_title" required><label>Ville *</label><input name="city" required value="${escapeHtml(proConnected.pro.city)}"><label>Contrat *</label><select name="contract_type" required><option value="">Choisir</option>${contractOptions}</select><label>Description *</label><textarea name="description" required></textarea><button>Soumettre</button></form><p><a href="/mon-espace-pro">Retour</a></p></section>`, proConnected));
+  res.send(page("Publier", `<section class="card"><h1>Nouvelle offre</h1><form action="/offres-emploi" method="POST"><label>Entreprise *</label><input name="company_name" required maxlength="200" value="${escapeHtml(getDisplayName(proConnected.pro))}"><label>Poste *</label><input name="job_title" required maxlength="200"><label>Ville *</label><input name="city" required maxlength="100" value="${escapeHtml(proConnected.pro.city)}"><label>Contrat *</label><select name="contract_type" required><option value="">Choisir</option>${contractOptions}</select><label>Description *</label><textarea name="description" required maxlength="5000"></textarea><button>Soumettre</button></form><p><a href="/mon-espace-pro">Retour</a></p></section>`, proConnected));
 });
 
+// ✅ Correctif : validation contract_type
 app.post("/offres-emploi", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  await pool.query(`INSERT INTO job_offers (company_name, job_title, city, contract_type, description, status, pro_id, expires_at) VALUES ($1,$2,$3,$4,$5,'pending',$6, NOW() + INTERVAL '15 days')`, [req.body.company_name, req.body.job_title, req.body.city, req.body.contract_type, req.body.description, proConnected.pro.id]);
-  res.send(page("Succes", "<section class='card'><h1>Offre soumise !</h1><p>En attente de validation.</p><a href='/mon-espace-pro'>Retour</a></section>", proConnected));
+  
+  if (!JOB_CONTRACT_TYPES.includes(req.body.contract_type)) {
+    return res.status(400).send(page("Erreur", "<h2>Type de contrat invalide.</h2>", proConnected));
+  }
+  
+  try {
+    await pool.query(`INSERT INTO job_offers (company_name, job_title, city, contract_type, description, status, pro_id, expires_at) VALUES ($1,$2,$3,$4,$5,'pending',$6, NOW() + INTERVAL '15 days')`, [req.body.company_name, req.body.job_title, req.body.city, req.body.contract_type, req.body.description, proConnected.pro.id]);
+    res.send(page("Succes", "<section class='card'><h1>Offre soumise !</h1><p>En attente de validation.</p><a href='/mon-espace-pro'>Retour</a></section>", proConnected));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", proConnected)); }
 });
 
 /* ADMINISTRATION */
@@ -1294,7 +1389,8 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY status = 'pending' DESC, created_at DESC`);
+  // ✅ Correctif : ORDER BY lisible
+  const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC`);
 
   const applications = result.rows.map(c => {
     const statusOptions = ALLOWED_STATUSES.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("");
@@ -1326,7 +1422,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
     return `
       <article class="card">
-        <h2>${escapeHtml(c.full_name)} <span class="badge badge-${c.status}">${STATUS_LABELS[c.status]}</span></h2>
+        <h2>${escapeHtml(c.full_name)} <span class="badge badge-${c.status}">${STATUS_LABELS[c.status]}</span>${c.status === 'approved' ? ` ${renderKycBadge()}` : ""}</h2>
         ${photos}
         <p><span class="label">Ville :</span> ${escapeHtml(c.city)}</p>
         <p><span class="label">Profession :</span> ${escapeHtml(c.profession)}</p>
@@ -1339,7 +1435,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
           <label for="status-${c.id}">Changer le statut</label>
           <select id="status-${c.id}" name="status">${statusOptions}</select>
           <label for="reason-${c.id}">Motif (si refus ou corrections)</label>
-          <input id="reason-${c.id}" name="rejection_reason" value="${escapeHtml(c.rejection_reason || "")}" placeholder="Ex: Photo floue, veuillez recommencer">
+          <input id="reason-${c.id}" name="rejection_reason" maxlength="1000" value="${escapeHtml(c.rejection_reason || "")}" placeholder="Ex: Photo floue, veuillez recommencer">
           <button>Enregistrer</button>
         </form>
         
@@ -1360,6 +1456,7 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
   if (!ALLOWED_STATUSES.includes(status)) return res.redirect(303, "/admin/candidatures");
   
   const existing = await pool.query("SELECT pro_code FROM professional_applications WHERE id = $1", [id]);
+  if (!existing.rows.length) return res.redirect(303, "/admin/candidatures");
   
   if (status === "approved" && !existing.rows[0].pro_code) {
     const newCode = await generateUniqueProCode();
@@ -1373,11 +1470,13 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
+  
   if (proResult.rows.length) {
     const p = proResult.rows[0];
-    await deleteFromCloudinary(p.photo_profil_url); await deleteFromCloudinary(p.photo_identite_url);
-    await deleteFromCloudinary(p.photo_kyc_url); await deleteFromCloudinary(p.photo_activite_url);
+    // ✅ Correctif : Promise.allSettled pour ne pas bloquer si une suppression échoue
+    await Promise.allSettled([p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url].map(url => deleteFromCloudinary(url)));
   }
+  
   await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
   await pool.query(`DELETE FROM gdpr_requests WHERE pro_id = $1`, [id]);
   await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
@@ -1388,10 +1487,10 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
 /* ADMIN AVIS */
 app.get("/admin/avis", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY status = 'pending' DESC`);
+  const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
   const reviews = result.rows.map(r => `
     <article class="card">
-      <h2>Avis de ${escapeHtml(r.author_name)} sur ${escapeHtml(r.pro_name || "Inconnu")}</h2>
+      <h2>Avis de ${escapeHtml(r.author_name)} sur ${escapeHtml(r.pro_name || "Inconnu")} <span class="badge badge-${r.status}">${REVIEW_STATUS_LABELS[r.status]}</span></h2>
       <div class="review-stars">${renderStars(r.rating)}</div>
       <p>${escapeHtml(r.comment || "Aucun commentaire")}</p>
       <div class="actions">
@@ -1401,28 +1500,32 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
     </article>
   `).join("");
   const menu = await adminMenu("/admin/avis", csrf);
-  res.send(page("Avis", `<section class="card"><h1>Moderation des avis</h1></section>${menu}${reviews}`, null));
+  res.send(page("Avis", `<section class="card"><h1>Moderation des avis</h1></section>${menu}${reviews || '<section class="card"><p class="muted">Aucun avis.</p></section>'}`, null));
 });
 
+// ✅ Correctif : processed_at renseigné
 app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
-  if (REVIEW_STATUSES.includes(req.body.status)) await pool.query(`UPDATE reviews SET status = $1 WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+  if (REVIEW_STATUSES.includes(req.body.status)) {
+    await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+  }
   res.redirect(303, "/admin/avis");
 });
 
 /* ADMIN EMPLOIS */
 app.get("/admin/emplois", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY status = 'pending' DESC`);
+  const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
   const jobs = result.rows.map(j => `
     <article class="card">
-      <h2>${escapeHtml(j.job_title)}</h2>
+      <h2>${escapeHtml(j.job_title)} <span class="badge badge-${j.status}">${JOB_STATUS_LABELS[j.status]}</span></h2>
       <p>Posté par : ${escapeHtml(j.pro_name || "Inconnu")}</p>
+      <p><strong>Ville :</strong> ${escapeHtml(j.city)} | <strong>Contrat :</strong> ${escapeHtml(j.contract_type)}</p>
       <p>${escapeHtml(j.description)}</p>
       <form action="/admin/emplois/${j.id}/status" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><select name="status">${JOB_STATUSES.map(s => `<option value="${s}" ${j.status === s ? "selected" : ""}>${JOB_STATUS_LABELS[s]}</option>`).join("")}</select><button>Modifier</button></form>
     </article>
   `).join("");
   const menu = await adminMenu("/admin/emplois", csrf);
-  res.send(page("Emplois", `<section class="card"><h1>Offres d'emploi</h1></section>${menu}${jobs}`, null));
+  res.send(page("Emplois", `<section class="card"><h1>Offres d'emploi</h1></section>${menu}${jobs || '<section class="card"><p class="muted">Aucune offre.</p></section>'}`, null));
 });
 
 app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
@@ -1438,12 +1541,14 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
     <article class="card" style="${m.is_read ? 'opacity:0.6' : ''}">
       <h2>${escapeHtml(m.subject)}</h2>
       <p><strong>De :</strong> ${escapeHtml(m.name)} (${escapeHtml(m.email || m.phone || '')})</p>
+      ${m.pro_id ? `<p class="muted">Concernant le pro ID : ${m.pro_id}</p>` : ""}
       <p>${escapeHtml(m.message)}</p>
+      <p class="muted">Recu le : ${new Date(m.created_at).toLocaleString("fr-FR")}</p>
       ${!m.is_read ? `<form action="/admin/messages/${m.id}/read" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="secondary">Marquer lu</button></form>` : ""}
     </article>
   `).join("");
   const menu = await adminMenu("/admin/messages", csrf);
-  res.send(page("Messages", `<section class="card"><h1>Messages</h1></section>${menu}${messages}`, null));
+  res.send(page("Messages", `<section class="card"><h1>Messages</h1></section>${menu}${messages || '<section class="card"><p class="muted">Aucun message.</p></section>'}`, null));
 });
 
 app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) => {
@@ -1454,20 +1559,22 @@ app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) 
 /* ADMIN RGPD */
 app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY status = 'pending' DESC`);
+  const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC`);
   const reqs = result.rows.map(r => `
     <article class="card">
-      <h2>${GDPR_TYPE_LABELS[r.request_type]} - ${escapeHtml(r.pro_name || "Inconnu")}</h2>
+      <h2>${GDPR_TYPE_LABELS[r.request_type]} - ${escapeHtml(r.pro_name || "Inconnu")} <span class="badge badge-${r.status}">${GDPR_STATUS_LABELS[r.status]}</span></h2>
       <p>${escapeHtml(r.message)}</p>
-      ${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="success">Traiter</button></form>` : `<p class="badge badge-${r.status}">${GDPR_STATUS_LABELS[r.status]}</p>`}
+      <p class="muted">Demande le : ${new Date(r.created_at).toLocaleString("fr-FR")}</p>
+      ${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="success">Marquer comme traitee</button></form>` : ""}
     </article>
   `).join("");
   const menu = await adminMenu("/admin/rgpd", csrf);
-  res.send(page("RGPD", `<section class="card"><h1>RGPD</h1></section>${menu}${reqs}`, null));
+  res.send(page("RGPD", `<section class="card"><h1>RGPD</h1></section>${menu}${reqs || '<section class="card"><p class="muted">Aucune demande.</p></section>'}`, null));
 });
 
+// ✅ Correctif : processed_at renseigné
 app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
-  await pool.query(`UPDATE gdpr_requests SET status = 'processed' WHERE id = $1`, [Number(req.params.id)]);
+  await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [Number(req.params.id)]);
   res.redirect(303, "/admin/rgpd");
 });
 
@@ -1529,6 +1636,7 @@ app.get("/confidentialite", async (req, res) => {
 app.get("/contact", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const proId = String(req.query.pro || "").trim();
+  
   res.send(page("Contact", `
     <section class="card">
       <h1>Nous contacter</h1>
@@ -1546,6 +1654,7 @@ app.get("/contact", async (req, res) => {
   `, proConnected));
 });
 
+// ✅ Correctif : validation pro_id + troncature des champs
 app.post("/contact", async (req, res) => {
   const { name, email, phone, subject, message, pro_id } = req.body;
   if (!name || !subject || !message || (!email && !phone)) {
@@ -1578,7 +1687,7 @@ app.get("/health/database", async (req, res) => {
   catch (e) { res.status(500).json({ status: "error", message: "database unreachable" }); }
 });
 
-/* SITEMAP + ROBOTS */
+/* ROBOTS + SITEMAP (SEO) */
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /suivi-dossier\nSitemap: ${req.protocol}://${req.get("host")}/sitemap.xml`);
 });
@@ -1586,7 +1695,7 @@ app.get("/robots.txt", (req, res) => {
 app.get("/sitemap.xml", async (req, res) => {
   try {
     const base = `${req.protocol}://${req.get("host")}`;
-    const pros = await pool.query(`SELECT id, updated_at FROM professional_applications WHERE status = 'approved' LIMIT 1000`);
+    const pros = await pool.query(`SELECT id FROM professional_applications WHERE status = 'approved' LIMIT 1000`);
     const urls = [
       `${base}/`, `${base}/emplois`, `${base}/devenir-professionnel`, `${base}/a-propos`, `${base}/contact`, `${base}/conditions`, `${base}/confidentialite`,
       ...pros.rows.map(p => `${base}/pro/${p.id}`)
@@ -1596,15 +1705,16 @@ app.get("/sitemap.xml", async (req, res) => {
   } catch (e) { res.status(500).send("error"); }
 });
 
-/* 404 + GESTION GLOBALE DES ERREURS */
+/* 404 - PAGE INTROUVABLE */
 app.use((req, res) => {
   res.status(404).send(page("Introuvable", "<section class='card'><h1>404 - Page introuvable</h1><p>La page demandee n'existe pas.</p><a class='button' href='/'>Retour a l'accueil</a></section>", null));
 });
 
+/* GESTION GLOBALE DES ERREURS (Multer, etc.) */
 app.use((err, req, res, next) => {
   console.error("Erreur non geree :", err.message);
   if (err.code === "LIMIT_FILE_SIZE") return res.status(413).send(page("Erreur", "<h2>Fichier trop volumineux (max 5 Mo).</h2>", null));
-  if (err.message?.includes("Format non autorise")) return res.status(400).send(page("Erreur", "<h2>Format d'image non autorise.</h2>", null));
+  if (err.message && err.message.includes("Format non autorise")) return res.status(400).send(page("Erreur", "<h2>Format d'image non autorise.</h2>", null));
   res.status(500).send(page("Erreur", "<section class='card'><h1>Une erreur est survenue</h1><p>Veuillez reessayer plus tard.</p><a class='button' href='/'>Accueil</a></section>", null));
 });
 
@@ -1628,7 +1738,7 @@ async function startServer() {
       )
     `);
 
-    /* MIGRATIONS POUR BASES EXISTANTES */
+    /* MIGRATIONS POUR BASES EXISTANTES (chaque migration est protégée) */
     const migrations = [
       `ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
@@ -1637,7 +1747,7 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_preference VARCHAR(20)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(254)`,
-      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20) UNIQUE`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`
     ];
@@ -1671,7 +1781,7 @@ async function startServer() {
     /* TABLE AVIS */
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
 
-    /* INDEX */
+    /* INDEX (perf) */
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
