@@ -804,7 +804,7 @@ app.get("/devenir-professionnel", async (req, res) => {
           <label for="photo_kyc">3. Photo de verification (Vous + Piece d'identite) * (privee)</label>
           <div style="background:#eff6ff; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px dashed #3b82f6; text-align:center;">
             <p style="font-size:13px; margin-bottom:10px; color:#1e40af;"><strong>Exemple de photo :</strong> Prenez une photo de vous, de face, en tenant votre pièce à côté de votre visage. Sans lunettes ni chapeau.</p>
-            <img src="https://i.ibb.co/3s6Hq7Z/kyc-example.png" alt="Exemple KYC" style="max-width:180px; border-radius:8px; border:2px solid #3b82f6;">
+            <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" alt="Exemple KYC" style="max-width:180px; border-radius:8px; border:2px solid #3b82f6;">
           </div>
           <input id="photo_kyc" name="photo_kyc" type="file" accept="image/*" required>
 
@@ -1055,7 +1055,6 @@ app.get("/mon-espace-pro", async (req, res) => {
           ${offer.status === "approved" && !expired ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="display:inline"><button class="warning" type="submit">🔒 Cloturer</button></form>` : ""}
           ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="display:inline"><button class="success" type="submit">🔓 Rouvrir</button></form>` : ""}
           ${offer.status === "approved" && !expired ? `<form action="/mon-espace-pro/offre/${offer.id}/renew" method="POST" style="display:inline"><button class="secondary" type="submit">🔄 Prolonger ${OFFER_DURATION_DAYS}j</button></form>` : ""}
-          <a class="button secondary" href="/mon-espace-pro/offre/${offer.id}/modifier">✏️ Modifier</a>
         </div>
       </article>
     `;
@@ -1234,11 +1233,12 @@ app.post("/admin/login", (req, res) => {
 });
 
 async function adminMenu(current, csrf) {
-  let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0;
+  let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0;
   try {
     gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
     prosPendingCount = Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'pending'")).rows[0].count);
     reviewsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count);
+    msgsCount = Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false")).rows[0].count);
   } catch (e) {}
 
   const links = [
@@ -1246,7 +1246,7 @@ async function adminMenu(current, csrf) {
     { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount },
     { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount },
     { href: "/admin/emplois", label: "💼 Offres", badge: 0 },
-    { href: "/admin/messages", label: "📩 Messages", badge: 0 },
+    { href: "/admin/messages", label: "📩 Messages", badge: msgsCount },
     { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount }
   ];
 
@@ -1540,79 +1540,68 @@ app.get("/health/database", async (req, res) => {
   catch (e) { res.status(500).json({ status: "error" }); }
 });
 
-/* DEMARRAGE ET BASE DE DONNEES */
+/* DEMARRAGE */
 
 async function startServer() {
   try {
+    /* TABLE PROS */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS professional_applications (
-        id SERIAL PRIMARY KEY, 
-        full_name VARCHAR(150) NOT NULL, 
-        company_name VARCHAR(200),
-        phone VARCHAR(30) NOT NULL, 
-        phone_public BOOLEAN NOT NULL DEFAULT true,
-        city VARCHAR(100) NOT NULL, 
-        neighborhood VARCHAR(150), 
-        profession VARCHAR(150) NOT NULL,
-        experience VARCHAR(100), 
-        service_description TEXT NOT NULL, 
-        service_area VARCHAR(300),
-        availability VARCHAR(100), 
-        npi VARCHAR(100), 
-        photo_profil_url TEXT, 
-        photo_identite_url TEXT,
-        photo_kyc_url TEXT,
-        photo_activite_url TEXT, 
-        contact_preference VARCHAR(20), 
-        whatsapp_number VARCHAR(30), 
-        contact_email VARCHAR(254), 
-        pro_code VARCHAR(10) UNIQUE, 
-        tracking_code VARCHAR(20) UNIQUE,
-        rejection_reason TEXT,
-        status VARCHAR(30) NOT NULL DEFAULT 'pending', 
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        id SERIAL PRIMARY KEY, full_name VARCHAR(150) NOT NULL, company_name VARCHAR(200),
+        phone VARCHAR(30) NOT NULL, phone_public BOOLEAN NOT NULL DEFAULT true,
+        city VARCHAR(100) NOT NULL, neighborhood VARCHAR(150), profession VARCHAR(150) NOT NULL,
+        experience VARCHAR(100), service_description TEXT NOT NULL, service_area VARCHAR(300),
+        availability VARCHAR(100), npi VARCHAR(100), photo_profil_url TEXT, photo_identite_url TEXT,
+        photo_kyc_url TEXT, photo_activite_url TEXT, contact_preference VARCHAR(20), 
+        whatsapp_number VARCHAR(30), contact_email VARCHAR(254), pro_code VARCHAR(10) UNIQUE, 
+        tracking_code VARCHAR(20) UNIQUE, rejection_reason TEXT,
+        status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // Ajout des colonnes si la table existait déjà avant
+    /* MIGRATIONS (Pour les bases existantes) */
     await pool.query(`ALTER TABLE professional_applications ALTER COLUMN npi DROP NOT NULL`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20) UNIQUE`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS job_offers (
-        id SERIAL PRIMARY KEY, 
-        company_name VARCHAR(200) NOT NULL, 
-        job_title VARCHAR(200) NOT NULL, 
-        city VARCHAR(100) NOT NULL, 
-        contract_type VARCHAR(50) NOT NULL, 
-        salary VARCHAR(100),
-        description TEXT NOT NULL, 
-        qualifications TEXT, 
-        contact_phone VARCHAR(30),
-        contact_whatsapp VARCHAR(30), 
-        contact_email VARCHAR(254), 
-        deadline DATE,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending', 
-        pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL,
-        expires_at TIMESTAMP, 
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    await pool.query(`CREATE TABLE IF NOT EXISTS cities (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, display_order INTEGER NOT NULL DEFAULT 0)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS neighborhoods (id SERIAL PRIMARY KEY, city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE, name VARCHAR(150) NOT NULL, UNIQUE (city_id, name))`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS professions (id SERIAL PRIMARY KEY, name VARCHAR(150) NOT NULL UNIQUE, category VARCHAR(100), display_order INTEGER NOT NULL DEFAULT 0)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS contact_messages (id SERIAL PRIMARY KEY, name VARCHAR(150) NOT NULL, email VARCHAR(254), phone VARCHAR(30), subject VARCHAR(200) NOT NULL, message TEXT NOT NULL, is_read BOOLEAN NOT NULL DEFAULT false, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS gdpr_requests (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, request_type VARCHAR(30) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', message TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
-    await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
+    /* TABLE OFFRES */
+    await pool.query(`CREATE TABLE IF NOT EXISTS job_offers (
+      id SERIAL PRIMARY KEY, company_name VARCHAR(200) NOT NULL, job_title VARCHAR(200) NOT NULL,
+      city VARCHAR(100) NOT NULL, contract_type VARCHAR(50) NOT NULL, description TEXT NOT NULL, 
+      status VARCHAR(20) NOT NULL DEFAULT 'pending', pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, 
+      expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
 
-    // Insertion des données de base si la base est vide
+    /* TABLE VILLES */
+    await pool.query(`CREATE TABLE IF NOT EXISTS cities (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, display_order INTEGER NOT NULL DEFAULT 0)`);
+
+    /* TABLE QUARTIERS */
+    await pool.query(`CREATE TABLE IF NOT EXISTS neighborhoods (id SERIAL PRIMARY KEY, city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE, name VARCHAR(150) NOT NULL, UNIQUE (city_id, name))`);
+
+    /* TABLE METIERS */
+    await pool.query(`CREATE TABLE IF NOT EXISTS professions (id SERIAL PRIMARY KEY, name VARCHAR(150) NOT NULL UNIQUE, category VARCHAR(100), display_order INTEGER NOT NULL DEFAULT 0)`);
+
+    /* TABLE MESSAGES */
+    await pool.query(`CREATE TABLE IF NOT EXISTS contact_messages (id SERIAL PRIMARY KEY, name VARCHAR(150) NOT NULL, email VARCHAR(254), phone VARCHAR(30), subject VARCHAR(200) NOT NULL, message TEXT NOT NULL, is_read BOOLEAN NOT NULL DEFAULT false, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
+
+    /* TABLE RGPD */
+    await pool.query(`CREATE TABLE IF NOT EXISTS gdpr_requests (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, request_type VARCHAR(30) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
+
+    /* TABLE AVIS */
+    await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
+
+    /* INDEX */
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
+
+    /* DONNEES DE BASE (Villes) */
     const checkCities = await pool.query("SELECT COUNT(*) FROM cities");
     if (Number(checkCities.rows[0].count) === 0) {
       const citiesData = [["Cotonou", 1], ["Abomey-Calavi", 2], ["Porto-Novo", 3], ["Parakou", 4], ["Bohicon", 5], ["Natitingou", 6], ["Ouidah", 7]];
-      for (const [name, order] of citiesData) await pool.query(`INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [name, order]);
+      for (const [name, order] of citiesData) {
+        await pool.query(`INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [name, order]);
+      }
 
       const neighborhoodsData = {
         "Cotonou": ["Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi", "Godomey", "Gbégamey", "Haie Vive", "Jéricho", "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita", "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo", "Zone des Ambassades", "Dantokpa", "Agla", "Aïdjèdo", "Sikècodji"],
@@ -1623,12 +1612,18 @@ async function startServer() {
         "Natitingou": ["Natitingou centre", "Kanté", "Perma", "Kouandé", "Tchoumi-Tchoumi", "Yokossi"],
         "Ouidah": ["Ouidah centre", "Pahou", "Gbéna", "Sè", "Kpomassè", "Avlékété", "Djègbadji"]
       };
+
       for (const [cityName, neighborhoods] of Object.entries(neighborhoodsData)) {
-        const cId = (await pool.query("SELECT id FROM cities WHERE name = $1", [cityName])).rows[0].id;
-        for (const n of neighborhoods) await pool.query(`INSERT INTO neighborhoods (city_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [cId, n]);
+        const cityRes = await pool.query("SELECT id FROM cities WHERE name = $1", [cityName]);
+        if (cityRes.rows.length) {
+          for (const n of neighborhoods) {
+            await pool.query(`INSERT INTO neighborhoods (city_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [cityRes.rows[0].id, n]);
+          }
+        }
       }
     }
 
+    /* DONNEES DE BASE (Metiers) */
     const checkProfs = await pool.query("SELECT COUNT(*) FROM professions");
     if (Number(checkProfs.rows[0].count) === 0) {
       const profs = [
@@ -1645,12 +1640,19 @@ async function startServer() {
         ["Wedding planner", "Événementiel"], ["Décorateur événementiel", "Événementiel"], ["DJ", "Événementiel"], ["Animateur", "Événementiel"], ["MC", "Événementiel"], ["Serveur événementiel", "Événementiel"], ["Sécurité événementielle", "Événementiel"], ["Sonorisation", "Événementiel"],
         ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Serrurier", "Divers"], ["Climatisation", "Divers"], ["Froid", "Divers"], ["Réparation électroménager", "Divers"], ["Antenniste", "Divers"], ["Forgeron", "Divers"], ["Puisatier", "Divers"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Apiculteur", "Agriculture"], ["Prothésiste dentaire", "Santé"]
       ];
-      let count = 0;
-      for (const [name, category] of profs) { count++; await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [name, category, count]); }
+
+      let orderCounter = 0;
+      for (const [name, category] of profs) {
+        orderCounter += 1;
+        await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
+      }
     }
 
-    console.log("Toutes les tables sont pretes.");
-    app.listen(PORT, "0.0.0.0", () => { console.log(`TrouveMoi demarre sur le port ${PORT}.`); });
+    console.log("Toutes les tables sont pretes (KYC et suivi inclus).");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`TrouveMoi demarre sur le port ${PORT}.`);
+    });
   } catch (error) {
     console.error("Erreur au demarrage :", error);
     process.exit(1);
