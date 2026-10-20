@@ -437,19 +437,21 @@ app.get("/", async (req, res) => {
     const city = String(req.query.city || "").trim().slice(0, 100);
     const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
     
-    // ✅ CORRECTION ICI : On utilise currentPage au lieu de page
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12;
     const offset = (currentPage - 1) * limit;
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
+    const allNeighborhoodsResult = await pool.query(`SELECT name FROM neighborhoods ORDER BY name ASC`);
 
     let whereClause = ` WHERE p.status = 'approved'`;
     const values = [];
+    
+    // ✅ MODIFICATION : Recherche partielle (ILIKE) pour accepter la saisie libre
     if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
-    if (city) { values.push(city); whereClause += ` AND p.city = $${values.length}`; }
-    if (neighborhood) { values.push(neighborhood); whereClause += ` AND p.neighborhood = $${values.length}`; }
+    if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
+    if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
 
     const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
     const totalPros = parseInt(countResult.rows[0].count);
@@ -468,28 +470,17 @@ app.get("/", async (req, res) => {
     `;
     const result = await pool.query(query, queryValues);
 
-    const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}" ${city === c.name ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
-    let neighborhoodOptions = "";
-
-    if (city) {
-      const cityResult = await pool.query("SELECT id FROM cities WHERE name = $1", [city]);
-      if (cityResult.rows.length) {
-        const nResult = await pool.query(`SELECT name FROM neighborhoods WHERE city_id = $1 ORDER BY name ASC`, [cityResult.rows[0].id]);
-        neighborhoodOptions = nResult.rows.map((n) => `<option value="${escapeHtml(n.name)}" ${neighborhood === n.name ? "selected" : ""}>${escapeHtml(n.name)}</option>`).join("");
-      }
-    }
-
+    // Préparation des listes pour les Datalists
+    const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">`).join("");
+    const neighborhoodOptions = allNeighborhoodsResult.rows.map((n) => `<option value="${escapeHtml(n.name)}">`).join("");
+    
     const professionsByCategory = {};
     for (const p of professionsResult.rows) {
       const cat = p.category || "Autres";
       if (!professionsByCategory[cat]) professionsByCategory[cat] = [];
       professionsByCategory[cat].push(p.name);
     }
-
-    const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => {
-      const options = names.map((name) => `<option value="${escapeHtml(name)}" ${profession === name ? "selected" : ""}>${escapeHtml(name)}</option>`).join("");
-      return `<optgroup label="${escapeHtml(category)}">${options}</optgroup>`;
-    }).join("");
+    const professionOptions = Object.values(professionsByCategory).flat().map((name) => `<option value="${escapeHtml(name)}">`).join("");
 
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
@@ -532,20 +523,28 @@ app.get("/", async (req, res) => {
 
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p>Aucun professionnel approuve ne correspond a votre recherche.</p></section>`;
     
-    // ✅ CORRECTION ICI : On utilise currentPage
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
+    // ✅ MODIFICATION : Inputs avec Datalist au lieu de Select
     const content = `
       ${welcomeBanner}
       ${alerteArnaque}
       <section class="card">
         <h1>Rechercher un professionnel</h1>
         <form action="/" method="GET">
-          <label for="profession">Metier</label>
-          <select id="profession" name="profession"><option value="">Tous</option>${professionOptions}</select>
-          <label for="city">Ville</label>
-          <select id="city" name="city"><option value="">Toutes</option>${cityOptions}</select>
-          ${city && neighborhoodOptions ? `<label for="neighborhood">Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Tous</option>${neighborhoodOptions}</select>` : ""}
+          
+          <label for="profession">Metier (Tapez ou choisissez)</label>
+          <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex: Plombier, Développeur...">
+          <datalist id="list-professions">${professionOptions}</datalist>
+
+          <label for="city">Ville (Tapez ou choisissez)</label>
+          <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ex: Cotonou, Parakou...">
+          <datalist id="list-cities">${cityOptions}</datalist>
+
+          <label for="neighborhood">Quartier (Optionnel)</label>
+          <input id="neighborhood" name="neighborhood" list="list-neighborhoods" value="${escapeHtml(neighborhood)}" placeholder="Ex: Akpakpa, Zongo...">
+          <datalist id="list-neighborhoods">${neighborhoodOptions}</datalist>
+
           <button type="submit">Rechercher</button>
         </form>
         <a class="button" href="/devenir-professionnel">Devenir professionnel</a>
@@ -717,7 +716,6 @@ app.get("/emplois", async (req, res) => {
   const keyword = String(req.query.keyword || "").trim();
   const city = String(req.query.city || "").trim();
   
-  // ✅ CORRECTION ICI : On utilise currentPage au lieu de page
   const currentPage = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 10;
   const offset = (currentPage - 1) * limit;
@@ -752,7 +750,6 @@ app.get("/emplois", async (req, res) => {
     </div>
   `;
   
-  // ✅ CORRECTION ICI : On utilise currentPage
   const paginationHtml = renderPagination(currentPage, totalPages, "/emplois", { keyword, city });
 
   res.send(page("Emploi", `
@@ -805,8 +802,8 @@ app.get("/devenir-professionnel", async (req, res) => {
           <label for="company_name">Nom de la societe (facultatif)</label>
           <input id="company_name" name="company_name" maxlength="200">
 
-          <label for="phone">Telephone *</label>
-          <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229...">
+          <label for="phone">Telephone * (Format : +229 01...)</label>
+          <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229 01 97 00 00 00">
 
           <div class="checkbox-block">
             <label>
@@ -819,8 +816,8 @@ app.get("/devenir-professionnel", async (req, res) => {
           <div class="checkbox-block">
             <label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 Par WhatsApp</strong></span></label>
             <div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px">
-              <label for="whatsapp_number">Numero WhatsApp</label>
-              <input id="whatsapp_number" name="whatsapp_number" type="tel" maxlength="30">
+              <label for="whatsapp_number">Numero WhatsApp (Format : +229 01...)</label>
+              <input id="whatsapp_number" name="whatsapp_number" type="tel" maxlength="30" placeholder="+229 01 97 00 00 00">
             </div>
           </div>
           <div class="checkbox-block">
@@ -956,7 +953,7 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON) */
+/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON + VERIF NUMERO 01) */
 app.post("/candidatures", upload.fields([
   { name: "photo_profil", maxCount: 1 },
   { name: "photo_identite", maxCount: 1 },
@@ -966,6 +963,38 @@ app.post("/candidatures", upload.fields([
   const { full_name, company_name, phone, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email } = req.body;
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
+
+  // ✅ VÉRIFICATION STRICTE DU NUMÉRO BÉNINOIS (10 chiffres avec 01 OBLIGATOIRE)
+  const cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
+  // Accepte : +229 01..., 00229 01..., ou 01... (8 chiffres après le 01)
+  const beninPhoneRegex = /^(?:\+?229|00229)?01[45679]\d{7}$/;
+
+  if (!beninPhoneRegex.test(cleanPhone)) {
+    return res.status(400).send(page("Erreur", `
+      <section class="card">
+        <h1 style="color:#b42318; border-left-color:#b42318">⚠️ Numéro invalide</h1>
+        <p>Pour être sur TrouveMoi, vous devez obligatoirement utiliser un numéro de téléphone béninois au <strong>nouveau format (10 chiffres)</strong>.</p>
+        <p>Exemple de format attendu : <strong>+229 01 XX XX XX XX</strong> ou <strong>01 XX XX XX XX</strong>.</p>
+        <div class="actions" style="margin-top:20px">
+          <a class="button" href="/devenir-professionnel">Réessayer avec un autre numéro</a>
+          <a class="button secondary" href="/contact">Contacter le support</a>
+        </div>
+      </section>
+    `, null));
+  }
+
+  if (whatsapp_number) {
+    const cleanWa = String(whatsapp_number).replace(/[\s().-]/g, "");
+    if (!beninPhoneRegex.test(cleanWa)) {
+      return res.status(400).send(page("Erreur", `
+        <section class="card">
+          <h2 style="color:#b42318">⚠️ Numéro WhatsApp invalide</h2>
+          <p>Le numéro WhatsApp doit aussi être au nouveau format béninois (01 + 8 chiffres).</p>
+          <a class="button" href="/devenir-professionnel">Réessayer</a>
+        </section>
+      `, null));
+    }
+  }
 
   // ✅ DÉTECTION DE DOUBLON SÉCURISÉE
   const safeName = String(full_name || "").trim().toLowerCase();
@@ -1832,7 +1861,7 @@ app.get("/contact", async (req, res) => {
   `, proConnected));
 });
 
-// ✅ Correctif : validation pro_id + troncature des champs + RATE LIMITING
+// ✅ Validation pro_id + troncature des champs + RATE LIMITING
 app.post("/contact", async (req, res) => {
   // ✅ RATE LIMITING : 3 messages max / heure / IP
   const ip = req.ip || "unknown";
