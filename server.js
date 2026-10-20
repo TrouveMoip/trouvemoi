@@ -246,6 +246,7 @@ function page(title, content, proConnected) {
         .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
         .contact-buttons .button { flex: 1 1 140px; margin: 0; }
         .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; }
+        .facebook { background: #1877F2; } .facebook:hover { background: #166FE5; }
         .email { background: #475467; } .email:hover { background: #344054; }
         .share { background: #4267b2; } .share:hover { background: #365899; }
         .photos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
@@ -340,12 +341,14 @@ function page(title, content, proConnected) {
         .star-rating-input label:hover, .star-rating-input label:hover ~ label { color: #f59e0b; }
         .checkbox-block { background: #f9fafb; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb; }
         .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; }
+        
         footer { background: #1a1a1a; color: #ccc; padding: 32px 20px 20px; margin-top: 40px; }
         .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; }
         .footer-col h4 { color: white; margin-bottom: 12px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
         .footer-col a { display: block; color: #aaa; text-decoration: none; padding: 4px 0; font-size: 14px; }
         .footer-col a:hover { color: #3b82f6; }
         .footer-bottom { max-width: 1100px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid #333; text-align: center; font-size: 13px; color: #888; }
+
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
@@ -375,12 +378,39 @@ function page(title, content, proConnected) {
         </div>
       </header>
       <main>${content}</main>
+      
       <footer>
         <div class="footer-content">
           <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#aaa;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
-          <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
-          <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/conditions">Conditions</a><a href="/confidentialite">Confidentialite</a></div>
-          <div class="footer-col"><h4>Contact</h4><a href="/contact">Nous ecrire</a><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
+          
+          <div class="footer-col">
+            <h4>Navigation</h4>
+            <a href="/">Professionnels</a>
+            <a href="/emplois">Offres d'emploi</a>
+            <a href="/devenir-professionnel">Devenir professionnel</a>
+            <a href="/mon-espace-pro">Espace pro</a>
+          </div>
+          
+          <div class="footer-col">
+            <h4>Informations</h4>
+            <a href="/a-propos">A propos</a>
+            <a href="/contact">Contact</a>
+            <a href="/conditions">Conditions</a>
+            <a href="/confidentialite">Confidentialite</a>
+          </div>
+          
+          <div class="footer-col">
+            <h4>Suivez-nous</h4>
+            <a href="https://www.facebook.com/TrouveMoi.bj" target="_blank" style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:18px;">🔵</span> Page Facebook
+            </a>
+          </div>
+
+          <div class="footer-col">
+            <h4>Contact</h4>
+            <a href="/contact">Nous ecrire</a>
+            <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
+          </div>
         </div>
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
@@ -448,7 +478,7 @@ app.get("/", async (req, res) => {
     let whereClause = ` WHERE p.status = 'approved'`;
     const values = [];
     
-    // ✅ MODIFICATION : Recherche partielle (ILIKE) pour accepter la saisie libre
+    // ✅ Recherche partielle (ILIKE) pour accepter la saisie libre
     if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
     if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
     if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
@@ -525,7 +555,7 @@ app.get("/", async (req, res) => {
     
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
-    // ✅ MODIFICATION : Inputs avec Datalist au lieu de Select
+    // ✅ Inputs avec Datalist au lieu de Select
     const content = `
       ${welcomeBanner}
       ${alerteArnaque}
