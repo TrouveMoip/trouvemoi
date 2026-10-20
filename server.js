@@ -585,8 +585,11 @@ app.get("/pro/:id", async (req, res) => {
 
     const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
     const reviews = reviewsResult.rows;
+    
+    // ✅ LIEN DYNAMIQUE ICI
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
     const shareText = encodeURIComponent("Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi");
-    const shareUrl = encodeURIComponent("https://trouvemoi-4mk0.onrender.com/pro/" + person.id);
+    const shareUrl = encodeURIComponent(`${baseUrl}/pro/${person.id}`);
 
     let contactButtons = "";
     if (person.phone_public && phoneClean) {
@@ -1551,7 +1554,10 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
     if (c.pro_code) {
       const waNumber = c.whatsapp_number || c.phone;
       const cleanNumber = waNumber.replace(/[()\s.-]/g, "").replace(/^\+/, "");
-      const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${c.pro_code}\n\nConservez-le precieusement pour vous connecter a votre espace pro : https://trouvemoi-4mk0.onrender.com/mon-espace-pro`);
+      
+      // ✅ LIEN DYNAMIQUE ICI
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code professionnel est : ${c.pro_code}\n\nConservez-le precieusement pour vous connecter a votre espace pro : ${baseUrl}/mon-espace-pro`);
       
       codeBlock = `
         <div class="pro-code-box" style="margin:16px 0">
@@ -1975,60 +1981,121 @@ async function startServer() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_offers(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON contact_messages(is_read)`);
 
-    /* DONNEES DE BASE (Villes) */
-    const checkCities = await pool.query("SELECT COUNT(*) FROM cities");
-    if (Number(checkCities.rows[0].count) === 0) {
-      const citiesData = [["Cotonou", 1], ["Abomey-Calavi", 2], ["Porto-Novo", 3], ["Parakou", 4], ["Bohicon", 5], ["Natitingou", 6], ["Ouidah", 7]];
-      for (const [name, order] of citiesData) {
-        await pool.query(`INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [name, order]);
-      }
+    /* ==========================================
+       DONNEES DE BASE : LES VILLES DU BENIN
+       ========================================== */
+    const citiesData = [
+      ["Cotonou", 1], ["Abomey-Calavi", 2], ["Porto-Novo", 3], ["Parakou", 4], 
+      ["Bohicon", 5], ["Natitingou", 6], ["Ouidah", 7], ["Abomey", 8], 
+      ["Lokossa", 9], ["Djougou", 10], ["Kandi", 11], ["Malanville", 12], 
+      ["Savalou", 13], ["Dassa-Zoumè", 14], ["Savè", 15], ["Nikki", 16], 
+      ["Tchaourou", 17], ["Allada", 18], ["Comè", 19], ["Banikoara", 20], 
+      ["Sakété", 21], ["Pobè", 22], ["Adjohoun", 23], ["Akpro-Missérété", 24], 
+      ["Avrankou", 25], ["Sèmè-Podji", 26], ["Aplahoué", 27], ["Dogbo", 28], 
+      ["Grand-Popo", 29], ["Zagnanado", 30], ["Agbangnizoun", 31], ["Ouaké", 32], 
+      ["Bassila", 33], ["Boukoumbé", 34], ["Tanguiéta", 35], ["Copargo", 36], 
+      ["Glazoué", 37], ["Bantè", 38], ["Ouèssè", 39], ["Kalalé", 40]
+    ];
+    
+    // Ajoute les villes manquantes sans écraser les existantes
+    for (const [name, order] of citiesData) {
+      await pool.query(`INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [name, order]);
+    }
 
-      const neighborhoodsData = {
-        "Cotonou": ["Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi", "Godomey", "Gbégamey", "Haie Vive", "Jéricho", "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita", "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo", "Zone des Ambassades", "Dantokpa", "Agla", "Aïdjèdo", "Sikècodji"],
-        "Abomey-Calavi": ["Calavi centre", "Godomey", "Akassato", "Zinvié", "Togba", "Tankpè", "Hêvié", "Ouèdo", "Cocotomey", "Kpota"],
-        "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Akonaboè", "Djassin", "Houinmè", "Sèmè", "Tokpota", "Zounvié", "Avakpa", "Atinkanmey"],
-        "Parakou": ["Zongo", "Dépôt", "Guéma", "Kpébié", "Madina", "Tourou", "Albarika", "Baparapé", "Titirou"],
-        "Bohicon": ["Bohicon centre", "Agbangnizoun", "Sèdjè", "Djidja", "Ouèssè", "Kpassè"],
-        "Natitingou": ["Natitingou centre", "Kanté", "Perma", "Kouandé", "Tchoumi-Tchoumi", "Yokossi"],
-        "Ouidah": ["Ouidah centre", "Pahou", "Gbéna", "Sè", "Kpomassè", "Avlékété", "Djègbadji"]
-      };
+    const neighborhoodsData = {
+      "Cotonou": ["Akpakpa", "Cadjèhoun", "Fidjrossè", "Ganhi", "Godomey", "Gbégamey", "Haie Vive", "Jéricho", "Ladji", "Missèbo", "Saint-Michel", "Sainte-Rita", "Sèmè-Podji", "Tokpa", "Vèdoko", "Zogbo", "Zone des Ambassades", "Dantokpa", "Agla", "Aïdjèdo", "Sikècodji"],
+      "Abomey-Calavi": ["Calavi centre", "Godomey", "Akassato", "Zinvié", "Togba", "Tankpè", "Hêvié", "Ouèdo", "Cocotomey", "Kpota"],
+      "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Akonaboè", "Djassin", "Houinmè", "Sèmè", "Tokpota", "Zounvié", "Avakpa", "Atinkanmey"],
+      "Parakou": ["Zongo", "Dépôt", "Guéma", "Kpébié", "Madina", "Tourou", "Albarika", "Baparapé", "Titirou"],
+      "Bohicon": ["Bohicon centre", "Agbangnizoun", "Sèdjè", "Djidja", "Ouèssè", "Kpassè"],
+      "Natitingou": ["Natitingou centre", "Kanté", "Perma", "Kouandé", "Tchoumi-Tchoumi", "Yokossi"],
+      "Ouidah": ["Ouidah centre", "Pahou", "Gbéna", "Sè", "Kpomassè", "Avlékété", "Djègbadji"],
+      "Abomey": ["Houndjro", "Adandokpodji", "Djègbé", "Gbècon-Hounli", "Vidolé"],
+      "Lokossa": ["Lokossa centre", "Agamè", "Ouèdèmè", "Koussoukovi"],
+      "Djougou": ["Djougou centre", "Kilir", "Zongo", "Sèkèré"],
+      "Kandi": ["Kandi centre", "Sonsoro", "Kassakou"],
+      "Malanville": ["Malanville centre", "Garou-Tédji", "Monsoy"],
+      "Savalou": ["Savalou centre", "Attakè", "Gbakè"],
+      "Dassa-Zoumè": ["Dassa centre", "Kpingni", "Tré"],
+      "Savè": ["Savè centre", "Boni", "Kaboua"],
+      "Nikki": ["Nikki centre", "Sérékali", "Tasso"],
+      "Tchaourou": ["Tchaourou centre", "Bétérou", "Ali"],
+      "Allada": ["Allada centre", "Ganvié", "Attogon"],
+      "Comè": ["Comè centre", "Agoué", "Oumako"],
+      "Banikoara": ["Banikoara centre", "Sommpérékou", "Founougo"],
+      "Sakété": ["Sakété centre", "Ijebu", "Kétou"],
+      "Pobè": ["Pobè centre", "Issaba", "Adja-Ouèrè"],
+      "Sèmè-Podji": ["Sèmè centre", "Ekpè", "Tohoun"],
+      "Dogbo": ["Dogbo centre", "Tota", "Dévé"],
+      "Grand-Popo": ["Grand-Popo centre", "Avlo", "Agoué"],
+      "Bassila": ["Bassila centre", "Manigri", "Alédjo"],
+      "Tanguiéta": ["Tanguiéta centre", "Taneka", "Kouaténa"]
+    };
 
-      for (const [cityName, neighborhoods] of Object.entries(neighborhoodsData)) {
-        const cityRes = await pool.query("SELECT id FROM cities WHERE name = $1", [cityName]);
-        if (cityRes.rows.length) {
-          for (const n of neighborhoods) {
-            await pool.query(`INSERT INTO neighborhoods (city_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [cityRes.rows[0].id, n]);
-          }
+    for (const [cityName, neighborhoods] of Object.entries(neighborhoodsData)) {
+      const cityRes = await pool.query("SELECT id FROM cities WHERE name = $1", [cityName]);
+      if (cityRes.rows.length) {
+        for (const n of neighborhoods) {
+          await pool.query(`INSERT INTO neighborhoods (city_id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [cityRes.rows[0].id, n]);
         }
       }
     }
 
-    /* DONNEES DE BASE (Metiers) */
-    const checkProfs = await pool.query("SELECT COUNT(*) FROM professions");
-    if (Number(checkProfs.rows[0].count) === 0) {
-      const profs = [
-        ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"],
-        ["Femme de ménage", "Maison"], ["Repassage à domicile", "Maison"], ["Cuisinier", "Maison"], ["Cuisinière", "Maison"], ["Gardien", "Maison"], ["Vigile", "Maison"], ["Nounou", "Maison"], ["Garde d'enfants", "Maison"], ["Jardinier", "Maison"], ["Désinsectisation", "Maison"], ["Dératisation", "Maison"], ["Plombier-déboucheur", "Maison"],
-        ["Coiffeur", "Beauté"], ["Coiffeuse", "Beauté"], ["Tresseuse", "Beauté"], ["Barbier", "Beauté"], ["Esthéticienne", "Beauté"], ["Maquilleuse", "Beauté"], ["Manucure", "Beauté"], ["Pédicure", "Beauté"], ["Masseur", "Beauté"], ["Masseuse", "Beauté"], ["Tatoueur", "Beauté"],
-        ["Couturier", "Couture"], ["Couturière", "Couture"], ["Tailleur", "Couture"], ["Brodeur", "Couture"], ["Retoucheur", "Couture"], ["Styliste modéliste", "Couture"], ["Cordonnier", "Couture"],
-        ["Mécanicien auto", "Automobile"], ["Mécanicien moto", "Automobile"], ["Électricien auto", "Automobile"], ["Carrossier", "Automobile"], ["Tôlier", "Automobile"], ["Vulcanisateur", "Automobile"], ["Chauffeur de taxi", "Transport"], ["Chauffeur de moto-taxi", "Transport"], ["Chauffeur personnel", "Transport"], ["Déménageur", "Transport"],
-        ["Traiteur", "Restauration"], ["Pâtissier", "Restauration"], ["Boulanger", "Restauration"], ["Vendeur de nourriture", "Restauration"], ["Boucher", "Restauration"], ["Poissonnier", "Restauration"], ["Barista", "Restauration"],
-        ["Développeur web", "Informatique"], ["Développeur mobile", "Informatique"], ["Informaticien", "Informatique"], ["Réparateur de téléphone", "Informatique"], ["Réparateur d'ordinateur", "Informatique"], ["Graphiste", "Informatique"], ["Community manager", "Informatique"], ["Photographe", "Informatique"], ["Vidéaste", "Informatique"], ["Ingénieur réseau", "Informatique"],
-        ["Professeur de Maths", "Éducation"], ["Professeur de Français", "Éducation"], ["Professeur d'Anglais", "Éducation"], ["Enseignant primaire", "Éducation"], ["Formateur informatique", "Éducation"], ["Coach scolaire", "Éducation"],
-        ["Infirmier à domicile", "Santé"], ["Infirmière à domicile", "Santé"], ["Sage-femme", "Santé"], ["Kinésithérapeute", "Santé"], ["Aide-soignant", "Santé"], ["Pharmacien", "Santé"], ["Opticien", "Santé"],
-        ["Comptable", "Professionnel"], ["Fiscaliste", "Professionnel"], ["Juriste", "Professionnel"], ["Avocat", "Professionnel"], ["Notaire", "Professionnel"], ["Traducteur", "Professionnel"], ["Rédacteur de contenu", "Professionnel"], ["Secrétaire", "Professionnel"], ["Assistant administratif", "Professionnel"], ["Consultant", "Professionnel"],
-        ["Wedding planner", "Événementiel"], ["Décorateur événementiel", "Événementiel"], ["DJ", "Événementiel"], ["Animateur", "Événementiel"], ["MC", "Événementiel"], ["Serveur événementiel", "Événementiel"], ["Sécurité événementielle", "Événementiel"], ["Sonorisation", "Événementiel"],
-        ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Serrurier", "Divers"], ["Climatisation", "Divers"], ["Froid", "Divers"], ["Réparation électroménager", "Divers"], ["Antenniste", "Divers"], ["Forgeron", "Divers"], ["Puisatier", "Divers"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Apiculteur", "Agriculture"], ["Prothésiste dentaire", "Santé"]
-      ];
+    /* ==========================================
+       DONNEES DE BASE : LES METIERS (MISE A JOUR)
+       ========================================== */
+    const profs = [
+      // Bâtiment et Construction
+      ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"],
+      ["Installateur de panneaux solaires", "Énergie"], ["Technicien de groupe électrogène", "Énergie"], ["Domoticien", "Bâtiment"], ["Architecte", "Bâtiment"], ["Dessinateur bâtiment", "Bâtiment"], ["Géomètre", "Bâtiment"], ["Ingénieur BTP", "Bâtiment"], ["Conducteur de travaux", "Bâtiment"],
+      
+      // Maison et Services
+      ["Femme de ménage", "Maison"], ["Repassage à domicile", "Maison"], ["Cuisinier", "Maison"], ["Cuisinière", "Maison"], ["Gardien", "Maison"], ["Vigile", "Maison"], ["Nounou", "Maison"], ["Garde d'enfants", "Maison"], ["Jardinier", "Maison"], ["Désinsectisation", "Maison"], ["Dératisation", "Maison"], ["Plombier-déboucheur", "Maison"],
+      ["Garde-malade", "Santé"], ["Auxiliaire de vie", "Santé"], ["Aide aux devoirs", "Éducation"], ["Fleuriste", "Événementiel"], ["Art floral", "Événementiel"], ["Paysagiste", "Maison"], ["Majordome", "Maison"], ["Chef de maison", "Maison"], ["Réparateur de télévision", "Divers"], ["Réparateur d'électroménager", "Divers"], ["Serrurier", "Bâtiment"], ["Blindage de portes", "Bâtiment"],
+      
+      // Beauté et Bien-être
+      ["Coiffeur", "Beauté"], ["Coiffeuse", "Beauté"], ["Tresseuse", "Beauté"], ["Barbier", "Beauté"], ["Esthéticienne", "Beauté"], ["Maquilleuse", "Beauté"], ["Manucure", "Beauté"], ["Pédicure", "Beauté"], ["Masseur", "Beauté"], ["Masseuse", "Beauté"], ["Tatoueur", "Beauté"],
+      ["Prothésiste ongulaire", "Beauté"], ["Nail Art", "Beauté"], ["Lash maker (Extensions de cils)", "Beauté"], ["Maquilleur professionnel", "Beauté"],
+      
+      // Santé et Bien-être
+      ["Infirmier à domicile", "Santé"], ["Infirmière à domicile", "Santé"], ["Sage-femme", "Santé"], ["Kinésithérapeute", "Santé"], ["Aide-soignant", "Santé"], ["Pharmacien", "Santé"], ["Opticien", "Santé"],
+      ["Psychologue", "Santé"], ["Thérapeute de couple", "Santé"], ["Nutritionniste", "Santé"], ["Diététicien", "Santé"], ["Coach sportif", "Santé"], ["Personal Trainer", "Santé"], ["Vétérinaire", "Santé"], ["Toiletteur pour animaux", "Santé"], ["Ostéopathe", "Santé"], ["Naturopathe", "Santé"],
+      
+      // Couture et Textile
+      ["Couturier", "Couture"], ["Couturière", "Couture"], ["Tailleur", "Couture"], ["Brodeur", "Couture"], ["Retoucheur", "Couture"], ["Styliste modéliste", "Couture"], ["Cordonnier", "Couture"],
+      
+      // Automobile et Transport
+      ["Mécanicien auto", "Automobile"], ["Mécanicien moto", "Automobile"], ["Électricien auto", "Automobile"], ["Carrossier", "Automobile"], ["Tôlier", "Automobile"], ["Vulcanisateur", "Automobile"], ["Chauffeur de taxi", "Transport"], ["Chauffeur de moto-taxi", "Transport"], ["Chauffeur personnel", "Transport"], ["Déménageur", "Transport"],
+      ["Livreur", "Transport"], ["Coursier", "Transport"], ["Chauffeur de poids lourd", "Transport"], ["Camionneur", "Transport"], ["Transitaire", "Transport"], ["Déclarant en douane", "Transport"],
+      
+      // Restauration et Événementiel
+      ["Traiteur", "Restauration"], ["Pâtissier", "Restauration"], ["Boulanger", "Restauration"], ["Vendeur de nourriture", "Restauration"], ["Boucher", "Restauration"], ["Poissonnier", "Restauration"], ["Barista", "Restauration"],
+      ["Chef à domicile", "Restauration"], ["Barman", "Événementiel"], ["Mixologue", "Événementiel"], ["Wedding Cake Designer", "Restauration"], ["Hôte(sse) d'accueil", "Événementiel"], ["Protocole", "Événementiel"], ["Guide touristique", "Tourisme"],
+      
+      // Numérique, Médias et Informatique
+      ["Développeur web", "Informatique"], ["Développeur mobile", "Informatique"], ["Informaticien", "Informatique"], ["Réparateur de téléphone", "Informatique"], ["Réparateur d'ordinateur", "Informatique"], ["Graphiste", "Informatique"], ["Community manager", "Informatique"], ["Photographe", "Informatique"], ["Vidéaste", "Informatique"], ["Ingénieur réseau", "Informatique"],
+      ["Monteur vidéo", "Informatique"], ["Motion Designer", "Informatique"], ["Pilote de drone", "Informatique"], ["Expert en cybersécurité", "Informatique"], ["Webmaster", "Informatique"], ["Gestionnaire de site web", "Informatique"], ["Data Analyst", "Informatique"], ["Testeur de jeux vidéo", "Informatique"], ["E-sport manager", "Informatique"], ["Créateur de contenu", "Informatique"], ["Influenceur", "Médias"],
+      
+      // Éducation
+      ["Professeur de Maths", "Éducation"], ["Professeur de Français", "Éducation"], ["Professeur d'Anglais", "Éducation"], ["Enseignant primaire", "Éducation"], ["Formateur informatique", "Éducation"], ["Coach scolaire", "Éducation"],
+      
+      // Professionnel, Administration et Commerce
+      ["Comptable", "Professionnel"], ["Fiscaliste", "Professionnel"], ["Juriste", "Professionnel"], ["Avocat", "Professionnel"], ["Notaire", "Professionnel"], ["Traducteur", "Professionnel"], ["Rédacteur de contenu", "Professionnel"], ["Secrétaire", "Professionnel"], ["Assistant administratif", "Professionnel"], ["Consultant", "Professionnel"],
+      ["Magasinier", "Commerce"], ["Gestionnaire de stock", "Commerce"], ["Démarcheur", "Professionnel"],
+      
+      // Immobilier, Agriculture et Divers
+      ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Apiculteur", "Agriculture"], ["Prothésiste dentaire", "Santé"],
+      ["Climatisation", "Divers"], ["Froid", "Divers"], ["Antenniste", "Divers"], ["Forgeron", "Divers"], ["Puisatier", "Divers"]
+    ];
 
-      let orderCounter = 0;
-      for (const [name, category] of profs) {
-        orderCounter += 1;
-        await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
-      }
+    let orderCounter = 0;
+    for (const [name, category] of profs) {
+      orderCounter += 1;
+      // ON CONFLICT DO NOTHING évite les doublons
+      await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
     }
 
-    console.log("Toutes les tables sont pretes (KYC, suivi et anti-doublon inclus).");
+    console.log("Toutes les tables sont pretes. Villes et Metiers mis a jour !");
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`TrouveMoi demarre sur le port ${PORT}.`);
