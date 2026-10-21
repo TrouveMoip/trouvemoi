@@ -310,7 +310,7 @@ function page(title, content, proConnected) {
         .pro-welcome .button { background: white; color: #1e40af; }
         
         .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px; }
-        .pro-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; border-left: 4px solid #3b82f6; display: flex; flex-direction: row; min-height: 150px; margin-bottom: 10px; }
+        border-left: 4px solid #3b82f6; par border-left: 4px solid #cbd5e0;
         .pro-card-image { width: 125px; min-width: 125px; align-self: stretch; background: #edf2f7; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
         .pro-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .pro-card-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
