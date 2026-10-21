@@ -168,7 +168,7 @@ function renderKycBadge(size) {
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
 }
 
-// ✅ NOUVEAU LOGO (Épingle + Loupe + Personnes)
+// ✅ LE NOUVEAU LOGO (Épingle + Loupe + Personnes)
 function renderLogo() {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" width="200" height="45" style="display:inline-block;vertical-align:middle;max-width:100%">
@@ -213,7 +213,7 @@ function page(title, content, proConnected) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f8f9fa; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* ✅ LE MENU BLEU EST DE RETOUR */
+        /* ✅ MENU BLEU */
         header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
@@ -239,7 +239,7 @@ function page(title, content, proConnected) {
         
         label { display: block; margin-top: 8px; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #1a202c; }
         
-        /* ✅ CHAMPS CLAIRS AVEC BORDURE POUR BIEN LES VOIR */
+        /* ✅ CHAMPS CLAIRS */
         input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 50px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
         textarea { resize: vertical; min-height: 100px; border-radius: 20px; }
@@ -441,7 +441,7 @@ function page(title, content, proConnected) {
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
 
-      <!-- ✅ AJOUT : Modale de Zoom pour l'Admin -->
+      <!-- ✅ MODALE POUR LE ZOOM DES PHOTOS (ADMIN) -->
       <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'">
         <span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span>
         <img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 20px; box-shadow: 0 0 20px rgba(255,255,255,0.2);">
@@ -538,7 +538,6 @@ app.get("/", async (req, res) => {
     `;
     const result = await pool.query(query, queryValues);
 
-    // Préparation des Datalists
     const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">`).join("");
     const neighborhoodOptions = allNeighborhoodsResult.rows.map((n) => `<option value="${escapeHtml(n.name)}">`).join("");
     
@@ -586,47 +585,46 @@ app.get("/", async (req, res) => {
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
-    // ✅ L'INTERFACE D'ACCUEIL AVEC IMAGE DE FOND
+    // ✅ L'INTERFACE D'ACCUEIL AVEC TON IMAGE
     const content = `
       ${welcomeBanner}
       
-      <div style="position: relative; text-align: center; padding: 80px 20px; margin-bottom: 40px; border-radius: 30px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      <div style="position: relative; text-align: center; padding: 40px 15px; margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
         
-        <!-- L'IMAGE DE FOND -->
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://images.unsplash.com/photo-1504917595217-d4bf401fa381?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; z-index: 1;"></div>
+        <!-- TON IMAGE CLOUDINARY -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center top; z-index: 1;"></div>
         
-        <!-- LE VOILE BLEU (pour la lisibilité) -->
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(30,64,175,0.85) 0%, rgba(37,99,235,0.75) 100%); z-index: 2;"></div>
+        <!-- LE VOILE BLEU (75% d'opacité pour bien lire le texte) -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.75); z-index: 2;"></div>
 
         <!-- LE CONTENU -->
-        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto;">
-          <h1 style="font-size: 38px; font-weight: 800; color: white; margin-bottom: 15px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
+          <h1 style="font-size: 26px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
             Trouve ce dont tu as besoin,<br><span style="color: #fbbf24;">près de toi.</span>
           </h1>
-          <p style="font-size: 18px; color: rgba(255,255,255,0.95); margin-bottom: 35px; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+          <p style="font-size: 15px; color: rgba(255,255,255,0.95); margin-bottom: 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
 
-          <form action="/" method="GET" style="background: white; padding: 10px; border-radius: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+          <form action="/" method="GET" style="background: white; padding: 8px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
             
-            <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex. Plombier, Coiffeuse..." style="flex: 2 1 200px; border: none; background: transparent; margin: 0; padding: 15px 20px; box-shadow: none; font-size: 16px; border-radius: 50px;">
+            <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex. Plombier..." style="flex: 2 1 130px; border: none; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px;">
             <datalist id="list-professions">${professionOptions}</datalist>
 
-            <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville (ex: Cotonou)" style="flex: 1 1 150px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 15px 20px; box-shadow: none; font-size: 16px; border-radius: 50px;">
+            <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville" style="flex: 1 1 100px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px;">
             <datalist id="list-cities">${cityOptions}</datalist>
             
             <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
 
-            <button type="submit" style="border-radius: 50px; padding: 16px 36px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,140,0,0.4); color: white;">Rechercher</button>
+            <button type="submit" style="border-radius: 50px; padding: 12px 20px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 15px; font-weight: 700; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.4);">Rechercher</button>
           </form>
-          <p style="font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 15px;">Ex. coiffeuse, restaurant, plombier...</p>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 40px;">
-        <a class="button" href="/devenir-professionnel" style="background: white; color: #1e40af; border: 2px solid #1e40af; padding: 14px 30px;">Devenir professionnel</a>
-        <a class="button" href="/emplois" style="background: #f8f9fa; color: #4a5568; border: 2px solid #cbd5e0; padding: 14px 30px;">Consulter les offres d'emploi</a>
+      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px;">
+        <a class="button" href="/devenir-professionnel" style="background: white; color: #1e40af; border: 2px solid #1e40af; padding: 12px 20px; font-size: 14px;">Devenir professionnel</a>
+        <a class="button" href="/emplois" style="background: #f8f9fa; color: #4a5568; border: 2px solid #cbd5e0; padding: 12px 20px; font-size: 14px;">Consulter les offres d'emploi</a>
       </div>
 
-      <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 40px auto; text-align: center;">
+      <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;">
         <strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.
       </div>
 
@@ -1119,8 +1117,6 @@ app.post("/candidatures", upload.fields([
   }
 
   // ✅ DÉTECTION DE DOUBLON SÉCURISÉE (Par Téléphone OU par NPI)
-  const safeName = String(full_name || "").trim().toLowerCase();
-  const safeCompany = String(company_name || "").trim().toLowerCase();
   const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
 
   try {
