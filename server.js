@@ -155,6 +155,18 @@ async function getConnectedPro(req) {
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
 function getCsrf(req) { return req.adminSession?.csrf || ""; }
 
+// ✅ Helper pour journaliser les actions admin sensibles (RGPD + traçabilité)
+async function logAdminAction(action, targetType, targetId, details) {
+  try {
+    await pool.query(
+      `INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`,
+      [action, targetType, targetId, details]
+    );
+  } catch (e) {
+    console.error("Erreur log admin :", e.message);
+  }
+}
+
 function renderStars(rating) {
   let html = "";
   const full = Math.floor(rating), half = (rating - full) >= 0.5;
@@ -291,45 +303,67 @@ function page(title, content, proConnected) {
         .pro-welcome .button:hover { background: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,255,255,0.3); }
         .pro-welcome .button.secondary { background: rgba(255,255,255,0.2); color: white; border: none; }
 
-        /* ✅ MODIFIÉ : Cartes pros plus attractives */
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; margin-top: 24px; }
+        /* ✅ MODIFIÉ : Carte pro horizontale, photo compacte à gauche */
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px; }
+
         .pro-card {
           background: white;
-          border-radius: 20px;
+          border-radius: 16px;
           overflow: hidden;
           box-shadow: 0 4px 14px rgba(30,64,175,0.10);
           border: 1px solid #dbeafe;
-          border-top: 4px solid #3b82f6;
+          border-left: 4px solid #3b82f6;
           transition: transform 0.2s, box-shadow 0.2s;
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
+          min-height: 150px;
           margin-bottom: 10px;
         }
-        .pro-card:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(30,64,175,0.18); }
-        .pro-card-image { width: 100%; height: 180px; background: #edf2f7; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .pro-card-image img { width: 100%; height: 100%; object-fit: cover; }
-        .pro-card-image-placeholder { font-size: 60px; color: #cbd5e0; }
-        .pro-card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; }
-        .pro-card-profession { font-size: 13px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-        .pro-card-name { font-size: 18px; font-weight: 800; color: #1a202c; margin-bottom: 8px; line-height: 1.3; }
-        .pro-card-location { font-size: 14px; color: #718096; margin-bottom: 12px; }
-        .pro-card-location::before { content: "📍 "; }
-        .pro-card-rating { font-size: 15px; color: #ed8936; font-weight: 600; margin-bottom: 12px; letter-spacing: 1px; }
-        .pro-card-rating .reviews-count { color: #718096; font-weight: 400; font-size: 13px; letter-spacing: 0; margin-left: 6px; }
-        .pro-card-rating .no-rating { color: #a0aec0; font-weight: 400; font-style: italic; font-size: 13px; letter-spacing: 0; }
+        .pro-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(30,64,175,0.18); }
 
-        /* ✅ MODIFIÉ : Bouton "Voir le profil" plus visible et attractif */
+        .pro-card-image {
+          width: 110px;
+          min-width: 110px;
+          align-self: stretch;
+          background: #edf2f7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .pro-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pro-card-image-placeholder { font-size: 40px; color: #cbd5e0; }
+
+        .pro-card-body {
+          padding: 12px 14px;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .pro-card-profession { font-size: 11px; font-weight: 800; color: #2563eb; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .pro-card-name { font-size: 16px; font-weight: 800; color: #1a202c; margin-bottom: 4px; line-height: 1.25; word-break: break-word; }
+        .pro-card-location { font-size: 12px; color: #718096; margin-bottom: 6px; }
+        .pro-card-location::before { content: "📍 "; }
+        .pro-card-rating { font-size: 14px; color: #ed8936; font-weight: 600; margin-bottom: 8px; letter-spacing: 1px; }
+        .pro-card-rating .reviews-count { color: #718096; font-weight: 400; font-size: 12px; letter-spacing: 0; margin-left: 4px; }
+        .pro-card-rating .no-rating { color: #a0aec0; font-weight: 400; font-style: italic; font-size: 12px; letter-spacing: 0; }
+
+        .pro-card-body .badge-verified { font-size: 9px; padding: 3px 8px; margin-bottom: 8px; display: inline-flex; align-self: flex-start; }
+        .pro-card-body .badge-verified::before { font-size: 10px; }
+
         .pro-card-button {
           display: block;
           width: 100%;
           background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
           color: white;
-          padding: 13px 18px;
+          padding: 9px 14px;
           border-radius: 50px;
           text-align: center;
           text-decoration: none;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 13px;
           margin-top: auto;
           transition: transform 0.15s, box-shadow 0.2s;
           box-shadow: 0 4px 12px rgba(37,99,235,0.25);
@@ -379,10 +413,11 @@ function page(title, content, proConnected) {
           .photos-grid img { max-width: 100%; }
           .contact-buttons .button { flex: 1 1 100%; }
           .stat-number { font-size: 28px; }
-          .pros-grid { grid-template-columns: 1fr; }
           .rating-big-number { font-size: 40px; }
-          /* ✅ MODIFIÉ : logo mobile plus grand */
           .logo svg { height: 42px; }
+          .pros-grid { grid-template-columns: 1fr; }
+          .pro-card-image { width: 95px; min-width: 95px; }
+          .pro-card-name { font-size: 15px; }
         }
       </style>
     </head>
@@ -531,7 +566,7 @@ app.get("/", async (req, res) => {
             <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
             <div class="pro-card-name">${escapeHtml(displayName)}</div>
             <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-            <div style="margin-bottom:12px">${renderKycBadge()}</div>
+            ${renderKycBadge()}
             ${ratingHtml}
             <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
           </div>
@@ -560,7 +595,7 @@ app.get("/", async (req, res) => {
 
         <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
 
-          <!-- ✅ MODIFIÉ : Nouvelle phrase -->
+          <!-- ✅ Nouvelle phrase d'accueil -->
           <h1 style="font-size: 26px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.25; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
             Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span>
           </h1>
@@ -570,7 +605,7 @@ app.get("/", async (req, res) => {
             🚀 Déjà ${totalAllPros} professionnel${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''} !
           </div>
 
-          <!-- ✅ MODIFIÉ : Formulaire avec input + datalist (taper OU choisir) -->
+          <!-- ✅ Recherche : taper OU choisir via input + datalist -->
           <form action="/" method="GET" style="background: white; padding: 8px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
             
             <input
@@ -1042,7 +1077,7 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-/* ENREGISTREMENT CANDIDATURES */
+/* ENREGISTREMENT CANDIDATURES (KYC + NPI + validation + cleanup Cloudinary) */
 app.post("/candidatures", upload.fields([
   { name: "photo_profil", maxCount: 1 },
   { name: "photo_identite", maxCount: 1 },
@@ -1138,15 +1173,37 @@ app.post("/candidatures", upload.fields([
   const phoneIsPublic = phone_public === "yes";
   const finalCompanyName = company_name && company_name.trim() ? company_name.trim() : null;
 
+  // ✅ Validation des champs "Autre"
+  if (!finalProfession || !String(finalProfession).trim()) {
+    return res.status(400).send(page("Erreur", `
+      <section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;">
+        <h1 style="color:#e53e3e; justify-content: center;">⚠️ Métier manquant</h1>
+        <p>Vous avez choisi "Autre" comme métier, mais n'avez pas précisé lequel.</p>
+        <a class="button" href="/devenir-professionnel" style="margin-top:20px;">Réessayer</a>
+      </section>
+    `, null));
+  }
+  if (!finalNeighborhood || !String(finalNeighborhood).trim()) {
+    finalNeighborhood = null;
+  }
+  finalProfession = String(finalProfession).trim().slice(0, 150);
+  if (finalNeighborhood) finalNeighborhood = String(finalNeighborhood).trim().slice(0, 150);
+
+  // ✅ Cleanup Cloudinary en cas d'échec de l'INSERT
+  const uploadedUrls = [];
   try {
     const timestamp = Date.now();
     const profilResult = await uploadToCloudinary(photoProfil.buffer, "trouvemoi/profils", `profil_${timestamp}`);
+    uploadedUrls.push(profilResult.secure_url);
     const identiteResult = await uploadToCloudinary(photoIdentite.buffer, "trouvemoi/identites", `identite_${timestamp}`);
+    uploadedUrls.push(identiteResult.secure_url);
     const kycResult = await uploadToCloudinary(photoKyc.buffer, "trouvemoi/kyc", `kyc_${timestamp}`);
+    uploadedUrls.push(kycResult.secure_url);
     let photoActiviteUrl = null;
     if (photoActivite) {
       const actResult = await uploadToCloudinary(photoActivite.buffer, "trouvemoi/activites", `activite_${timestamp}`);
       photoActiviteUrl = actResult.secure_url;
+      uploadedUrls.push(photoActiviteUrl);
     }
 
     const trackingCode = `SUIVI-${crypto.randomInt(1000, 10000)}`;
@@ -1174,7 +1231,13 @@ app.post("/candidatures", upload.fields([
         <a class="button secondary" href="/" style="margin-top:20px;">Retour a l'accueil</a>
       </section>
     `, null));
-  } catch (error) { res.status(500).send(page("Erreur", "<h2>Impossible d'enregistrer.</h2>", null)); }
+  } catch (error) {
+    if (uploadedUrls.length > 0) {
+      console.error("Echec INSERT candidature, cleanup Cloudinary de", uploadedUrls.length, "fichier(s)");
+      await Promise.allSettled(uploadedUrls.map(url => deleteFromCloudinary(url)));
+    }
+    res.status(500).send(page("Erreur", "<h2>Impossible d'enregistrer.</h2>", null));
+  }
 });
 /* SUIVI DE DOSSIER */
 
@@ -1425,12 +1488,27 @@ app.get("/mon-espace-pro", async (req, res) => {
   `, proConnected));
 });
 
+// ✅ Rate limit sur login pro (protection brute-force)
 app.post("/mon-espace-pro/login", async (req, res) => {
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+  const key = `pro_${ip}`;
+  const attempts = loginAttempts.get(key) || { count: 0, startedAt: now };
+  if (now - attempts.startedAt > 15 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
+  if (attempts.count >= 10) {
+    return res.status(429).send(page("Trop de tentatives",
+      "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Veuillez patienter 15 minutes avant de réessayer.</p><a class='button' href='/mon-espace-pro'>Retour</a></section>",
+      null));
+  }
+  attempts.count++;
+  loginAttempts.set(key, attempts);
+
   const code = String(req.body.pro_code || "").trim().toUpperCase();
   if (!/^TM\d{5}$/.test(code)) return res.status(400).send(page("Erreur", "<h2>Code invalide.</h2>", null));
   try {
     const result = await pool.query(`SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]);
     if (!result.rows.length) return res.status(401).send(page("Erreur", "<h2>Code incorrect.</h2>", null));
+    loginAttempts.delete(key);
     setProCookie(res, code);
     res.redirect(303, "/mon-espace-pro");
   } catch (error) { res.redirect(303, "/mon-espace-pro"); }
@@ -1742,10 +1820,23 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
+// ✅ Pagination + logs admin sur les candidatures
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC`);
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 10;
+    const offset = (currentPage - 1) * limit;
+
+    const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications`);
+    const total = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
+
+    const result = await pool.query(`
+      SELECT p.* FROM professional_applications p 
+      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
 
     const applications = result.rows.map(c => {
       const statusOptions = ALLOWED_STATUSES.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("");
@@ -1818,7 +1909,8 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
     }).join("");
 
     const menu = await adminMenu("/admin/candidatures", csrf);
-    res.send(page("Candidatures", `<h1 style="text-align:center; margin-bottom:30px;">Gestion des candidatures</h1>${menu}${applications}`, null));
+    const paginationHtml = renderPagination(currentPage, totalPages, "/admin/candidatures");
+    res.send(page("Candidatures", `<h1 style="text-align:center; margin-bottom:30px;">Gestion des candidatures (${total})</h1>${menu}${applications || '<section class="card"><p class="muted" style="text-align:center;">Aucune candidature.</p></section>'}${paginationHtml}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
@@ -1828,13 +1920,14 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
     if (!ALLOWED_STATUSES.includes(status)) return res.redirect(303, "/admin/candidatures");
     const existing = await pool.query("SELECT pro_code, photo_kyc_url FROM professional_applications WHERE id = $1", [id]);
     if (!existing.rows.length) return res.redirect(303, "/admin/candidatures");
-    // ✅ Vérification KYC avant approbation
     if (status === "approved" && !existing.rows[0].photo_kyc_url) return res.redirect(303, "/admin/candidatures");
     if (status === "approved" && !existing.rows[0].pro_code) {
       const newCode = await generateUniqueProCode();
       await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, rejection_reason = $3 WHERE id = $4`, [status, newCode, reason, id]);
+      await logAdminAction("approve_application", "pro", id, `Code généré: ${newCode}`);
     } else {
       await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
+      await logAdminAction("update_status", "pro", id, `Nouveau statut: ${status}${reason ? ` | Motif: ${reason}` : ""}`);
     }
     res.redirect(303, "/admin/candidatures");
   } catch (error) { res.redirect(303, "/admin/candidatures"); }
@@ -1844,10 +1937,12 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
   try {
-    const check = await pool.query("SELECT id, status FROM professional_applications WHERE id = $1", [id]);
+    const check = await pool.query("SELECT id, status, pro_code FROM professional_applications WHERE id = $1", [id]);
     if (!check.rows.length || check.rows[0].status !== "approved") return res.redirect(303, "/admin/candidatures");
+    const oldCode = check.rows[0].pro_code;
     const newCode = await generateUniqueProCode();
     await pool.query(`UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`, [newCode, id]);
+    await logAdminAction("regenerate_code", "pro", id, `Ancien: ${oldCode} | Nouveau: ${newCode}`);
     res.redirect(303, "/admin/candidatures");
   } catch (e) {
     console.error("Erreur régénération code :", e.message);
@@ -1858,12 +1953,12 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
+    const proResult = await pool.query(`SELECT full_name, phone, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
     if (proResult.rows.length) {
       const p = proResult.rows[0];
       await Promise.allSettled([p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url].map(url => deleteFromCloudinary(url)));
+      await logAdminAction("delete_application", "pro", id, `Nom: ${p.full_name} | Téléphone: ${p.phone}`);
     }
-    // ✅ Suppression des messages liés avant le pro
     await pool.query(`DELETE FROM contact_messages WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
     await pool.query(`DELETE FROM gdpr_requests WHERE pro_id = $1`, [id]);
@@ -1902,6 +1997,7 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
 app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
   if (REVIEW_STATUSES.includes(req.body.status)) {
     await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+    await logAdminAction(`review_${req.body.status}`, "review", Number(req.params.id), null);
   }
   res.redirect(303, "/admin/avis");
 });
@@ -1931,7 +2027,10 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
 });
 
 app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
-  if (JOB_STATUSES.includes(req.body.status)) await pool.query(`UPDATE job_offers SET status = $1 WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+  if (JOB_STATUSES.includes(req.body.status)) {
+    await pool.query(`UPDATE job_offers SET status = $1 WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+    await logAdminAction(`job_${req.body.status}`, "job", Number(req.params.id), null);
+  }
   res.redirect(303, "/admin/emplois");
 });
 
@@ -1979,6 +2078,7 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
 
 app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
   await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [Number(req.params.id)]);
+  await logAdminAction("gdpr_processed", "gdpr", Number(req.params.id), null);
   res.redirect(303, "/admin/rgpd");
 });
 
@@ -2065,7 +2165,6 @@ app.get("/contact", async (req, res) => {
 
 app.post("/contact", async (req, res) => {
   const { name, email, phone, subject, message, pro_id } = req.body;
-  // ✅ Validation AVANT incrémentation du rate limit
   if (!name || !subject || !message || (!email && !phone)) {
     return res.status(400).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Informations manquantes.</h2><a href='/contact' class='button'>Retour</a></section>", null));
   }
@@ -2189,6 +2288,16 @@ async function startServer() {
     await pool.query(`CREATE TABLE IF NOT EXISTS gdpr_requests (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, request_type VARCHAR(30) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
 
+    // ✅ Table admin_logs pour traçabilité des actions admin (RGPD)
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (
+      id SERIAL PRIMARY KEY,
+      action VARCHAR(100) NOT NULL,
+      target_type VARCHAR(50),
+      target_id INTEGER,
+      details TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
@@ -2196,6 +2305,8 @@ async function startServer() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_npi ON professional_applications(npi)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_offers(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON contact_messages(is_read)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_created ON admin_logs(created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON admin_logs(action)`);
 
     const citiesData = [
       ["Cotonou", 1], ["Abomey-Calavi", 2], ["Porto-Novo", 3], ["Parakou", 4],
@@ -2280,7 +2391,7 @@ async function startServer() {
       await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
     }
 
-    console.log("Toutes les tables sont pretes. Design, Compteur et NPI inclus !");
+    console.log("Toutes les tables sont pretes. Design, Compteur, NPI, Logs admin inclus !");
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`TrouveMoi demarre sur le port ${PORT}.`);
