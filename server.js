@@ -318,8 +318,9 @@ function page(title, content, proConnected) {
         .pro-welcome .button:hover { background: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,255,255,0.3); }
         .pro-welcome .button.secondary { background: rgba(255,255,255,0.2); color: white; border: none; }
 
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; margin-top: 20px; }
-        .pro-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; }
+        /* ✅ NOUVELLES CARTES PROS MIEUX SÉPARÉES */
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; margin-top: 24px; }
+        .pro-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column; margin-bottom: 10px; }
         .pro-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
         .pro-card-image { width: 100%; height: 180px; background: #edf2f7; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .pro-card-image img { width: 100%; height: 100%; object-fit: cover; }
@@ -368,12 +369,13 @@ function page(title, content, proConnected) {
         .checkbox-block { background: #f8f9fa; padding: 16px; border-radius: 16px; margin: 12px 0; border: 1px solid #edf2f7; }
         .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; color: #4a5568; }
 
-        footer { background: white; color: #718096; padding: 40px 20px 20px; margin-top: 40px; border-top: 1px solid #edf2f7; }
+        /* ✅ NOUVEAU FOOTER SOMBRE */
+        footer { background: #1e293b; color: #cbd5e0; padding: 40px 20px 20px; margin-top: 40px; border-top: none; }
         .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
-        .footer-col h4 { color: #1a202c; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
-        .footer-col a { display: block; color: #718096; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
-        .footer-col a:hover { color: #2563eb; }
-        .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #edf2f7; text-align: center; font-size: 13px; color: #a0aec0; }
+        .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+        .footer-col a { display: block; color: #a0aec0; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
+        .footer-col a:hover { color: #3b82f6; }
+        .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #334155; text-align: center; font-size: 13px; color: #94a3b8; }
 
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
@@ -407,7 +409,7 @@ function page(title, content, proConnected) {
       
       <footer>
         <div class="footer-content">
-          <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#718096;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
+          <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#a0aec0;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
           
           <div class="footer-col">
             <h4>Navigation</h4>
@@ -497,7 +499,7 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
   html += `</div>`;
   return html;
 }
-/* PAGE D'ACCUEIL (Design C'CHAP avec Image de fond) */
+/* PAGE D'ACCUEIL (Design C'CHAP avec Image de fond et Compteur) */
 
 app.get("/", async (req, res) => {
   try {
@@ -512,7 +514,10 @@ app.get("/", async (req, res) => {
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
-    const allNeighborhoodsResult = await pool.query(`SELECT name FROM neighborhoods ORDER BY name ASC`);
+    
+    // ✅ COMPTEUR GLOBAL DE TOUS LES PROS
+    const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
+    const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
 
     let whereClause = ` WHERE p.status = 'approved'`;
     const values = [];
@@ -538,16 +543,12 @@ app.get("/", async (req, res) => {
     `;
     const result = await pool.query(query, queryValues);
 
-    const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">`).join("");
-    const neighborhoodOptions = allNeighborhoodsResult.rows.map((n) => `<option value="${escapeHtml(n.name)}">`).join("");
-    
     const professionsByCategory = {};
     for (const p of professionsResult.rows) {
       const cat = p.category || "Autres";
       if (!professionsByCategory[cat]) professionsByCategory[cat] = [];
       professionsByCategory[cat].push(p.name);
     }
-    const professionOptions = Object.values(professionsByCategory).flat().map((name) => `<option value="${escapeHtml(name)}">`).join("");
 
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
@@ -585,32 +586,39 @@ app.get("/", async (req, res) => {
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
-    // ✅ L'INTERFACE D'ACCUEIL AVEC TON IMAGE
     const content = `
       ${welcomeBanner}
       
+      <!-- 🚀 SECTION D'ACCUEIL AVEC IMAGE DE FOND ET COMPTEUR -->
       <div style="position: relative; text-align: center; padding: 40px 15px; margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
         
-        <!-- TON IMAGE CLOUDINARY -->
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center top; z-index: 1;"></div>
-        
-        <!-- LE VOILE BLEU (75% d'opacité pour bien lire le texte) -->
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.75); z-index: 2;"></div>
 
-        <!-- LE CONTENU -->
         <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
           <h1 style="font-size: 26px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
             Trouve ce dont tu as besoin,<br><span style="color: #fbbf24;">près de toi.</span>
           </h1>
-          <p style="font-size: 15px; color: rgba(255,255,255,0.95); margin-bottom: 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+          <p style="font-size: 15px; color: rgba(255,255,255,0.95); margin-bottom: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+
+          <!-- ✅ LE COMPTEUR GLOBAL -->
+          <div style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 6px 16px; border-radius: 50px; margin-bottom: 25px; font-weight: 700; color: white; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+            🚀 Déjà ${totalAllPros} professionnel${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''} !
+          </div>
 
           <form action="/" method="GET" style="background: white; padding: 8px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
             
-            <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex. Plombier..." style="flex: 2 1 130px; border: none; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px;">
-            <datalist id="list-professions">${professionOptions}</datalist>
+            <!-- ✅ SELECT MÉTIER LISIBLE -->
+            <select id="profession" name="profession" style="flex: 2 1 130px; border: none; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px; color: #1a202c; font-weight: 600;">
+              <option value="">Tous les métiers</option>
+              ${Object.entries(professionsByCategory).map(([cat, names]) => `<optgroup label="${cat}">${names.map(n => `<option value="${escapeHtml(n)}" ${profession === n ? "selected" : ""}>${escapeHtml(n)}</option>`).join("")}</optgroup>`).join("")}
+            </select>
 
-            <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville" style="flex: 1 1 100px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px;">
-            <datalist id="list-cities">${cityOptions}</datalist>
+            <!-- ✅ SELECT VILLE LISIBLE -->
+            <select id="city" name="city" style="flex: 1 1 100px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px; color: #1a202c; font-weight: 600;">
+              <option value="">Toutes les villes</option>
+              ${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}" ${city === c.name ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+            </select>
             
             <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
 
@@ -619,9 +627,10 @@ app.get("/", async (req, res) => {
         </div>
       </div>
 
-      <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px;">
-        <a class="button" href="/devenir-professionnel" style="background: white; color: #1e40af; border: 2px solid #1e40af; padding: 12px 20px; font-size: 14px;">Devenir professionnel</a>
-        <a class="button" href="/emplois" style="background: #f8f9fa; color: #4a5568; border: 2px solid #cbd5e0; padding: 12px 20px; font-size: 14px;">Consulter les offres d'emploi</a>
+      <!-- ✅ BOUTONS COLORÉS -->
+      <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 40px;">
+        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; border: none; padding: 14px 24px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 15px rgba(37,99,235,0.3);">Devenir professionnel</a>
+        <a class="button" href="/emplois" style="background: #38a169; color: white; border: none; padding: 14px 24px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 15px rgba(56,161,105,0.3);">Consulter les offres d'emploi</a>
       </div>
 
       <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;">
@@ -2437,7 +2446,7 @@ async function startServer() {
       await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
     }
 
-    console.log("Toutes les tables sont pretes. Design et NPI inclus !");
+    console.log("Toutes les tables sont pretes. Design, Compteur et NPI inclus !");
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`TrouveMoi demarre sur le port ${PORT}.`);
