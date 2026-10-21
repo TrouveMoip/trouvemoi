@@ -213,7 +213,7 @@ function page(title, content, proConnected) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f8f9fa; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* ✅ LE MENU BLEU */
+        /* ✅ LE MENU BLEU EST DE RETOUR */
         header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
@@ -239,7 +239,7 @@ function page(title, content, proConnected) {
         
         label { display: block; margin-top: 8px; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #1a202c; }
         
-        /* ✅ CHAMPS DE SAISIE CLAIRS */
+        /* ✅ CHAMPS CLAIRS AVEC BORDURE POUR BIEN LES VOIR */
         input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 50px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
         textarea { resize: vertical; min-height: 100px; border-radius: 20px; }
@@ -497,7 +497,7 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
   html += `</div>`;
   return html;
 }
-/* PAGE D'ACCUEIL (Nouveau Design C'CHAP) */
+/* PAGE D'ACCUEIL (Design C'CHAP avec Image de fond) */
 
 app.get("/", async (req, res) => {
   try {
@@ -586,34 +586,44 @@ app.get("/", async (req, res) => {
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
-    // ✅ L'INTERFACE D'ACCUEIL
+    // ✅ L'INTERFACE D'ACCUEIL AVEC IMAGE DE FOND
     const content = `
       ${welcomeBanner}
       
-      <div style="text-align: center; padding: 40px 10px; margin-bottom: 20px;">
-        <h1 style="font-size: 34px; font-weight: 800; color: #1a202c; margin-bottom: 10px; line-height: 1.2;">
-          Trouve ce dont tu as besoin,<br><span style="color: #2563eb;">près de toi.</span>
-        </h1>
-        <p style="font-size: 16px; color: #718096; margin-bottom: 30px;">Des professionnels vérifiés au Bénin, en 1 clic.</p>
-
-        <form action="/" method="GET" style="max-width: 700px; margin: 0 auto; background: white; padding: 10px; border-radius: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #e2e8f0;">
-          
-          <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex. Plombier, Coiffeuse..." style="flex: 2 1 200px; border: none; background: transparent; margin: 0; padding: 15px; box-shadow: none; font-size: 16px; border-radius: 50px;">
-          <datalist id="list-professions">${professionOptions}</datalist>
-
-          <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville (ex: Cotonou)" style="flex: 1 1 150px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 15px; box-shadow: none; font-size: 16px; border-radius: 50px;">
-          <datalist id="list-cities">${cityOptions}</datalist>
-          
-          <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
-
-          <button type="submit" style="border-radius: 50px; padding: 14px 30px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,140,0,0.3);">Rechercher</button>
-        </form>
-        <p style="font-size: 13px; color: #a0aec0; margin-top: 15px;">Ex. coiffeuse, restaurant, plombier...</p>
+      <div style="position: relative; text-align: center; padding: 80px 20px; margin-bottom: 40px; border-radius: 30px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
         
-        <div style="margin-top: 30px;">
-          <a class="button" href="/devenir-professionnel" style="background: white; color: #2563eb; border: 1px solid #2563eb;">Devenir professionnel</a>
-          <a class="button" href="/emplois" style="background: white; color: #4a5568; border: 1px solid #cbd5e0;">Consulter les offres d'emploi</a>
+        <!-- L'IMAGE DE FOND -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://images.unsplash.com/photo-1504917595217-d4bf401fa381?q=80&w=2070&auto=format&fit=crop'); background-size: cover; background-position: center; z-index: 1;"></div>
+        
+        <!-- LE VOILE BLEU (pour la lisibilité) -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(30,64,175,0.85) 0%, rgba(37,99,235,0.75) 100%); z-index: 2;"></div>
+
+        <!-- LE CONTENU -->
+        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto;">
+          <h1 style="font-size: 38px; font-weight: 800; color: white; margin-bottom: 15px; line-height: 1.2; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+            Trouve ce dont tu as besoin,<br><span style="color: #fbbf24;">près de toi.</span>
+          </h1>
+          <p style="font-size: 18px; color: rgba(255,255,255,0.95); margin-bottom: 35px; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+
+          <form action="/" method="GET" style="background: white; padding: 10px; border-radius: 60px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            
+            <input id="profession" name="profession" list="list-professions" value="${escapeHtml(profession)}" placeholder="Ex. Plombier, Coiffeuse..." style="flex: 2 1 200px; border: none; background: transparent; margin: 0; padding: 15px 20px; box-shadow: none; font-size: 16px; border-radius: 50px;">
+            <datalist id="list-professions">${professionOptions}</datalist>
+
+            <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville (ex: Cotonou)" style="flex: 1 1 150px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 15px 20px; box-shadow: none; font-size: 16px; border-radius: 50px;">
+            <datalist id="list-cities">${cityOptions}</datalist>
+            
+            <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
+
+            <button type="submit" style="border-radius: 50px; padding: 16px 36px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,140,0,0.4); color: white;">Rechercher</button>
+          </form>
+          <p style="font-size: 14px; color: rgba(255,255,255,0.8); margin-top: 15px;">Ex. coiffeuse, restaurant, plombier...</p>
         </div>
+      </div>
+
+      <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 40px;">
+        <a class="button" href="/devenir-professionnel" style="background: white; color: #1e40af; border: 2px solid #1e40af; padding: 14px 30px;">Devenir professionnel</a>
+        <a class="button" href="/emplois" style="background: #f8f9fa; color: #4a5568; border: 2px solid #cbd5e0; padding: 14px 30px;">Consulter les offres d'emploi</a>
       </div>
 
       <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 40px auto; text-align: center;">
