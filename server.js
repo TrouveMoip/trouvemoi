@@ -168,20 +168,23 @@ function renderKycBadge(size) {
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
 }
 
+// ✅ NOUVEAU LOGO (Épingle + Loupe + Personnes)
 function renderLogo() {
   return `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="180" height="45" style="display:inline-block;vertical-align:middle;max-width:100%">
-      <circle cx="22" cy="22" r="15" fill="none" stroke="#1e40af" stroke-width="3.5"/>
-      <line x1="33" y1="33" x2="43" y2="43" stroke="#1e40af" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="17" cy="19" r="3" fill="#1e40af"/><path d="M 12 28 Q 12 23 17 23 Q 22 23 22 28 Z" fill="#1e40af"/>
-      <circle cx="27" cy="19" r="3" fill="#1e40af" opacity="0.85"/><path d="M 22 28 Q 22 23 27 23 Q 32 23 32 28 Z" fill="#1e40af" opacity="0.85"/>
-      <text x="55" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="22" font-weight="800" fill="#1e40af" letter-spacing="-0.5" class="logo-text">TrouveMoi</text>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 50" width="200" height="45" style="display:inline-block;vertical-align:middle;max-width:100%">
+      <path d="M 25 5 C 14 5 5 14 5 25 C 5 40 25 48 25 48 C 25 48 45 40 45 25 C 45 14 36 5 25 5 Z" fill="none" stroke="white" stroke-width="3.5"/>
+      <line x1="32" y1="32" x2="42" y2="42" stroke="white" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="18" cy="20" r="4" fill="white"/>
+      <path d="M 10 32 Q 10 26 18 26 Q 26 26 26 32 Z" fill="white"/>
+      <circle cx="30" cy="20" r="4" fill="white" opacity="0.85"/>
+      <path d="M 22 32 Q 22 26 30 26 Q 38 26 38 32 Z" fill="white" opacity="0.85"/>
+      <text x="55" y="33" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="24" font-weight="900" fill="white" letter-spacing="-0.5" class="logo-text">TrouveMoi</text>
     </svg>`;
 }
 
 function buildMenu(proConnected) {
   if (proConnected) {
-    return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:#4a5568;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
+    return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
   }
   return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/contact">Contact</a></nav>`;
 }
@@ -207,35 +210,38 @@ function page(title, content, proConnected) {
       </script>
 
       <style>
-        /* ✅ LE NOUVEAU DESIGN STYLE APPLICATION MOBILE */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f8f9fa; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        header { background: white; color: #1a202c; padding: 16px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); position: sticky; top: 0; z-index: 100; }
+        /* ✅ LE MENU BLEU */
+        header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
         .logo svg { display: block; height: 42px; width: auto; max-width: 100%; }
-        .tagline { font-size: 13px; color: #718096; margin-top: 2px; }
+        .tagline { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 2px; }
         
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-        nav a, nav button { color: #4a5568; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; transition: background 0.2s; }
-        nav a:hover, nav button:hover { background: #edf2f7; color: #1e40af; }
+        nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; transition: background 0.2s; }
+        nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); color: white; }
         
         main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
         .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; }
         .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
         
-        h1 { font-size: 28px; margin-bottom: 16px; color: #1a202c; line-height: 1.2; font-weight: 800; border: none; padding: 0; }
-        h2 { font-size: 22px; margin-bottom: 14px; color: #1a202c; line-height: 1.3; font-weight: 700; border: none; padding: 0; }
-        h3 { font-size: 18px; margin-bottom: 10px; color: #4a5568; line-height: 1.3; font-weight: 600; border: none; padding: 0; }
+        /* ✅ TITRES EN BLEU */
+        h1 { font-size: 28px; margin-bottom: 16px; color: #1e40af; line-height: 1.2; font-weight: 800; border: none; padding: 0; }
+        h2 { font-size: 22px; margin-bottom: 14px; color: #1e3a8a; line-height: 1.3; font-weight: 700; border: none; padding: 0; }
+        h3 { font-size: 18px; margin-bottom: 10px; color: #1a202c; line-height: 1.3; font-weight: 600; border: none; padding: 0; }
         p { margin-bottom: 12px; color: #4a5568; }
         
         .label { font-weight: 700; color: #1a202c; }
         .value { color: #4a5568; }
         
         label { display: block; margin-top: 8px; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #1a202c; }
-        input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 14px; border: 1px solid #e2e8f0; border-radius: 50px; font-size: 15px; font-family: inherit; background: #f8f9fa; transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; background: white; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
+        
+        /* ✅ CHAMPS DE SAISIE CLAIRS */
+        input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 50px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
         textarea { resize: vertical; min-height: 100px; border-radius: 20px; }
         input[type="file"] { padding: 10px; background: #f8f9fa; border: 2px dashed #cbd5e0; cursor: pointer; border-radius: 20px; }
         input[type="file"]:hover { border-color: #2563eb; background: #eff6ff; }
@@ -491,7 +497,7 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
   html += `</div>`;
   return html;
 }
-/* PAGE D'ACCUEIL (Nouveau Design) */
+/* PAGE D'ACCUEIL (Nouveau Design C'CHAP) */
 
 app.get("/", async (req, res) => {
   try {
@@ -580,7 +586,7 @@ app.get("/", async (req, res) => {
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
     const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
 
-    // ✅ LA NOUVELLE INTERFACE D'ACCUEIL (Style C'CHAP)
+    // ✅ L'INTERFACE D'ACCUEIL
     const content = `
       ${welcomeBanner}
       
@@ -598,7 +604,6 @@ app.get("/", async (req, res) => {
           <input id="city" name="city" list="list-cities" value="${escapeHtml(city)}" placeholder="Ville (ex: Cotonou)" style="flex: 1 1 150px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 15px; box-shadow: none; font-size: 16px; border-radius: 50px;">
           <datalist id="list-cities">${cityOptions}</datalist>
           
-          <!-- Champ caché pour garder le quartier s'il est déjà sélectionné -->
           <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
 
           <button type="submit" style="border-radius: 50px; padding: 14px 30px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 700; box-shadow: 0 4px 12px rgba(255,140,0,0.3);">Rechercher</button>
@@ -1055,7 +1060,7 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON NPI/TEL) */
+/* ENREGISTREMENT CANDIDATURES (AVEC KYC + NPI + VERIF NUMERO 01) */
 app.post("/candidatures", upload.fields([
   { name: "photo_profil", maxCount: 1 },
   { name: "photo_identite", maxCount: 1 },
@@ -2163,7 +2168,9 @@ app.get("/contact", async (req, res) => {
   `, proConnected));
 });
 
+// ✅ Validation pro_id + troncature des champs + RATE LIMITING
 app.post("/contact", async (req, res) => {
+  // ✅ RATE LIMITING : 3 messages max / heure / IP
   const ip = req.ip || "unknown";
   const now = Date.now();
   const attempts = contactAttempts.get(ip) || { count: 0, startedAt: now };
@@ -2270,7 +2277,8 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS tracking_code VARCHAR(20)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP`,
-      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code_updated_at TIMESTAMP`
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code_updated_at TIMESTAMP`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS npi VARCHAR(100)`
     ];
     for (const q of migrations) {
       try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); }
@@ -2307,6 +2315,7 @@ async function startServer() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_city_profession ON professional_applications(city, profession)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_npi ON professional_applications(npi)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_offers(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_read ON contact_messages(is_read)`);
 
