@@ -414,6 +414,19 @@ function page(title, content, proConnected) {
         </div>
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
+
+      <!-- ✅ AJOUT : Modale de Zoom pour l'Admin -->
+      <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'">
+        <span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span>
+        <img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2);">
+      </div>
+
+      <script>
+        function zoomImage(src) {
+          document.getElementById('image-modal').style.display = 'block';
+          document.getElementById('modal-img').src = src;
+        }
+      </script>
     </body>
     </html>
   `;
@@ -835,6 +848,11 @@ app.get("/devenir-professionnel", async (req, res) => {
           <label for="phone">Telephone * (Format : +229 01...)</label>
           <input id="phone" name="phone" type="tel" required maxlength="30" placeholder="+229 01 97 00 00 00">
 
+          <!-- ✅ NOUVEAU CHAMP NPI -->
+          <label for="npi">Numéro Personnel d'Identification (NPI) *</label>
+          <input id="npi" name="npi" required maxlength="15" placeholder="Ex: 1234567890">
+          <p class="help-text">Le NPI est obligatoire pour vérifier votre identité et garantir la sécurité de la plateforme.</p>
+
           <div class="checkbox-block">
             <label>
               <input type="checkbox" name="phone_public" value="yes" checked>
@@ -983,20 +1001,19 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON + VERIF NUMERO 01) */
+/* ENREGISTREMENT CANDIDATURES (AVEC KYC + ANTI-DOUBLON NPI/TEL) */
 app.post("/candidatures", upload.fields([
   { name: "photo_profil", maxCount: 1 },
   { name: "photo_identite", maxCount: 1 },
   { name: "photo_kyc", maxCount: 1 },
   { name: "photo_activite", maxCount: 1 }
 ]), async (req, res) => {
-  const { full_name, company_name, phone, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email } = req.body;
+  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email } = req.body;
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
   // ✅ VÉRIFICATION STRICTE DU NUMÉRO BÉNINOIS (10 chiffres avec 01 OBLIGATOIRE)
   const cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
-  // Accepte : +229 01..., 00229 01..., ou 01... (8 chiffres après le 01)
   const beninPhoneRegex = /^(?:\+?229|00229)?01[45679]\d{7}$/;
 
   if (!beninPhoneRegex.test(cleanPhone)) {
@@ -1026,7 +1043,13 @@ app.post("/candidatures", upload.fields([
     }
   }
 
-  // ✅ DÉTECTION DE DOUBLON SÉCURISÉE
+  // ✅ VÉRIFICATION DU NPI
+  const safeNpi = String(npi || "").trim();
+  if (safeNpi.length < 8) {
+    return res.status(400).send(page("Erreur", "<h2>Le NPI est obligatoire et doit être valide (au moins 8 caractères).</h2>", null));
+  }
+
+  // ✅ DÉTECTION DE DOUBLON SÉCURISÉE (Par Téléphone OU par NPI)
   const safeName = String(full_name || "").trim().toLowerCase();
   const safeCompany = String(company_name || "").trim().toLowerCase();
   const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
@@ -1034,18 +1057,19 @@ app.post("/candidatures", upload.fields([
   try {
     const duplicateCheck = await pool.query(
       `SELECT id FROM professional_applications 
-       WHERE LOWER(TRIM(full_name)) = $1 
-       AND LOWER(TRIM(COALESCE(company_name, ''))) = $2 
-       AND REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $3
+       WHERE (
+         REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $1 
+         OR npi = $2
+       )
        AND status IN ('pending', 'under_review', 'approved', 'corrections_requested')`,
-      [safeName, safeCompany, safePhone]
+      [safePhone, safeNpi]
     );
 
     if (duplicateCheck.rows.length > 0) {
       return res.status(409).send(page("Inscription impossible", `
         <section class="card">
           <h1 style="color:#b42318; border-left-color:#b42318">⚠️ Inscription impossible</h1>
-          <p><strong>Impossible de s'enregistrer deux fois.</strong></p>
+          <p><strong>Un dossier existe déjà avec ce numéro de téléphone ou ce NPI.</strong></p>
           <p>Si vous ne vous êtes jamais enregistré sur cette plateforme, veuillez nous contacter directement pour plus d'assistance.</p>
           <div class="actions" style="margin-top:20px">
             <a class="button" href="/contact">📩 Nous contacter</a>
@@ -1091,6 +1115,7 @@ app.post("/candidatures", upload.fields([
 
     const trackingCode = `SUIVI-${crypto.randomInt(1000, 10000)}`;
 
+    // ✅ INSERTION AVEC LE NPI ($12)
     const result = await pool.query(`
       INSERT INTO professional_applications (
         full_name, company_name, phone, phone_public, city, neighborhood, profession,
@@ -1098,9 +1123,9 @@ app.post("/candidatures", upload.fields([
         photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
         contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,$14,$15,$16,$17,$18,NULL,$19,'pending')
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NULL,$20,'pending')
       RETURNING id
-    `, [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, photoActiviteUrl, pref, whatsapp_number, contact_email, trackingCode]);
+    `, [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, photoActiviteUrl, pref, whatsapp_number, contact_email, trackingCode]);
 
     res.send(page("Candidature envoyee", `
       <section class="card">
@@ -1593,7 +1618,7 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   `, null));
 });
 
-/* ADMIN CANDIDATURES (AVEC BOUTON WHATSAPP + REGENERATION) */
+/* ADMIN CANDIDATURES (AVEC BOUTON WHATSAPP + REGENERATION + ZOOM) */
 
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
@@ -1601,12 +1626,14 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
   const applications = result.rows.map(c => {
     const statusOptions = ALLOWED_STATUSES.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("");
+    
+    // ✅ ACTIVATION DE LA LOUPE ICI (onclick="zoomImage(this.src)")
     const photos = `
       <div class="photos-grid">
-        ${c.photo_profil_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_profil_url)}" class="photo-profil"><div class="photo-label">Profil</div></div>` : ""}
-        ${c.photo_identite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_identite_url)}" class="photo-identite"><div class="photo-label">Identite</div></div>` : ""}
-        ${c.photo_kyc_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_kyc_url)}" class="photo-kyc"><div class="photo-label" style="color:#f59e0b">KYC (Verification)</div></div>` : ""}
-        ${c.photo_activite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_activite_url)}" class="photo-activite"><div class="photo-label">Activite</div></div>` : ""}
+        ${c.photo_profil_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_profil_url)}" class="photo-profil" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Profil</div></div>` : ""}
+        ${c.photo_identite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_identite_url)}" class="photo-identite" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Identite</div></div>` : ""}
+        ${c.photo_kyc_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_kyc_url)}" class="photo-kyc" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label" style="color:#f59e0b">KYC (Verification)</div></div>` : ""}
+        ${c.photo_activite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_activite_url)}" class="photo-activite" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Activite</div></div>` : ""}
       </div>`;
     
     let codeBlock = "";
@@ -1642,6 +1669,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
       <article class="card">
         <h2>${escapeHtml(c.full_name)} <span class="badge badge-${c.status}">${STATUS_LABELS[c.status]}</span>${c.status === 'approved' ? ` ${renderKycBadge()}` : ""}</h2>
         ${photos}
+        <p><span class="label">NPI :</span> ${escapeHtml(c.npi || "Non renseigné")}</p>
         <p><span class="label">Ville :</span> ${escapeHtml(c.city)}</p>
         <p><span class="label">Profession :</span> ${escapeHtml(c.profession)}</p>
         ${c.rejection_reason ? `<p><span class="label" style="color:red">Motif :</span> ${escapeHtml(c.rejection_reason)}</p>` : ""}
