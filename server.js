@@ -479,15 +479,34 @@ app.get("/", async (req, res) => {
     const categoryByProfession = {};
     for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
 
-    const prosCards = result.rows.map((person) => {
-      const displayName = getDisplayName(person);
-      const reviewsCount = Number(person.reviews_count || 0);
-      const avgRating = Number(person.avg_rating || 0);
-      const category = categoryByProfession[person.profession] || null;
-      const photoHtml = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "card", alt: person.profession });
-      let ratingHtml = reviewsCount > 0 ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>` : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
-      return `<article class="pro-card"><div class="pro-card-image">${photoHtml}</div><div class="pro-card-body"><div class="pro-card-profession">${escapeHtml(person.profession)}</div><div class="pro-card-name">${escapeHtml(displayName)}</div><div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>${renderKycBadge()}${ratingHtml}<a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a></div></article>`;
-    }).join("");
+   const prosCards = result.rows.map((person) => {
+  const displayName = getDisplayName(person);
+  const reviewsCount = Number(person.reviews_count || 0);
+  const avgRating = Number(person.avg_rating || 0);
+  
+  // ✅ Case grise si pas de photo, sinon la photo du pro
+  const photoHtml = person.photo_activite_url 
+    ? `<img src="${escapeHtml(person.photo_activite_url)}" alt="${escapeHtml(person.profession)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">` 
+    : `<div style="width:100%;height:100%;background-color:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:32px;opacity:0.3;">👤</span></div>`;
+  
+  let ratingHtml = reviewsCount > 0 
+    ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
+    : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
+  
+  return `
+    <article class="pro-card">
+      <div class="pro-card-image">${photoHtml}</div>
+      <div class="pro-card-body">
+        <!-- ✅ Le texte de la profession a été supprimé ici -->
+        <div class="pro-card-name">${escapeHtml(displayName)}</div>
+        <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+        ${renderKycBadge()}
+        ${ratingHtml}
+        <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
+      </div>
+    </article>
+  `;
+}).join("");
 
     const welcomeBanner = proConnected ? `<div class="pro-welcome"><h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2><p>Votre candidature est approuvee.</p><div class="actions"><a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a></div></div>` : "";
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></section>`;
