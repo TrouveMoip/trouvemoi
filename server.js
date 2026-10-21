@@ -1694,7 +1694,20 @@ app.post("/contact", async (req, res) => {
     res.send(page("Succes", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>Message envoyé !</h1><p>Nous vous répondrons vite.</p><a class='button' href='/'>Retour à l'accueil</a></section>", null));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur d'envoi.</h2>", null)); }
 });
-
+app.get("/reparer-la-base-de-donnees", async (req, res) => {
+  try {
+    await pool.query(`
+      ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid';
+      ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_ref VARCHAR(100);
+      ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_amount INTEGER DEFAULT 500;
+      ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP;
+      ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30);
+    `);
+    res.send("<h1>✅ C'est réparé !</h1><p>Les colonnes ont été ajoutées avec succès. Vous pouvez retourner sur le site.</p>");
+  } catch (e) {
+    res.status(500).send("<h1>❌ Erreur</h1><p>" + e.message + "</p>");
+  }
+});
 app.get("/health", (req, res) => res.json({ status: "ok", application: "TrouveMoi", time: new Date().toISOString() }));
 app.get("/health/database", async (req, res) => { try { await pool.query("SELECT 1"); res.json({ status: "ok", database: "connected" }); } catch (e) { res.status(500).json({ status: "error", message: "database unreachable" }); } });
 
