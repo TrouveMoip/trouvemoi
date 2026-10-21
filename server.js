@@ -484,25 +484,33 @@ app.get("/", async (req, res) => {
   const reviewsCount = Number(person.reviews_count || 0);
   const avgRating = Number(person.avg_rating || 0);
   
-  // ✅ Case grise si pas de photo, sinon la photo du pro
-  const photoHtml = person.photo_activite_url 
-    ? `<img src="${escapeHtml(person.photo_activite_url)}" alt="${escapeHtml(person.profession)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">` 
-    : `<div style="width:100%;height:100%;background-color:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:32px;opacity:0.3;">👤</span></div>`;
-  
   let ratingHtml = reviewsCount > 0 
     ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
     : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
   
   return `
-    <article class="pro-card">
-      <div class="pro-card-image">${photoHtml}</div>
-      <div class="pro-card-body">
-        <!-- ✅ Le texte de la profession a été supprimé ici -->
-        <div class="pro-card-name">${escapeHtml(displayName)}</div>
-        <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-        ${renderKycBadge()}
-        ${ratingHtml}
-        <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
+    <article class="pro-card" style="flex-direction: column; padding: 20px; border: 2px solid #e2e8f0; border-radius: 16px; margin-bottom: 0;">
+      <div class="pro-card-body" style="padding: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <div class="pro-card-name" style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(displayName)}</div>
+            <div class="pro-card-location" style="font-size: 14px;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
+          </div>
+          <div style="text-align: right;">
+            ${renderKycBadge()}
+          </div>
+        </div>
+        
+        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 12px 0;">
+          <p style="margin: 0; font-size: 13px; color: #4a5568; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            ${escapeHtml(person.service_description || "Aucune description fournie.")}
+          </p>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+          ${ratingHtml}
+          <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px;">Voir le profil →</a>
+        </div>
       </div>
     </article>
   `;
