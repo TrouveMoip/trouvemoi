@@ -179,7 +179,7 @@ function renderKycBadge(size) {
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
 }
 
-// ✅ Visuel par défaut du métier (photo → emoji catégorie → texte)
+// ✅ Visuel par défaut du métier (photo → emoji/couleur unique par métier → texte)
 function renderMetierVisual(profession, category, photoUrl, options = {}) {
   const { size = "card", alt = "" } = options;
 
@@ -187,43 +187,114 @@ function renderMetierVisual(profession, category, photoUrl, options = {}) {
     return `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || profession)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">`;
   }
 
-  const cat = String(category || "").trim();
-  const visualMap = {
-    "Bâtiment":       { emoji: "🔨", from: "#d97706", to: "#f59e0b" },
-    "Beauté":         { emoji: "💇", from: "#db2777", to: "#ec4899" },
-    "Santé":          { emoji: "🩺", from: "#0891b2", to: "#06b6d4" },
-    "Couture":        { emoji: "✂️", from: "#7c3aed", to: "#a855f7" },
-    "Automobile":     { emoji: "🔧", from: "#dc2626", to: "#ef4444" },
-    "Transport":      { emoji: "🚗", from: "#2563eb", to: "#3b82f6" },
-    "Restauration":   { emoji: "🍽️", from: "#ca8a04", to: "#eab308" },
-    "Informatique":   { emoji: "💻", from: "#1e40af", to: "#3b82f6" },
-    "Éducation":      { emoji: "📚", from: "#7c2d12", to: "#c2410c" },
-    "Maison":         { emoji: "🏡", from: "#059669", to: "#10b981" },
-    "Événementiel":   { emoji: "🎉", from: "#be185d", to: "#ec4899" },
-    "Agriculture":    { emoji: "🌾", from: "#15803d", to: "#22c55e" },
-    "Immobilier":     { emoji: "🏠", from: "#0369a1", to: "#0ea5e9" },
-    "Énergie":        { emoji: "⚡", from: "#ca8a04", to: "#facc15" },
-    "Commerce":       { emoji: "🛒", from: "#4338ca", to: "#6366f1" },
-    "Professionnel":  { emoji: "💼", from: "#334155", to: "#64748b" },
-    "Tourisme":       { emoji: "🗺️", from: "#0d9488", to: "#14b8a6" },
-    "Divers":         { emoji: "⚙️", from: "#475569", to: "#94a3b8" }
+  // ✅ 1. Emoji spécifique par métier (fallback sur la catégorie)
+  const emojiByMetier = {
+    "Maçon": "🧱", "Plombier": "🚿", "Électricien": "⚡", "Carreleur": "🔲",
+    "Peintre en bâtiment": "🎨", "Menuisier bois": "🪵", "Menuisier aluminium": "🪟",
+    "Soudeur": "🔥", "Ferrailleur": "⛓️", "Charpentier": "🪚",
+    "Étanchéiste (toiture)": "🏠", "Vitrier": "🪟", "Serrurier": "🔑",
+    "Architecte": "📐", "Dessinateur bâtiment": "✏️", "Géomètre": "📏",
+    "Ingénieur BTP": "👷", "Conducteur de travaux": "🦺",
+    "Installateur de panneaux solaires": "☀️", "Technicien de groupe électrogène": "🔌",
+    "Domoticien": "🏠", "Climatisation": "❄️", "Froid": "🧊",
+    "Femme de ménage": "🧹", "Repassage à domicile": "👔", "Cuisinier": "👨‍🍳",
+    "Cuisinière": "👩‍🍳", "Gardien": "🛡️", "Vigile": "🛡️", "Nounou": "👶",
+    "Garde d'enfants": "🧒", "Jardinier": "🌱", "Paysagiste": "🌳",
+    "Désinsectisation": "🐜", "Dératisation": "🐀", "Plombier-déboucheur": "🪠",
+    "Majordome": "🤵", "Chef de maison": "🏡",
+    "Réparateur de télévision": "📺", "Réparateur d'électroménager": "🔧",
+    "Coiffeur": "✂️", "Coiffeuse": "💇‍♀️", "Tresseuse": "💇‍♀️", "Barbier": "🪒",
+    "Esthéticienne": "💆‍♀️", "Maquilleuse": "💄", "Manucure": "💅", "Pédicure": "🦶",
+    "Masseur": "💆‍♂️", "Masseuse": "💆‍♀️", "Tatoueur": "🖋️",
+    "Prothésiste ongulaire": "💅", "Nail Art": "💅",
+    "Lash maker (Extensions de cils)": "👁️", "Maquilleur professionnel": "💄",
+    "Infirmier à domicile": "💉", "Infirmière à domicile": "💉", "Sage-femme": "🤱",
+    "Kinésithérapeute": "🦴", "Aide-soignant": "🏥", "Pharmacien": "💊",
+    "Opticien": "👓", "Psychologue": "🧠", "Thérapeute de couple": "💑",
+    "Nutritionniste": "🥗", "Diététicien": "🥦", "Coach sportif": "💪",
+    "Personal Trainer": "💪", "Vétérinaire": "🐶", "Toiletteur pour animaux": "🐕",
+    "Ostéopathe": "🦴", "Naturopathe": "🌿", "Garde-malade": "🏥",
+    "Auxiliaire de vie": "🤝", "Aide aux devoirs": "📖",
+    "Couturier": "🧵", "Couturière": "🧵", "Tailleur": "✂️", "Brodeur": "🪡",
+    "Retoucheur": "🧵", "Styliste modéliste": "👗", "Cordonnier": "👞",
+    "Mécanicien auto": "🚗", "Mécanicien moto": "🏍️", "Électricien auto": "🔋",
+    "Carrossier": "🚙", "Tôlier": "🔨", "Vulcanisateur": "🛞",
+    "Chauffeur de taxi": "🚕", "Chauffeur de moto-taxi": "🛵",
+    "Chauffeur personnel": "🚘", "Déménageur": "📦", "Livreur": "📦",
+    "Coursier": "🛵", "Chauffeur de poids lourd": "🚚", "Camionneur": "🚚",
+    "Transitaire": "📦", "Déclarant en douane": "📋",
+    "Traiteur": "🍱", "Pâtissier": "🎂", "Boulanger": "🥖",
+    "Vendeur de nourriture": "🍲", "Boucher": "🥩", "Poissonnier": "🐟",
+    "Barista": "☕", "Chef à domicile": "👨‍🍳", "Barman": "🍸",
+    "Mixologue": "🍹", "Wedding Cake Designer": "🎂",
+    "Hôte(sse) d'accueil": "🤝", "Protocole": "🎩", "Guide touristique": "🧭",
+    "Fleuriste": "💐", "Art floral": "🌹",
+    "Développeur web": "👨‍💻", "Développeur mobile": "📱", "Informaticien": "💻",
+    "Réparateur de téléphone": "📱", "Réparateur d'ordinateur": "🖥️",
+    "Graphiste": "🎨", "Community manager": "📣", "Photographe": "📷",
+    "Vidéaste": "🎥", "Ingénieur réseau": "🌐", "Monteur vidéo": "🎬",
+    "Motion Designer": "🎞️", "Pilote de drone": "🚁",
+    "Expert en cybersécurité": "🛡️", "Webmaster": "🕸️",
+    "Gestionnaire de site web": "🌐", "Data Analyst": "📊",
+    "Testeur de jeux vidéo": "🎮", "E-sport manager": "🎮",
+    "Créateur de contenu": "🎬", "Influenceur": "⭐",
+    "Professeur de Maths": "➗", "Professeur de Français": "📖",
+    "Professeur d'Anglais": "🇬🇧", "Enseignant primaire": "🍎",
+    "Formateur informatique": "💻", "Coach scolaire": "🎓",
+    "Comptable": "🧮", "Fiscaliste": "📊", "Juriste": "⚖️", "Avocat": "⚖️",
+    "Notaire": "📜", "Traducteur": "🌍", "Rédacteur de contenu": "✍️",
+    "Secrétaire": "📝", "Assistant administratif": "📋", "Consultant": "💼",
+    "Magasinier": "📦", "Gestionnaire de stock": "📦", "Démarcheur": "🤝",
+    "Agent immobilier": "🏘️", "Courtier": "🔑",
+    "Agriculteur": "🌾", "Maraîcher": "🥬", "Éleveur": "🐄",
+    "Pêcheur": "🎣", "Apiculteur": "🐝",
+    "Prothésiste dentaire": "🦷", "Antenniste": "📡",
+    "Forgeron": "⚒️", "Puisatier": "🕳️"
   };
-  const v = visualMap[cat] || { emoji: "💼", from: "#1e40af", to: "#3b82f6" };
 
-  // ✅ Taille réduite pour les cartes pour éviter les coupures
-  const fontSize = size === "lg" ? "28px" : size === "sm" ? "16px" : "18px"; 
+  // ✅ 2. Fallback : emoji par catégorie
+  const catEmoji = {
+    "Bâtiment": "🔨", "Beauté": "💇", "Santé": "🩺", "Couture": "✂️",
+    "Automobile": "🔧", "Transport": "🚗", "Restauration": "🍽️",
+    "Informatique": "💻", "Éducation": "📚", "Maison": "🏡",
+    "Événementiel": "🎉", "Agriculture": "🌾", "Immobilier": "🏠",
+    "Énergie": "⚡", "Commerce": "🛒", "Professionnel": "💼",
+    "Tourisme": "🗺️", "Divers": "⚙️"
+  };
+
+  const emoji = emojiByMetier[profession] || catEmoji[category] || "💼";
+
+  // ✅ 3. Couleur unique par métier (déterministe via un hash simple)
+  const palettes = [
+    ["#d97706", "#f59e0b"], ["#dc2626", "#ef4444"], ["#7c3aed", "#a855f7"],
+    ["#0891b2", "#06b6d4"], ["#db2777", "#ec4899"], ["#2563eb", "#3b82f6"],
+    ["#059669", "#10b981"], ["#ca8a04", "#eab308"], ["#be185d", "#ec4899"],
+    ["#15803d", "#22c55e"], ["#0369a1", "#0ea5e9"], ["#4338ca", "#6366f1"],
+    ["#7c2d12", "#c2410c"], ["#0d9488", "#14b8a6"], ["#334155", "#64748b"],
+    ["#9d174d", "#db2777"]
+  ];
+
+  let hash = 0;
+  const key = String(profession || "Professionnel");
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const palette = palettes[Math.abs(hash) % palettes.length];
+
+  // ✅ 4. Rendu
+  const fontSize = size === "lg" ? "28px" : size === "sm" ? "16px" : "18px";
   const emojiSize = size === "lg" ? "52px" : size === "sm" ? "30px" : "38px";
   const padding = size === "lg" ? "40px 24px" : "16px 8px";
 
   return `
-    <div style="width:100%;height:100%;background:linear-gradient(135deg, ${v.from} 0%, ${v.to} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:${padding};text-align:center;gap:6px;">
-      <div style="font-size:${emojiSize};line-height:1;">${v.emoji}</div>
+    <div style="width:100%;height:100%;background:linear-gradient(135deg, ${palette[0]} 0%, ${palette[1]} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:${padding};text-align:center;gap:6px;">
+      <div style="font-size:${emojiSize};line-height:1;">${emoji}</div>
       <div style="color:white;font-weight:800;font-size:${fontSize};text-transform:uppercase;letter-spacing:0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.25);line-height:1.2;max-width:100%;word-break:normal;overflow-wrap:break-word;padding:0 4px;">${escapeHtml(profession || "Professionnel")}</div>
     </div>
   `;
 }
 
-// ✅ Logo TM
 function renderLogo() {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 55" width="240" height="50" style="display:inline-block;vertical-align:middle;max-width:100%" aria-label="TrouveMoi">
@@ -444,6 +515,85 @@ function page(title, content, proConnected) {
         .footer-col a { display: block; color: #a0aec0; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
         .footer-col a:hover { color: #3b82f6; }
         .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #334155; text-align: center; font-size: 13px; color: #94a3b8; }
+
+        /* ✅ Badge rond avec le nombre de pros */
+        .count-badge-circle {
+          width: 85px; height: 85px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.15);
+          border: 3px solid #fbbf24;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 34px;
+          font-weight: 900;
+          color: white;
+          box-shadow: 0 6px 25px rgba(0,0,0,0.3);
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .count-badge-label {
+          color: white;
+          font-size: 12px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+          margin-top: 8px;
+        }
+
+        /* ✅ Accordéons pour la page recherche */
+        .pro-accordion {
+          background: white;
+          border-radius: 16px;
+          margin-bottom: 12px;
+          box-shadow: 0 4px 14px rgba(30,64,175,0.10);
+          border: 1px solid #dbeafe;
+          overflow: hidden;
+        }
+        .pro-accordion summary {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 12px 14px;
+          cursor: pointer;
+          list-style: none;
+          transition: background 0.2s;
+        }
+        .pro-accordion summary::-webkit-details-marker { display: none; }
+        .pro-accordion summary:hover { background: #f8f9fa; }
+        .pro-accordion[open] summary { background: #eff6ff; border-bottom: 1px solid #dbeafe; }
+        .pro-accordion .mini-photo {
+          width: 60px; height: 60px; min-width: 60px;
+          border-radius: 12px;
+          overflow: hidden;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .pro-accordion .mini-photo img { width: 100%; height: 100%; object-fit: cover; }
+        .pro-accordion .summary-info { flex: 1; min-width: 0; }
+        .pro-accordion .summary-name {
+          font-weight: 800; font-size: 15px; color: #1a202c;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pro-accordion .summary-meta {
+          font-size: 12px; color: #718096; margin-top: 3px;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .pro-accordion .summary-arrow {
+          font-size: 22px; color: #3b82f6; font-weight: bold;
+          transition: transform 0.25s ease;
+        }
+        .pro-accordion[open] .summary-arrow { transform: rotate(90deg); }
+        .pro-accordion .accordion-content { padding: 16px; background: #fafbfc; }
+        .pro-accordion .accordion-content .info-row {
+          display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+          font-size: 13px; color: #4a5568;
+        }
+        .pro-accordion .accordion-content .info-tag {
+          background: #e0f2fe; color: #0369a1; padding: 4px 10px;
+          border-radius: 20px; font-weight: 600; font-size: 12px;
+        }
+
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
@@ -467,7 +617,7 @@ function page(title, content, proConnected) {
         <div class="header-content">
           <div>
             <a href="/" class="logo" aria-label="TrouveMoi">${renderLogo()}</a>
-            <div class="tagline">Trouvez le bon professionnel au Benin</div>
+            <div class="tagline">Site web de mise en relation client et professionnel</div>
           </div>
           ${buildMenu(proConnected)}
         </div>
@@ -624,14 +774,17 @@ app.get("/", async (req, res) => {
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.85); z-index: 2;"></div>
 
         <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
+          
+          <!-- ✅ Badge rond avec le nombre de pros inscrits -->
+          <div style="margin-bottom: 25px;">
+            <div class="count-badge-circle">${totalAllPros}</div>
+            <div class="count-badge-label">Pro${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''}</div>
+          </div>
+
           <h1 style="font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.25; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
             Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span>
           </h1>
-          <p style="font-size: 16px; color: rgba(255,255,255,0.95); margin-bottom: 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
-
-          <div style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 8px 20px; border-radius: 50px; margin-bottom: 30px; font-weight: 700; color: white; font-size: 15px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
-            🚀 Déjà ${totalAllPros} professionnel${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''} !
-          </div>
+          <p style="font-size: 16px; color: rgba(255,255,255,0.95); margin-bottom: 30px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
 
           <!-- GROS BOUTON DE RECHERCHE -->
           <div>
@@ -666,7 +819,7 @@ app.get("/", async (req, res) => {
   }
 });
 
-/* PAGE DE RECHERCHE DÉDIÉE */
+/* PAGE DE RECHERCHE DÉDIÉE (LISTE DÉROULANTE) */
 
 app.get("/recherche", async (req, res) => {
   try {
@@ -714,33 +867,45 @@ app.get("/recherche", async (req, res) => {
       categoryByProfession[p.name] = cat;
     }
 
-    const prosCards = result.rows.map((person) => {
+    // ✅ Rendu en accordéon (liste déroulante)
+    const prosAccordions = result.rows.map((person) => {
       const displayName = getDisplayName(person);
       const reviewsCount = Number(person.reviews_count || 0);
       const avgRating = Number(person.avg_rating || 0);
       const category = categoryByProfession[person.profession] || null;
-      const photoHtml = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "card", alt: person.profession });
-      
-      let ratingHtml = reviewsCount > 0
-        ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
-        : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
-      
+      const miniPhoto = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "sm", alt: person.profession });
+      const ratingHtml = reviewsCount > 0
+        ? `<span style="color:#ed8936;font-weight:600;">${renderStars(avgRating)}</span> <span style="color:#718096;font-size:12px;">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>`
+        : `<span style="color:#a0aec0;font-style:italic;font-size:12px;">Pas encore d'avis</span>`;
+
       return `
-        <article class="pro-card">
-          <div class="pro-card-image">${photoHtml}</div>
-          <div class="pro-card-body">
-            <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
-            <div class="pro-card-name">${escapeHtml(displayName)}</div>
-            <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-            ${renderKycBadge()}
-            ${ratingHtml}
-            <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
+        <details class="pro-accordion">
+          <summary>
+            <div class="mini-photo">${miniPhoto}</div>
+            <div class="summary-info">
+              <div class="summary-name">${escapeHtml(displayName)}</div>
+              <div class="summary-meta">${escapeHtml(person.profession)} • 📍 ${escapeHtml(person.city)}</div>
+            </div>
+            <div class="summary-arrow">›</div>
+          </summary>
+          <div class="accordion-content">
+            <div class="info-row">
+              <span class="info-tag">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</span>
+              <span class="info-tag">🔧 ${escapeHtml(person.profession)}</span>
+              ${person.experience ? `<span class="info-tag">⏱️ ${escapeHtml(person.experience)}</span>` : ""}
+            </div>
+            <div style="margin-bottom:12px;">${ratingHtml}</div>
+            <div style="margin-bottom:12px;">${renderKycBadge()}</div>
+            <p style="font-size:14px;color:#4a5568;margin-bottom:16px;line-height:1.6;">${escapeHtml(person.service_description || "").slice(0, 250)}${(person.service_description || "").length > 250 ? "..." : ""}</p>
+            <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil complet →</a>
           </div>
-        </article>
+        </details>
       `;
     }).join("");
 
-    const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
+    const prosSection = result.rows.length > 0
+      ? `<div style="max-width: 800px; margin: 0 auto;">${prosAccordions}</div>`
+      : `<section class="card" style="max-width: 800px; margin: 0 auto;"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
     const paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city, neighborhood });
 
     const content = `
@@ -749,7 +914,7 @@ app.get("/recherche", async (req, res) => {
         <a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a>
       </div>
 
-      <section class="card" style="max-width: 800px; margin: 0 auto 30px auto;">
+      <section class="card" style="max-width: 800px; margin: 0 auto 24px auto;">
         <form action="/recherche" method="GET" style="background: white; padding: 10px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #e2e8f0;">
           
           <input
@@ -801,7 +966,8 @@ app.get("/recherche", async (req, res) => {
         </script>
       </section>
 
-      <h2 style="text-align: center; margin-bottom: 20px;">Résultats (${totalPros})</h2>
+      <h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
+      ${result.rows.length > 1 ? `<p style="text-align:center;color:#718096;font-size:13px;margin-bottom:16px;">👇 Cliquez sur un professionnel pour voir ses détails</p>` : ""}
       ${prosSection}
       ${paginationHtml}
     `;
@@ -2611,7 +2777,7 @@ async function startServer() {
       await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]);
     }
 
-    console.log("Toutes les tables sont pretes. Visuels metier, photo pro optionnelle, logs admin inclus !");
+    console.log("Toutes les tables sont pretes. Visuels metier unique, photo pro optionnelle, logs admin inclus !");
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`TrouveMoi demarre sur le port ${PORT}.`);
