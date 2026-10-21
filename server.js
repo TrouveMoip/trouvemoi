@@ -1204,15 +1204,22 @@ app.post("/suivi-dossier", async (req, res) => {
           <button onclick="document.getElementById('form-correct').classList.remove('hidden')">Corriger mon dossier</button>
         </div>
         <div id="form-correct" class="hidden" style="margin-top:20px">
-          <form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="tracking_code" value="${escapeHtml(pro.tracking_code)}">
-            <label>Nouvelle photo d'identité (optionnel)</label>
-            <input type="file" name="photo_identite" accept="image/*">
-            <label>Nouvelle photo KYC (optionnel)</label>
-            <input type="file" name="photo_kyc" accept="image/*">
-            <button type="submit" class="success">Renvoyer pour validation</button>
-          </form>
-        </div>
+  <form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="tracking_code" value="${escapeHtml(pro.tracking_code)}">
+    
+    <div class="alert alert-info" style="padding:10px; font-size:14px;">
+      <strong>Instruction :</strong> Veuillez renvoyer uniquement la ou les photos qui posent problème selon le motif ci-dessus. Si une photo était déjà valide, vous n'avez pas besoin de la renvoyer.
+    </div>
+
+    <label>Nouvelle photo d'identité (si concernée)</label>
+    <input type="file" name="photo_identite" accept="image/*">
+    
+    <label>Nouvelle photo de vérification KYC (si concernée)</label>
+    <input type="file" name="photo_kyc" accept="image/*">
+    
+    <button type="submit" class="success">Renvoyer pour validation</button>
+  </form>
+</div>
       `;
     }
 
