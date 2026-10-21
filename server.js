@@ -179,7 +179,7 @@ function renderKycBadge(size) {
   return `<span class="${cls}" title="Identite verifiee manuellement par TrouveMoi">Verifie KYC</span>`;
 }
 
-// ✅ NOUVEAU : Visuel par défaut du métier (photo → emoji catégorie → texte)
+// ✅ Visuel par défaut du métier (photo → emoji catégorie → texte)
 function renderMetierVisual(profession, category, photoUrl, options = {}) {
   const { size = "card", alt = "" } = options;
 
@@ -210,18 +210,20 @@ function renderMetierVisual(profession, category, photoUrl, options = {}) {
   };
   const v = visualMap[cat] || { emoji: "💼", from: "#1e40af", to: "#3b82f6" };
 
-  const fontSize = size === "lg" ? "32px" : size === "sm" ? "18px" : "22px";
+  // ✅ Taille réduite pour les cartes pour éviter les coupures
+  const fontSize = size === "lg" ? "28px" : size === "sm" ? "16px" : "18px"; 
   const emojiSize = size === "lg" ? "52px" : size === "sm" ? "30px" : "38px";
-  const padding = size === "lg" ? "40px 24px" : "16px 10px";
+  const padding = size === "lg" ? "40px 24px" : "16px 8px";
 
   return `
-    <div style="width:100%;height:100%;background:linear-gradient(135deg, ${v.from} 0%, ${v.to} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:${padding};text-align:center;gap:8px;">
+    <div style="width:100%;height:100%;background:linear-gradient(135deg, ${v.from} 0%, ${v.to} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:${padding};text-align:center;gap:6px;">
       <div style="font-size:${emojiSize};line-height:1;">${v.emoji}</div>
-      <div style="color:white;font-weight:800;font-size:${fontSize};text-transform:uppercase;letter-spacing:0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.25);line-height:1.2;max-width:100%;word-break:break-word;padding:0 4px;">${escapeHtml(profession || "Professionnel")}</div>
+      <div style="color:white;font-weight:800;font-size:${fontSize};text-transform:uppercase;letter-spacing:0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.25);line-height:1.2;max-width:100%;word-break:normal;overflow-wrap:break-word;padding:0 4px;">${escapeHtml(profession || "Professionnel")}</div>
     </div>
   `;
 }
 
+// ✅ Logo TM
 function renderLogo() {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 55" width="240" height="50" style="display:inline-block;vertical-align:middle;max-width:100%" aria-label="TrouveMoi">
@@ -345,7 +347,7 @@ function page(title, content, proConnected) {
         .pro-welcome .button:hover { background: #eff6ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,255,255,0.3); }
         .pro-welcome .button.secondary { background: rgba(255,255,255,0.2); color: white; border: none; }
 
-        /* ✅ Cartes pro horizontales, photo compacte à gauche */
+        /* ✅ Cartes pro horizontales */
         .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px; }
         .pro-card {
           background: white;
@@ -361,9 +363,11 @@ function page(title, content, proConnected) {
           margin-bottom: 10px;
         }
         .pro-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(30,64,175,0.18); }
+        
+        /* ✅ Largeur augmentée pour éviter la coupure des mots */
         .pro-card-image {
-          width: 110px;
-          min-width: 110px;
+          width: 125px;
+          min-width: 125px;
           align-self: stretch;
           background: #edf2f7;
           display: flex;
@@ -373,6 +377,7 @@ function page(title, content, proConnected) {
           flex-shrink: 0;
         }
         .pro-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        
         .pro-card-body {
           padding: 12px 14px;
           flex: 1;
@@ -452,7 +457,7 @@ function page(title, content, proConnected) {
           .rating-big-number { font-size: 40px; }
           .logo svg { height: 42px; }
           .pros-grid { grid-template-columns: 1fr; }
-          .pro-card-image { width: 95px; min-width: 95px; }
+          .pro-card-image { width: 105px; min-width: 105px; }
           .pro-card-name { font-size: 15px; }
         }
       </style>
@@ -538,9 +543,132 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
   html += `</div>`;
   return html;
 }
-/* PAGE D'ACCUEIL */
+/* PAGE D'ACCUEIL (SIMPLIFIÉE) */
 
 app.get("/", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 12;
+    const offset = (currentPage - 1) * limit;
+
+    const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
+    const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
+
+    const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'`);
+    const totalPros = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalPros / limit);
+
+    const query = `
+      SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood,
+        p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url,
+        (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count,
+        (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating
+      FROM professional_applications p 
+      WHERE p.status = 'approved'
+      ORDER BY p.created_at DESC 
+      LIMIT $1 OFFSET $2
+    `;
+    const result = await pool.query(query, [limit, offset]);
+
+    const professionsResult = await pool.query("SELECT name, category FROM professions");
+    const categoryByProfession = {};
+    for (const p of professionsResult.rows) {
+      categoryByProfession[p.name] = p.category;
+    }
+
+    const prosCards = result.rows.map((person) => {
+      const displayName = getDisplayName(person);
+      const reviewsCount = Number(person.reviews_count || 0);
+      const avgRating = Number(person.avg_rating || 0);
+      const category = categoryByProfession[person.profession] || null;
+      const photoHtml = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "card", alt: person.profession });
+      
+      let ratingHtml = reviewsCount > 0
+        ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
+        : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
+      
+      return `
+        <article class="pro-card">
+          <div class="pro-card-image">${photoHtml}</div>
+          <div class="pro-card-body">
+            <div class="pro-card-profession">${escapeHtml(person.profession)}</div>
+            <div class="pro-card-name">${escapeHtml(displayName)}</div>
+            <div class="pro-card-location">${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+            ${renderKycBadge()}
+            ${ratingHtml}
+            <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil →</a>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    const welcomeBanner = proConnected ? `
+      <div class="pro-welcome">
+        <h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2>
+        <p>Votre candidature est approuvee. Vous pouvez gerer vos offres.</p>
+        <div class="actions"><a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a></div>
+      </div>
+    ` : "";
+
+    const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></section>`;
+    const paginationHtml = renderPagination(currentPage, totalPages, "/");
+
+    const content = `
+      ${welcomeBanner}
+
+      <!-- 🚀 BANNIÈRE D'ACCUEIL -->
+      <div style="position: relative; text-align: center; padding: 50px 15px; margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center top; z-index: 1;"></div>
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.85); z-index: 2;"></div>
+
+        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
+          <h1 style="font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.25; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+            Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span>
+          </h1>
+          <p style="font-size: 16px; color: rgba(255,255,255,0.95); margin-bottom: 20px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+
+          <div style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 8px 20px; border-radius: 50px; margin-bottom: 30px; font-weight: 700; color: white; font-size: 15px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+            🚀 Déjà ${totalAllPros} professionnel${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''} !
+          </div>
+
+          <!-- GROS BOUTON DE RECHERCHE -->
+          <div>
+            <a href="/recherche" class="button" style="background: #ff8c00; color: white; font-size: 18px; padding: 16px 40px; border-radius: 50px; font-weight: 800; box-shadow: 0 6px 20px rgba(255,140,0,0.4); border: 2px solid white; display: inline-block;">
+              🔍 Je recherche un professionnel
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ BOUTONS BIEN ESPACÉS -->
+      <div style="display: flex; justify-content: center; align-items: stretch; gap: 20px; flex-wrap: wrap; margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
+        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; border: none; padding: 16px 24px; font-size: 16px; font-weight: 700; box-shadow: 0 4px 15px rgba(37,99,235,0.3); flex: 1 1 250px; text-align: center; border-radius: 50px;">
+          👤 Devenir professionnel
+        </a>
+        <a class="button" href="/emplois" style="background: #38a169; color: white; border: none; padding: 16px 24px; font-size: 16px; font-weight: 700; box-shadow: 0 4px 15px rgba(56,161,105,0.3); flex: 1 1 250px; text-align: center; border-radius: 50px;">
+          💼 Consulter les offres d'emploi
+        </a>
+      </div>
+
+      <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;">
+        <strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.
+      </div>
+
+      <h2 style="text-align: center; margin-bottom: 20px;">Derniers professionnels inscrits</h2>
+      ${prosSection}
+      ${paginationHtml}
+    `;
+    res.send(page("Accueil", content, proConnected));
+  } catch (error) {
+    res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null));
+  }
+});
+
+/* PAGE DE RECHERCHE DÉDIÉE */
+
+app.get("/recherche", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
     const profession = String(req.query.profession || "").trim().slice(0, 150);
@@ -553,9 +681,6 @@ app.get("/", async (req, res) => {
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
-
-    const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
-    const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
 
     let whereClause = ` WHERE p.status = 'approved'`;
     const values = [];
@@ -595,9 +720,11 @@ app.get("/", async (req, res) => {
       const avgRating = Number(person.avg_rating || 0);
       const category = categoryByProfession[person.profession] || null;
       const photoHtml = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "card", alt: person.profession });
+      
       let ratingHtml = reviewsCount > 0
         ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
         : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
+      
       return `
         <article class="pro-card">
           <div class="pro-card-image">${photoHtml}</div>
@@ -613,98 +740,72 @@ app.get("/", async (req, res) => {
       `;
     }).join("");
 
-    const welcomeBanner = proConnected ? `
-      <div class="pro-welcome">
-        <h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2>
-        <p>Votre candidature est approuvee. Vous pouvez gerer vos offres.</p>
-        <div class="actions"><a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a><a class="button secondary" href="/mon-espace-pro">👁️ Voir mon code</a></div>
-      </div>
-    ` : "";
-
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
-    const paginationHtml = renderPagination(currentPage, totalPages, "/", { profession, city, neighborhood });
+    const paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city, neighborhood });
 
     const content = `
-      ${welcomeBanner}
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h1 style="margin-bottom: 10px;">Rechercher un professionnel</h1>
+        <a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a>
+      </div>
 
-      <div style="position: relative; text-align: center; padding: 40px 15px; margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center top; z-index: 1;"></div>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.75); z-index: 2;"></div>
+      <section class="card" style="max-width: 800px; margin: 0 auto 30px auto;">
+        <form action="/recherche" method="GET" style="background: white; padding: 10px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #e2e8f0;">
+          
+          <input
+            id="profession"
+            name="profession"
+            list="professions-list"
+            value="${escapeHtml(profession)}"
+            placeholder="Métiers"
+            autocomplete="off"
+            style="flex: 2 1 150px; border: none; background: #f8f9fa; margin: 0; padding: 14px 20px; box-shadow: none; font-size: 16px; border-radius: 50px; color: #1a202c; font-weight: 600; min-width: 0;"
+          >
+          <datalist id="professions-list">
+            ${Object.entries(professionsByCategory).map(([cat, names]) =>
+              names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")
+            ).join("")}
+          </datalist>
 
-        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
+          <input
+            id="city"
+            name="city"
+            list="cities-list"
+            value="${escapeHtml(city)}"
+            placeholder="Villes"
+            autocomplete="off"
+            style="flex: 1 1 120px; border: none; background: #f8f9fa; margin: 0; padding: 14px 20px; box-shadow: none; font-size: 16px; border-radius: 50px; color: #1a202c; font-weight: 600; min-width: 0;"
+          >
+          <datalist id="cities-list">
+            ${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}
+          </datalist>
 
-          <h1 style="font-size: 26px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.25; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-            Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span>
-          </h1>
-          <p style="font-size: 15px; color: rgba(255,255,255,0.95); margin-bottom: 15px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+          <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
 
-          <div style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 6px 16px; border-radius: 50px; margin-bottom: 25px; font-weight: 700; color: white; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
-            🚀 Déjà ${totalAllPros} professionnel${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''} !
-          </div>
+          <button type="submit" style="border-radius: 50px; padding: 14px 30px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.3);">
+            Rechercher
+          </button>
+        </form>
 
-          <form action="/" method="GET" style="background: white; padding: 8px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
-            <input
-              id="profession"
-              name="profession"
-              list="professions-list"
-              value="${escapeHtml(profession)}"
-              placeholder="Tous les métiers"
-              autocomplete="off"
-              style="flex: 2 1 130px; border: none; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px; color: #1a202c; font-weight: 600; min-width: 0;"
-            >
-            <datalist id="professions-list">
-              ${Object.entries(professionsByCategory).map(([cat, names]) =>
-                names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")
-              ).join("")}
-            </datalist>
-
-            <input
-              id="city"
-              name="city"
-              list="cities-list"
-              value="${escapeHtml(city)}"
-              placeholder="Toutes les villes"
-              autocomplete="off"
-              style="flex: 1 1 100px; border: none; border-left: 1px solid #e2e8f0; background: transparent; margin: 0; padding: 12px 15px; box-shadow: none; font-size: 15px; border-radius: 50px; color: #1a202c; font-weight: 600; min-width: 0;"
-            >
-            <datalist id="cities-list">
-              ${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}
-            </datalist>
-
-            <input type="hidden" name="neighborhood" value="${escapeHtml(neighborhood)}">
-
-            <button type="submit" style="border-radius: 50px; padding: 12px 20px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 15px; font-weight: 700; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.4);">Rechercher</button>
-          </form>
-
-          <script>
-            document.querySelectorAll('input[list]').forEach(function(input){
-              input.addEventListener('click', function(){
-                if (!input.dataset.opened) {
-                  const val = input.value;
-                  input.value = '';
-                  input.value = val;
-                  input.dataset.opened = '1';
-                }
-              });
+        <script>
+          document.querySelectorAll('input[list]').forEach(function(input){
+            input.addEventListener('click', function(){
+              if (!input.dataset.opened) {
+                const val = input.value;
+                input.value = '';
+                input.value = val;
+                input.dataset.opened = '1';
+              }
             });
-          </script>
-        </div>
-      </div>
+          });
+        </script>
+      </section>
 
-      <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-bottom: 40px;">
-        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; border: none; padding: 14px 24px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 15px rgba(37,99,235,0.3);">Devenir professionnel</a>
-        <a class="button" href="/emplois" style="background: #38a169; color: white; border: none; padding: 14px 24px; font-size: 15px; font-weight: 700; box-shadow: 0 4px 15px rgba(56,161,105,0.3);">Consulter les offres d'emploi</a>
-      </div>
-
-      <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;">
-        <strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.
-      </div>
-
-      <h2 style="text-align: center; margin-bottom: 20px;">Professionnels disponibles (${totalPros})</h2>
+      <h2 style="text-align: center; margin-bottom: 20px;">Résultats (${totalPros})</h2>
       ${prosSection}
       ${paginationHtml}
     `;
-    res.send(page("Accueil", content, proConnected));
+    res.send(page("Recherche", content, proConnected));
   } catch (error) {
     res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null));
   }
