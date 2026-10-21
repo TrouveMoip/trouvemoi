@@ -1349,6 +1349,7 @@ async function startServer() {
 
     // 2. Migrations pour les bases qui existaient déjà
     const migrations = [
+      `ALTER TABLE professional_applications DROP CONSTRAINT IF EXISTS professional_applications_status_check`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
