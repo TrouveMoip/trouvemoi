@@ -219,8 +219,8 @@ function page(title, content, proConnected) {
       <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-6YQ5R6M4ET');</script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; padding: 0; background: #f8f9fa; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 0; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+        header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
         .logo svg { display: block; height: 45px; width: auto; max-width: 100%; }
@@ -228,116 +228,80 @@ function page(title, content, proConnected) {
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; transition: background 0.2s; }
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); color: white; }
+        
         main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
-        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; }
-        .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        h1 { font-size: 28px; margin-bottom: 16px; color: #1e40af; line-height: 1.2; font-weight: 800; }
-        h2 { font-size: 22px; margin-bottom: 14px; color: #1e3a8a; line-height: 1.3; font-weight: 700; }
+        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #eef2f5; }
+        .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        
+        h1 { font-size: 28px; margin-bottom: 16px; color: #1e3a8a; line-height: 1.2; font-weight: 800; }
+        h2 { font-size: 22px; margin-bottom: 14px; color: #1e40af; line-height: 1.3; font-weight: 700; }
         h3 { font-size: 18px; margin-bottom: 10px; color: #1a202c; line-height: 1.3; font-weight: 600; }
         p { margin-bottom: 12px; color: #4a5568; }
         .label { font-weight: 700; color: #1a202c; }
+        
         label { display: block; margin-top: 8px; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #1a202c; }
-        input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 50px; font-size: 15px; font-family: inherit; background: white; transition: border-color 0.2s, box-shadow 0.2s; }
-        input:focus, textarea:focus, select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
-        textarea { resize: vertical; min-height: 100px; border-radius: 20px; }
-        input[type="file"] { padding: 10px; background: #f8f9fa; border: 2px dashed #cbd5e0; cursor: pointer; border-radius: 20px; }
+        input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; font-family: inherit; background: #fdfdfd; transition: border-color 0.2s, box-shadow 0.2s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); background: white; }
+        textarea { resize: vertical; min-height: 100px; }
+        input[type="file"] { padding: 10px; background: #f8fafc; border: 2px dashed #cbd5e0; cursor: pointer; }
         input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
         optgroup { font-weight: 800; color: #1e40af; font-style: normal; background: #eff6ff; padding: 6px 0; font-size: 15px; }
         optgroup option { font-weight: 400; color: #222; background: white; font-size: 15px; }
-        button, .button { display: inline-block; border: none; background: #2563eb; color: white; padding: 14px 24px; border-radius: 50px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: background 0.2s, transform 0.1s; margin-right: 8px; margin-bottom: 8px; font-family: inherit; border: 1px solid transparent; }
-        button:hover, .button:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
-        .danger { background: #e53e3e; } .danger:hover { background: #c53030; }
-        .secondary { background: white; color: #4a5568; border: 1px solid #cbd5e0; } .secondary:hover { background: #edf2f7; }
-        .warning { background: #ed8936; } .warning:hover { background: #dd6b20; }
-        .success { background: #38a169; } .success:hover { background: #2f855a; }
-        .muted { color: #718096; font-size: 14px; }
-        .contact-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-        .contact-buttons .button { flex: 1 1 140px; margin: 0; }
-        .whatsapp { background: #25d366; } .share { background: #4267b2; }
-        .photos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
-        .photos-grid img { max-width: 280px; max-height: 280px; border-radius: 20px; border: 2px solid #e2e8f0; object-fit: cover; }
-        .photo-profil { border: 3px solid #2563eb !important; } .photo-identite { border: 3px solid #e53e3e !important; } .photo-activite { border: 3px solid #4a5568 !important; } .photo-kyc { border: 3px solid #ed8936 !important; }
-        .photo-label { font-size: 12px; color: #718096; text-align: center; margin-top: 4px; font-weight: 600; }
-        .photo-block { display: flex; flex-direction: column; align-items: center; }
-        .help-text { font-size: 13px; color: #718096; margin-bottom: 12px; font-style: italic; }
-        .hidden { display: none !important; }
-        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: white; padding: 24px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); border-left: 6px solid #2563eb; }
-        .stat-card.warning { border-left-color: #ed8936; } .stat-card.danger { border-left-color: #e53e3e; } .stat-card.info { border-left-color: #3182ce; } .stat-card.success { border-left-color: #38a169; }
-        .stat-number { font-size: 36px; font-weight: 800; color: #1a202c; line-height: 1; margin-bottom: 6px; }
-        .stat-label { font-size: 14px; color: #718096; font-weight: 600; }
-        .pro-code-box { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 20px; text-align: center; margin: 16px 0; box-shadow: 0 10px 30px rgba(30,64,175,0.2); }
-        .pro-code-value { font-size: 42px; font-weight: 800; letter-spacing: 4px; margin: 12px 0; font-family: "Courier New", monospace; }
-        .pro-code-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 1px; }
-        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .badge-pending { background: #fefcbf; color: #b7791f; } .badge-approved { background: #c6f6d5; color: #22543d; } .badge-rejected { background: #fed7d7; color: #822727; } .badge-closed { background: #e2e8f0; color: #4a5568; } .badge-processed { background: #c6f6d5; color: #22543d; } .badge-new { background: #e53e3e; color: white; margin-left: 6px; padding: 2px 8px; font-size: 11px; }
-        .badge-verified { display: inline-flex; align-items: center; gap: 4px; background: #38a169; color: white; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        
+        button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; font-family: inherit; }
+        button:hover, .button:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .danger { background: #ef4444; } .danger:hover { background: #dc2626; }
+        .secondary { background: white; color: #4b5563; border: 1px solid #d1d5db; } .secondary:hover { background: #f3f4f6; color: #111827; }
+        .warning { background: #f59e0b; } .warning:hover { background: #d97706; }
+        .success { background: #10b981; } .success:hover { background: #059669; }
+        .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; }
+        
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-pending { background: #fef3c7; color: #92400e; } .badge-approved { background: #d1fae5; color: #065f46; } .badge-rejected { background: #fee2e2; color: #991b1b; } .badge-closed { background: #e5e7eb; color: #374151; }
+        .badge-verified { display: inline-flex; align-items: center; gap: 4px; background: #10b981; color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
         .badge-verified::before { content: "✓"; font-size: 13px; font-weight: 900; }
-        .alert { padding: 16px 20px; border-radius: 16px; margin-bottom: 16px; font-weight: 500; }
-        .alert-success { background: #c6f6d5; color: #22543d; } .alert-danger { background: #fed7d7; color: #822727; } .alert-warning { background: #fefcbf; color: #b7791f; } .alert-info { background: #bee3f8; color: #2a4365; }
-        .pro-welcome { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 28px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(30,64,175,0.2); }
-        .pro-welcome h2 { color: white; margin-bottom: 8px; font-size: 24px; }
-        .pro-welcome .button { background: white; color: #1e40af; }
-        
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 24px; }
-        .pro-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; display: flex; flex-direction: row; min-height: 150px; margin-bottom: 10px; }
-        .pro-card-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .pro-card-name { font-size: 16px; font-weight: 800; color: #1a202c; margin-bottom: 4px; line-height: 1.25; }
-        .pro-card-location { font-size: 12px; color: #718096; margin-bottom: 6px; }
-        .pro-card-location::before { content: "📍 "; }
-        .pro-card-rating { font-size: 14px; color: #ed8936; font-weight: 600; margin-bottom: 8px; }
-        .pro-card-rating .reviews-count { color: #718096; font-weight: 400; font-size: 12px; margin-left: 4px; }
-        .pro-card-button { display: block; width: 100%; color: white; padding: 9px 14px; border-radius: 50px; text-align: center; text-decoration: none; font-weight: 700; font-size: 13px; margin-top: auto; }
+        .badge-local { background: #dbeafe; color: #1e40af; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+        .badge-ambulant { background: #fef3c7; color: #92400e; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
-        .pro-header { background: white; color: #1a202c; padding: 32px 24px; border-radius: 20px; margin-bottom: 20px; text-align: center; }
-        .pro-header .profession { font-size: 18px; color: #2563eb; font-weight: 700; }
-        .pro-header .location { font-size: 15px; color: #718096; }
-        .pro-header .rating-large { font-size: 22px; color: #ed8936; margin-top: 12px; font-weight: 700; }
+        .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; font-weight: 500; border: 1px solid transparent; }
+        .alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+        .alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        .alert-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+        .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
 
-        .review-item { background: #f8f9fa; padding: 20px; border-radius: 16px; margin-bottom: 16px; border: 1px solid #edf2f7; }
-        .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .review-author { font-weight: 800; color: #1a202c; }
-        .review-stars { color: #ed8936; font-size: 18px; }
-        .review-date { font-size: 13px; color: #a0aec0; }
-        .review-comment { color: #4a5568; margin-top: 8px; }
+        /* ✅ DESIGN DES CARTES PROS (Accueil & Recherche) */
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-top: 24px; }
+        .pro-card { background: white; border-radius: 16px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+        .pro-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.08); }
+        .pro-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
+        .pro-name { font-size: 18px; font-weight: 800; color: #111827; line-height: 1.2; margin-bottom: 4px; }
+        .pro-meta { font-size: 13px; color: #6b7280; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+        .pro-desc { font-size: 14px; color: #4b5563; margin: 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-grow: 1; }
         
-        .rating-summary { display: flex; align-items: center; gap: 24px; padding: 24px; background: #fefcbf; border-radius: 20px; margin-bottom: 24px; }
-        .rating-big-number { font-size: 52px; font-weight: 800; color: #b7791f; line-height: 1; }
-        .rating-details .stars { font-size: 28px; color: #ed8936; }
-        .btn-review { background: #ed8936; color: white; }
-        
-        .star-rating-input { display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 6px; margin-bottom: 16px; width: auto; }
-        .star-rating-input input { display: none; }
-        .star-rating-input label { font-size: 44px; color: #cbd5e0; cursor: pointer; margin: 0; padding: 0; line-height: 1; font-weight: normal; }
-        .star-rating-input input:checked ~ label { color: #ed8936; }
-        .star-rating-input label:hover, .star-rating-input label:hover ~ label { color: #ed8936; }
-        
-        .checkbox-block { background: #f8f9fa; padding: 16px; border-radius: 16px; margin: 12px 0; border: 1px solid #edf2f7; }
-        .checkbox-block label { display: flex; align-items: flex-start; margin: 0; font-weight: 500; color: #4a5568; }
+        .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+        .pro-actions a { padding: 10px; font-size: 13px; border-radius: 8px; margin: 0; }
+        .pro-profile-link { grid-column: span 2; background: #f3f4f6; color: #374151; font-weight: 700; }
+        .pro-profile-link:hover { background: #e5e7eb; }
 
-        footer { background: #1e293b; color: #cbd5e0; padding: 40px 20px 20px; margin-top: 40px; }
+        /* ✅ GALERIE PHOTOS */
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-top: 16px; }
+        .gallery-grid img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; cursor: pointer; transition: transform 0.2s; border: 1px solid #e5e7eb; }
+        .gallery-grid img:hover { transform: scale(1.03); }
+
+        /* ✅ ADMIN ACCORDÉON (Candidatures) */
+        .admin-details { background: white; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+        .admin-summary { display: flex; align-items: center; padding: 16px; cursor: pointer; list-style: none; user-select: none; background: #fafafa; }
+        .admin-summary::-webkit-details-marker { display: none; }
+        .admin-summary:hover { background: #f3f4f6; }
+        .admin-summary-info { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        .admin-content { padding: 20px; border-top: 1px solid #e5e7eb; }
+
+        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; }
         .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
         .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; font-weight: 800; }
-        .footer-col a { display: block; color: #a0aec0; text-decoration: none; padding: 6px 0; font-size: 14px; }
-        .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #334155; text-align: center; font-size: 13px; color: #94a3b8; }
-
-        .count-badge-circle { width: 85px; height: 85px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 3px solid #fbbf24; display: inline-flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 900; color: white; box-shadow: 0 6px 25px rgba(0,0,0,0.3); }
-        .count-badge-label { color: white; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 8px; }
-
-        .pro-accordion { background: white; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; overflow: hidden; }
-        .pro-accordion summary { display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; list-style: none; }
-        .pro-accordion summary::-webkit-details-marker { display: none; }
-        .pro-accordion .mini-photo { width: 60px; height: 60px; min-width: 60px; border-radius: 12px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .pro-accordion .mini-photo img { width: 100%; height: 100%; object-fit: cover; }
-        .pro-accordion .summary-info { flex: 1; min-width: 0; }
-        .pro-accordion .summary-name { font-weight: 800; font-size: 15px; color: #1a202c; }
-        .pro-accordion .summary-meta { font-size: 12px; color: #718096; margin-top: 3px; }
-        .pro-accordion .summary-arrow { font-size: 22px; color: #3b82f6; font-weight: bold; transition: transform 0.25s ease; }
-        .pro-accordion[open] .summary-arrow { transform: rotate(90deg); }
-        .pro-accordion .accordion-content { padding: 16px; background: #fafbfc; }
-        .pro-accordion .info-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
-        .pro-accordion .info-tag { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+        .footer-col a { display: block; color: #9ca3af; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
+        .footer-col a:hover { color: white; }
+        .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
 
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
@@ -345,9 +309,7 @@ function page(title, content, proConnected) {
           nav { justify-content: center; margin-top: 10px; }
           main { padding: 16px 12px; }
           .card { padding: 20px 16px; }
-          h1 { font-size: 24px; } h2 { font-size: 20px; } h3 { font-size: 16px; }
           .pros-grid { grid-template-columns: 1fr; }
-          .logo svg { height: 42px; }
         }
       </style>
     </head>
@@ -364,34 +326,14 @@ function page(title, content, proConnected) {
       <main>${content}</main>
       <footer>
         <div class="footer-content">
-          <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#a0aec0;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
-          <div class="footer-col">
-            <h4>Navigation</h4>
-            <a href="/">Professionnels</a>
-            <a href="/emplois">Offres d'emploi</a>
-            <a href="/devenir-professionnel">Devenir professionnel</a>
-            <a href="/mon-espace-pro">Espace pro</a>
-          </div>
-          <div class="footer-col">
-            <h4>Informations</h4>
-            <a href="/a-propos">A propos</a>
-            <a href="/contact">Contact</a>
-            <a href="/conditions">Conditions</a>
-            <a href="/confidentialite">Confidentialite</a>
-          </div>
-          <div class="footer-col">
-            <h4>Suivez-nous</h4>
-            <a href="https://www.facebook.com/TrouveMoi.bj" target="_blank" style="display:flex; align-items:center; gap:8px;"><span style="font-size:18px;">🔵</span> Page Facebook</a>
-          </div>
-          <div class="footer-col">
-            <h4>Contact</h4>
-            <a href="/contact">Nous ecrire</a>
-            <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
-          </div>
+          <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#9ca3af;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
+          <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
+          <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/conditions">Conditions</a><a href="/confidentialite">Confidentialite</a></div>
+          <div class="footer-col"><h4>Contact</h4><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
         </div>
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
-      <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'"><span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span><img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 20px;"></div>
+      <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'"><span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span><img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px;"></div>
       <script>function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }</script>
     </body>
     </html>
@@ -404,9 +346,9 @@ function jobContactButtons(job) {
   if (job.contact_whatsapp) {
     let wa = job.contact_whatsapp.replace(/^\+/, "");
     if (!wa.startsWith("229")) wa = "229" + wa;
-    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour, je vous contacte suite à votre offre d'emploi sur TrouveMoi.")}" target="_blank">💬 WhatsApp</a>`);
+    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank">💬 WhatsApp</a>`);
   }
-  return b.length ? `<div class="contact-buttons">${b.join("")}</div>` : "";
+  return b.length ? `<div class="contact-buttons" style="display:flex; gap:10px;">${b.join("")}</div>` : "";
 }
 
 function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
@@ -438,7 +380,7 @@ app.get("/", async (req, res) => {
     const totalPros = parseInt(countResult.rows[0].count);
     const totalPages = Math.ceil(totalPros / limit);
 
-    const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
+    const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, p.type_lieu, p.latitude, p.longitude, p.est_ouvert, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
     const result = await pool.query(query, [limit, offset]);
 
     const professionsResult = await pool.query("SELECT name, category FROM professions");
@@ -446,6 +388,7 @@ app.get("/", async (req, res) => {
     for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
 
     const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
+    
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
       const reviewsCount = Number(person.reviews_count || 0);
@@ -456,64 +399,114 @@ app.get("/", async (req, res) => {
       const borderColor = palettes[Math.abs(hash) % palettes.length];
       
       let ratingHtml = reviewsCount > 0 
-        ? `<div class="pro-card-rating" style="margin-bottom:0;">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount})</span></div>`
-        : `<div class="pro-card-rating" style="margin-bottom:0;"><span class="no-rating">Pas d'avis</span></div>`;
-      
+        ? `<div style="font-size: 14px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 12px;">(${reviewsCount} avis)</span></div>`
+        : `<div style="font-size: 12px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
+
+      const typeBadge = person.type_lieu === 'fixe' 
+        ? `<span class="badge-local">🏠 Local fixe</span>` 
+        : `<span class="badge-ambulant">🚗 Ambulant</span>`;
+
+      let cleanPhone = (person.phone || "").replace(/[()\s.-]/g, "");
+      let waNum = cleanPhone.startsWith("229") ? cleanPhone : "229" + cleanPhone;
+
+      let actionButtons = "";
+      if (person.phone_public && cleanPhone) {
+        actionButtons = `
+          <a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
+          <a href="https://wa.me/${escapeHtml(waNum)}" target="_blank" class="button whatsapp">💬 WhatsApp</a>
+        `;
+      } else {
+        actionButtons = `
+          <a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter via le site</a>
+        `;
+      }
+
       return `
-        <article class="pro-card" style="flex-direction: column; padding: 20px; border: 1px solid #e2e8f0; border-left: 6px solid ${borderColor}; border-radius: 12px; margin-bottom: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
-          <div class="pro-card-body" style="padding: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-              <div>
-                <div class="pro-card-name" style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(displayName)}</div>
-                <div class="pro-card-location" style="font-size: 14px; color: ${borderColor}; font-weight: 600;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
-              </div>
-              <div style="text-align: right;">${renderKycBadge()}</div>
+        <article class="pro-card" style="border-left: 6px solid ${borderColor};">
+          <div class="pro-card-top">
+            <div>
+              <div class="pro-name">${escapeHtml(displayName)}</div>
+              <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+              <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
             </div>
-            
-            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 12px 0; border: 1px solid #edf2f7;">
-              <p style="margin: 0; font-size: 13px; color: #4a5568; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                ${escapeHtml(person.service_description || "Aucune description fournie.")}
-              </p>
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+              ${renderKycBadge()}
+              ${typeBadge}
             </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
-              ${ratingHtml}
-              <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px; background: ${borderColor}; border-radius: 8px;">Voir profil →</a>
-            </div>
+          </div>
+          
+          <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            ${ratingHtml}
+            <span id="dist-${person.id}" style="font-size: 12px; font-weight: 700; color: #2563eb;"></span>
+          </div>
+
+          <div class="pro-actions">
+            ${actionButtons}
+            <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link">Voir le profil →</a>
           </div>
         </article>
       `;
     }).join("");
 
-    const welcomeBanner = proConnected ? `<div class="pro-welcome"><h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2><p>Votre candidature est approuvee.</p><div class="actions"><a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a></div></div>` : "";
-    const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></section>`;
-    const paginationHtml = renderPagination(currentPage, totalPages, "/");
+    const welcomeBanner = proConnected ? `<div class="alert alert-info" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;"><div><strong>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</strong><br>Votre profil est en ligne.</div><a class="button success" href="/mon-espace-pro" style="margin:0;">Mon espace pro</a></div>` : "";
+    
+    // Script pour calculer les distances
+    const prosDataJS = JSON.stringify(result.rows.map(p => ({ id: p.id, lat: p.latitude, lon: p.longitude })).filter(p => p.lat && p.lon));
 
     const content = `
       ${welcomeBanner}
-      <div style="position: relative; text-align: center; padding: 50px 15px; margin-bottom: 30px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center top; z-index: 1;"></div>
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(30, 64, 175, 0.85); z-index: 2;"></div>
-        <div style="position: relative; z-index: 3; max-width: 800px; margin: 0 auto; width: 100%;">
-          <div style="margin-bottom: 25px;"><div class="count-badge-circle">${totalAllPros}</div><div class="count-badge-label">Pro${totalAllPros > 1 ? 's' : ''} inscrit${totalAllPros > 1 ? 's' : ''}</div></div>
-          <h1 style="font-size: 28px; font-weight: 800; color: white; margin-bottom: 10px; line-height: 1.25; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span></h1>
-          <p style="font-size: 16px; color: rgba(255,255,255,0.95); margin-bottom: 30px; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">Des professionnels vérifiés au Bénin, en 1 clic.</p>
-          <div><a href="/recherche" class="button" style="background: #ff8c00; color: white; font-size: 18px; padding: 16px 40px; border-radius: 50px; font-weight: 800; box-shadow: 0 6px 20px rgba(255,140,0,0.4); border: 2px solid white; display: inline-block;">🔍 Je recherche un professionnel</a></div>
+      <div style="position: relative; text-align: center; padding: 60px 20px; margin-bottom: 40px; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center;">
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(30,58,138,0.9) 0%, rgba(59,130,246,0.8) 100%); z-index: 1;"></div>
+        <div style="position: relative; z-index: 2; max-width: 800px; margin: 0 auto;">
+          <div style="width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 3px solid #fbbf24; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; color: white; margin-bottom: 20px;">${totalAllPros}</div>
+          <div style="color: white; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">Pros inscrits</div>
+          
+          <h1 style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 12px; line-height: 1.2;">Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span></h1>
+          <p style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px;">Des professionnels vérifiés au Bénin, en 1 clic.</p>
+          
+          <a href="/recherche" class="button" style="background: #f59e0b; color: white; font-size: 18px; padding: 16px 40px; font-weight: 800; border-radius: 50px; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">🔍 Rechercher un pro</a>
         </div>
       </div>
-      <div style="display: flex; justify-content: center; align-items: stretch; gap: 20px; flex-wrap: wrap; margin-bottom: 40px; max-width: 800px; margin-left: auto; margin-right: auto;">
-        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; border: none; padding: 16px 24px; font-size: 16px; font-weight: 700; flex: 1 1 250px; text-align: center; border-radius: 50px;">👤 Devenir professionnel</a>
-        <a class="button" href="/emplois" style="background: #38a169; color: white; border: none; padding: 16px 24px; font-size: 16px; font-weight: 700; flex: 1 1 250px; text-align: center; border-radius: 50px;">💼 Consulter les offres d'emploi</a>
+
+      <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 40px;">
+        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">👤 Devenir professionnel</a>
+        <a class="button" href="/emplois" style="background: #10b981; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">💼 Offres d'emploi</a>
       </div>
-      <div class="alert alert-warning" style="max-width: 800px; margin: 0 auto 30px auto; text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.</div>
-      <h2 style="text-align: center; margin-bottom: 20px;">Derniers professionnels inscrits</h2>
-      ${prosSection} ${paginationHtml}
+
+      <div class="alert alert-warning" style="text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.</div>
+
+      <h2 style="text-align: center; margin: 40px 0 20px 0;">Derniers professionnels inscrits</h2>
+      <div class="pros-grid">
+        ${prosCards || `<div class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></div>`}
+      </div>
+      ${renderPagination(currentPage, totalPages, "/")}
+
+      <script>
+        const prosGeo = ${prosDataJS};
+        if (prosGeo.length > 0 && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const cLat = pos.coords.latitude, cLon = pos.coords.longitude;
+            prosGeo.forEach(p => {
+              const R = 6371;
+              const dLat = (p.lat - cLat) * Math.PI / 180;
+              const dLon = (p.lon - cLon) * Math.PI / 180;
+              const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(cLat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              const distance = (R * c).toFixed(1);
+              const el = document.getElementById('dist-' + p.id);
+              if (el) el.innerHTML = '📍 À ' + distance + ' km';
+            });
+          });
+        }
+      </script>
     `;
     res.send(page("Accueil", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
 });
 
-// ✅ RECHERCHE : N'affiche rien tant que l'utilisateur n'a pas cliqué sur Rechercher
+// ✅ RECHERCHE : Vide au départ, affiche les mêmes cartes
 app.get("/recherche", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
@@ -527,11 +520,11 @@ app.get("/recherche", async (req, res) => {
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
-    const professionsByCategory = {}; const categoryByProfession = {};
-    for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); categoryByProfession[p.name] = cat; }
+    const professionsByCategory = {};
+    for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
 
     let result = { rows: [] }; let totalPros = 0; let totalPages = 0;
-    let prosSection = ""; let paginationHtml = "";
+    let prosSection = ""; let paginationHtml = ""; let prosDataJS = "[]";
 
     if (isSearching) {
       let whereClause = ` WHERE p.status = 'approved'`; const values = [];
@@ -543,37 +536,110 @@ app.get("/recherche", async (req, res) => {
       totalPages = Math.ceil(totalPros / limit);
 
       const queryValues = [...values, limit, offset];
-      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p ${whereClause} ORDER BY p.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.service_description, p.type_lieu, p.latitude, p.longitude, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p ${whereClause} ORDER BY p.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
       result = await pool.query(query, queryValues);
 
-      const prosAccordions = result.rows.map((person) => {
+      const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
+      const prosCards = result.rows.map((person) => {
         const displayName = getDisplayName(person);
         const reviewsCount = Number(person.reviews_count || 0);
         const avgRating = Number(person.avg_rating || 0);
-        const miniPhoto = `<div style="width:100%;height:100%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:24px;opacity:0.3;">👤</span></div>`;
-        const ratingHtml = reviewsCount > 0 ? `<span style="color:#ed8936;font-weight:600;">${renderStars(avgRating)}</span> <span style="color:#718096;font-size:12px;">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>` : `<span style="color:#a0aec0;font-style:italic;font-size:12px;">Pas encore d'avis</span>`;
-        return `<details class="pro-accordion"><summary><div class="mini-photo">${miniPhoto}</div><div class="summary-info"><div class="summary-name">${escapeHtml(displayName)}</div><div class="summary-meta">${escapeHtml(person.profession)} • 📍 ${escapeHtml(person.city)}</div></div><div class="summary-arrow">›</div></summary><div class="accordion-content"><div class="info-row"><span class="info-tag">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</span><span class="info-tag">🔧 ${escapeHtml(person.profession)}</span>${person.experience ? `<span class="info-tag">⏱️ ${escapeHtml(person.experience)}</span>` : ""}</div><div style="margin-bottom:12px;">${ratingHtml}</div><div style="margin-bottom:12px;">${renderKycBadge()}</div><p style="font-size:14px;color:#4a5568;margin-bottom:16px;line-height:1.6;">${escapeHtml(person.service_description || "").slice(0, 250)}...</p><a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil complet →</a></div></details>`;
+        
+        let hash = 0; const key = String(person.profession);
+        for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
+        const borderColor = palettes[Math.abs(hash) % palettes.length];
+        
+        let ratingHtml = reviewsCount > 0 
+          ? `<div style="font-size: 14px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 12px;">(${reviewsCount} avis)</span></div>`
+          : `<div style="font-size: 12px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
+
+        const typeBadge = person.type_lieu === 'fixe' ? `<span class="badge-local">🏠 Local fixe</span>` : `<span class="badge-ambulant">🚗 Ambulant</span>`;
+        let cleanPhone = (person.phone || "").replace(/[()\s.-]/g, "");
+        let waNum = cleanPhone.startsWith("229") ? cleanPhone : "229" + cleanPhone;
+
+        let actionButtons = "";
+        if (person.phone_public && cleanPhone) {
+          actionButtons = `<a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a><a href="https://wa.me/${escapeHtml(waNum)}" target="_blank" class="button whatsapp">💬 WhatsApp</a>`;
+        } else {
+          actionButtons = `<a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter via le site</a>`;
+        }
+
+        return `
+          <article class="pro-card" style="border-left: 6px solid ${borderColor};">
+            <div class="pro-card-top">
+              <div>
+                <div class="pro-name">${escapeHtml(displayName)}</div>
+                <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+                <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
+              </div>
+              <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                ${renderKycBadge()}
+                ${typeBadge}
+              </div>
+            </div>
+            <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              ${ratingHtml}
+              <span id="dist-${person.id}" style="font-size: 12px; font-weight: 700; color: #2563eb;"></span>
+            </div>
+            <div class="pro-actions">
+              ${actionButtons}
+              <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link">Voir le profil →</a>
+            </div>
+          </article>
+        `;
       }).join("");
 
-      prosSection = result.rows.length > 0 ? `<div style="max-width: 800px; margin: 0 auto;">${prosAccordions}</div>` : `<section class="card" style="max-width: 800px; margin: 0 auto;"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
+      prosSection = `<div class="pros-grid">${prosCards}</div>`;
       paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city });
+      prosDataJS = JSON.stringify(result.rows.map(p => ({ id: p.id, lat: p.latitude, lon: p.longitude })).filter(p => p.lat && p.lon));
     }
 
     const content = `
-      <div style="text-align: center; margin-bottom: 20px;"><h1 style="margin-bottom: 10px;">Rechercher un professionnel</h1><a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a></div>
-      <section class="card" style="max-width: 800px; margin: 0 auto 24px auto;">
-        <form action="/recherche" method="GET" style="background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; border: 1px solid #e2e8f0;">
-          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon, Coiffeur...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; background: #f8f9fa; margin: 0; padding: 16px 20px; box-shadow: none; font-size: 16px; border-radius: 12px; color: #1a202c; font-weight: 600;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="margin-bottom: 8px;">Rechercher un professionnel</h1>
+        <a href="/" style="color: #6b7280; font-size: 14px; text-decoration: none;">← Retour à l'accueil</a>
+      </div>
+      
+      <section class="card" style="max-width: 800px; margin: 0 auto 30px auto; background: #f8fafc;">
+        <form action="/recherche" method="GET" style="display: flex; flex-direction: column; gap: 12px;">
+          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon, Coiffeur...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
           <datalist id="professions-list">${Object.entries(professionsByCategory).map(([cat, names]) => names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")).join("")}</datalist>
-          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou, Parakou...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; background: #f8f9fa; margin: 0; padding: 16px 20px; box-shadow: none; font-size: 16px; border-radius: 12px; color: #1a202c; font-weight: 600;">
+          
+          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou, Parakou...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
           <datalist id="cities-list">${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}</datalist>
-          <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #ff8c00; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.3); margin-top: 8px;">🔍 Rechercher</button>
+          
+          <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Rechercher</button>
         </form>
       </section>
       
-      ${isSearching ? `<h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
-      ${result.rows.length > 1 ? `<p style="text-align:center;color:#718096;font-size:13px;margin-bottom:16px;">👇 Cliquez sur un professionnel pour voir ses détails</p>` : ""}
-      ${prosSection} ${paginationHtml}` : `<div style="text-align: center; padding: 40px 20px; color: #a0aec0;"><p style="font-size: 18px;">👆 Entrez un métier ou une ville ci-dessus pour voir les professionnels disponibles.</p></div>`}
+      ${isSearching ? `
+        <h2 style="text-align: center; margin-bottom: 20px;">Résultats (${totalPros})</h2>
+        ${prosSection} ${paginationHtml}
+      ` : `
+        <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 20px; border: 1px dashed #cbd5e0;">
+          <p style="font-size: 18px; color: #718096; margin: 0;">👆 Entrez un métier ou une ville pour voir les professionnels.</p>
+        </div>
+      `}
+
+      <script>
+        const prosGeo = ${prosDataJS};
+        if (prosGeo.length > 0 && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const cLat = pos.coords.latitude, cLon = pos.coords.longitude;
+            prosGeo.forEach(p => {
+              const R = 6371;
+              const dLat = (p.lat - cLat) * Math.PI / 180;
+              const dLon = (p.lon - cLon) * Math.PI / 180;
+              const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(cLat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+              const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+              const distance = (R * c).toFixed(1);
+              const el = document.getElementById('dist-' + p.id);
+              if (el) el.innerHTML = '📍 À ' + distance + ' km';
+            });
+          });
+        }
+      </script>
     `;
     res.send(page("Recherche", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
@@ -592,8 +658,6 @@ app.get("/pro/:id", async (req, res) => {
 
     const displayName = getDisplayName(person);
     const phoneClean = (person.phone || "").replace(/[()\s.-]/g, "");
-    
-    // ✅ Ajout automatique du 229 pour WhatsApp
     let whatsappNumber = phoneClean.replace(/^\+/, ""); 
     if (!whatsappNumber.startsWith("229")) whatsappNumber = "229" + whatsappNumber;
 
@@ -609,59 +673,48 @@ app.get("/pro/:id", async (req, res) => {
 
     let contactButtons = "";
     if (person.phone_public && phoneClean) {
-      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="tel:${escapeHtml(phoneClean)}" style="margin: 0; background: #2563eb; border-radius: 12px; padding: 14px; font-size: 16px;">📞 Appeler</a><a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank" style="margin: 0; border-radius: 12px; padding: 14px; font-size: 16px;">💬 WhatsApp</a></div><div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; border-radius: 12px; padding: 12px; font-size: 14px;">📤 Partager ce profil</a></div>`;
+      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="tel:${escapeHtml(phoneClean)}" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a><a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a></div><div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; font-size: 14px;">📤 Partager ce profil</a></div>`;
     } else {
-      contactButtons = `<div class="alert alert-info" style="font-size: 14px;">📩 Numéro privé.</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="/contact?pro=${person.id}" style="margin: 0; background: #2563eb; border-radius: 12px; padding: 14px; font-size: 16px;">📩 Contacter</a><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; border-radius: 12px; padding: 14px; font-size: 16px;">📤 Partager</a></div>`;
+      contactButtons = `<div class="alert alert-info" style="font-size: 14px;">📩 Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="/contact?pro=${person.id}" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📩 Contacter</a><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; font-size: 16px;">📤 Partager</a></div>`;
     }
 
-    let ratingHeader = reviewsCount > 0 ? `<div style="color: #ed8936; font-size: 20px; font-weight: 700; margin-top: 8px;">${renderStars(avgRating)} <span style="font-size: 15px; color: #718096; font-weight: 400;">(${reviewsCount} avis)</span></div>` : `<div style="color: #a0aec0; font-size: 14px; font-style: italic; margin-top: 8px;">Pas encore d'avis</div>`;
-    let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fefcbf; border-radius: 12px; margin-bottom: 16px;"><div style="font-size: 32px; font-weight: 800; color: #b7791f;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #ed8936;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #744210;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
-    const reviewsHtml = reviews.map((rev) => `<div style="background: white; border: 1px solid #edf2f7; padding: 16px; border-radius: 12px; margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-weight: 700; color: #1a202c;">${escapeHtml(rev.author_name)}</div><div style="color: #ed8936; font-size: 14px;">${renderStars(rev.rating)}</div></div><div style="font-size: 12px; color: #a0aec0; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div style="color: #4a5568; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}</div>`).join("");
+    let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fde68a;"><div style="font-size: 36px; font-weight: 800; color: #b45309;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #f59e0b;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #92400e;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
+    const reviewsHtml = reviews.map((rev) => `<div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-weight: 700; color: #111827;">${escapeHtml(rev.author_name)}</div><div style="color: #f59e0b; font-size: 14px;">${renderStars(rev.rating)}</div></div><div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div style="color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}</div>`).join("");
 
     const photosGalerie = [person.photo_galerie_1, person.photo_galerie_2, person.photo_galerie_3].filter(url => url !== null && url !== "");
     let galerieHtml = "";
     if (photosGalerie.length > 0) {
-      galerieHtml = `<div class="card" style="border-radius: 20px;"><h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">📸 Galerie Photos</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
+      galerieHtml = `<div class="card" style="padding: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2><div class="gallery-grid">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
     }
 
-    // ✅ NOUVEAU : Badge Ouvert / Fermé
-    const openStatusBadge = person.type_lieu === 'fixe' ? `
-      <div style="margin-bottom: 12px;">
-        <span class="badge" style="background:${person.est_ouvert ? '#c6f6d5' : '#fed7d7'}; color:${person.est_ouvert ? '#22543d' : '#822727'}; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          ${person.est_ouvert ? '🟢 Ouvert' : '🔴 Fermé'}
-        </span>
-      </div>
-    ` : "";
+    const openStatusBadge = person.type_lieu === 'fixe' ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:${person.est_ouvert ? '#d1fae5' : '#fee2e2'}; color:${person.est_ouvert ? '#065f46' : '#991b1b'}; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">${person.est_ouvert ? '🟢 Ouvert' : '🔴 Fermé'}</span></div>` : "";
 
     const content = `
       <div style="max-width: 800px; margin: 0 auto;">
-        <div class="card" style="text-align: center; padding: 32px 24px; border-radius: 20px;">
+        <div class="card" style="text-align: center; padding: 32px 24px;">
           <div style="margin-bottom: 16px;">${renderKycBadge("lg")}</div>
-          
           ${openStatusBadge}
-
-          <h1 style="color: #1a202c; font-size: 26px; margin-bottom: 4px;">${escapeHtml(displayName)}</h1>
+          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
-          <div style="color: #718096; font-size: 14px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-          ${ratingHeader}
+          <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+          <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${reviewsCount > 0 ? `${renderStars(avgRating)} <span style="font-size: 15px; color: #6b7280; font-weight: 400;">(${reviewsCount} avis)</span>` : `<span style="font-size: 15px; color: #9ca3af; font-weight: 400;">Pas encore d'avis</span>`}</div>
         </div>
         
-        <div class="card" style="border-radius: 20px;">
-          <h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
-          <p style="font-size: 15px; line-height: 1.7; color: #4a5568; white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+        <div class="card">
+          <h2 style="font-size: 18px; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #374151; white-space: pre-line;">${escapeHtml(person.service_description)}</p>
           
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; background: #f8f9fa; padding: 16px; border-radius: 12px;">
-            <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Zone d'intervention</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.service_area ? escapeHtml(person.service_area) : "Non spécifiée"}</div></div>
-            <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Disponibilité</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.availability ? escapeHtml(person.availability) : "Non spécifiée"}</div></div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; background: #f9fafb; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb;">
+            <div><div style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Zone d'intervention</div><div style="font-size: 14px; font-weight: 600; color: #111827;">${person.service_area ? escapeHtml(person.service_area) : "Non spécifiée"}</div></div>
+            <div><div style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Disponibilité</div><div style="font-size: 14px; font-weight: 600; color: #111827;">${person.availability ? escapeHtml(person.availability) : "Non spécifiée"}</div></div>
           </div>
 
           ${person.type_lieu === 'fixe' ? `
-          <div style="margin-top: 24px; background: #eff6ff; padding: 16px; border-radius: 12px; border: 1px solid #bfdbfe;">
-            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Adresse</h3>
-            <p style="font-size: 14px; margin-bottom: 12px; color: #1e40af;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>
+          <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3>
+            <p style="font-size: 14px; margin-bottom: 16px; color: #1e40af; font-weight: 500;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Adresse non spécifiée"}</p>
             ${person.latitude && person.longitude ? `
-              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
-              <p id="distance-text" style="text-align: center; font-weight: bold; margin-top: 12px; color: #2563eb;"></p>
+              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px;">🗺️ Voir l'itinéraire sur Google Maps</a>
             ` : ""}
           </div>
           ` : ""}
@@ -671,32 +724,13 @@ app.get("/pro/:id", async (req, res) => {
 
         ${galerieHtml}
 
-        <div class="card" style="border-radius: 20px; background: #f8fafc;">
+        <div class="card" style="background: #f9fafb;">
           <h2 style="font-size: 18px; margin-bottom: 16px;">Avis des clients (${reviewsCount})</h2>
-          ${ratingSummary}${reviewsHtml || `<p style="color: #718096; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
-          <div style="text-align: center; margin-top: 24px;"><a class="button btn-review" href="/pro/${person.id}/avis" style="width: 100%; border-radius: 12px; padding: 14px; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
+          ${ratingSummary}${reviewsHtml || `<p style="color: #6b7280; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
+          <div style="text-align: center; margin-top: 24px;"><a class="button warning" href="/pro/${person.id}/avis" style="width: 100%; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
         </div>
-        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;"><a href="/recherche" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à la recherche</a></div>
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;"><a href="/recherche" style="color: #6b7280; font-size: 14px; text-decoration: underline;">← Retour à la recherche</a></div>
       </div>
-
-      <script>
-        const proLat = ${person.latitude || 0};
-        const proLon = ${person.longitude || 0};
-        if (proLat && proLon && navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition((pos) => {
-            const clientLat = pos.coords.latitude;
-            const clientLon = pos.coords.longitude;
-            const R = 6371;
-            const dLat = (proLat - clientLat) * Math.PI / 180;
-            const dLon = (proLon - clientLon) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(clientLat * Math.PI / 180) * Math.cos(proLat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            const distance = (R * c).toFixed(1);
-            const distEl = document.getElementById('distance-text');
-            if (distEl) distEl.innerText = "📍 À " + distance + " km de vous (à vol d'oiseau)";
-          });
-        }
-      </script>
     `;
     res.send(page(displayName, content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -773,7 +807,7 @@ app.get("/devenir-professionnel", async (req, res) => {
     const content = `
       <section class="card" style="max-width: 800px; margin: 0 auto;">
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
-        ${BYPASS_PAYMENT ? "" : `<div class="alert" style="background: #fff7ed; border: 2px solid #f59e0b; color: #92400e; margin-bottom: 24px;"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
+        ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
         <form action="/candidatures" method="POST" enctype="multipart/form-data">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -782,15 +816,14 @@ app.get("/devenir-professionnel", async (req, res) => {
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <!-- ✅ MODIFIÉ : Placeholder pour numéro simple -->
             <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
             <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
           </div>
           
-          <div class="checkbox-block"><label><input type="checkbox" name="phone_public" value="yes" checked><span><strong>Numero visible publiquement</strong></span></label></div>
+          <div class="checkbox-block" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:16px;"><label><input type="checkbox" name="phone_public" value="yes" checked><span><strong>Numero visible publiquement</strong></span></label></div>
           <h3 style="margin-top: 30px;">Reception code *</h3>
-          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div></div>
-          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="email" required> <span><strong>✉️ Email</strong></span></label><div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Adresse email *</label><input name="contact_email" type="email" maxlength="254"></div></div>
+          <div class="checkbox-block" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:12px;"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div></div>
+          <div class="checkbox-block" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:12px;"><label><input type="radio" name="contact_preference" value="email" required> <span><strong>✉️ Email</strong></span></label><div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Adresse email *</label><input name="contact_email" type="email" maxlength="254"></div></div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
             <div><label>Ville *</label><select id="city" name="city" required><option value="">Choisir</option>${cityOptions}</select></div>
@@ -799,7 +832,7 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
             <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
-            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" style="border-radius: 12px; padding: 12px 20px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
+            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -814,7 +847,7 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
           <h3>Localisation & Type d'activité</h3>
-          <div class="checkbox-block" style="margin-bottom:16px;">
+          <div class="checkbox-block" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:16px;">
             <label><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
             <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
           </div>
@@ -824,29 +857,27 @@ app.get("/devenir-professionnel", async (req, res) => {
             <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
             <input type="hidden" name="latitude" id="latitude">
             <input type="hidden" name="longitude" id="longitude">
-            <button type="button" onclick="getLocation()" style="background:#3182ce; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
-            <p id="gps-status" class="help-text" style="text-align:center; color:#3182ce; font-weight:bold;"></p>
+            <button type="button" onclick="getLocation()" style="background:#3b82f6; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
+            <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
           </div>
 
           <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
           <h3>Photos obligatoires (KYC)</h3>
           
-          <!-- ✅ MODIFIÉ : Image KYC réduite et intégrée proprement -->
-          <div style="display: flex; align-items: center; gap: 16px; background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #cbd5e0;">
+          <div style="display: flex; align-items: center; gap: 16px; background: #f8fafc; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #cbd5e0;">
             <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" alt="Exemple KYC" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
-            <p style="margin: 0; font-size: 13px; color: #4a5568;"><strong>Exemple de photo KYC :</strong> Vous devez être de face, en tenant votre pièce d'identité à côté de votre visage, sans lunettes ni chapeau.</p>
+            <p style="margin: 0; font-size: 13px; color: #475569;"><strong>Exemple de photo KYC :</strong> Vous devez être de face, en tenant votre pièce d'identité à côté de votre visage, sans lunettes ni chapeau.</p>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <!-- ✅ MODIFIÉ : Photo de profil devient Photo d'identité -->
             <div><label>1. Photo d'identité (visage) *</label><input name="photo_profil" type="file" accept="image/*" required></div>
             <div><label>2. Pièce d'identité (recto) *</label><input name="photo_identite" type="file" accept="image/*" required></div>
           </div>
           <label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
           <input name="photo_kyc" type="file" accept="image/*" required>
           
-          <div class="checkbox-block" style="margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
-          <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px;">Envoyer ma candidature</button></div>
+          <div class="checkbox-block" style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
+          <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px; width: 100%;">Envoyer ma candidature</button></div>
         </form>
       </section>
       <script>
@@ -920,7 +951,6 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
-  // ✅ NETTOYAGE TELEPHONE
   let cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
   cleanPhone = cleanPhone.replace(/^(?:\+?229|00229)/, ""); 
   const beninPhoneRegex = /^01\d{8}$/;
@@ -942,7 +972,7 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
     if (duplicateCheck.rows.length > 0) {
       const dup = duplicateCheck.rows[0];
       if (dup.status === 'payment_pending' && dup.payment_status === 'unpaid') return res.redirect(303, `/paiement/${dup.tracking_code}`);
-      return res.status(409).send(page("Inscription impossible", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#e53e3e; justify-content: center;">⚠️ Doublon</h1><p><strong>Un dossier existe déjà avec ce numéro ou ce NPI.</strong></p><a class="button" href="/contact">📩 Nous contacter</a></section>`, null));
+      return res.status(409).send(page("Inscription impossible", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444; justify-content: center;">⚠️ Doublon</h1><p><strong>Un dossier existe déjà avec ce numéro ou ce NPI.</strong></p><a class="button" href="/contact">📩 Nous contacter</a></section>`, null));
     }
   } catch (dbError) { console.error("Erreur vérification doublon :", dbError.message); }
 
@@ -973,12 +1003,11 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
     const finalStatus = BYPASS_PAYMENT ? 'pending' : 'payment_pending';
     const finalPaymentStatus = BYPASS_PAYMENT ? 'paid' : 'unpaid';
 
-    // ✅ On insère cleanPhone et cleanWa
     await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
       [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude, longitude]);
 
     if (BYPASS_PAYMENT) {
-      res.send(page("Succes", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#38a169;">Succès !</h1><p>Votre candidature a bien été enregistrée et est en attente d'examen.</p><div class="alert alert-info" style="margin-top:20px;"><strong>Votre code de suivi est : <span style="font-size:24px; font-family:monospace; font-weight:bold;">${escapeHtml(trackingCode)}</span></strong></div><a class="button" href="/suivi-dossier" style="margin-top:20px;">Suivre mon dossier</a></section>`, null));
+      res.send(page("Succes", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#10b981;">Succès !</h1><p>Votre candidature a bien été enregistrée et est en attente d'examen.</p><div class="alert alert-info" style="margin-top:20px;"><strong>Votre code de suivi est : <span style="font-size:24px; font-family:monospace; font-weight:bold;">${escapeHtml(trackingCode)}</span></strong></div><a class="button" href="/suivi-dossier" style="margin-top:20px;">Suivre mon dossier</a></section>`, null));
     } else {
       res.redirect(303, `/paiement/${trackingCode}`);
     }
@@ -1000,17 +1029,17 @@ app.get("/paiement/:tracking", async (req, res) => {
     const dossier = result.rows[0];
 
     if (dossier.payment_status === "paid") {
-      return res.send(page("Paiement confirmé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#38a169;">✅ Payé</h1><p>Votre dossier est en cours d'examen.</p><div class="pro-code-box" style="margin: 20px 0;"><div class="pro-code-value" style="font-size: 28px;">${escapeHtml(dossier.tracking_code)}</div></div><a class="button" href="/suivi-dossier">📋 Suivre</a></section>`, proConnected));
+      return res.send(page("Paiement confirmé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#10b981;">✅ Payé</h1><p>Votre dossier est en cours d'examen.</p><div class="pro-code-box" style="margin: 20px 0;"><div class="pro-code-value" style="font-size: 28px;">${escapeHtml(dossier.tracking_code)}</div></div><a class="button" href="/suivi-dossier">📋 Suivre</a></section>`, proConnected));
     }
     if (dossier.status === "approved" || dossier.status === "rejected") return res.redirect(303, `/suivi-dossier`);
 
     const content = `
       <section class="card" style="max-width: 600px; margin: 40px auto;">
         <div style="text-align:center; margin-bottom:24px;"><h1>💳 Finalisez l'inscription</h1></div>
-        <div style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 20px; text-align:center; margin-bottom:24px;"><div style="font-size:48px; font-weight:900; margin:8px 0;">${PAYMENT_AMOUNT} <span style="font-size:20px;">FCFA</span></div></div>
-        <div style="background:#f8f9fa; padding:16px; border-radius:12px; margin-bottom:20px; text-align:center;"><div style="font-size:24px; font-weight:800; font-family:monospace; color:#1e40af;">${escapeHtml(dossier.tracking_code)}</div></div>
-        <div style="text-align:center; margin-top:32px;"><button id="pay-btn" onclick="ouvrirPaiement()" style="font-size:18px; padding:16px 48px; background:#38a169; font-weight:800;">💳 Payer ${PAYMENT_AMOUNT} FCFA</button></div>
-        <div style="text-align:center; margin-top:24px; font-size:13px;"><a href="/" style="color:#718096;">← Payer plus tard</a></div>
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 24px; border-radius: 20px; text-align:center; margin-bottom:24px;"><div style="font-size:48px; font-weight:900; margin:8px 0;">${PAYMENT_AMOUNT} <span style="font-size:20px;">FCFA</span></div></div>
+        <div style="background:#f8fafc; padding:16px; border-radius:12px; margin-bottom:20px; text-align:center;"><div style="font-size:24px; font-weight:800; font-family:monospace; color:#1e40af;">${escapeHtml(dossier.tracking_code)}</div></div>
+        <div style="text-align:center; margin-top:32px;"><button id="pay-btn" onclick="ouvrirPaiement()" style="font-size:18px; padding:16px 48px; background:#10b981; font-weight:800;">💳 Payer ${PAYMENT_AMOUNT} FCFA</button></div>
+        <div style="text-align:center; margin-top:24px; font-size:13px;"><a href="/" style="color:#6b7280;">← Payer plus tard</a></div>
       </section>
       <script src="https://cdn.kkiapay.me/k.js"></script>
       <script>
@@ -1034,15 +1063,15 @@ app.get("/paiement/verifier", async (req, res) => {
     if (!dossierResult.rows.length) return res.redirect(303, "/");
     const dossier = dossierResult.rows[0];
 
-    if (dossier.payment_status === "paid") return res.send(page("Déjà payé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#38a169;">✅ Déjà payé</h1><a class="button" href="/suivi-dossier">Voir</a></section>`, proConnected));
+    if (dossier.payment_status === "paid") return res.send(page("Déjà payé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#10b981;">✅ Déjà payé</h1><a class="button" href="/suivi-dossier">Voir</a></section>`, proConnected));
 
     const verification = await verifyKkiapayTransaction(transactionId);
-    if (!verification.success) return res.status(400).send(page("Paiement échoué", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#e53e3e;">❌ Non confirmé</h1><a class="button" href="/paiement/${escapeHtml(trackingCode)}">Réessayer</a></section>`, proConnected));
+    if (!verification.success) return res.status(400).send(page("Paiement échoué", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#ef4444;">❌ Non confirmé</h1><a class="button" href="/paiement/${escapeHtml(trackingCode)}">Réessayer</a></section>`, proConnected));
 
     await pool.query(`UPDATE professional_applications SET payment_status = 'paid', payment_ref = $1, payment_amount = $2, payment_date = NOW(), payment_method = $3, status = 'pending' WHERE id = $4`, [transactionId, verification.amount, verification.method, dossier.id]);
     await logAdminAction("payment_received", "pro", dossier.id, `Montant: ${verification.amount} FCFA | Ref: ${transactionId}`);
 
-    res.send(page("Paiement réussi", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><div style="font-size:64px; margin-bottom:16px;">🎉</div><h1 style="color:#38a169;">Paiement réussi !</h1><div class="pro-code-box" style="margin: 24px 0;"><div class="pro-code-value" style="font-size: 28px;">${escapeHtml(dossier.tracking_code)}</div></div><a class="button" href="/suivi-dossier" style="margin-top:16px;">📋 Suivre mon dossier</a></section>`, proConnected));
+    res.send(page("Paiement réussi", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><div style="font-size:64px; margin-bottom:16px;">🎉</div><h1 style="color:#10b981;">Paiement réussi !</h1><div class="pro-code-box" style="margin: 24px 0;"><div class="pro-code-value" style="font-size: 28px;">${escapeHtml(dossier.tracking_code)}</div></div><a class="button" href="/suivi-dossier" style="margin-top:16px;">📋 Suivre mon dossier</a></section>`, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null)); }
 });
 
@@ -1091,7 +1120,7 @@ app.post("/suivi-dossier", async (req, res) => {
     else if (pro.status === 'pending') statusHtml = `<div class="alert alert-info" style="text-align:center;">⏳ En cours d'examen.</div>`;
     else if (pro.status === 'approved') statusHtml = `<div class="alert alert-success" style="text-align:center;">✅ Approuvé !<br><br><strong>Code pro : <span style="font-size:24px;">${escapeHtml(pro.pro_code)}</span></strong><br><br><a class="button success" href="/mon-espace-pro">Espace pro</a></div>`;
     else if (pro.status === 'rejected') statusHtml = `<div class="alert alert-danger" style="text-align:center;">❌ Refusé. Motif : ${escapeHtml(pro.rejection_reason || "Non spécifié")}</div>`;
-    else if (pro.status === 'corrections_requested') statusHtml = `<div class="alert alert-warning"><h3>⚠️ Corrections</h3><p><strong>Motif :</strong> ${escapeHtml(pro.rejection_reason)}</p><button onclick="document.getElementById('form-correct').classList.remove('hidden')" style="margin-top:10px; background: #ed8936;">Corriger</button></div><div id="form-correct" class="hidden" style="margin-top:20px"><form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data" style="background:#f8f9fa; padding:20px; border-radius:20px;"><input type="hidden" name="tracking_code" value="${escapeHtml(pro.tracking_code)}"><label>Nouvelle photo d'identité</label><input type="file" name="photo_identite" accept="image/*"><label>Nouvelle photo KYC</label><input type="file" name="photo_kyc" accept="image/*"><button type="submit" class="success" style="width:100%; margin-top:10px;">Renvoyer</button></form></div>`;
+    else if (pro.status === 'corrections_requested') statusHtml = `<div class="alert alert-warning"><h3>⚠️ Corrections</h3><p><strong>Motif :</strong> ${escapeHtml(pro.rejection_reason)}</p><button onclick="document.getElementById('form-correct').classList.remove('hidden')" style="margin-top:10px; background: #f59e0b;">Corriger</button></div><div id="form-correct" class="hidden" style="margin-top:20px"><form action="/candidatures/${pro.id}/corriger" method="POST" enctype="multipart/form-data" style="background:#f8fafc; padding:20px; border-radius:12px;"><input type="hidden" name="tracking_code" value="${escapeHtml(pro.tracking_code)}"><label>Nouvelle photo d'identité</label><input type="file" name="photo_identite" accept="image/*"><label>Nouvelle photo KYC</label><input type="file" name="photo_kyc" accept="image/*"><button type="submit" class="success" style="width:100%; margin-top:10px;">Renvoyer</button></form></div>`;
 
     res.send(page("Mon dossier", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1 style="text-align:center;">Dossier de ${escapeHtml(pro.full_name)}</h1>${statusHtml}<p style="text-align:center; margin-top:30px;"><a href="/suivi-dossier">← Retour</a></p></section>`, null));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1114,7 +1143,7 @@ app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", 
 app.get("/mon-espace-pro", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) {
-    return res.send(page("Espace pro", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align: center;">Espace pro</h1><form action="/mon-espace-pro/login" method="POST"><label>Code pro</label><input name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase; text-align:center; font-size:20px;"><button type="submit" style="width: 100%;">Se connecter</button></form><div style="text-align:center; margin-top:20px; font-size:14px;"><p><a href="/suivi-dossier">Suivre mon dossier</a></p><p><a href="/mon-espace-pro/reinitialiser" style="color:#e53e3e;">🔐 Code perdu</a></p></div></section>`, null));
+    return res.send(page("Espace pro", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align: center;">Espace pro</h1><form action="/mon-espace-pro/login" method="POST"><label>Code pro</label><input name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase; text-align:center; font-size:20px;"><button type="submit" style="width: 100%;">Se connecter</button></form><div style="text-align:center; margin-top:20px; font-size:14px;"><p><a href="/suivi-dossier">Suivre mon dossier</a></p><p><a href="/mon-espace-pro/reinitialiser" style="color:#ef4444;">🔐 Code perdu</a></p></div></section>`, null));
   }
 
   let offers = [], gdprRequests = [], myReviews = [];
@@ -1128,46 +1157,73 @@ app.get("/mon-espace-pro", async (req, res) => {
   const offersHtml = offers.map((offer) => {
     const expired = offer.expires_at && new Date(offer.expires_at) < now;
     const statusLabel = JOB_STATUS_LABELS[offer.status] || offer.status;
-    return `<article class="card" style="box-shadow:none; border:1px solid #edf2f7; margin-bottom:16px;"><h2 style="font-size:18px;">${escapeHtml(offer.job_title)}</h2><p><span class="badge badge-${offer.status}">${statusLabel}</span></p><p><strong>Ville :</strong> ${escapeHtml(offer.city)}</p><div class="actions" style="margin-top:16px;">${offer.status === "approved" && !expired ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="display:inline"><button class="warning" type="submit">🔒 Cloturer</button></form>` : ""} ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="display:inline"><button class="success" type="submit">🔓 Rouvrir</button></form>` : ""}</div></article>`;
+    return `<article class="card" style="box-shadow:none; border:1px solid #e5e7eb; margin-bottom:16px;"><h2 style="font-size:18px;">${escapeHtml(offer.job_title)}</h2><p><span class="badge badge-${offer.status}">${statusLabel}</span></p><p><strong>Ville :</strong> ${escapeHtml(offer.city)}</p><div class="actions" style="margin-top:16px;">${offer.status === "approved" && !expired ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="display:inline"><button class="warning" type="submit" style="padding:6px 12px; font-size:12px;">🔒 Cloturer</button></form>` : ""} ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="display:inline"><button class="success" type="submit" style="padding:6px 12px; font-size:12px;">🔓 Rouvrir</button></form>` : ""}</div></article>`;
   }).join("");
 
   const gdprHtml = gdprRequests.map((req) => `<article class="card" style="padding:16px; margin-bottom:10px;"><p><span class="badge badge-${req.status}">${GDPR_STATUS_LABELS[req.status]}</span> <strong>${GDPR_TYPE_LABELS[req.request_type]}</strong></p></article>`).join("");
-  const myReviewsHtml = myReviews.map((rev) => `<div class="review-item"><div class="review-header"><div class="review-author">${escapeHtml(rev.author_name)}</div><div><span class="badge badge-${rev.status}">${REVIEW_STATUS_LABELS[rev.status]}</span></div></div><div class="review-stars">${renderStars(rev.rating)}</div>${rev.comment ? `<div class="review-comment">${escapeHtml(rev.comment)}</div>` : ""}</div>`).join("");
+  const myReviewsHtml = myReviews.map((rev) => `<div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:12px; border:1px solid #e5e7eb;"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><div style="font-weight:700;">${escapeHtml(rev.author_name)}</div><div><span class="badge badge-${rev.status}">${REVIEW_STATUS_LABELS[rev.status]}</span></div></div><div style="color:#f59e0b;">${renderStars(rev.rating)}</div>${rev.comment ? `<p style="margin-top:8px; font-size:14px; color:#4b5563;">${escapeHtml(rev.comment)}</p>` : ""}</div>`).join("");
   const phoneStatus = proConnected.pro.phone_public ? `<span class="badge badge-approved">Public</span>` : `<span class="badge badge-closed">Privé</span>`;
 
   res.send(page("Espace pro", `
-    <div class="pro-welcome" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;"><div><h2 style="margin:0;">Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} 👋</h2></div><div class="pro-code-box" style="margin:0; padding:12px 24px; background:rgba(255,255,255,0.15);"><div class="pro-code-value" style="font-size:28px;">${escapeHtml(proConnected.code)}</div></div></div>
-    <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;"><a class="button" href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Deconnexion</button></form></div>
+    <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+      <div><h2 style="color:white; margin:0;">Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} 👋</h2></div>
+      <div style="background:rgba(255,255,255,0.15); padding:12px 24px; border-radius:12px; text-align:center;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px;">Votre code pro</div>
+        <div style="font-size:28px; font-weight:800; font-family:monospace; letter-spacing:2px;">${escapeHtml(proConnected.code)}</div>
+      </div>
+    </div>
+    
+    <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+      <a class="button" href="/publier-emploi">📢 Publier une offre</a>
+      <form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Deconnexion</button></form>
+    </div>
+    
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
       <section class="card">
-        <h2>Mes infos</h2>
-        <p><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p>
-        <p><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p>
-        <p><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p>
-        <p><span class="label">Visibilite :</span> ${phoneStatus}</p>
+        <h2 style="font-size:20px; margin-bottom:16px;">Mes infos</h2>
+        <p style="margin-bottom:6px;"><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p>
+        <p style="margin-bottom:6px;"><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p>
+        <p style="margin-bottom:6px;"><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p>
+        <p style="margin-bottom:6px;"><span class="label">Visibilite :</span> ${phoneStatus}</p>
       
       ${proConnected.pro.type_lieu === 'fixe' ? `
-      <div style="margin-top: 16px; padding: 12px; background: #fffaf0; border-radius: 12px; border: 1px solid #fbd38d;">
-        <p style="margin-bottom: 8px; font-weight: bold;">Statut de votre boutique :</p>
+      <div style="margin-top: 20px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
+        <p style="margin-bottom: 10px; font-weight: bold;">Statut de votre boutique :</p>
         <form action="/mon-espace-pro/toggle-status" method="POST" style="margin:0;">
-          <button type="submit" class="${proConnected.pro.est_ouvert ? 'success' : 'danger'}" style="width: 100%;">
+          <button type="submit" class="${proConnected.pro.est_ouvert ? 'success' : 'danger'}" style="width: 100%; border-radius:8px; padding:10px;">
             ${proConnected.pro.est_ouvert ? '🟢 Ouvert (Cliquez pour fermer)' : '🔴 Fermé (Cliquez pour ouvrir)'}
           </button>
         </form>
       </div>
       ` : ""}
 
-      <div class="actions" style="margin-top:16px;">
-        <a class="button secondary" href="/mon-espace-pro/modifier-profil">✏️ Modifier profil</a>
-        <a class="button secondary" href="/mon-espace-pro/modifier-telephone">👁️ Visibilité</a>
-        <a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a>
-        <a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a>
+      <div class="actions" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <a class="button secondary" href="/mon-espace-pro/modifier-profil" style="margin:0;">✏️ Modifier profil</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-telephone" style="margin:0;">👁️ Visibilité</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-photo" style="margin:0;">📷 Photo</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-galerie" style="margin:0;">📸 Galerie</a>
       </div>
       </section>
-      <section class="card"><h2>Mes avis (${myReviews.length})</h2>${myReviewsHtml || `<p class="muted">Aucun avis.</p>`}</section>
+      
+      <section class="card">
+        <h2 style="font-size:20px; margin-bottom:16px;">Mes avis (${myReviews.length})</h2>
+        ${myReviewsHtml || `<p class="muted">Aucun avis pour le moment.</p>`}
+      </section>
     </div>
-    <section class="card" style="margin-top:20px;"><h2>Mes offres (${offers.length})</h2>${offersHtml || `<p class="muted">Aucune offre.</p>`}</section>
-    <section class="card" style="margin-top:20px;"><h2>RGPD</h2><div class="actions"><a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Données</a><form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;"><button class="danger" type="submit">🗑️ Suppression</button></form></div>${gdprHtml}</section>
+    
+    <section class="card" style="margin-top:20px;">
+      <h2 style="font-size:20px; margin-bottom:16px;">Mes offres (${offers.length})</h2>
+      ${offersHtml || `<p class="muted">Aucune offre.</p>`}
+    </section>
+    
+    <section class="card" style="margin-top:20px;">
+      <h2 style="font-size:20px; margin-bottom:16px;">RGPD</h2>
+      <div class="actions">
+        <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Mes données</a>
+        <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;"><button class="danger" type="submit">🗑️ Suppression</button></form>
+      </div>
+      ${gdprHtml}
+    </section>
   `, proConnected));
 });
 
@@ -1198,44 +1254,44 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
 
   res.send(page("Modifier Profil", `
     <section class="card" style="max-width: 600px; margin: 40px auto;">
-      <h1 style="text-align:center;">✏️ Modifier mon profil</h1>
+      <h1 style="text-align:center; font-size:24px;">✏️ Modifier mon profil</h1>
       
-      <form action="/mon-espace-pro/modifier-profil" method="POST" style="background:#f8f9fa; padding:20px; border-radius:20px;">
+      <form action="/mon-espace-pro/modifier-profil" method="POST" style="margin-top:24px;">
         
         <label>Ville *</label>
-        <select id="city-edit" name="city" required style="border-radius:12px;">
+        <select id="city-edit" name="city" required>
           <option value="">Choisir</option>
           ${cityOptions}
         </select>
 
         <label>Quartier</label>
-        <select id="neighborhood-edit" name="neighborhood" style="border-radius:12px;">
+        <select id="neighborhood-edit" name="neighborhood">
           <option value="">Choisir</option>
           ${neighborhoodOptions}
         </select>
 
-        <hr style="margin:24px 0; border:none; border-top:1px solid #e2e8f0;">
-        <h3>Localisation & Type d'activité</h3>
+        <hr style="margin:24px 0; border:none; border-top:1px solid #e5e7eb;">
+        <h3 style="margin-bottom:16px;">Localisation & Type d'activité</h3>
 
-        <div class="checkbox-block" style="margin-bottom:16px;">
+        <div style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:16px;">
           <label><input type="radio" name="type_lieu" value="fixe" ${proConnected.pro.type_lieu === 'fixe' ? 'checked' : ''} onclick="toggleLocalisationEdit(true)"> <span><strong>🏠 J'ai un local fixe</strong></span></label>
           <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" ${proConnected.pro.type_lieu === 'ambulant' ? 'checked' : ''} onclick="toggleLocalisationEdit(false)"> <span><strong>🚗 Ambulant (se déplace)</strong></span></label>
         </div>
 
         <div id="localisation-block-edit" class="${proConnected.pro.type_lieu === 'fixe' ? '' : 'hidden'}">
           <label>Adresse exacte / Point de repère</label>
-          <input name="adresse_exacte" value="${escapeHtml(proConnected.pro.adresse_exacte || '')}" maxlength="200" style="border-radius:12px;" placeholder="Ex: Carrefour Ste Rita...">
+          <input name="adresse_exacte" value="${escapeHtml(proConnected.pro.adresse_exacte || '')}" maxlength="200" placeholder="Ex: Carrefour Ste Rita...">
           <input type="hidden" name="latitude" id="latitude-edit" value="${proConnected.pro.latitude || ''}">
           <input type="hidden" name="longitude" id="longitude-edit" value="${proConnected.pro.longitude || ''}">
-          <button type="button" onclick="getLocationEdit()" style="background:#3182ce; width:100%; border-radius:12px; margin-bottom:10px;">📍 Mettre à jour ma position actuelle</button>
-          <p id="gps-status-edit" class="help-text" style="text-align:center; color:#3182ce; font-weight:bold;">${proConnected.pro.latitude ? 'Position GPS enregistrée.' : ''}</p>
+          <button type="button" onclick="getLocationEdit()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Mettre à jour ma position actuelle</button>
+          <p id="gps-status-edit" style="text-align:center; color:#2563eb; font-weight:bold;">${proConnected.pro.latitude ? 'Position GPS enregistrée.' : ''}</p>
         </div>
 
-        <div style="text-align:center; margin-top:24px;">
-          <button type="submit" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button>
+        <div style="text-align:center; margin-top:30px;">
+          <button type="submit" class="success" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button>
         </div>
       </form>
-      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro">← Retour</a></p>
+      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
     </section>
     
     <script>
@@ -1267,12 +1323,12 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
       function getLocationEdit() {
         const status = document.getElementById('gps-status-edit');
         if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
-        status.innerText = "Récupération de la position...";
+        status.innerText = "Récupération...";
         navigator.geolocation.getCurrentPosition(
           (position) => {
             document.getElementById('latitude-edit').value = position.coords.latitude;
             document.getElementById('longitude-edit').value = position.coords.longitude;
-            status.innerText = "✅ Nouvelle position GPS enregistrée !";
+            status.innerText = "✅ Nouvelle position enregistrée !";
           },
           (error) => { status.innerText = "❌ Impossible de vous localiser."; }
         );
@@ -1287,17 +1343,10 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
 
   const { city, neighborhood, type_lieu, adresse_exacte, latitude, longitude } = req.body;
   let finalNeighborhood = neighborhood;
-  if (neighborhood === "__AUTRE__") {
-     finalNeighborhood = proConnected.pro.neighborhood; 
-  }
+  if (neighborhood === "__AUTRE__") { finalNeighborhood = proConnected.pro.neighborhood; }
 
   try {
-    await pool.query(`
-      UPDATE professional_applications 
-      SET city = $1, neighborhood = $2, type_lieu = $3, adresse_exacte = $4, latitude = $5, longitude = $6 
-      WHERE id = $7
-    `, [city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, proConnected.pro.id]);
-    
+    await pool.query(`UPDATE professional_applications SET city = $1, neighborhood = $2, type_lieu = $3, adresse_exacte = $4, latitude = $5, longitude = $6 WHERE id = $7`, [city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, proConnected.pro.id]);
     res.redirect(303, "/mon-espace-pro");
   } catch (e) {
     console.error(e);
@@ -1341,14 +1390,14 @@ app.post("/mon-espace-pro/reinitialiser", async (req, res) => {
     if (!result.rows.length) return res.status(404).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Introuvable.</h2></section>", null));
     const newCode = await generateUniqueProCode();
     await pool.query(`UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`, [newCode, result.rows[0].id]);
-    res.send(page("Nouveau code", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#38a169;">✅ Généré</h1><div class="pro-code-box" style="margin:24px 0;"><div class="pro-code-value">${escapeHtml(newCode)}</div></div><a class="button" href="/mon-espace-pro">Se connecter</a></section>`, null));
+    res.send(page("Nouveau code", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#10b981;">✅ Généré</h1><div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:24px 0;"><div style="font-size:12px; opacity:0.8; text-transform:uppercase;">Votre nouveau code pro</div><div style="font-size:42px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div></div><a class="button" href="/mon-espace-pro">Se connecter</a></section>`, null));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
 app.get("/mon-espace-pro/modifier-telephone", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  res.send(page("Modifier", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">Visibilité</h1><form action="/mon-espace-pro/modifier-telephone" method="POST"><div class="checkbox-block"><label><input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}> <span>Rendre mon numéro public</span></label></div><button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button></form></section>`, proConnected));
+  res.send(page("Modifier", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">Visibilité</h1><form action="/mon-espace-pro/modifier-telephone" method="POST"><div style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb;"><label><input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}> <span>Rendre mon numéro public</span></label></div><button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button></form></section>`, proConnected));
 });
 
 app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
@@ -1362,7 +1411,7 @@ app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const hasPhoto = !!proConnected.pro.photo_activite_url;
-  const currentPreview = hasPhoto ? `<img src="${escapeHtml(proConnected.pro.photo_activite_url)}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 16px;">` : `<div style="width: 100%; height: 220px; border-radius: 16px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-size:32px; opacity:0.3;">👤</div>`;
+  const currentPreview = hasPhoto ? `<img src="${escapeHtml(proConnected.pro.photo_activite_url)}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 12px;">` : `<div style="width: 100%; height: 220px; border-radius: 12px; background:#e5e7eb; display:flex; align-items:center; justify-content:center; font-size:32px; opacity:0.3;">👤</div>`;
   const successMsg = req.query.success === "upload" ? `<div class="alert alert-success">✅ Photo mise à jour !</div>` : req.query.success === "delete" ? `<div class="alert alert-info">🗑️ Photo supprimée.</div>` : "";
   res.send(page("Photo", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">📷 Photo d'activité</h1>${successMsg}<div style="margin-bottom:24px;">${currentPreview}</div><form action="/mon-espace-pro/modifier-photo" method="POST" enctype="multipart/form-data"><input name="photo_activite" type="file" accept="image/jpeg,image/png,image/webp" required><button type="submit" style="width:100%; margin-top:10px;">📤 Enregistrer</button></form>${hasPhoto ? `<form action="/mon-espace-pro/modifier-photo/supprimer" method="POST" style="margin-top:16px;"><button class="danger" type="submit" style="width:100%;" onclick="return confirm('Supprimer ?')">🗑️ Supprimer</button></form>` : ""}<p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
 });
@@ -1392,7 +1441,7 @@ app.get("/mon-espace-pro/modifier-galerie", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const successMsg = req.query.success ? `<div class="alert alert-success">✅ Galerie mise à jour !</div>` : "";
-  res.send(page("Ma Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1 style="text-align:center;">📸 Ma Galerie</h1><p style="text-align:center; color:#718096; margin-bottom:24px;">Ajoutez jusqu'à 3 photos.</p>${successMsg}<form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data" style="background:#f8f9fa; padding:20px; border-radius:20px;"><div style="margin-bottom:16px;"><label>Photo 1</label>${proConnected.pro.photo_galerie_1 ? `<img src="${proConnected.pro.photo_galerie_1}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo1" accept="image/*"></div><div style="margin-bottom:16px;"><label>Photo 2</label>${proConnected.pro.photo_galerie_2 ? `<img src="${proConnected.pro.photo_galerie_2}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo2" accept="image/*"></div><div style="margin-bottom:16px;"><label>Photo 3</label>${proConnected.pro.photo_galerie_3 ? `<img src="${proConnected.pro.photo_galerie_3}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo3" accept="image/*"></div><button type="submit" style="width:100%; margin-top:10px;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
+  res.send(page("Ma Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1 style="text-align:center;">📸 Ma Galerie</h1><p style="text-align:center; color:#6b7280; margin-bottom:24px;">Ajoutez jusqu'à 3 photos.</p>${successMsg}<form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data" style="background:#f9fafb; padding:20px; border-radius:12px;"><div style="margin-bottom:16px;"><label>Photo 1</label>${proConnected.pro.photo_galerie_1 ? `<img src="${proConnected.pro.photo_galerie_1}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo1" accept="image/*"></div><div style="margin-bottom:16px;"><label>Photo 2</label>${proConnected.pro.photo_galerie_2 ? `<img src="${proConnected.pro.photo_galerie_2}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo2" accept="image/*"></div><div style="margin-bottom:16px;"><label>Photo 3</label>${proConnected.pro.photo_galerie_3 ? `<img src="${proConnected.pro.photo_galerie_3}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}<input type="file" name="photo3" accept="image/*"></div><button type="submit" style="width:100%; margin-top:10px;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
 });
 
 app.post("/mon-espace-pro/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }, { name: 'photo3', maxCount: 1 }]), async (req, res) => {
@@ -1475,9 +1524,15 @@ async function adminMenu(current, csrf) {
   } catch (e) {}
 
   const links = [
-    { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount }
+    { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
+    { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, // ✅ NOUVEAU LIEN
+    { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
+    { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
+    { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, 
+    { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
+    { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount }
   ];
-  return `<section class="card" style="background:#f8f9fa; border:1px solid #edf2f7;"><div class="actions" style="justify-content:center; gap:10px;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:10px 18px; font-size:14px;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px;">Déconnexion</button></form></div></section>`;
+  return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
 
 app.get("/admin/dashboard", requireAdmin, async (req, res) => {
@@ -1490,13 +1545,109 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
       prosToday: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE")).rows[0].count)
     };
     const todayResult = await pool.query(`SELECT id, full_name, profession, city, status, created_at FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE ORDER BY created_at DESC`);
-    const todayList = todayResult.rows.map(p => `<tr><td style="padding:12px 8px; border-bottom:1px solid #edf2f7;"><a href="/admin/candidatures" style="color:#2563eb;">${escapeHtml(p.full_name)}</a></td><td style="padding:12px 8px; border-bottom:1px solid #edf2f7;">${escapeHtml(p.profession)}</td><td style="padding:12px 8px; border-bottom:1px solid #edf2f7;">${escapeHtml(p.city)}</td><td style="padding:12px 8px; border-bottom:1px solid #edf2f7;"><span class="badge badge-${p.status}">${STATUS_LABELS[p.status]}</span></td><td style="padding:12px 8px; border-bottom:1px solid #edf2f7;">${new Date(p.created_at).toLocaleTimeString("fr-FR", {hour: '2-digit', minute:'2-digit'})}</td></tr>`).join("");
-    const todayHtml = todayResult.rows.length > 0 ? `<section class="card" style="margin-top:30px;"><h2>📅 Inscriptions du jour (${stats.prosToday})</h2><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"><thead><tr style="background:#f8f9fa; border-bottom:2px solid #e2e8f0;"><th style="padding:12px 8px;">Nom</th><th style="padding:12px 8px;">Métier</th><th style="padding:12px 8px;">Ville</th><th style="padding:12px 8px;">Statut</th><th style="padding:12px 8px;">Heure</th></tr></thead><tbody>${todayList}</tbody></table></div></section>` : `<section class="card" style="margin-top:30px; text-align:center;"><p class="muted">Aucune inscription aujourd'hui.</p></section>`;
+    const todayList = todayResult.rows.map(p => `<tr><td style="padding:12px 8px; border-bottom:1px solid #e5e7eb;"><a href="/admin/candidatures" style="color:#2563eb;">${escapeHtml(p.full_name)}</a></td><td style="padding:12px 8px; border-bottom:1px solid #e5e7eb;">${escapeHtml(p.profession)}</td><td style="padding:12px 8px; border-bottom:1px solid #e5e7eb;">${escapeHtml(p.city)}</td><td style="padding:12px 8px; border-bottom:1px solid #e5e7eb;"><span class="badge badge-${p.status}">${STATUS_LABELS[p.status]}</span></td><td style="padding:12px 8px; border-bottom:1px solid #e5e7eb;">${new Date(p.created_at).toLocaleTimeString("fr-FR", {hour: '2-digit', minute:'2-digit'})}</td></tr>`).join("");
+    const todayHtml = todayResult.rows.length > 0 ? `<section class="card" style="margin-top:30px;"><h2>📅 Inscriptions du jour (${stats.prosToday})</h2><div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; text-align:left; font-size:14px;"><thead><tr style="background:#f9fafb; border-bottom:2px solid #e5e7eb;"><th style="padding:12px 8px;">Nom</th><th style="padding:12px 8px;">Métier</th><th style="padding:12px 8px;">Ville</th><th style="padding:12px 8px;">Statut</th><th style="padding:12px 8px;">Heure</th></tr></thead><tbody>${todayList}</tbody></table></div></section>` : `<section class="card" style="margin-top:30px; text-align:center;"><p class="muted">Aucune inscription aujourd'hui.</p></section>`;
     const menu = await adminMenu("/admin/dashboard", getCsrf(req));
-    res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #38a169;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>${todayHtml}`, null));
+    res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>${todayHtml}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur dashboard.</h2>", null)); }
 });
 
+// ✅ NOUVELLE PAGE DE SUIVI ET EXPORT
+app.get("/admin/suivi", requireAdmin, async (req, res) => {
+  try {
+    const csrf = getCsrf(req);
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 50;
+    const offset = (currentPage - 1) * limit;
+
+    const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications`);
+    const total = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
+
+    const result = await pool.query(`
+      SELECT id, full_name, company_name, phone, npi, city, profession, status, payment_status, created_at, tracking_code, pro_code 
+      FROM professional_applications 
+      ORDER BY created_at DESC 
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    const rowsHtml = result.rows.map(p => {
+      const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
+      const paymentBadge = p.payment_status === 'paid' ? '💳 Payé' : '⏳ Impayé';
+      const proCode = p.pro_code || "—";
+      return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px; font-size: 13px;">${dateStr}</td>
+          <td style="padding: 12px;">
+            <div style="font-weight: 700; color: #111827;">${escapeHtml(p.full_name)}</div>
+            <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.phone)}</div>
+          </td>
+          <td style="padding: 12px; font-size: 13px;">${escapeHtml(p.profession)}<br><span style="color:#6b7280; font-size:11px;">${escapeHtml(p.city)}</span></td>
+          <td style="padding: 12px; font-size: 13px;"><code>${escapeHtml(p.npi)}</code></td>
+          <td style="padding: 12px; font-size: 13px;"><span class="badge badge-${p.status}">${STATUS_LABELS[p.status]}</span></td>
+          <td style="padding: 12px; font-size: 13px;">${paymentBadge}</td>
+          <td style="padding: 12px; font-size: 13px;"><code>${escapeHtml(proCode)}</code></td>
+        </tr>
+      `;
+    }).join("");
+
+    const menu = await adminMenu("/admin/suivi", csrf);
+    const paginationHtml = renderPagination(currentPage, totalPages, "/admin/suivi");
+
+    res.send(page("Suivi des Pros", `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">Tableau de suivi</h1>
+        <a href="/admin/suivi/export" class="button success" style="margin: 0;">📥 Exporter pour Excel (CSV)</a>
+      </div>
+      ${menu}
+      
+      <section class="card" style="margin-top: 20px; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Professionnel</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Métier / Ville</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">NPI</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Statut</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Paiement</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Code Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || `<tr><td colspan="7" style="text-align: center; padding: 20px; color: #6b7280;">Aucun professionnel enregistré.</td></tr>`}
+          </tbody>
+        </table>
+      </section>
+      ${paginationHtml}
+    `, null));
+  } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+});
+
+app.get("/admin/suivi/export", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT full_name, company_name, phone, npi, city, profession, status, payment_status, created_at, tracking_code, pro_code 
+      FROM professional_applications 
+      ORDER BY created_at DESC
+    `);
+
+    let csv = "Date;Nom;Entreprise;Telephone;NPI;Ville;Metier;Statut;Paiement;Code de suivi;Code Pro\n";
+    for (const p of result.rows) {
+      const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
+      const status = STATUS_LABELS[p.status] || p.status;
+      const payment = p.payment_status === 'paid' ? 'Payé' : 'Impayé';
+      const clean = (val) => `"${String(val || '').replace(/;/g, ',').replace(/"/g, '""')}"`;
+      csv += `${dateStr};${clean(p.full_name)};${clean(p.company_name)};${clean(p.phone)};${clean(p.npi)};${clean(p.city)};${clean(p.profession)};${clean(status)};${payment};${clean(p.tracking_code)};${clean(p.pro_code)}\n`;
+    }
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="suivi_professionnels_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send("\uFEFF" + csv);
+  } catch (error) { res.status(500).send("Erreur lors de l'export."); }
+});
+
+// ✅ CANDIDATURES RÉDUITES (Accordéon)
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req); const currentPage = Math.max(1, parseInt(req.query.page) || 1); const limit = 10; const offset = (currentPage - 1) * limit; const filter = String(req.query.filter || "all");
@@ -1511,20 +1662,72 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
 
     const applications = result.rows.map(c => {
       const statusOptions = ALLOWED_STATUSES.map(s => `<option value="${s}" ${c.status === s ? "selected" : ""}>${STATUS_LABELS[s]}</option>`).join("");
-      const paymentBadge = c.payment_status === "paid" ? `<span class="badge" style="background:#c6f6d5;color:#22543d;">💳 Payé ${c.payment_amount || 500} FCFA</span>` : c.status === "payment_pending" ? `<span class="badge" style="background:#fed7aa;color:#9a3412;">⏳ Impayé</span>` : `<span class="badge" style="background:#e2e8f0;color:#4a5568;">—</span>`;
-      const photos = `<div class="photos-grid">${c.photo_profil_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_profil_url)}" class="photo-profil" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Profil</div></div>` : ""}${c.photo_identite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_identite_url)}" class="photo-identite" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Identité</div></div>` : ""}${c.photo_kyc_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_kyc_url)}" class="photo-kyc" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label" style="color:#dd6b20">KYC</div></div>` : ""}${c.photo_activite_url ? `<div class="photo-block"><img src="${escapeHtml(c.photo_activite_url)}" class="photo-activite" style="cursor:zoom-in" onclick="zoomImage(this.src)"><div class="photo-label">Activité</div></div>` : ""}</div>`;
+      const paymentBadge = c.payment_status === "paid" ? `<span class="badge" style="background:#d1fae5;color:#065f46;">💳 Payé ${c.payment_amount || 500} FCFA</span>` : c.status === "payment_pending" ? `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Impayé</span>` : `<span class="badge" style="background:#e5e7eb;color:#374151;">—</span>`;
+      
+      const photos = `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">${c.photo_profil_url ? `<div style="text-align:center;"><img src="${escapeHtml(c.photo_profil_url)}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:2px solid #3b82f6; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Identité</div></div>` : ""}${c.photo_identite_url ? `<div style="text-align:center;"><img src="${escapeHtml(c.photo_identite_url)}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:2px solid #ef4444; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Pièce</div></div>` : ""}${c.photo_kyc_url ? `<div style="text-align:center;"><img src="${escapeHtml(c.photo_kyc_url)}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; border:2px solid #f59e0b; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600; color:#b45309;">KYC</div></div>` : ""}</div>`;
+
       let codeBlock = "";
       if (c.pro_code) {
         const waNumber = c.whatsapp_number || c.phone; const cleanNumber = waNumber.replace(/[()\s.-]/g, "").replace(/^\+/, ""); const baseUrl = `${req.protocol}://${req.get("host")}`; const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a ete approuvee ✅\n\nVotre code : ${c.pro_code}\n\nConnexion : ${baseUrl}/mon-espace-pro`);
-        codeBlock = `<div class="pro-code-box" style="margin:24px 0; padding:16px;"><div class="pro-code-label">Code généré</div><div class="pro-code-value" style="font-size:32px; margin:8px 0;">${escapeHtml(c.pro_code)}</div></div><div class="card" style="background:#f0fff4; border:1px solid #38a169; box-shadow:none; padding:16px;"><h3 style="margin-top:0; font-size:16px;">📤 Envoyer le code</h3><a class="button whatsapp" href="https://wa.me/${escapeHtml(cleanNumber)}?text=${waMessage}" target="_blank" style="margin-top:10px;">📱 WhatsApp</a></div><div class="card" style="background:#fffaf0; border:1px solid #ed8936; margin-top:12px; box-shadow:none; padding:16px;"><h3 style="margin-top:0; color:#c05621; font-size:16px;">🔄 Régénérer</h3><form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" onsubmit="return confirm('Régénérer ?')"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="warning" type="submit" style="font-size:13px; padding:10px 16px;">🔄 Nouveau code</button></form></div>`;
+        codeBlock = `<div style="background:#eff6ff; padding:12px; border-radius:8px; border:1px solid #bfdbfe; margin-bottom:16px;"><div style="font-size:12px; color:#1e40af; text-transform:uppercase; font-weight:700;">Code généré</div><div style="font-size:24px; font-weight:800; font-family:monospace; color:#1e3a8a; margin:4px 0;">${escapeHtml(c.pro_code)}</div><div style="display:flex; gap:8px; margin-top:8px;"><a class="button whatsapp" href="https://wa.me/${escapeHtml(cleanNumber)}?text=${waMessage}" target="_blank" style="font-size:12px; padding:6px 12px; margin:0;">📱 Envoyer WhatsApp</a><form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" onsubmit="return confirm('Régénérer ?')" style="margin:0;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="warning" type="submit" style="font-size:12px; padding:6px 12px; margin:0;">🔄 Régénérer</button></form></div></div>`;
       }
-      const paymentBlock = c.payment_status === "unpaid" ? `<div class="alert alert-warning" style="margin-top:16px;"><strong>⏳ Paiement non effectué</strong><div style="margin-top:8px;"><a class="button secondary" href="/paiement/${escapeHtml(c.tracking_code)}" target="_blank" style="font-size:13px; padding:8px 16px;">💳 Lien</a></div></div>` : c.payment_ref ? `<div style="background:#f0fff4; padding:12px; border-radius:12px; margin-top:12px; font-size:13px;"><strong>💳 Paiement :</strong> ${escapeHtml(c.payment_amount || 500)} FCFA — Ref: <code>${escapeHtml(c.payment_ref)}</code>${c.payment_date ? `<br><span style="color:#718096; font-size:12px;">Payé le ${new Date(c.payment_date).toLocaleString("fr-FR")}</span>` : ""}</div>` : "";
-      return `<article class="card" style="margin-bottom:30px;"><h2>${escapeHtml(c.full_name)} <span class="badge badge-${c.status}">${c.status === 'payment_pending' ? '⏳ En attente de paiement' : STATUS_LABELS[c.status]}</span>${c.status === 'approved' ? ` ${renderKycBadge()}` : ""} ${paymentBadge}</h2>${photos}<div style="background:#f8f9fa; padding:16px; border-radius:16px; margin:16px 0; border:1px solid #edf2f7;"><p style="margin-bottom:4px;"><span class="label">NPI :</span> <strong style="color:#2563eb; font-size:16px;">${escapeHtml(c.npi || "Non renseigné")}</strong></p><p style="margin-bottom:4px;"><span class="label">Téléphone :</span> ${escapeHtml(c.phone)}</p><p style="margin-bottom:4px;"><span class="label">Ville :</span> ${escapeHtml(c.city)} ${c.neighborhood ? `(${escapeHtml(c.neighborhood)})` : ""}</p><p style="margin-bottom:4px;"><span class="label">Profession :</span> ${escapeHtml(c.profession)}</p><p style="margin-bottom:4px;"><span class="label">Email :</span> ${escapeHtml(c.contact_email || "Non renseigné")}</p><p style="margin-bottom:4px;"><span class="label">Code de suivi :</span> <code>${escapeHtml(c.tracking_code || "")}</code></p><p><span class="label">Description :</span> ${escapeHtml(c.service_description)}</p></div>${paymentBlock}${c.rejection_reason ? `<div class="alert alert-danger"><strong>Motif :</strong> ${escapeHtml(c.rejection_reason)}</div>` : ""}${codeBlock}${c.status !== 'payment_pending' ? `<form action="/admin/candidatures/${c.id}/status" method="POST" style="background:#f8f9fa; padding:20px; border-radius:20px; margin-top:20px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><h3 style="margin-top:0; font-size:16px;">Changer le statut</h3><div style="display:grid; grid-template-columns:1fr 2fr; gap:16px; align-items:end;"><div><label for="status-${c.id}">Statut</label><select id="status-${c.id}" name="status">${statusOptions}</select></div><div><label for="reason-${c.id}">Motif</label><input id="reason-${c.id}" name="rejection_reason" maxlength="1000" value="${escapeHtml(c.rejection_reason || "")}"></div></div><div style="text-align:right; margin-top:10px;"><button type="submit">Enregistrer</button></div></form>` : ""}<div style="text-align:right; margin-top:12px;"><form action="/admin/candidatures/${c.id}/supprimer" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" onclick="return confirm('Supprimer ?')" style="font-size:13px; padding:8px 16px; background:transparent; color:#e53e3e; border:1px solid #e53e3e;">🗑️ Supprimer</button></form></div></article>`;
+
+      const paymentBlock = c.payment_status === "unpaid" ? `<div class="alert alert-warning" style="font-size:13px; padding:10px; margin-bottom:16px;">⏳ Paiement non effectué. <a href="/paiement/${escapeHtml(c.tracking_code)}" target="_blank">Lien de paiement</a></div>` : "";
+
+      return `
+        <details class="admin-details">
+          <summary class="admin-summary">
+            <div class="admin-summary-info">
+              <div>
+                <strong style="font-size:16px; color:#111827;">${escapeHtml(c.full_name)}</strong> 
+                <span style="color:#6b7280; font-size:14px;">— ${escapeHtml(c.profession)}</span>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <span class="badge badge-${c.status}">${c.status === 'payment_pending' ? '⏳ Attente paie' : STATUS_LABELS[c.status]}</span>
+                ${paymentBadge}
+              </div>
+            </div>
+            <div style="margin-left:15px; color:#9ca3af; font-size:20px;">▼</div>
+          </summary>
+          <div class="admin-content">
+            ${photos}
+            <div style="background:#f9fafb; padding:16px; border-radius:12px; font-size:14px; margin-bottom:16px; border:1px solid #e5e7eb;">
+              <p style="margin-bottom:6px;"><span style="font-weight:700;">NPI :</span> <code>${escapeHtml(c.npi || "Non renseigné")}</code></p>
+              <p style="margin-bottom:6px;"><span style="font-weight:700;">Téléphone :</span> ${escapeHtml(c.phone)}</p>
+              <p style="margin-bottom:6px;"><span style="font-weight:700;">Ville :</span> ${escapeHtml(c.city)} ${c.neighborhood ? `(${escapeHtml(c.neighborhood)})` : ""}</p>
+              <p style="margin-bottom:6px;"><span style="font-weight:700;">Email :</span> ${escapeHtml(c.contact_email || "Non renseigné")}</p>
+              <p style="margin-bottom:6px;"><span style="font-weight:700;">Suivi :</span> <code>${escapeHtml(c.tracking_code || "")}</code></p>
+              <p><span style="font-weight:700;">Description :</span> ${escapeHtml(c.service_description)}</p>
+            </div>
+            
+            ${paymentBlock}
+            ${c.rejection_reason ? `<div class="alert alert-danger" style="font-size:13px; padding:10px; margin-bottom:16px;"><strong>Motif :</strong> ${escapeHtml(c.rejection_reason)}</div>` : ""}
+            ${codeBlock}
+            
+            ${c.status !== 'payment_pending' ? `
+            <form action="/admin/candidatures/${c.id}/status" method="POST" style="display:flex; gap:10px; align-items:flex-start; margin-bottom:16px;">
+              <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+              <div style="flex:1;"><label style="margin-top:0; font-size:12px;">Statut</label><select name="status" style="margin:0; padding:10px;">${statusOptions}</select></div>
+              <div style="flex:2;"><label style="margin-top:0; font-size:12px;">Motif (optionnel)</label><input name="rejection_reason" maxlength="1000" value="${escapeHtml(c.rejection_reason || "")}" placeholder="Ex: Photo floue" style="margin:0; padding:10px;"></div>
+              <div style="padding-top:22px;"><button type="submit" style="margin:0; padding:10px 20px;">Enregistrer</button></div>
+            </form>
+            ` : ""}
+            
+            <div style="text-align:right;">
+              <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;">
+                <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+                <button class="danger" onclick="return confirm('Supprimer définitivement ?')" style="padding:8px 16px; font-size:12px; background:transparent; color:#ef4444; border:1px solid #ef4444;">🗑️ Supprimer</button>
+              </form>
+            </div>
+          </div>
+        </details>
+      `;
     }).join("");
 
     const menu = await adminMenu("/admin/candidatures", csrf); const paginationHtml = renderPagination(currentPage, totalPages, `/admin/candidatures${filter !== 'all' ? `?filter=${filter}` : ''}`);
     const filterBar = `<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;"><a class="button ${filter === 'all' ? '' : 'secondary'}" href="/admin/candidatures" style="padding:8px 16px; font-size:13px;">📋 Tout</a><a class="button ${filter === 'unpaid' ? '' : 'secondary'}" href="/admin/candidatures?filter=unpaid" style="padding:8px 16px; font-size:13px;">⏳ Impayés</a><a class="button ${filter === 'pending' ? '' : 'secondary'}" href="/admin/candidatures?filter=pending" style="padding:8px 16px; font-size:13px;">📥 En attente</a><a class="button ${filter === 'approved' ? '' : 'secondary'}" href="/admin/candidatures?filter=approved" style="padding:8px 16px; font-size:13px;">✅ Approuvés</a></div>`;
-    res.send(page("Candidatures", `<h1 style="text-align:center; margin-bottom:30px;">Candidatures (${total})</h1>${menu}${filterBar}${applications || '<section class="card"><p class="muted" style="text-align:center;">Aucune.</p></section>'}${paginationHtml}`, null));
+    
+    res.send(page("Candidatures", `<h1 style="text-align:center; margin-bottom:20px;">Candidatures (${total})</h1>${menu}${filterBar}${applications || '<section class="card"><p class="muted" style="text-align:center;">Aucune.</p></section>'}${paginationHtml}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
@@ -1582,7 +1785,7 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
-    const reviews = result.rows.map(r => `<article class="card" style="margin-bottom:20px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;"><div><h2 style="margin-bottom:4px; font-size:18px;">Avis de ${escapeHtml(r.author_name)}</h2><p class="muted" style="font-size:14px;">Concernant : <strong>${escapeHtml(r.pro_name || "Inconnu")}</strong></p></div><span class="badge badge-${r.status}">${REVIEW_STATUS_LABELS[r.status]}</span></div><div class="review-stars" style="margin:10px 0; font-size:24px;">${renderStars(r.rating)}</div><p style="background:#f8f9fa; padding:16px; border-radius:12px; font-style:italic;">"${escapeHtml(r.comment || "Aucun commentaire")}"</p><div class="actions" style="margin-top:16px;"><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="approved"><button class="success" style="padding:8px 24px; font-size:14px;">Approuver</button></form><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="rejected"><button class="danger" style="padding:8px 24px; font-size:14px;">Rejeter</button></form></div></article>`).join("");
+    const reviews = result.rows.map(r => `<article class="card" style="margin-bottom:20px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;"><div><h2 style="margin-bottom:4px; font-size:18px;">Avis de ${escapeHtml(r.author_name)}</h2><p class="muted" style="font-size:14px;">Concernant : <strong>${escapeHtml(r.pro_name || "Inconnu")}</strong></p></div><span class="badge badge-${r.status}">${REVIEW_STATUS_LABELS[r.status]}</span></div><div class="review-stars" style="margin:10px 0; font-size:24px; color:#f59e0b;">${renderStars(r.rating)}</div><p style="background:#f9fafb; padding:16px; border-radius:12px; font-style:italic;">"${escapeHtml(r.comment || "Aucun commentaire")}"</p><div class="actions" style="margin-top:16px;"><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="approved"><button class="success" style="padding:8px 24px; font-size:14px;">Approuver</button></form><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="rejected"><button class="danger" style="padding:8px 24px; font-size:14px;">Rejeter</button></form></div></article>`).join("");
     const menu = await adminMenu("/admin/avis", csrf);
     res.send(page("Avis", `<h1 style="text-align:center; margin-bottom:30px;">Avis</h1>${menu}${reviews || '<section class="card"><p class="muted" style="text-align:center;">Aucun avis.</p></section>'}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1594,7 +1797,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
-    const jobs = result.rows.map(j => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${escapeHtml(j.job_title)} <span class="badge badge-${j.status}">${JOB_STATUS_LABELS[j.status]}</span></h2><p class="muted" style="font-size:14px;">Posté par : <strong>${escapeHtml(j.pro_name || "Inconnu")}</strong></p><div style="background:#f8f9fa; padding:16px; border-radius:12px; margin:16px 0;"><p style="margin-bottom:4px;"><strong>Ville :</strong> ${escapeHtml(j.city)} | <strong>Contrat :</strong> ${escapeHtml(j.contract_type)}</p><p>${escapeHtml(j.description)}</p></div><form action="/admin/emplois/${j.id}/status" method="POST" style="display:flex; align-items:center; gap:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><select name="status" style="margin:0; width:auto; padding:8px 16px;">${JOB_STATUSES.map(s => `<option value="${s}" ${j.status === s ? "selected" : ""}>${JOB_STATUS_LABELS[s]}</option>`).join("")}</select><button style="margin:0; padding:10px 20px; font-size:14px;">Mettre à jour</button></form></article>`).join("");
+    const jobs = result.rows.map(j => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${escapeHtml(j.job_title)} <span class="badge badge-${j.status}">${JOB_STATUS_LABELS[j.status]}</span></h2><p class="muted" style="font-size:14px;">Posté par : <strong>${escapeHtml(j.pro_name || "Inconnu")}</strong></p><div style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;"><p style="margin-bottom:4px;"><strong>Ville :</strong> ${escapeHtml(j.city)} | <strong>Contrat :</strong> ${escapeHtml(j.contract_type)}</p><p>${escapeHtml(j.description)}</p></div><form action="/admin/emplois/${j.id}/status" method="POST" style="display:flex; align-items:center; gap:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><select name="status" style="margin:0; width:auto; padding:8px 16px;">${JOB_STATUSES.map(s => `<option value="${s}" ${j.status === s ? "selected" : ""}>${JOB_STATUS_LABELS[s]}</option>`).join("")}</select><button style="margin:0; padding:10px 20px; font-size:14px;">Mettre à jour</button></form></article>`).join("");
     const menu = await adminMenu("/admin/emplois", csrf);
     res.send(page("Emplois", `<h1 style="text-align:center; margin-bottom:30px;">Offres</h1>${menu}${jobs || '<section class="card"><p class="muted" style="text-align:center;">Aucune.</p></section>'}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1606,7 +1809,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM contact_messages ORDER BY is_read ASC, created_at DESC`);
-    const messages = result.rows.map(m => `<article class="card" style="margin-bottom:20px; ${m.is_read ? 'opacity:0.6' : 'border-left:4px solid #3182ce;'}"><h2 style="font-size:18px;">${escapeHtml(m.subject)}</h2><p class="muted" style="font-size:14px;"><strong>De :</strong> ${escapeHtml(m.name)} (${escapeHtml(m.email || m.phone || '')})</p>${m.pro_id ? `<p class="muted" style="font-size:12px;">Pro ID : ${m.pro_id}</p>` : ""}<p style="background:#f8f9fa; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(m.message)}</p><p class="muted" style="font-size:12px;">Reçu le : ${new Date(m.created_at).toLocaleString("fr-FR")}</p>${!m.is_read ? `<form action="/admin/messages/${m.id}/read" method="POST" style="margin-top:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="secondary" style="padding:8px 16px; font-size:14px;">Marquer lu</button></form>` : ""}</article>`).join("");
+    const messages = result.rows.map(m => `<article class="card" style="margin-bottom:20px; ${m.is_read ? 'opacity:0.6' : 'border-left:4px solid #3b82f6;'}"><h2 style="font-size:18px;">${escapeHtml(m.subject)}</h2><p class="muted" style="font-size:14px;"><strong>De :</strong> ${escapeHtml(m.name)} (${escapeHtml(m.email || m.phone || '')})</p>${m.pro_id ? `<p class="muted" style="font-size:12px;">Pro ID : ${m.pro_id}</p>` : ""}<p style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(m.message)}</p><p class="muted" style="font-size:12px;">Reçu le : ${new Date(m.created_at).toLocaleString("fr-FR")}</p>${!m.is_read ? `<form action="/admin/messages/${m.id}/read" method="POST" style="margin-top:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="secondary" style="padding:8px 16px; font-size:14px;">Marquer lu</button></form>` : ""}</article>`).join("");
     const menu = await adminMenu("/admin/messages", csrf);
     res.send(page("Messages", `<h1 style="text-align:center; margin-bottom:30px;">Messages</h1>${menu}${messages || '<section class="card"><p class="muted" style="text-align:center;">Aucun.</p></section>'}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1618,7 +1821,7 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY CASE WHEN g.status = 'pending' THEN 0 ELSE 1 END, g.created_at DESC`);
-    const reqs = result.rows.map(r => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${GDPR_TYPE_LABELS[r.request_type]} - ${escapeHtml(r.pro_name || "Inconnu")}</h2><p style="margin-top:8px;"><span class="badge badge-${r.status}">${GDPR_STATUS_LABELS[r.status]}</span></p><p style="background:#f8f9fa; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(r.message)}</p><p class="muted" style="font-size:12px;">Demande le : ${new Date(r.created_at).toLocaleString("fr-FR")}</p>${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST" style="margin-top:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="success" style="padding:8px 16px; font-size:14px;">Traiter</button></form>` : ""}</article>`).join("");
+    const reqs = result.rows.map(r => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${GDPR_TYPE_LABELS[r.request_type]} - ${escapeHtml(r.pro_name || "Inconnu")}</h2><p style="margin-top:8px;"><span class="badge badge-${r.status}">${GDPR_STATUS_LABELS[r.status]}</span></p><p style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(r.message)}</p><p class="muted" style="font-size:12px;">Demande le : ${new Date(r.created_at).toLocaleString("fr-FR")}</p>${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST" style="margin-top:10px;"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="success" style="padding:8px 16px; font-size:14px;">Traiter</button></form>` : ""}</article>`).join("");
     const menu = await adminMenu("/admin/rgpd", csrf);
     res.send(page("RGPD", `<h1 style="text-align:center; margin-bottom:30px;">RGPD</h1>${menu}${reqs || '<section class="card"><p class="muted" style="text-align:center;">Aucune.</p></section>'}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1641,7 +1844,7 @@ app.get("/confidentialite", (req, res) => {
 
 app.get("/contact", async (req, res) => {
   const proConnected = await getConnectedPro(req); const proId = String(req.query.pro || "").trim();
-  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#718096; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form action="/contact" method="POST"><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30"></div></div><label>Sujet *</label><input name="subject" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000"></textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form></section>`, proConnected));
+  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form action="/contact" method="POST"><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30"></div></div><label>Sujet *</label><input name="subject" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000"></textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form></section>`, proConnected));
 });
 
 app.post("/contact", async (req, res) => {
@@ -1695,9 +1898,7 @@ async function startServer() {
     `);
 
     const migrations = [
-      // ✅ SUPPRESSION DE L'ANCIENNE CONTRAINTE DE STATUT
       `ALTER TABLE professional_applications DROP CONSTRAINT IF EXISTS professional_applications_status_check`,
-      
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
