@@ -269,7 +269,7 @@ function page(title, content, proConnected) {
         .alert-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
         .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
 
-        /* ✅ DESIGN DES CARTES PROS (Accueil & Recherche) */
+        /* ✅ DESIGN DES CARTES PROS */
         .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-top: 24px; }
         .pro-card { background: white; border-radius: 16px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
         .pro-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.08); }
@@ -288,7 +288,7 @@ function page(title, content, proConnected) {
         .gallery-grid img { width: 100%; height: 140px; object-fit: cover; border-radius: 12px; cursor: pointer; transition: transform 0.2s; border: 1px solid #e5e7eb; }
         .gallery-grid img:hover { transform: scale(1.03); }
 
-        /* ✅ ADMIN ACCORDÉON (Candidatures) */
+        /* ✅ ADMIN ACCORDÉON */
         .admin-details { background: white; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
         .admin-summary { display: flex; align-items: center; padding: 16px; cursor: pointer; list-style: none; user-select: none; background: #fafafa; }
         .admin-summary::-webkit-details-marker { display: none; }
@@ -1525,7 +1525,7 @@ async function adminMenu(current, csrf) {
 
   const links = [
     { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
-    { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, // ✅ NOUVEAU LIEN
+    { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, 
     { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
     { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
     { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, 
@@ -1552,7 +1552,6 @@ app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur dashboard.</h2>", null)); }
 });
 
-// ✅ NOUVELLE PAGE DE SUIVI ET EXPORT
 app.get("/admin/suivi", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
@@ -1647,7 +1646,6 @@ app.get("/admin/suivi/export", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send("Erreur lors de l'export."); }
 });
 
-// ✅ CANDIDATURES RÉDUITES (Accordéon)
 app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req); const currentPage = Math.max(1, parseInt(req.query.page) || 1); const limit = 10; const offset = (currentPage - 1) * limit; const filter = String(req.query.filter || "all");
@@ -1984,26 +1982,97 @@ async function startServer() {
     }
 
     const profs = [
-      ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"],
-      ["Installateur de panneaux solaires", "Énergie"], ["Technicien de groupe électrogène", "Énergie"], ["Domoticien", "Bâtiment"], ["Architecte", "Bâtiment"], ["Dessinateur bâtiment", "Bâtiment"], ["Géomètre", "Bâtiment"], ["Ingénieur BTP", "Bâtiment"], ["Conducteur de travaux", "Bâtiment"],
-      ["Femme de ménage", "Maison"], ["Repassage à domicile", "Maison"], ["Cuisinier", "Maison"], ["Cuisinière", "Maison"], ["Gardien", "Maison"], ["Vigile", "Maison"], ["Nounou", "Maison"], ["Garde d'enfants", "Maison"], ["Jardinier", "Maison"], ["Désinsectisation", "Maison"], ["Dératisation", "Maison"], ["Plombier-déboucheur", "Maison"],
-      ["Garde-malade", "Santé"], ["Auxiliaire de vie", "Santé"], ["Aide aux devoirs", "Éducation"], ["Fleuriste", "Événementiel"], ["Art floral", "Événementiel"], ["Paysagiste", "Maison"], ["Majordome", "Maison"], ["Chef de maison", "Maison"], ["Réparateur de télévision", "Divers"], ["Réparateur d'électroménager", "Divers"], ["Serrurier", "Bâtiment"], ["Blindage de portes", "Bâtiment"],
-      ["Coiffeur", "Beauté"], ["Coiffeuse", "Beauté"], ["Tresseuse", "Beauté"], ["Barbier", "Beauté"], ["Esthéticienne", "Beauté"], ["Maquilleuse", "Beauté"], ["Manucure", "Beauté"], ["Pédicure", "Beauté"], ["Masseur", "Beauté"], ["Masseuse", "Beauté"], ["Tatoueur", "Beauté"],
-      ["Prothésiste ongulaire", "Beauté"], ["Nail Art", "Beauté"], ["Lash maker (Extensions de cils)", "Beauté"], ["Maquilleur professionnel", "Beauté"],
-      ["Infirmier à domicile", "Santé"], ["Infirmière à domicile", "Santé"], ["Sage-femme", "Santé"], ["Kinésithérapeute", "Santé"], ["Aide-soignant", "Santé"], ["Pharmacien", "Santé"], ["Opticien", "Santé"],
-      ["Psychologue", "Santé"], ["Thérapeute de couple", "Santé"], ["Nutritionniste", "Santé"], ["Diététicien", "Santé"], ["Coach sportif", "Santé"], ["Personal Trainer", "Santé"], ["Vétérinaire", "Santé"], ["Toiletteur pour animaux", "Santé"], ["Ostéopathe", "Santé"], ["Naturopathe", "Santé"],
-      ["Couturier", "Couture"], ["Couturière", "Couture"], ["Tailleur", "Couture"], ["Brodeur", "Couture"], ["Retoucheur", "Couture"], ["Styliste modéliste", "Couture"], ["Cordonnier", "Couture"],
-      ["Mécanicien auto", "Automobile"], ["Mécanicien moto", "Automobile"], ["Électricien auto", "Automobile"], ["Carrossier", "Automobile"], ["Tôlier", "Automobile"], ["Vulcanisateur", "Automobile"], ["Chauffeur de taxi", "Transport"], ["Chauffeur de moto-taxi", "Transport"], ["Chauffeur personnel", "Transport"], ["Déménageur", "Transport"],
-      ["Livreur", "Transport"], ["Coursier", "Transport"], ["Chauffeur de poids lourd", "Transport"], ["Camionneur", "Transport"], ["Transitaire", "Transport"], ["Déclarant en douane", "Transport"],
-      ["Traiteur", "Restauration"], ["Pâtissier", "Restauration"], ["Boulanger", "Restauration"], ["Vendeur de nourriture", "Restauration"], ["Boucher", "Restauration"], ["Poissonnier", "Restauration"], ["Barista", "Restauration"],
-      ["Chef à domicile", "Restauration"], ["Barman", "Événementiel"], ["Mixologue", "Événementiel"], ["Wedding Cake Designer", "Restauration"], ["Hôte(sse) d'accueil", "Événementiel"], ["Protocole", "Événementiel"], ["Guide touristique", "Tourisme"],
-      ["Développeur web", "Informatique"], ["Développeur mobile", "Informatique"], ["Informaticien", "Informatique"], ["Réparateur de téléphone", "Informatique"], ["Réparateur d'ordinateur", "Informatique"], ["Graphiste", "Informatique"], ["Community manager", "Informatique"], ["Photographe", "Informatique"], ["Vidéaste", "Informatique"], ["Ingénieur réseau", "Informatique"],
-      ["Monteur vidéo", "Informatique"], ["Motion Designer", "Informatique"], ["Pilote de drone", "Informatique"], ["Expert en cybersécurité", "Informatique"], ["Webmaster", "Informatique"], ["Gestionnaire de site web", "Informatique"], ["Data Analyst", "Informatique"], ["Testeur de jeux vidéo", "Informatique"], ["E-sport manager", "Informatique"], ["Créateur de contenu", "Informatique"], ["Influenceur", "Médias"],
-      ["Professeur de Maths", "Éducation"], ["Professeur de Français", "Éducation"], ["Professeur d'Anglais", "Éducation"], ["Enseignant primaire", "Éducation"], ["Formateur informatique", "Éducation"], ["Coach scolaire", "Éducation"],
-      ["Comptable", "Professionnel"], ["Fiscaliste", "Professionnel"], ["Juriste", "Professionnel"], ["Avocat", "Professionnel"], ["Notaire", "Professionnel"], ["Traducteur", "Professionnel"], ["Rédacteur de contenu", "Professionnel"], ["Secrétaire", "Professionnel"], ["Assistant administratif", "Professionnel"], ["Consultant", "Professionnel"],
-      ["Magasinier", "Commerce"], ["Gestionnaire de stock", "Commerce"], ["Démarcheur", "Professionnel"],
-      ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Apiculteur", "Agriculture"], ["Prothésiste dentaire", "Santé"],
-      ["Climatisation", "Divers"], ["Froid", "Divers"], ["Antenniste", "Divers"], ["Forgeron", "Divers"], ["Puisatier", "Divers"]
+      // BÂTIMENT ET CONSTRUCTION
+      ["Maçon", "Bâtiment"], ["Plombier", "Bâtiment"], ["Électricien", "Bâtiment"], ["Carreleur", "Bâtiment"], ["Peintre en bâtiment", "Bâtiment"], ["Menuisier bois", "Bâtiment"], ["Menuisier aluminium", "Bâtiment"], ["Soudeur", "Bâtiment"], ["Ferrailleur", "Bâtiment"], ["Charpentier", "Bâtiment"], ["Étanchéiste (toiture)", "Bâtiment"], ["Vitrier", "Bâtiment"], ["Serrurier", "Bâtiment"], ["Blindage de portes", "Bâtiment"], ["Domoticien", "Bâtiment"], ["Architecte", "Bâtiment"], ["Dessinateur bâtiment", "Bâtiment"], ["Géomètre", "Bâtiment"], ["Ingénieur BTP", "Bâtiment"], ["Conducteur de travaux", "Bâtiment"], ["Poseur de pavés", "Bâtiment"], ["Tailleur de pierre", "Bâtiment"], ["Marbrier", "Bâtiment"], ["Bétonnier", "Bâtiment"], ["Constructeur de cases traditionnelles", "Bâtiment"], ["Briquetier", "Bâtiment"], ["Tuilier", "Bâtiment"],
+      
+      // ÉNERGIE
+      ["Installateur de panneaux solaires", "Énergie"], ["Technicien de groupe électrogène", "Énergie"],
+      
+      // MINES ET CARRIÈRES
+      ["Orpailleur", "Mines"], ["Extracteur de sable", "Mines"], ["Extracteur de gravier", "Mines"], ["Producteur de sel", "Mines"],
+
+      // MÉTALLURGIE ET MÉTAUX
+      ["Chaudronnier", "Métallurgie"], ["Tourneur", "Métallurgie"], ["Fraiseur", "Métallurgie"], ["Fondeur", "Métallurgie"], ["Ferronnier d'art", "Métallurgie"], ["Tréfileur", "Métallurgie"], ["Armurier", "Métallurgie"], ["Forgeron", "Métallurgie"], ["Perlier", "Métallurgie"],
+
+      // BOIS ET ASSIMILÉS
+      ["Ébéniste", "Bois"], ["Tapissier", "Bois"], ["Bûcheron", "Bois"], ["Charbonnier", "Bois"], ["Scieur de bois", "Bois"], ["Constructeur de pirogues", "Bois"], ["Sculpteur sur bois", "Bois"], ["Fabricant d'instruments de musique", "Bois"], ["Menuisier sur bambou", "Bois"], ["Vannier", "Bois"],
+
+      // TEXTILE, CUIR ET PEAUX
+      ["Couturier", "Textile"], ["Couturière", "Textile"], ["Tailleur", "Textile"], ["Brodeur", "Textile"], ["Retoucheur", "Textile"], ["Styliste modéliste", "Textile"], ["Cordonnier", "Textile"], ["Tisserand", "Textile"], ["Fileur", "Textile"], ["Teinturier", "Textile"], ["Sérigraphe sur tissu", "Textile"], ["Tanneur", "Textile"], ["Maroquinier", "Textile"], ["Bottier", "Textile"], ["Sellier", "Textile"], ["Gainier", "Textile"], ["Relieur", "Textile"], ["Cireur de chaussures", "Textile"], ["Graveur sur cuir", "Textile"],
+
+      // MAISON ET SERVICES
+      ["Femme de ménage", "Maison"], ["Repassage à domicile", "Maison"], ["Cuisinier", "Maison"], ["Cuisinière", "Maison"], ["Gardien", "Maison"], ["Vigile", "Maison"], ["Nounou", "Maison"], ["Garde d'enfants", "Maison"], ["Jardinier", "Maison"], ["Désinsectisation", "Maison"], ["Dératisation", "Maison"], ["Plombier-déboucheur", "Maison"], ["Majordome", "Maison"], ["Chef de maison", "Maison"], ["Paysagiste", "Maison"], ["Blanchisseur", "Maison"], ["Pressing", "Maison"], ["Spécialiste en nettoyage de locaux", "Maison"], ["Spécialiste en traitement des déchets", "Maison"],
+
+      // SANTÉ ET BIEN-ÊTRE
+      ["Infirmier à domicile", "Santé"], ["Infirmière à domicile", "Santé"], ["Sage-femme", "Santé"], ["Kinésithérapeute", "Santé"], ["Aide-soignant", "Santé"], ["Pharmacien", "Santé"], ["Opticien", "Santé"], ["Lunetier", "Santé"], ["Psychologue", "Santé"], ["Thérapeute de couple", "Santé"], ["Nutritionniste", "Santé"], ["Diététicien", "Santé"], ["Coach sportif", "Santé"], ["Personal Trainer", "Santé"], ["Vétérinaire", "Santé"], ["Toiletteur pour animaux", "Santé"], ["Ostéopathe", "Santé"], ["Naturopathe", "Santé"], ["Garde-malade", "Santé"], ["Auxiliaire de vie", "Santé"], ["Prothésiste dentaire", "Santé"], ["Préparateur de pharmacopée traditionnelle", "Santé"],
+
+      // BEAUTÉ
+      ["Coiffeur", "Beauté"], ["Coiffeuse", "Beauté"], ["Tresseuse", "Beauté"], ["Barbier", "Beauté"], ["Esthéticienne", "Beauté"], ["Maquilleuse", "Beauté"], ["Manucure", "Beauté"], ["Pédicure", "Beauté"], ["Masseur", "Beauté"], ["Masseuse", "Beauté"], ["Tatoueur", "Beauté"], ["Prothésiste ongulaire", "Beauté"], ["Nail Art", "Beauté"], ["Lash maker (Extensions de cils)", "Beauté"], ["Maquilleur professionnel", "Beauté"], ["Fabricant de savons", "Beauté"], ["Fabricant de parfums", "Beauté"], ["Fabricant de cosmétiques", "Beauté"],
+
+      // AUTOMOBILE ET TRANSPORT
+      ["Mécanicien auto", "Automobile"], ["Mécanicien moto", "Automobile"], ["Électricien auto", "Automobile"], ["Carrossier", "Automobile"], ["Tôlier", "Automobile"], ["Vulcanisateur", "Automobile"], ["Chauffeur de taxi", "Transport"], ["Chauffeur de moto-taxi", "Transport"], ["Chauffeur personnel", "Transport"], ["Déménageur", "Transport"], ["Livreur", "Transport"], ["Coursier", "Transport"], ["Chauffeur de poids lourd", "Transport"], ["Camionneur", "Transport"], ["Transitaire", "Transport"], ["Déclarant en douane", "Transport"], ["Mécanicien agricole", "Automobile"],
+
+      // RESTAURATION ET ÉVÉNEMENTIEL
+      ["Traiteur", "Restauration"], ["Pâtissier", "Restauration"], ["Boulanger", "Restauration"], ["Vendeur de nourriture", "Restauration"], ["Boucher", "Restauration"], ["Charcutier", "Restauration"], ["Poissonnier", "Restauration"], ["Barista", "Restauration"], ["Chef à domicile", "Restauration"], ["Wedding Cake Designer", "Restauration"], ["Barman", "Événementiel"], ["Mixologue", "Événementiel"], ["Hôte(sse) d'accueil", "Événementiel"], ["Protocole", "Événementiel"], ["Fleuriste", "Événementiel"], ["Art floral", "Événementiel"], ["Décorateur floral", "Événementiel"],
+
+      // TOURISME
+      ["Guide touristique", "Tourisme"], ["Réceptionniste d'hôtel", "Tourisme"], ["Concierge d'hôtel", "Tourisme"], ["Maître d'hôtel", "Tourisme"], ["Sommelier", "Tourisme"], ["Gouvernant d'établissement hôtelier", "Tourisme"],
+
+      // AGROALIMENTAIRE ET TRANSFORMATION
+      ["Transformateur de fruits/légumes", "Agroalimentaire"], ["Fabricant de condiments", "Agroalimentaire"], ["Fabricant d'huiles", "Agroalimentaire"], ["Transformateur de poissons", "Agroalimentaire"], ["Fabricant de produits laitiers", "Agroalimentaire"], ["Apiculteur", "Agroalimentaire"], ["Biscuitier", "Agroalimentaire"], ["Confiseur", "Agroalimentaire"], ["Fabricant d'aliments pour animaux", "Agroalimentaire"],
+
+      // ARTISANAT D'ART ET DÉCORATION
+      ["Bijoutier", "Artisanat d'art"], ["Orfèvre", "Artisanat d'art"], ["Joaillier", "Artisanat d'art"], ["Bronzier", "Artisanat d'art"], ["Sculpteur sur pierre", "Artisanat d'art"], ["Sculpteur sur métal", "Artisanat d'art"], ["Potier", "Artisanat d'art"], ["Céramiste", "Artisanat d'art"], ["Verrier", "Artisanat d'art"], ["Fabricant de jeux et jouets traditionnels", "Artisanat d'art"], ["Encadreur", "Artisanat d'art"], ["Graveur", "Artisanat d'art"], ["Maquettiste", "Artisanat d'art"],
+
+      // INFORMATIQUE ET MÉDIAS
+      ["Développeur web", "Informatique"], ["Développeur mobile", "Informatique"], ["Informaticien", "Informatique"], ["Réparateur de téléphone", "Informatique"], ["Réparateur d'ordinateur", "Informatique"], ["Graphiste", "Informatique"], ["Community manager", "Informatique"], ["Photographe", "Informatique"], ["Vidéaste", "Informatique"], ["Ingénieur réseau", "Informatique"], ["Monteur vidéo", "Informatique"], ["Motion Designer", "Informatique"], ["Pilote de drone", "Informatique"], ["Expert en cybersécurité", "Informatique"], ["Webmaster", "Informatique"], ["Gestionnaire de site web", "Informatique"], ["Data Analyst", "Informatique"], ["Testeur de jeux vidéo", "Informatique"], ["E-sport manager", "Informatique"], ["Créateur de contenu", "Informatique"], ["Cameraman", "Médias"], ["Imprimeur", "Médias"], ["Installateur/réparateur de matériel audiovisuel", "Médias"], ["Influenceur", "Médias"],
+
+      // ÉDUCATION
+      ["Professeur de Maths", "Éducation"], ["Professeur de Français", "Éducation"], ["Professeur d'Anglais", "Éducation"], ["Enseignant primaire", "Éducation"], ["Formateur informatique", "Éducation"], ["Coach scolaire", "Éducation"], ["Aide aux devoirs", "Éducation"],
+
+      // PROFESSIONNEL, ADMINISTRATION ET COMMERCE
+      ["Comptable", "Professionnel"], ["Fiscaliste", "Professionnel"], ["Juriste", "Professionnel"], ["Avocat", "Professionnel"], ["Notaire", "Professionnel"], ["Traducteur", "Professionnel"], ["Rédacteur de contenu", "Professionnel"], ["Secrétaire", "Professionnel"], ["Assistant administratif", "Professionnel"], ["Consultant", "Professionnel"], ["Démarcheur", "Professionnel"], ["Agent de sécurité", "Professionnel"], ["Caissier", "Commerce"], ["Magasinier", "Commerce"], ["Gestionnaire de stock", "Commerce"],
+
+      // IMMOBILIER, AGRICULTURE ET DIVERS
+      ["Agent immobilier", "Immobilier"], ["Courtier", "Immobilier"], ["Agriculteur", "Agriculture"], ["Maraîcher", "Agriculture"], ["Éleveur", "Agriculture"], ["Pêcheur", "Agriculture"], ["Pépiniériste", "Agriculture"], ["Climatisation", "Divers"], ["Froid", "Divers"], ["Antenniste", "Divers"], ["Puisatier", "Divers"], ["Réparateur de télévision", "Divers"], ["Réparateur d'électroménager", "Divers"],
+
+      // BOUTIQUES & COMMERCES SPÉCIALISÉS
+      ["Quincaillerie", "Boutiques & Commerces"], 
+      ["Boutique de tissus et mercerie", "Boutiques & Commerces"], 
+      ["Mercerie", "Boutiques & Commerces"], 
+      ["Boutique de téléphones et accessoires", "Boutiques & Commerces"], 
+      ["Cabine téléphonique", "Boutiques & Commerces"], 
+      ["Boutique de pièces détachées (auto/moto)", "Boutiques & Commerces"], 
+      ["Épicerie fine / Alimentation générale", "Boutiques & Commerces"], 
+      ["Boutique de cosmétiques et parfums", "Boutiques & Commerces"], 
+      ["Boutique de matériaux de construction", "Boutiques & Commerces"], 
+      ["Librairie / Papeterie / Fournitures scolaires", "Boutiques & Commerces"], 
+      ["Boutique d'électroménager", "Boutiques & Commerces"], 
+      ["Boutique d'ameublement et décoration", "Boutiques & Commerces"], 
+      ["Boutique de meubles et matelas", "Boutiques & Commerces"], 
+      ["Animalerie", "Boutiques & Commerces"], 
+      ["Boutique de prêt-à-porter / Vêtements", "Boutiques & Commerces"], 
+      ["Boutique de lingerie et layette", "Boutiques & Commerces"], 
+      ["Friperie", "Boutiques & Commerces"], 
+      ["Boutique d'articles de sport et de loisirs", "Boutiques & Commerces"], 
+      ["Boutique de jeux vidéo et consoles", "Boutiques & Commerces"], 
+      ["Boutique d'articles de fête et événementiel", "Boutiques & Commerces"], 
+      ["Boutique de bricolage", "Boutiques & Commerces"], 
+      ["Boutique de chaussures et maroquinerie", "Boutiques & Commerces"],
+      ["Boutique de jouets", "Boutiques & Commerces"],
+      ["Boutique de souvenirs / Artisanat local", "Boutiques & Commerces"],
+      ["Pharmacie / Dépôt de médicaments", "Boutiques & Commerces"],
+      ["Boutique de pagnes et tissus", "Boutiques & Commerces"],
+      ["Boutique de céréales et condiments", "Boutiques & Commerces"],
+      ["Boutique de tubercules et huiles alimentaires", "Boutiques & Commerces"],
+      ["Boutique d'ustensiles de cuisine", "Boutiques & Commerces"],
+      ["Boutique de bijoux", "Boutiques & Commerces"],
+      ["Boutique de produits d'entretien et détergents", "Boutiques & Commerces"],
+      ["Débit de boissons / Bar", "Boutiques & Commerces"],
+      ["Boutique de matériel d'électricité et de plomberie", "Boutiques & Commerces"],
+      ["Boutique de produits locaux et agroalimentaires", "Boutiques & Commerces"],
+      ["Concept store / Boutique de mode", "Boutiques & Commerces"],
+      ["Boutique d'art et de décoration", "Boutiques & Commerces"]
     ];
     let orderCounter = 0;
     for (const [name, category] of profs) { orderCounter += 1; await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]); }
