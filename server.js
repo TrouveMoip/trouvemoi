@@ -23,16 +23,13 @@ const KKIAPAY_SECRET_KEY = process.env.KKIAPAY_SECRET_KEY;
 const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
-if (!KKIAPAY_PUBLIC_KEY || !KKIAPAY_PRIVATE_KEY) {
-  console.error("Erreur : Clés Kkiapay manquantes.");
-  process.exit(1);
-}
+if (!KKIAPAY_PUBLIC_KEY || !KKIAPAY_PRIVATE_KEY) { console.error("Erreur : Clés Kkiapay manquantes."); process.exit(1); }
 
 const PAYMENT_AMOUNT = 500;
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 3 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 }, // Augmenté à 5 fichiers (profil, identité, kyc, + galerie)
   fileFilter: (req, file, cb) => {
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!allowed.includes(file.mimetype)) return cb(new Error("Format non autorise."));
@@ -168,10 +165,7 @@ function getCsrf(req) { return req.adminSession?.csrf || ""; }
 
 async function logAdminAction(action, targetType, targetId, details) {
   try {
-    await pool.query(
-      `INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`,
-      [action, targetType, targetId, details]
-    );
+    await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]);
   } catch (e) { console.error("Erreur log admin :", e.message); }
 }
 
@@ -198,29 +192,6 @@ function renderStars(rating) {
 function renderKycBadge(size) {
   const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
   return `<span class="${cls}" title="Identite verifiee">Verifie KYC</span>`;
-}
-
-function renderMetierVisual(profession, category, photoUrl, options = {}) {
-  const { size = "card", alt = "" } = options;
-  if (photoUrl) return `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || profession)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;">`;
-
-  const emojiByMetier = {
-    "Maçon": "🧱", "Plombier": "🚿", "Électricien": "⚡", "Carreleur": "🔲", "Peintre en bâtiment": "🎨", "Menuisier bois": "🪵", "Menuisier aluminium": "🪟", "Soudeur": "🔥", "Ferrailleur": "⛓️", "Charpentier": "🪚", "Étanchéiste (toiture)": "🏠", "Vitrier": "🪟", "Serrurier": "🔑", "Architecte": "📐", "Dessinateur bâtiment": "✏️", "Géomètre": "📏", "Ingénieur BTP": "👷", "Conducteur de travaux": "🦺", "Installateur de panneaux solaires": "☀️", "Technicien de groupe électrogène": "🔌", "Domoticien": "🏠", "Climatisation": "❄️", "Froid": "🧊", "Femme de ménage": "🧹", "Repassage à domicile": "👔", "Cuisinier": "👨‍🍳", "Cuisinière": "👩‍🍳", "Gardien": "🛡️", "Vigile": "🛡️", "Nounou": "👶", "Garde d'enfants": "🧒", "Jardinier": "🌱", "Paysagiste": "🌳", "Désinsectisation": "🐜", "Dératisation": "🐀", "Plombier-déboucheur": "🪠", "Majordome": "🤵", "Chef de maison": "🏡", "Réparateur de télévision": "📺", "Réparateur d'électroménager": "🔧", "Coiffeur": "✂️", "Coiffeuse": "💇‍♀️", "Tresseuse": "💇‍♀️", "Barbier": "🪒", "Esthéticienne": "💆‍♀️", "Maquilleuse": "💄", "Manucure": "💅", "Pédicure": "🦶", "Masseur": "💆‍♂️", "Masseuse": "💆‍♀️", "Tatoueur": "🖋️", "Prothésiste ongulaire": "💅", "Nail Art": "💅", "Lash maker (Extensions de cils)": "👁️", "Maquilleur professionnel": "💄", "Infirmier à domicile": "💉", "Infirmière à domicile": "💉", "Sage-femme": "🤱", "Kinésithérapeute": "🦴", "Aide-soignant": "🏥", "Pharmacien": "💊", "Opticien": "👓", "Psychologue": "🧠", "Thérapeute de couple": "💑", "Nutritionniste": "🥗", "Diététicien": "🥦", "Coach sportif": "💪", "Personal Trainer": "💪", "Vétérinaire": "🐶", "Toiletteur pour animaux": "🐕", "Ostéopathe": "🦴", "Naturopathe": "🌿", "Garde-malade": "🏥", "Auxiliaire de vie": "🤝", "Aide aux devoirs": "📖", "Couturier": "🧵", "Couturière": "🧵", "Tailleur": "✂️", "Brodeur": "🪡", "Retoucheur": "🧵", "Styliste modéliste": "👗", "Cordonnier": "👞", "Mécanicien auto": "🚗", "Mécanicien moto": "🏍️", "Électricien auto": "🔋", "Carrossier": "🚙", "Tôlier": "🔨", "Vulcanisateur": "🛞", "Chauffeur de taxi": "🚕", "Chauffeur de moto-taxi": "🛵", "Chauffeur personnel": "🚘", "Déménageur": "📦", "Livreur": "📦", "Coursier": "🛵", "Chauffeur de poids lourd": "🚚", "Camionneur": "🚚", "Transitaire": "📦", "Déclarant en douane": "📋", "Traiteur": "🍱", "Pâtissier": "🎂", "Boulanger": "🥖", "Vendeur de nourriture": "🍲", "Boucher": "🥩", "Poissonnier": "🐟", "Barista": "☕", "Chef à domicile": "👨‍🍳", "Barman": "🍸", "Mixologue": "🍹", "Wedding Cake Designer": "🎂", "Hôte(sse) d'accueil": "🤝", "Protocole": "🎩", "Guide touristique": "🧭", "Fleuriste": "💐", "Art floral": "🌹", "Développeur web": "👨‍💻", "Développeur mobile": "📱", "Informaticien": "💻", "Réparateur de téléphone": "📱", "Réparateur d'ordinateur": "🖥️", "Graphiste": "🎨", "Community manager": "📣", "Photographe": "📷", "Vidéaste": "🎥", "Ingénieur réseau": "🌐", "Monteur vidéo": "🎬", "Motion Designer": "🎞️", "Pilote de drone": "🚁", "Expert en cybersécurité": "🛡️", "Webmaster": "🕸️", "Gestionnaire de site web": "🌐", "Data Analyst": "📊", "Testeur de jeux vidéo": "🎮", "E-sport manager": "🎮", "Créateur de contenu": "🎬", "Influenceur": "⭐", "Professeur de Maths": "➗", "Professeur de Français": "📖", "Professeur d'Anglais": "🇬🇧", "Enseignant primaire": "🍎", "Formateur informatique": "💻", "Coach scolaire": "🎓", "Comptable": "🧮", "Fiscaliste": "📊", "Juriste": "⚖️", "Avocat": "⚖️", "Notaire": "📜", "Traducteur": "🌍", "Rédacteur de contenu": "✍️", "Secrétaire": "📝", "Assistant administratif": "📋", "Consultant": "💼", "Magasinier": "📦", "Gestionnaire de stock": "📦", "Démarcheur": "🤝", "Agent immobilier": "🏘️", "Courtier": "🔑", "Agriculteur": "🌾", "Maraîcher": "🥬", "Éleveur": "🐄", "Pêcheur": "🎣", "Apiculteur": "🐝", "Prothésiste dentaire": "🦷", "Antenniste": "📡", "Forgeron": "⚒️", "Puisatier": "🕳️"
-  };
-  const catEmoji = { "Bâtiment": "🔨", "Beauté": "💇", "Santé": "🩺", "Couture": "✂️", "Automobile": "🔧", "Transport": "🚗", "Restauration": "🍽️", "Informatique": "💻", "Éducation": "📚", "Maison": "🏡", "Événementiel": "🎉", "Agriculture": "🌾", "Immobilier": "🏠", "Énergie": "⚡", "Commerce": "🛒", "Professionnel": "💼", "Tourisme": "🗺️", "Divers": "⚙️" };
-  const emoji = emojiByMetier[profession] || catEmoji[category] || "💼";
-
-  const palettes = [["#d97706", "#f59e0b"], ["#dc2626", "#ef4444"], ["#7c3aed", "#a855f7"], ["#0891b2", "#06b6d4"], ["#db2777", "#ec4899"], ["#2563eb", "#3b82f6"], ["#059669", "#10b981"], ["#ca8a04", "#eab308"], ["#be185d", "#ec4899"], ["#15803d", "#22c55e"], ["#0369a1", "#0ea5e9"], ["#4338ca", "#6366f1"], ["#7c2d12", "#c2410c"], ["#0d9488", "#14b8a6"], ["#334155", "#64748b"], ["#9d174d", "#db2777"]];
-
-  let hash = 0; const key = String(profession || "Professionnel");
-  for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
-  const palette = palettes[Math.abs(hash) % palettes.length];
-
-  const fontSize = size === "lg" ? "28px" : size === "sm" ? "16px" : "18px";
-  const emojiSize = size === "lg" ? "52px" : size === "sm" ? "30px" : "38px";
-  const padding = size === "lg" ? "40px 24px" : "16px 8px";
-
-  return `<div style="width:100%;height:100%;background:linear-gradient(135deg, ${palette[0]} 0%, ${palette[1]} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:${padding};text-align:center;gap:6px;"><div style="font-size:${emojiSize};line-height:1;">${emoji}</div><div style="color:white;font-weight:800;font-size:${fontSize};text-transform:uppercase;letter-spacing:0.5px;text-shadow:0 2px 4px rgba(0,0,0,0.25);line-height:1.2;max-width:100%;word-break:normal;overflow-wrap:break-word;padding:0 4px;">${escapeHtml(profession || "Professionnel")}</div></div>`;
 }
 
 function renderLogo() {
@@ -310,14 +281,14 @@ function page(title, content, proConnected) {
         .pro-welcome .button { background: white; color: #1e40af; }
         
         .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 24px; }
-        .pro-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; border-left: 4px solid #cbd5e0; display: flex; flex-direction: row; min-height: 150px; margin-bottom: 10px; }
+        .pro-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; display: flex; flex-direction: row; min-height: 150px; margin-bottom: 10px; }
         .pro-card-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
         .pro-card-name { font-size: 16px; font-weight: 800; color: #1a202c; margin-bottom: 4px; line-height: 1.25; }
         .pro-card-location { font-size: 12px; color: #718096; margin-bottom: 6px; }
         .pro-card-location::before { content: "📍 "; }
         .pro-card-rating { font-size: 14px; color: #ed8936; font-weight: 600; margin-bottom: 8px; }
         .pro-card-rating .reviews-count { color: #718096; font-weight: 400; font-size: 12px; margin-left: 4px; }
-        .pro-card-button { display: block; width: 100%; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 9px 14px; border-radius: 50px; text-align: center; text-decoration: none; font-weight: 700; font-size: 13px; margin-top: auto; }
+        .pro-card-button { display: block; width: 100%; color: white; padding: 9px 14px; border-radius: 50px; text-align: center; text-decoration: none; font-weight: 700; font-size: 13px; margin-top: auto; }
 
         .pro-header { background: white; color: #1a202c; padding: 32px 24px; border-radius: 20px; margin-bottom: 20px; text-align: center; }
         .pro-header .profession { font-size: 18px; color: #2563eb; font-weight: 700; }
@@ -357,7 +328,7 @@ function page(title, content, proConnected) {
         .pro-accordion { background: white; border-radius: 16px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; overflow: hidden; }
         .pro-accordion summary { display: flex; align-items: center; gap: 14px; padding: 12px 14px; cursor: pointer; list-style: none; }
         .pro-accordion summary::-webkit-details-marker { display: none; }
-        .pro-accordion .mini-photo { width: 60px; height: 60px; min-width: 60px; border-radius: 12px; overflow: hidden; flex-shrink: 0; }
+        .pro-accordion .mini-photo { width: 60px; height: 60px; min-width: 60px; border-radius: 12px; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .pro-accordion .mini-photo img { width: 100%; height: 100%; object-fit: cover; }
         .pro-accordion .summary-info { flex: 1; min-width: 0; }
         .pro-accordion .summary-name { font-weight: 800; font-size: 15px; color: #1a202c; }
@@ -375,10 +346,7 @@ function page(title, content, proConnected) {
           main { padding: 16px 12px; }
           .card { padding: 20px 16px; }
           h1 { font-size: 24px; } h2 { font-size: 20px; } h3 { font-size: 16px; }
-          .photos-grid img { max-width: 100%; }
-          .contact-buttons .button { flex: 1 1 100%; }
           .pros-grid { grid-template-columns: 1fr; }
-          .pro-card-image { width: 105px; min-width: 105px; }
           .logo svg { height: 42px; }
         }
       </style>
@@ -476,27 +444,30 @@ app.get("/", async (req, res) => {
     const categoryByProfession = {};
     for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
 
-    // ✅ Cartes sans image, textuelles avec bordures
+    // ✅ Cartes avec bordures colorées
+    const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
       const reviewsCount = Number(person.reviews_count || 0);
       const avgRating = Number(person.avg_rating || 0);
+      
+      let hash = 0; const key = String(person.profession);
+      for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
+      const borderColor = palettes[Math.abs(hash) % palettes.length];
       
       let ratingHtml = reviewsCount > 0 
         ? `<div class="pro-card-rating" style="margin-bottom:0;">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount})</span></div>`
         : `<div class="pro-card-rating" style="margin-bottom:0;"><span class="no-rating">Pas d'avis</span></div>`;
       
       return `
-        <article class="pro-card" style="flex-direction: column; padding: 20px; border: 2px solid #e2e8f0; border-radius: 16px; margin-bottom: 0;">
+        <article class="pro-card" style="flex-direction: column; padding: 20px; border: 1px solid #e2e8f0; border-left: 6px solid ${borderColor}; border-radius: 12px; margin-bottom: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
           <div class="pro-card-body" style="padding: 0;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
               <div>
                 <div class="pro-card-name" style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(displayName)}</div>
-                <div class="pro-card-location" style="font-size: 14px;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
+                <div class="pro-card-location" style="font-size: 14px; color: ${borderColor}; font-weight: 600;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
               </div>
-              <div style="text-align: right;">
-                ${renderKycBadge()}
-              </div>
+              <div style="text-align: right;">${renderKycBadge()}</div>
             </div>
             
             <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 12px 0; border: 1px solid #edf2f7;">
@@ -507,7 +478,7 @@ app.get("/", async (req, res) => {
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
               ${ratingHtml}
-              <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px;">Voir profil →</a>
+              <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px; background: ${borderColor}; border-radius: 8px;">Voir profil →</a>
             </div>
           </div>
         </article>
@@ -573,7 +544,7 @@ app.get("/recherche", async (req, res) => {
       const reviewsCount = Number(person.reviews_count || 0);
       const avgRating = Number(person.avg_rating || 0);
       const category = categoryByProfession[person.profession] || null;
-      const miniPhoto = renderMetierVisual(person.profession, category, person.photo_activite_url, { size: "sm", alt: person.profession });
+      const miniPhoto = `<div style="width:100%;height:100%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:24px;opacity:0.3;">👤</span></div>`;
       const ratingHtml = reviewsCount > 0 ? `<span style="color:#ed8936;font-weight:600;">${renderStars(avgRating)}</span> <span style="color:#718096;font-size:12px;">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>` : `<span style="color:#a0aec0;font-style:italic;font-size:12px;">Pas encore d'avis</span>`;
       return `<details class="pro-accordion"><summary><div class="mini-photo">${miniPhoto}</div><div class="summary-info"><div class="summary-name">${escapeHtml(displayName)}</div><div class="summary-meta">${escapeHtml(person.profession)} • 📍 ${escapeHtml(person.city)}</div></div><div class="summary-arrow">›</div></summary><div class="accordion-content"><div class="info-row"><span class="info-tag">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</span><span class="info-tag">🔧 ${escapeHtml(person.profession)}</span>${person.experience ? `<span class="info-tag">⏱️ ${escapeHtml(person.experience)}</span>` : ""}</div><div style="margin-bottom:12px;">${ratingHtml}</div><div style="margin-bottom:12px;">${renderKycBadge()}</div><p style="font-size:14px;color:#4a5568;margin-bottom:16px;line-height:1.6;">${escapeHtml(person.service_description || "").slice(0, 250)}...</p><a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil complet →</a></div></details>`;
     }).join("");
@@ -583,8 +554,6 @@ app.get("/recherche", async (req, res) => {
 
     const content = `
       <div style="text-align: center; margin-bottom: 20px;"><h1 style="margin-bottom: 10px;">Rechercher un professionnel</h1><a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a></div>
-      
-      <!-- ✅ Formulaire Vertical (Métiers en haut, Villes en bas) -->
       <section class="card" style="max-width: 800px; margin: 0 auto 24px auto;">
         <form action="/recherche" method="GET" style="background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; border: 1px solid #e2e8f0;">
           <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon, Coiffeur...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; background: #f8f9fa; margin: 0; padding: 16px 20px; box-shadow: none; font-size: 16px; border-radius: 12px; color: #1a202c; font-weight: 600;">
@@ -594,7 +563,6 @@ app.get("/recherche", async (req, res) => {
           <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #ff8c00; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.3); margin-top: 8px;">🔍 Rechercher</button>
         </form>
       </section>
-      
       <h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
       ${result.rows.length > 1 ? `<p style="text-align:center;color:#718096;font-size:13px;margin-bottom:16px;">👇 Cliquez sur un professionnel pour voir ses détails</p>` : ""}
       ${prosSection} ${paginationHtml}
@@ -638,9 +606,15 @@ app.get("/pro/:id", async (req, res) => {
     let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fefcbf; border-radius: 12px; margin-bottom: 16px;"><div style="font-size: 32px; font-weight: 800; color: #b7791f;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #ed8936;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #744210;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
     const reviewsHtml = reviews.map((rev) => `<div style="background: white; border: 1px solid #edf2f7; padding: 16px; border-radius: 12px; margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-weight: 700; color: #1a202c;">${escapeHtml(rev.author_name)}</div><div style="color: #ed8936; font-size: 14px;">${renderStars(rev.rating)}</div></div><div style="font-size: 12px; color: #a0aec0; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div style="color: #4a5568; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}</div>`).join("");
 
+    // ✅ Préparation Galerie & GPS
+    const photosGalerie = [person.photo_galerie_1, person.photo_galerie_2, person.photo_galerie_3].filter(url => url !== null && url !== "");
+    let galerieHtml = "";
+    if (photosGalerie.length > 0) {
+      galerieHtml = `<div class="card" style="border-radius: 20px;"><h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">📸 Galerie Photos</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
+    }
+
     const content = `
       <div style="max-width: 800px; margin: 0 auto;">
-        <!-- BLOC 1 : EN-TÊTE -->
         <div class="card" style="text-align: center; padding: 32px 24px; border-radius: 20px;">
           <div style="margin-bottom: 16px;">${renderKycBadge("lg")}</div>
           <h1 style="color: #1a202c; font-size: 26px; margin-bottom: 4px;">${escapeHtml(displayName)}</h1>
@@ -648,17 +622,32 @@ app.get("/pro/:id", async (req, res) => {
           <div style="color: #718096; font-size: 14px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
           ${ratingHeader}
         </div>
-        <!-- BLOC 2 : DESCRIPTION ET INFOS -->
+        
         <div class="card" style="border-radius: 20px;">
           <h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
           <p style="font-size: 15px; line-height: 1.7; color: #4a5568; white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+          
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; background: #f8f9fa; padding: 16px; border-radius: 12px;">
             <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Zone d'intervention</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.service_area ? escapeHtml(person.service_area) : "Non spécifiée"}</div></div>
             <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Disponibilité</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.availability ? escapeHtml(person.availability) : "Non spécifiée"}</div></div>
           </div>
+
+          ${person.type_lieu === 'fixe' ? `
+          <div style="margin-top: 24px; background: #eff6ff; padding: 16px; border-radius: 12px; border: 1px solid #bfdbfe;">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Adresse</h3>
+            <p style="font-size: 14px; margin-bottom: 12px; color: #1e40af;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>
+            ${person.latitude && person.longitude ? `
+              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
+              <p id="distance-text" style="text-align: center; font-weight: bold; margin-top: 12px; color: #2563eb;"></p>
+            ` : ""}
+          </div>
+          ` : ""}
+
           <div style="margin-top: 24px;">${contactButtons}</div>
         </div>
-        <!-- BLOC 3 : AVIS -->
+
+        ${galerieHtml}
+
         <div class="card" style="border-radius: 20px; background: #f8fafc;">
           <h2 style="font-size: 18px; margin-bottom: 16px;">Avis des clients (${reviewsCount})</h2>
           ${ratingSummary}${reviewsHtml || `<p style="color: #718096; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
@@ -666,6 +655,25 @@ app.get("/pro/:id", async (req, res) => {
         </div>
         <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;"><a href="/recherche" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à la recherche</a></div>
       </div>
+
+      <script>
+        const proLat = ${person.latitude || 0};
+        const proLon = ${person.longitude || 0};
+        if (proLat && proLon && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((pos) => {
+            const clientLat = pos.coords.latitude;
+            const clientLon = pos.coords.longitude;
+            const R = 6371;
+            const dLat = (proLat - clientLat) * Math.PI / 180;
+            const dLon = (proLon - clientLon) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(clientLat * Math.PI / 180) * Math.cos(proLat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = (R * c).toFixed(1);
+            const distEl = document.getElementById('distance-text');
+            if (distEl) distEl.innerText = "📍 À " + distance + " km de vous (à vol d'oiseau)";
+          });
+        }
+      </script>
     `;
     res.send(page(displayName, content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -769,9 +777,26 @@ app.get("/devenir-professionnel", async (req, res) => {
             <div><label>Zones</label><input name="service_area" maxlength="300" placeholder="Cotonou et environs"></div>
             <div><label>Disponibilite</label><select name="availability"><option value="">Selectionnez</option><option value="Disponible immediatement">Disponible immediatement</option><option value="Sur rendez-vous">Sur rendez-vous</option><option value="A temps partiel">A temps partiel</option></select></div>
           </div>
+
+          <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
+          <h3>Localisation & Type d'activité</h3>
+          <div class="checkbox-block" style="margin-bottom:16px;">
+            <label><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
+            <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
+          </div>
+
+          <div id="localisation-block" class="hidden">
+            <label>Adresse exacte / Point de repère</label>
+            <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+            <button type="button" onclick="getLocation()" style="background:#3182ce; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
+            <p id="gps-status" class="help-text" style="text-align:center; color:#3182ce; font-weight:bold;"></p>
+          </div>
+
           <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
           <h3>Photos obligatoires (KYC)</h3>
-          <div class="alert alert-info" style="margin-bottom:20px; padding:12px 16px;">💡 Vous pourrez ajouter une photo d'activité (vitrine) depuis votre espace pro une fois approuvé.</div>
+          <div class="alert alert-info" style="margin-bottom:20px; padding:12px 16px;">💡 Vous pourrez ajouter une galerie de 3 photos depuis votre espace pro une fois approuvé.</div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div><label>1. Photo de profil *</label><input name="photo_profil" type="file" accept="image/*" required></div>
             <div><label>2. Piece d'identite *</label><input name="photo_identite" type="file" accept="image/*" required></div>
@@ -789,6 +814,25 @@ app.get("/devenir-professionnel", async (req, res) => {
         professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
         whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
         emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
+        
+        function toggleLocalisation(isFixe) {
+          const block = document.getElementById('localisation-block');
+          if (isFixe) block.classList.remove('hidden');
+          else block.classList.add('hidden');
+        }
+        function getLocation() {
+          const status = document.getElementById('gps-status');
+          if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
+          status.innerText = "Récupération de la position...";
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              document.getElementById('latitude').value = position.coords.latitude;
+              document.getElementById('longitude').value = position.coords.longitude;
+              status.innerText = "✅ Position GPS enregistrée !";
+            },
+            (error) => { status.innerText = "❌ Impossible de vous localiser."; }
+          );
+        }
       </script>
     `;
     res.send(page("Devenir professionnel", content, proConnected));
@@ -813,7 +857,7 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
   if (attempts.count >= 3) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p></section>", null));
   attempts.count++; contactAttempts.set(`cand_${ip}`, attempts);
 
-  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email } = req.body;
+  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email, type_lieu, adresse_exacte, latitude, longitude } = req.body;
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
@@ -864,8 +908,8 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
 
     let trackingCode = `SUIVI-${crypto.randomInt(10000, 100000)}`;
 
-    await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,'payment_pending','unpaid',$20) RETURNING id`,
-      [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, whatsapp_number, contact_email, trackingCode, PAYMENT_AMOUNT]);
+    await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,'payment_pending','unpaid',$20,$21,$22,$23,$24) RETURNING id`,
+      [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, whatsapp_number, contact_email, trackingCode, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude, longitude]);
 
     res.redirect(303, `/paiement/${trackingCode}`);
   } catch (error) {
@@ -1022,12 +1066,34 @@ app.get("/mon-espace-pro", async (req, res) => {
     <div class="pro-welcome" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;"><div><h2 style="margin:0;">Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} 👋</h2></div><div class="pro-code-box" style="margin:0; padding:12px 24px; background:rgba(255,255,255,0.15);"><div class="pro-code-value" style="font-size:28px;">${escapeHtml(proConnected.code)}</div></div></div>
     <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;"><a class="button" href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Deconnexion</button></form></div>
     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
-      <section class="card"><h2>Mes infos</h2><p><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p><p><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p><p><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p><p><span class="label">Visibilite :</span> ${phoneStatus}</p><div class="actions" style="margin-top:16px;"><a class="button secondary" href="/mon-espace-pro/modifier-telephone">👁️ Visibilité</a><a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a></div></section>
+      <section class="card"><h2>Mes infos</h2><p><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p><p><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p><p><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p><p><span class="label">Visibilite :</span> ${phoneStatus}</p>
+      
+      ${proConnected.pro.type_lieu === 'fixe' ? `
+      <div style="margin-top: 16px; padding: 12px; background: #fffaf0; border-radius: 12px; border: 1px solid #fbd38d;">
+        <p style="margin-bottom: 8px; font-weight: bold;">Statut de votre boutique :</p>
+        <form action="/mon-espace-pro/toggle-status" method="POST" style="margin:0;">
+          <button type="submit" class="${proConnected.pro.est_ouvert ? 'success' : 'danger'}" style="width: 100%;">
+            ${proConnected.pro.est_ouvert ? '🟢 Ouvert (Cliquez pour fermer)' : '🔴 Fermé (Cliquez pour ouvrir)'}
+          </button>
+        </form>
+      </div>
+      ` : ""}
+
+      <div class="actions" style="margin-top:16px;"><a class="button secondary" href="/mon-espace-pro/modifier-telephone">👁️ Visibilité</a><a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a><a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a></div></section>
       <section class="card"><h2>Mes avis (${myReviews.length})</h2>${myReviewsHtml || `<p class="muted">Aucun avis.</p>`}</section>
     </div>
     <section class="card" style="margin-top:20px;"><h2>Mes offres (${offers.length})</h2>${offersHtml || `<p class="muted">Aucune offre.</p>`}</section>
     <section class="card" style="margin-top:20px;"><h2>RGPD</h2><div class="actions"><a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Données</a><form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;"><button class="danger" type="submit">🗑️ Suppression</button></form></div>${gdprHtml}</section>
   `, proConnected));
+});
+
+app.post("/mon-espace-pro/toggle-status", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (proConnected) {
+    const newStatus = !proConnected.pro.est_ouvert;
+    await pool.query(`UPDATE professional_applications SET est_ouvert = $1 WHERE id = $2`, [newStatus, proConnected.pro.id]);
+  }
+  res.redirect(303, "/mon-espace-pro");
 });
 
 app.post("/mon-espace-pro/login", async (req, res) => {
@@ -1087,9 +1153,7 @@ app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const hasPhoto = !!proConnected.pro.photo_activite_url;
-  const catResult = await pool.query(`SELECT category FROM professions WHERE name = $1`, [proConnected.pro.profession]);
-  const category = catResult.rows[0]?.category || null;
-  const currentPreview = hasPhoto ? `<img src="${escapeHtml(proConnected.pro.photo_activite_url)}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 16px;">` : `<div style="width: 100%; height: 220px; border-radius: 16px; overflow: hidden;">${renderMetierVisual(proConnected.pro.profession, category, null, { size: "lg" })}</div>`;
+  const currentPreview = hasPhoto ? `<img src="${escapeHtml(proConnected.pro.photo_activite_url)}" style="width: 100%; height: 220px; object-fit: cover; border-radius: 16px;">` : `<div style="width: 100%; height: 220px; border-radius: 16px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-size:32px; opacity:0.3;">👤</div>`;
   const successMsg = req.query.success === "upload" ? `<div class="alert alert-success">✅ Photo mise à jour !</div>` : req.query.success === "delete" ? `<div class="alert alert-info">🗑️ Photo supprimée.</div>` : "";
   res.send(page("Photo", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">📷 Photo d'activité</h1>${successMsg}<div style="margin-bottom:24px;">${currentPreview}</div><form action="/mon-espace-pro/modifier-photo" method="POST" enctype="multipart/form-data"><input name="photo_activite" type="file" accept="image/jpeg,image/png,image/webp" required><button type="submit" style="width:100%; margin-top:10px;">📤 Enregistrer</button></form>${hasPhoto ? `<form action="/mon-espace-pro/modifier-photo/supprimer" method="POST" style="margin-top:16px;"><button class="danger" type="submit" style="width:100%;" onclick="return confirm('Supprimer ?')">🗑️ Supprimer</button></form>` : ""}<p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
 });
@@ -1113,6 +1177,68 @@ app.post("/mon-espace-pro/modifier-photo/supprimer", async (req, res) => {
     await pool.query(`UPDATE professional_applications SET photo_activite_url = NULL WHERE id = $1`, [proConnected.pro.id]);
     res.redirect(303, "/mon-espace-pro/modifier-photo?success=delete");
   } catch (e) { res.redirect(303, "/mon-espace-pro/modifier-photo"); }
+});
+
+// ✅ GESTION DE LA GALERIE PHOTOS
+app.get("/mon-espace-pro/modifier-galerie", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  
+  const successMsg = req.query.success ? `<div class="alert alert-success">✅ Galerie mise à jour !</div>` : "";
+  
+  res.send(page("Ma Galerie", `
+    <section class="card" style="max-width: 600px; margin: 40px auto;">
+      <h1 style="text-align:center;">📸 Ma Galerie</h1>
+      <p style="text-align:center; color:#718096; margin-bottom:24px;">Ajoutez jusqu'à 3 photos pour montrer votre local, vos réalisations ou votre matériel.</p>
+      ${successMsg}
+      
+      <form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data" style="background:#f8f9fa; padding:20px; border-radius:20px;">
+        <div style="margin-bottom:16px;">
+          <label>Photo 1 (Vitrine, équipe...)</label>
+          ${proConnected.pro.photo_galerie_1 ? `<img src="${proConnected.pro.photo_galerie_1}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}
+          <input type="file" name="photo1" accept="image/*">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>Photo 2</label>
+          ${proConnected.pro.photo_galerie_2 ? `<img src="${proConnected.pro.photo_galerie_2}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}
+          <input type="file" name="photo2" accept="image/*">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label>Photo 3</label>
+          ${proConnected.pro.photo_galerie_3 ? `<img src="${proConnected.pro.photo_galerie_3}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">` : ""}
+          <input type="file" name="photo3" accept="image/*">
+        </div>
+        <button type="submit" style="width:100%; margin-top:10px;">Enregistrer les photos</button>
+      </form>
+      <p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour à mon espace</a></p>
+    </section>
+  `, proConnected));
+});
+
+app.post("/mon-espace-pro/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }, { name: 'photo3', maxCount: 1 }]), async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  
+  try {
+    const files = req.files;
+    let newGalerie = { 1: proConnected.pro.photo_galerie_1, 2: proConnected.pro.photo_galerie_2, 3: proConnected.pro.photo_galerie_3 };
+    
+    for (let i = 1; i <= 3; i++) {
+      if (files && files[`photo${i}`] && files[`photo${i}`][0]) {
+        const result = await uploadToCloudinary(files[`photo${i}`][0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_${i}_${Date.now()}`);
+        if (newGalerie[i]) await deleteFromCloudinary(newGalerie[i]);
+        newGalerie[i] = result.secure_url;
+      }
+    }
+    
+    await pool.query(`UPDATE professional_applications SET photo_galerie_1 = $1, photo_galerie_2 = $2, photo_galerie_3 = $3 WHERE id = $4`, 
+      [newGalerie[1], newGalerie[2], newGalerie[3], proConnected.pro.id]);
+      
+    res.redirect(303, "/mon-espace-pro/modifier-galerie?success=1");
+  } catch (e) {
+    console.error(e);
+    res.redirect(303, "/mon-espace-pro/modifier-galerie");
+  }
 });
 
 app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
@@ -1272,10 +1398,10 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const proResult = await pool.query(`SELECT full_name, phone, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
+    const proResult = await pool.query(`SELECT full_name, phone, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE id = $1`, [id]);
     if (proResult.rows.length) {
       const p = proResult.rows[0];
-      await Promise.allSettled([p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url].map(url => deleteFromCloudinary(url)));
+      await Promise.allSettled([p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url, p.photo_galerie_1, p.photo_galerie_2, p.photo_galerie_3].map(url => deleteFromCloudinary(url)));
       await logAdminAction("delete_application", "pro", id, `Nom: ${p.full_name} | Téléphone: ${p.phone}`);
     }
     await pool.query(`DELETE FROM contact_messages WHERE pro_id = $1`, [id]);
@@ -1397,14 +1523,14 @@ async function startServer() {
         status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid',
-        payment_ref VARCHAR(100), payment_amount INTEGER DEFAULT 500, payment_date TIMESTAMP, payment_method VARCHAR(30)
+        payment_ref VARCHAR(100), payment_amount INTEGER DEFAULT 500, payment_date TIMESTAMP, payment_method VARCHAR(30),
+        latitude DECIMAL(10, 8), longitude DECIMAL(11, 8), adresse_exacte TEXT, type_lieu VARCHAR(20) DEFAULT 'ambulant', est_ouvert BOOLEAN DEFAULT true,
+        photo_galerie_1 TEXT, photo_galerie_2 TEXT, photo_galerie_3 TEXT
       )
     `);
 
     const migrations = [
-      // ✅ SUPPRIME L'ANCIENNE RÈGLE QUI BLOQUAIT LE STATUT 'payment_pending'
       `ALTER TABLE professional_applications DROP CONSTRAINT IF EXISTS professional_applications_status_check`,
-      
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
@@ -1420,6 +1546,14 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_amount INTEGER DEFAULT 500`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS longitude DECIMAL(11, 8)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS adresse_exacte TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS type_lieu VARCHAR(20) DEFAULT 'ambulant'`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS est_ouvert BOOLEAN DEFAULT true`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_1 TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_2 TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_3 TEXT`,
       `UPDATE professional_applications SET payment_status = 'paid', payment_date = created_at WHERE status IN ('approved', 'pending', 'under_review') AND payment_status = 'unpaid'`
     ];
     for (const q of migrations) { try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); } }
@@ -1508,9 +1642,9 @@ async function startServer() {
 
     setInterval(async () => {
       try {
-        const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
+        const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
         for (const row of expired.rows) {
-          await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url].map(url => url && deleteFromCloudinary(url)));
+          await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
           await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
         }
       } catch (e) { console.error("Erreur cleanup :", e.message); }
