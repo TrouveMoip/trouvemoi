@@ -23,7 +23,6 @@ const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
 // ✅ INTERRUPTEUR POUR DÉSACTIVER LE PAIEMENT LORS DES TESTS
-// Mets à false quand tu auras activé ton compte Kkiapay en production
 const BYPASS_PAYMENT = true; 
 
 const PAYMENT_AMOUNT = 500;
@@ -403,7 +402,8 @@ function jobContactButtons(job) {
   const b = [];
   if (job.contact_phone) b.push(`<a class="button" href="tel:${escapeHtml(job.contact_phone)}">📞 Appeler</a>`);
   if (job.contact_whatsapp) {
-    const wa = job.contact_whatsapp.replace(/^\+/, "");
+    let wa = job.contact_whatsapp.replace(/^\+/, "");
+    if (!wa.startsWith("229")) wa = "229" + wa;
     b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour, je vous contacte suite à votre offre d'emploi sur TrouveMoi.")}" target="_blank">💬 WhatsApp</a>`);
   }
   return b.length ? `<div class="contact-buttons">${b.join("")}</div>` : "";
@@ -445,7 +445,6 @@ app.get("/", async (req, res) => {
     const categoryByProfession = {};
     for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
 
-    // ✅ Cartes avec bordures colorées
     const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
     const prosCards = result.rows.map((person) => {
       const displayName = getDisplayName(person);
@@ -514,44 +513,51 @@ app.get("/", async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
 });
 
+// ✅ RECHERCHE : N'affiche rien tant que l'utilisateur n'a pas cliqué sur Rechercher
 app.get("/recherche", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
+    const isSearching = profession !== "" || city !== "";
+    
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12; const offset = (currentPage - 1) * limit;
 
     const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
-    let whereClause = ` WHERE p.status = 'approved'`; const values = [];
-    if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
-    if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
-
-    const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
-    const totalPros = parseInt(countResult.rows[0].count);
-    const totalPages = Math.ceil(totalPros / limit);
-
-    const queryValues = [...values, limit, offset];
-    const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p ${whereClause} ORDER BY p.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
-    const result = await pool.query(query, queryValues);
-
     const professionsByCategory = {}; const categoryByProfession = {};
     for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); categoryByProfession[p.name] = cat; }
 
-    const prosAccordions = result.rows.map((person) => {
-      const displayName = getDisplayName(person);
-      const reviewsCount = Number(person.reviews_count || 0);
-      const avgRating = Number(person.avg_rating || 0);
-      const category = categoryByProfession[person.profession] || null;
-      const miniPhoto = `<div style="width:100%;height:100%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:24px;opacity:0.3;">👤</span></div>`;
-      const ratingHtml = reviewsCount > 0 ? `<span style="color:#ed8936;font-weight:600;">${renderStars(avgRating)}</span> <span style="color:#718096;font-size:12px;">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>` : `<span style="color:#a0aec0;font-style:italic;font-size:12px;">Pas encore d'avis</span>`;
-      return `<details class="pro-accordion"><summary><div class="mini-photo">${miniPhoto}</div><div class="summary-info"><div class="summary-name">${escapeHtml(displayName)}</div><div class="summary-meta">${escapeHtml(person.profession)} • 📍 ${escapeHtml(person.city)}</div></div><div class="summary-arrow">›</div></summary><div class="accordion-content"><div class="info-row"><span class="info-tag">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</span><span class="info-tag">🔧 ${escapeHtml(person.profession)}</span>${person.experience ? `<span class="info-tag">⏱️ ${escapeHtml(person.experience)}</span>` : ""}</div><div style="margin-bottom:12px;">${ratingHtml}</div><div style="margin-bottom:12px;">${renderKycBadge()}</div><p style="font-size:14px;color:#4a5568;margin-bottom:16px;line-height:1.6;">${escapeHtml(person.service_description || "").slice(0, 250)}...</p><a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil complet →</a></div></details>`;
-    }).join("");
+    let result = { rows: [] }; let totalPros = 0; let totalPages = 0;
+    let prosSection = ""; let paginationHtml = "";
 
-    const prosSection = result.rows.length > 0 ? `<div style="max-width: 800px; margin: 0 auto;">${prosAccordions}</div>` : `<section class="card" style="max-width: 800px; margin: 0 auto;"><p style="text-align:center;">Aucun professionnel ne correspond.</p></section>`;
-    const paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city });
+    if (isSearching) {
+      let whereClause = ` WHERE p.status = 'approved'`; const values = [];
+      if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
+      if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
+
+      const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
+      totalPros = parseInt(countResult.rows[0].count);
+      totalPages = Math.ceil(totalPros / limit);
+
+      const queryValues = [...values, limit, offset];
+      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p ${whereClause} ORDER BY p.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+      result = await pool.query(query, queryValues);
+
+      const prosAccordions = result.rows.map((person) => {
+        const displayName = getDisplayName(person);
+        const reviewsCount = Number(person.reviews_count || 0);
+        const avgRating = Number(person.avg_rating || 0);
+        const miniPhoto = `<div style="width:100%;height:100%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;"><span style="font-size:24px;opacity:0.3;">👤</span></div>`;
+        const ratingHtml = reviewsCount > 0 ? `<span style="color:#ed8936;font-weight:600;">${renderStars(avgRating)}</span> <span style="color:#718096;font-size:12px;">${avgRating.toFixed(1)} (${reviewsCount} avis)</span>` : `<span style="color:#a0aec0;font-style:italic;font-size:12px;">Pas encore d'avis</span>`;
+        return `<details class="pro-accordion"><summary><div class="mini-photo">${miniPhoto}</div><div class="summary-info"><div class="summary-name">${escapeHtml(displayName)}</div><div class="summary-meta">${escapeHtml(person.profession)} • 📍 ${escapeHtml(person.city)}</div></div><div class="summary-arrow">›</div></summary><div class="accordion-content"><div class="info-row"><span class="info-tag">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</span><span class="info-tag">🔧 ${escapeHtml(person.profession)}</span>${person.experience ? `<span class="info-tag">⏱️ ${escapeHtml(person.experience)}</span>` : ""}</div><div style="margin-bottom:12px;">${ratingHtml}</div><div style="margin-bottom:12px;">${renderKycBadge()}</div><p style="font-size:14px;color:#4a5568;margin-bottom:16px;line-height:1.6;">${escapeHtml(person.service_description || "").slice(0, 250)}...</p><a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}">Voir le profil complet →</a></div></details>`;
+      }).join("");
+
+      prosSection = result.rows.length > 0 ? `<div style="max-width: 800px; margin: 0 auto;">${prosAccordions}</div>` : `<section class="card" style="max-width: 800px; margin: 0 auto;"><p style="text-align:center;">Aucun professionnel ne correspond à votre recherche.</p></section>`;
+      paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city });
+    }
 
     const content = `
       <div style="text-align: center; margin-bottom: 20px;"><h1 style="margin-bottom: 10px;">Rechercher un professionnel</h1><a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a></div>
@@ -564,9 +570,10 @@ app.get("/recherche", async (req, res) => {
           <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #ff8c00; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.3); margin-top: 8px;">🔍 Rechercher</button>
         </form>
       </section>
-      <h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
+      
+      ${isSearching ? `<h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
       ${result.rows.length > 1 ? `<p style="text-align:center;color:#718096;font-size:13px;margin-bottom:16px;">👇 Cliquez sur un professionnel pour voir ses détails</p>` : ""}
-      ${prosSection} ${paginationHtml}
+      ${prosSection} ${paginationHtml}` : `<div style="text-align: center; padding: 40px 20px; color: #a0aec0;"><p style="font-size: 18px;">👆 Entrez un métier ou une ville ci-dessus pour voir les professionnels disponibles.</p></div>`}
     `;
     res.send(page("Recherche", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
@@ -585,7 +592,11 @@ app.get("/pro/:id", async (req, res) => {
 
     const displayName = getDisplayName(person);
     const phoneClean = (person.phone || "").replace(/[()\s.-]/g, "");
-    const whatsappNumber = phoneClean.replace(/^\+/, "");
+    
+    // ✅ Ajout automatique du 229 pour WhatsApp
+    let whatsappNumber = phoneClean.replace(/^\+/, ""); 
+    if (!whatsappNumber.startsWith("229")) whatsappNumber = "229" + whatsappNumber;
+
     const reviewsCount = Number(person.reviews_count || 0);
     const avgRating = Number(person.avg_rating || 0);
 
@@ -613,10 +624,22 @@ app.get("/pro/:id", async (req, res) => {
       galerieHtml = `<div class="card" style="border-radius: 20px;"><h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">📸 Galerie Photos</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px;">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" style="width: 100%; height: 150px; object-fit: cover; border-radius: 12px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
     }
 
+    // ✅ NOUVEAU : Badge Ouvert / Fermé
+    const openStatusBadge = person.type_lieu === 'fixe' ? `
+      <div style="margin-bottom: 12px;">
+        <span class="badge" style="background:${person.est_ouvert ? '#c6f6d5' : '#fed7d7'}; color:${person.est_ouvert ? '#22543d' : '#822727'}; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+          ${person.est_ouvert ? '🟢 Ouvert' : '🔴 Fermé'}
+        </span>
+      </div>
+    ` : "";
+
     const content = `
       <div style="max-width: 800px; margin: 0 auto;">
         <div class="card" style="text-align: center; padding: 32px 24px; border-radius: 20px;">
           <div style="margin-bottom: 16px;">${renderKycBadge("lg")}</div>
+          
+          ${openStatusBadge}
+
           <h1 style="color: #1a202c; font-size: 26px; margin-bottom: 4px;">${escapeHtml(displayName)}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
           <div style="color: #718096; font-size: 14px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
@@ -757,20 +780,23 @@ app.get("/devenir-professionnel", async (req, res) => {
             <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
             <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="Dupont BTP"></div>
           </div>
+          
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="+229 01 97 00 00 00"></div>
+            <!-- ✅ MODIFIÉ : Placeholder pour numéro simple -->
+            <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
             <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
           </div>
+          
           <div class="checkbox-block"><label><input type="checkbox" name="phone_public" value="yes" checked><span><strong>Numero visible publiquement</strong></span></label></div>
           <h3 style="margin-top: 30px;">Reception code *</h3>
-          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30"></div></div>
+          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div></div>
           <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="email" required> <span><strong>✉️ Email</strong></span></label><div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Adresse email *</label><input name="contact_email" type="email" maxlength="254"></div></div>
+          
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
             <div><label>Ville *</label><select id="city" name="city" required><option value="">Choisir</option>${cityOptions}</select></div>
             <div><label>Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Choisir</option></select><div id="neighborhood-other-block" class="hidden" style="margin-top:10px;"><input name="neighborhood_other" maxlength="150" placeholder="Precisez"></div></div>
           </div>
 
-          <!-- ✅ CHAMP DE RECHERCHE POUR LES METIERS -->
           <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
             <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
             <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" style="border-radius: 12px; padding: 12px 20px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
@@ -804,13 +830,21 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
           <h3>Photos obligatoires (KYC)</h3>
-          <div class="alert alert-info" style="margin-bottom:20px; padding:12px 16px;">💡 Vous pourrez ajouter une galerie de 3 photos depuis votre espace pro une fois approuvé.</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>1. Photo de profil *</label><input name="photo_profil" type="file" accept="image/*" required></div>
-            <div><label>2. Piece d'identite *</label><input name="photo_identite" type="file" accept="image/*" required></div>
+          
+          <!-- ✅ MODIFIÉ : Image KYC réduite et intégrée proprement -->
+          <div style="display: flex; align-items: center; gap: 16px; background: #f8f9fa; padding: 12px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #cbd5e0;">
+            <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" alt="Exemple KYC" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
+            <p style="margin: 0; font-size: 13px; color: #4a5568;"><strong>Exemple de photo KYC :</strong> Vous devez être de face, en tenant votre pièce d'identité à côté de votre visage, sans lunettes ni chapeau.</p>
           </div>
-          <label style="margin-top:16px;">3. Photo KYC (Vous + piece) *</label>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- ✅ MODIFIÉ : Photo de profil devient Photo d'identité -->
+            <div><label>1. Photo d'identité (visage) *</label><input name="photo_profil" type="file" accept="image/*" required></div>
+            <div><label>2. Pièce d'identité (recto) *</label><input name="photo_identite" type="file" accept="image/*" required></div>
+          </div>
+          <label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
           <input name="photo_kyc" type="file" accept="image/*" required>
+          
           <div class="checkbox-block" style="margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
           <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px;">Envoyer ma candidature</button></div>
         </form>
@@ -886,22 +920,25 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
-  const cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
-  const beninPhoneRegex = /^(?:\+?229|00229)?01[45679]\d{7}$/;
-  if (!beninPhoneRegex.test(cleanPhone)) return res.status(400).send(page("Erreur", "<h2>Numéro invalide (format +229 01...).</h2>", null));
+  // ✅ NETTOYAGE TELEPHONE
+  let cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
+  cleanPhone = cleanPhone.replace(/^(?:\+?229|00229)/, ""); 
+  const beninPhoneRegex = /^01\d{8}$/;
+  if (!beninPhoneRegex.test(cleanPhone)) {
+    return res.status(400).send(page("Erreur", "<h2>Numéro invalide. Il doit commencer par 01 et contenir 10 chiffres (ex: 0194010345).</h2>", null));
+  }
 
+  let cleanWa = "";
   if (whatsapp_number) {
-    const cleanWa = String(whatsapp_number).replace(/[\s().-]/g, "");
-    if (!beninPhoneRegex.test(cleanWa)) return res.status(400).send(page("Erreur", "<h2>Numéro WhatsApp invalide.</h2>", null));
+    cleanWa = String(whatsapp_number).replace(/[\s().-]/g, "").replace(/^(?:\+?229|00229)/, "");
+    if (!beninPhoneRegex.test(cleanWa)) return res.status(400).send(page("Erreur", "<h2>Numéro WhatsApp invalide. Il doit commencer par 01 et contenir 10 chiffres.</h2>", null));
   }
 
   const safeNpi = String(npi || "").trim();
   if (safeNpi.length < 8) return res.status(400).send(page("Erreur", "<h2>NPI invalide (au moins 8 caractères).</h2>", null));
 
-  const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
-
   try {
-    const duplicateCheck = await pool.query(`SELECT id, payment_status, tracking_code, status FROM professional_applications WHERE (REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $1 OR npi = $2) AND status IN ('pending', 'under_review', 'approved', 'corrections_requested', 'payment_pending')`, [safePhone, safeNpi]);
+    const duplicateCheck = await pool.query(`SELECT id, payment_status, tracking_code, status FROM professional_applications WHERE (REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $1 OR npi = $2) AND status IN ('pending', 'under_review', 'approved', 'corrections_requested', 'payment_pending')`, [cleanPhone, safeNpi]);
     if (duplicateCheck.rows.length > 0) {
       const dup = duplicateCheck.rows[0];
       if (dup.status === 'payment_pending' && dup.payment_status === 'unpaid') return res.redirect(303, `/paiement/${dup.tracking_code}`);
@@ -933,227 +970,12 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
 
     let trackingCode = `SUIVI-${crypto.randomInt(10000, 100000)}`;
     
-    // ✅ GESTION DU BYPASS PAIEMENT
     const finalStatus = BYPASS_PAYMENT ? 'pending' : 'payment_pending';
     const finalPaymentStatus = BYPASS_PAYMENT ? 'paid' : 'unpaid';
 
+    // ✅ On insère cleanPhone et cleanWa
     await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
-      [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, whatsapp_number, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude, longitude]);
-
-    if (BYPASS_PAYMENT) {
-      res.send(page("Succes", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#38a169;">Succès !</h1><p>Votre candidature a bien été enregistrée et est en attente d'examen.</p><div class="alert alert-info" style="margin-top:20px;"><strong>Votre code de suivi est : <span style="font-size:24px; font-family:monospace; font-weight:bold;">${escapeHtml(trackingCode)}</span></strong></div><a class="button" href="/suivi-dossier" style="margin-top:20px;">Suivre mon dossier</a></section>`, null));
-    } else {
-      res.redirect(303, `/paiement/${trackingCode}`);
-    }
-  } catch (error) {
-    console.error("ERREUR COMPLETE INSERT :", error);
-    if (uploadedUrls.length > 0) { await Promise.allSettled(uploadedUrls.map(url => deleteFromCloudinary(url))); }
-    res.status(500).send(page("Erreur", `<h2>Impossible d'enregistrer.</h2><p style="color:red; background:#fff; padding:10px; border-radius:10px;">${escapeHtml(error.message)}</p>`, null));
-  }
-});
-app.get("/devenir-professionnel", async (req, res) => {
-  try {
-    const proConnected = await getConnectedPro(req);
-    const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
-    const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
-
-    const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
-    const professionsByCategory = {};
-    for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
-    const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}" class="prof-group">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
-
-    const content = `
-      <section class="card" style="max-width: 800px; margin: 0 auto;">
-        <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
-        ${BYPASS_PAYMENT ? "" : `<div class="alert" style="background: #fff7ed; border: 2px solid #f59e0b; color: #92400e; margin-bottom: 24px;"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
-        
-        <form action="/candidatures" method="POST" enctype="multipart/form-data">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
-            <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="Dupont BTP"></div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="+229 01 97 00 00 00"></div>
-            <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
-          </div>
-          <div class="checkbox-block"><label><input type="checkbox" name="phone_public" value="yes" checked><span><strong>Numero visible publiquement</strong></span></label></div>
-          <h3 style="margin-top: 30px;">Reception code *</h3>
-          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30"></div></div>
-          <div class="checkbox-block"><label><input type="radio" name="contact_preference" value="email" required> <span><strong>✉️ Email</strong></span></label><div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Adresse email *</label><input name="contact_email" type="email" maxlength="254"></div></div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-            <div><label>Ville *</label><select id="city" name="city" required><option value="">Choisir</option>${cityOptions}</select></div>
-            <div><label>Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Choisir</option></select><div id="neighborhood-other-block" class="hidden" style="margin-top:10px;"><input name="neighborhood_other" maxlength="150" placeholder="Precisez"></div></div>
-          </div>
-
-          <!-- ✅ CHAMP DE RECHERCHE POUR LES METIERS -->
-          <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
-            <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
-            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" style="border-radius: 12px; padding: 12px 20px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Profession *</label><select id="profession" name="profession" required><option value="">Choisir</option>${professionOptions}<option value="__AUTRE__">Autre</option></select><div id="profession-other-block" class="hidden" style="margin-top:10px;"><input name="profession_other" maxlength="150" placeholder="Precisez"></div></div>
-            <div><label>Experience</label><select name="experience"><option value="">Selectionnez</option><option value="Debutant">Debutant</option><option value="Moins de 2 ans">Moins de 2 ans</option><option value="2 a 5 ans">2 a 5 ans</option><option value="Plus de 5 ans">Plus de 5 ans</option></select></div>
-          </div>
-          <label>Description *</label><textarea name="service_description" rows="4" required maxlength="3000"></textarea>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Zones</label><input name="service_area" maxlength="300" placeholder="Cotonou et environs"></div>
-            <div><label>Disponibilite</label><select name="availability"><option value="">Selectionnez</option><option value="Disponible immediatement">Disponible immediatement</option><option value="Sur rendez-vous">Sur rendez-vous</option><option value="A temps partiel">A temps partiel</option></select></div>
-          </div>
-
-          <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
-          <h3>Localisation & Type d'activité</h3>
-          <div class="checkbox-block" style="margin-bottom:16px;">
-            <label><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
-            <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
-          </div>
-
-          <div id="localisation-block" class="hidden">
-            <label>Adresse exacte / Point de repère</label>
-            <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
-            <input type="hidden" name="latitude" id="latitude">
-            <input type="hidden" name="longitude" id="longitude">
-            <button type="button" onclick="getLocation()" style="background:#3182ce; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
-            <p id="gps-status" class="help-text" style="text-align:center; color:#3182ce; font-weight:bold;"></p>
-          </div>
-
-          <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
-          <h3>Photos obligatoires (KYC)</h3>
-          <div class="alert alert-info" style="margin-bottom:20px; padding:12px 16px;">💡 Vous pourrez ajouter une galerie de 3 photos depuis votre espace pro une fois approuvé.</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>1. Photo de profil *</label><input name="photo_profil" type="file" accept="image/*" required></div>
-            <div><label>2. Piece d'identite *</label><input name="photo_identite" type="file" accept="image/*" required></div>
-          </div>
-          <label style="margin-top:16px;">3. Photo KYC (Vous + piece) *</label>
-          <input name="photo_kyc" type="file" accept="image/*" required>
-          <div class="checkbox-block" style="margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
-          <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px;">Envoyer ma candidature</button></div>
-        </form>
-      </section>
-      <script>
-        const citySelect = document.getElementById('city'); const neighborhoodSelect = document.getElementById('neighborhood'); const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); const professionSelect = document.getElementById('profession'); const professionOtherBlock = document.getElementById('profession-other-block'); const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
-        
-        function filterProfessions() {
-          const search = document.getElementById('search-profession').value.toLowerCase();
-          const select = document.getElementById('profession');
-          const optgroups = select.getElementsByTagName('optgroup');
-          for (let g = 0; g < optgroups.length; g++) {
-            let hasVisible = false;
-            const options = optgroups[g].getElementsByTagName('option');
-            for (let i = 0; i < options.length; i++) {
-              const text = options[i].text.toLowerCase();
-              if (text.includes(search)) { options[i].style.display = ""; hasVisible = true; }
-              else { options[i].style.display = "none"; }
-            }
-            optgroups[g].style.display = hasVisible ? "" : "none";
-          }
-        }
-
-        citySelect.addEventListener('change', async function() { const city = citySelect.value; neighborhoodSelect.innerHTML = ''; if (!city) { neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; return; } neighborhoodSelect.innerHTML = '<option value="">Chargement...</option>'; try { const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); const data = await res.json(); neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; for (const n of data.neighborhoods) { const opt = document.createElement('option'); opt.value = n; opt.textContent = n; neighborhoodSelect.appendChild(opt); } const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; neighborhoodSelect.appendChild(otherOpt); neighborhoodOtherBlock.classList.remove('hidden'); } catch (e) { neighborhoodSelect.innerHTML = '<option value="">Erreur</option>'; } });
-        neighborhoodSelect.addEventListener('change', function() { if (neighborhoodSelect.value === '__AUTRE__') neighborhoodOtherBlock.classList.remove('hidden'); });
-        professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
-        whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
-        emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
-        
-        function toggleLocalisation(isFixe) {
-          const block = document.getElementById('localisation-block');
-          if (isFixe) block.classList.remove('hidden');
-          else block.classList.add('hidden');
-        }
-        function getLocation() {
-          const status = document.getElementById('gps-status');
-          if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
-          status.innerText = "Récupération de la position...";
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              document.getElementById('latitude').value = position.coords.latitude;
-              document.getElementById('longitude').value = position.coords.longitude;
-              status.innerText = "✅ Position GPS enregistrée !";
-            },
-            (error) => { status.innerText = "❌ Impossible de vous localiser."; }
-          );
-        }
-      </script>
-    `;
-    res.send(page("Devenir professionnel", content, proConnected));
-  } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-});
-
-app.get("/api/neighborhoods", async (req, res) => {
-  try {
-    const city = String(req.query.city || "").trim();
-    if (!city) return res.json({ neighborhoods: [] });
-    const cityResult = await pool.query("SELECT id FROM cities WHERE name = $1", [city]);
-    if (!cityResult.rows.length) return res.json({ neighborhoods: [] });
-    const neighborhoodsResult = await pool.query(`SELECT name FROM neighborhoods WHERE city_id = $1 ORDER BY name ASC`, [cityResult.rows[0].id]);
-    res.json({ neighborhoods: neighborhoodsResult.rows.map((n) => n.name) });
-  } catch (error) { res.status(500).json({ neighborhoods: [] }); }
-});
-
-app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
-  const ip = req.ip || "unknown"; const now = Date.now();
-  const attempts = contactAttempts.get(`cand_${ip}`) || { count: 0, startedAt: now };
-  if (now - attempts.startedAt > 60 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
-  if (attempts.count >= 3) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p></section>", null));
-  attempts.count++; contactAttempts.set(`cand_${ip}`, attempts);
-
-  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email, type_lieu, adresse_exacte, latitude, longitude } = req.body;
-
-  if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
-
-  const cleanPhone = String(phone || "").replace(/[\s().-]/g, "");
-  const beninPhoneRegex = /^(?:\+?229|00229)?01[45679]\d{7}$/;
-  if (!beninPhoneRegex.test(cleanPhone)) return res.status(400).send(page("Erreur", "<h2>Numéro invalide (format +229 01...).</h2>", null));
-
-  if (whatsapp_number) {
-    const cleanWa = String(whatsapp_number).replace(/[\s().-]/g, "");
-    if (!beninPhoneRegex.test(cleanWa)) return res.status(400).send(page("Erreur", "<h2>Numéro WhatsApp invalide.</h2>", null));
-  }
-
-  const safeNpi = String(npi || "").trim();
-  if (safeNpi.length < 8) return res.status(400).send(page("Erreur", "<h2>NPI invalide (au moins 8 caractères).</h2>", null));
-
-  const safePhone = String(phone || "").replace(/[()\s.-]/g, "");
-
-  try {
-    const duplicateCheck = await pool.query(`SELECT id, payment_status, tracking_code, status FROM professional_applications WHERE (REGEXP_REPLACE(phone, '[()\\s.-]', '', 'g') = $1 OR npi = $2) AND status IN ('pending', 'under_review', 'approved', 'corrections_requested', 'payment_pending')`, [safePhone, safeNpi]);
-    if (duplicateCheck.rows.length > 0) {
-      const dup = duplicateCheck.rows[0];
-      if (dup.status === 'payment_pending' && dup.payment_status === 'unpaid') return res.redirect(303, `/paiement/${dup.tracking_code}`);
-      return res.status(409).send(page("Inscription impossible", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#e53e3e; justify-content: center;">⚠️ Doublon</h1><p><strong>Un dossier existe déjà avec ce numéro ou ce NPI.</strong></p><a class="button" href="/contact">📩 Nous contacter</a></section>`, null));
-    }
-  } catch (dbError) { console.error("Erreur vérification doublon :", dbError.message); }
-
-  if (!CONTACT_PREFERENCES.includes(contact_preference)) return res.status(400).send(page("Erreur", "<h2>Preference de contact invalide.</h2>", null));
-
-  const files = req.files || {};
-  const photoProfil = files.photo_profil?.[0]; const photoIdentite = files.photo_identite?.[0]; const photoKyc = files.photo_kyc?.[0];
-  if (!full_name || !phone || !city || !profession || !service_description || !photoProfil || !photoIdentite || !photoKyc) return res.status(400).send(page("Erreur", "<h2>Informations ou photos manquantes.</h2>", null));
-
-  let finalNeighborhood = (neighborhood === "__AUTRE__") ? neighborhood_other : neighborhood;
-  let finalProfession = (profession === "__AUTRE__") ? profession_other : profession;
-  const pref = contact_preference; const phoneIsPublic = phone_public === "yes"; const finalCompanyName = company_name && company_name.trim() ? company_name.trim() : null;
-
-  if (!finalProfession || !String(finalProfession).trim()) return res.status(400).send(page("Erreur", "<h2>Métier manquant.</h2>", null));
-  if (!finalNeighborhood || !String(finalNeighborhood).trim()) finalNeighborhood = null;
-  finalProfession = String(finalProfession).trim().slice(0, 150);
-  if (finalNeighborhood) finalNeighborhood = String(finalNeighborhood).trim().slice(0, 150);
-
-  const uploadedUrls = [];
-  try {
-    const timestamp = Date.now();
-    const profilResult = await uploadToCloudinary(photoProfil.buffer, "trouvemoi/profils", `profil_${timestamp}`); uploadedUrls.push(profilResult.secure_url);
-    const identiteResult = await uploadToCloudinary(photoIdentite.buffer, "trouvemoi/identites", `identite_${timestamp}`); uploadedUrls.push(identiteResult.secure_url);
-    const kycResult = await uploadToCloudinary(photoKyc.buffer, "trouvemoi/kyc", `kyc_${timestamp}`); uploadedUrls.push(kycResult.secure_url);
-
-    let trackingCode = `SUIVI-${crypto.randomInt(10000, 100000)}`;
-    
-    // ✅ GESTION DU BYPASS PAIEMENT
-    const finalStatus = BYPASS_PAYMENT ? 'pending' : 'payment_pending';
-    const finalPaymentStatus = BYPASS_PAYMENT ? 'paid' : 'unpaid';
-
-    await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26) RETURNING id`,
-      [full_name, finalCompanyName, phone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, whatsapp_number, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude, longitude]);
+      [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude, longitude]);
 
     if (BYPASS_PAYMENT) {
       res.send(page("Succes", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#38a169;">Succès !</h1><p>Votre candidature a bien été enregistrée et est en attente d'examen.</p><div class="alert alert-info" style="margin-top:20px;"><strong>Votre code de suivi est : <span style="font-size:24px; font-family:monospace; font-weight:bold;">${escapeHtml(trackingCode)}</span></strong></div><a class="button" href="/suivi-dossier" style="margin-top:20px;">Suivre mon dossier</a></section>`, null));
@@ -1358,7 +1180,6 @@ app.post("/mon-espace-pro/toggle-status", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-// ✅ PAGE DE MODIFICATION DU PROFIL
 app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1366,7 +1187,6 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
   const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
   const cityOptions = citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}" ${proConnected.pro.city === c.name ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join("");
   
-  // Récupérer les quartiers de la ville actuelle
   let neighborhoodOptions = "";
   if (proConnected.pro.city) {
     const cityRes = await pool.query("SELECT id FROM cities WHERE name = $1", [proConnected.pro.city]);
@@ -1468,7 +1288,6 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
   const { city, neighborhood, type_lieu, adresse_exacte, latitude, longitude } = req.body;
   let finalNeighborhood = neighborhood;
   if (neighborhood === "__AUTRE__") {
-     // On pourrait gérer une saisie libre ici, mais pour simplifier on garde le quartier existant si Autre est choisi
      finalNeighborhood = proConnected.pro.neighborhood; 
   }
 
@@ -1876,7 +1695,9 @@ async function startServer() {
     `);
 
     const migrations = [
+      // ✅ SUPPRESSION DE L'ANCIENNE CONTRAINTE DE STATUT
       `ALTER TABLE professional_applications DROP CONSTRAINT IF EXISTS professional_applications_status_check`,
+      
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
