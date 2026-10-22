@@ -309,12 +309,9 @@ function page(title, content, proConnected) {
         .pro-welcome h2 { color: white; margin-bottom: 8px; font-size: 24px; }
         .pro-welcome .button { background: white; color: #1e40af; }
         
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-top: 24px; }
-        border-left: 4px solid #3b82f6; par border-left: 4px solid #cbd5e0;
-        .pro-card-image { width: 125px; min-width: 125px; align-self: stretch; background: #edf2f7; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
-        .pro-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; margin-top: 24px; }
+        .pro-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 14px rgba(30,64,175,0.10); border: 1px solid #dbeafe; border-left: 4px solid #cbd5e0; display: flex; flex-direction: row; min-height: 150px; margin-bottom: 10px; }
         .pro-card-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
-        .pro-card-profession { font-size: 11px; font-weight: 800; color: #2563eb; text-transform: uppercase; margin-bottom: 3px; }
         .pro-card-name { font-size: 16px; font-weight: 800; color: #1a202c; margin-bottom: 4px; line-height: 1.25; }
         .pro-card-location { font-size: 12px; color: #718096; margin-bottom: 6px; }
         .pro-card-location::before { content: "📍 "; }
@@ -479,42 +476,43 @@ app.get("/", async (req, res) => {
     const categoryByProfession = {};
     for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
 
-   const prosCards = result.rows.map((person) => {
-  const displayName = getDisplayName(person);
-  const reviewsCount = Number(person.reviews_count || 0);
-  const avgRating = Number(person.avg_rating || 0);
-  
-  let ratingHtml = reviewsCount > 0 
-    ? `<div class="pro-card-rating">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount} avis)</span></div>`
-    : `<div class="pro-card-rating"><span class="no-rating">Pas encore d'avis</span></div>`;
-  
-  return `
-    <article class="pro-card" style="flex-direction: column; padding: 20px; border: 2px solid #e2e8f0; border-radius: 16px; margin-bottom: 0;">
-      <div class="pro-card-body" style="padding: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-          <div>
-            <div class="pro-card-name" style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(displayName)}</div>
-            <div class="pro-card-location" style="font-size: 14px;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
+    // ✅ Cartes sans image, textuelles avec bordures
+    const prosCards = result.rows.map((person) => {
+      const displayName = getDisplayName(person);
+      const reviewsCount = Number(person.reviews_count || 0);
+      const avgRating = Number(person.avg_rating || 0);
+      
+      let ratingHtml = reviewsCount > 0 
+        ? `<div class="pro-card-rating" style="margin-bottom:0;">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} (${reviewsCount})</span></div>`
+        : `<div class="pro-card-rating" style="margin-bottom:0;"><span class="no-rating">Pas d'avis</span></div>`;
+      
+      return `
+        <article class="pro-card" style="flex-direction: column; padding: 20px; border: 2px solid #e2e8f0; border-radius: 16px; margin-bottom: 0;">
+          <div class="pro-card-body" style="padding: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+              <div>
+                <div class="pro-card-name" style="font-size: 18px; margin-bottom: 4px;">${escapeHtml(displayName)}</div>
+                <div class="pro-card-location" style="font-size: 14px;">${escapeHtml(person.profession)} à ${escapeHtml(person.city)}</div>
+              </div>
+              <div style="text-align: right;">
+                ${renderKycBadge()}
+              </div>
+            </div>
+            
+            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 12px 0; border: 1px solid #edf2f7;">
+              <p style="margin: 0; font-size: 13px; color: #4a5568; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                ${escapeHtml(person.service_description || "Aucune description fournie.")}
+              </p>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
+              ${ratingHtml}
+              <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px;">Voir profil →</a>
+            </div>
           </div>
-          <div style="text-align: right;">
-            ${renderKycBadge()}
-          </div>
-        </div>
-        
-        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin: 12px 0;">
-          <p style="margin: 0; font-size: 13px; color: #4a5568; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-            ${escapeHtml(person.service_description || "Aucune description fournie.")}
-          </p>
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto;">
-          ${ratingHtml}
-          <a class="pro-card-button" href="/pro/${encodeURIComponent(person.id)}" style="width: auto; padding: 8px 16px; font-size: 13px;">Voir le profil →</a>
-        </div>
-      </div>
-    </article>
-  `;
-}).join("");
+        </article>
+      `;
+    }).join("");
 
     const welcomeBanner = proConnected ? `<div class="pro-welcome"><h2>🎉 Bonjour ${escapeHtml(getDisplayName(proConnected.pro))} !</h2><p>Votre candidature est approuvee.</p><div class="actions"><a class="button" href="/mon-espace-pro">🏠 Mon espace pro</a></div></div>` : "";
     const prosSection = result.rows.length > 0 ? `<div class="pros-grid">${prosCards}</div>` : `<section class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></section>`;
@@ -585,15 +583,18 @@ app.get("/recherche", async (req, res) => {
 
     const content = `
       <div style="text-align: center; margin-bottom: 20px;"><h1 style="margin-bottom: 10px;">Rechercher un professionnel</h1><a href="/" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à l'accueil</a></div>
+      
+      <!-- ✅ Formulaire Vertical (Métiers en haut, Villes en bas) -->
       <section class="card" style="max-width: 800px; margin: 0 auto 24px auto;">
-        <form action="/recherche" method="GET" style="background: white; padding: 10px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px solid #e2e8f0;">
-          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers" autocomplete="off" style="flex: 2 1 150px; border: none; background: #f8f9fa; margin: 0; padding: 14px 20px; font-size: 16px; border-radius: 50px; font-weight: 600;">
+        <form action="/recherche" method="GET" style="background: white; padding: 16px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 12px; border: 1px solid #e2e8f0;">
+          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon, Coiffeur...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; background: #f8f9fa; margin: 0; padding: 16px 20px; box-shadow: none; font-size: 16px; border-radius: 12px; color: #1a202c; font-weight: 600;">
           <datalist id="professions-list">${Object.entries(professionsByCategory).map(([cat, names]) => names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")).join("")}</datalist>
-          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes" autocomplete="off" style="flex: 1 1 120px; border: none; background: #f8f9fa; margin: 0; padding: 14px 20px; font-size: 16px; border-radius: 50px; font-weight: 600;">
+          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou, Parakou...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; background: #f8f9fa; margin: 0; padding: 16px 20px; box-shadow: none; font-size: 16px; border-radius: 12px; color: #1a202c; font-weight: 600;">
           <datalist id="cities-list">${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}</datalist>
-          <button type="submit" style="border-radius: 50px; padding: 14px 30px; margin: 0; background: #ff8c00; flex: 0 0 auto; font-size: 16px; font-weight: 800; color: white;">Rechercher</button>
+          <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #ff8c00; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(255,140,0,0.3); margin-top: 8px;">🔍 Rechercher</button>
         </form>
       </section>
+      
       <h2 style="text-align: center; margin-bottom: 16px;">Résultats (${totalPros})</h2>
       ${result.rows.length > 1 ? `<p style="text-align:center;color:#718096;font-size:13px;margin-bottom:16px;">👇 Cliquez sur un professionnel pour voir ses détails</p>` : ""}
       ${prosSection} ${paginationHtml}
@@ -608,11 +609,11 @@ app.get("/pro/:id", async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
 
-    const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id]);
+    const result = await pool.query(`
+      SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id]);
     if (!result.rows.length) return res.redirect(303, "/");
     const person = result.rows[0];
-    const catResult = await pool.query(`SELECT category FROM professions WHERE name = $1`, [person.profession]);
-    const proCategory = catResult.rows[0]?.category || null;
+
     const displayName = getDisplayName(person);
     const phoneClean = (person.phone || "").replace(/[()\s.-]/g, "");
     const whatsappNumber = phoneClean.replace(/^\+/, "");
@@ -622,22 +623,49 @@ app.get("/pro/:id", async (req, res) => {
     const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
     const reviews = reviewsResult.rows;
 
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const shareText = encodeURIComponent("Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi");
+    const shareUrl = encodeURIComponent(`${baseUrl}/pro/${person.id}`);
+
     let contactButtons = "";
-    if (person.phone_public && phoneClean) { contactButtons = `<div class="contact-buttons"><a class="button" href="tel:${escapeHtml(phoneClean)}">📞 Appeler</a><a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank">💬 WhatsApp</a></div>`; }
-    else { contactButtons = `<div class="alert alert-info">📩 Numero prive.</div><div class="contact-buttons"><a class="button" href="/contact?pro=${person.id}">📩 Contacter via le site</a></div>`; }
+    if (person.phone_public && phoneClean) {
+      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="tel:${escapeHtml(phoneClean)}" style="margin: 0; background: #2563eb; border-radius: 12px; padding: 14px; font-size: 16px;">📞 Appeler</a><a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank" style="margin: 0; border-radius: 12px; padding: 14px; font-size: 16px;">💬 WhatsApp</a></div><div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; border-radius: 12px; padding: 12px; font-size: 14px;">📤 Partager ce profil</a></div>`;
+    } else {
+      contactButtons = `<div class="alert alert-info" style="font-size: 14px;">📩 Numéro privé.</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="/contact?pro=${person.id}" style="margin: 0; background: #2563eb; border-radius: 12px; padding: 14px; font-size: 16px;">📩 Contacter</a><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; border-radius: 12px; padding: 14px; font-size: 16px;">📤 Partager</a></div>`;
+    }
 
-    let ratingHeader = reviewsCount > 0 ? `<div class="rating-large">${renderStars(avgRating)}<span class="reviews-count">${avgRating.toFixed(1)} / 5 (${reviewsCount} avis)</span></div>` : `<div class="rating-large" style="color:#a0aec0;font-size:16px;letter-spacing:0">Pas encore d'avis</div>`;
-    let ratingSummary = reviewsCount > 0 ? `<div class="rating-summary"><div class="rating-big-number">${avgRating.toFixed(1)}</div><div class="rating-details"><div class="stars">${renderStars(avgRating)}</div><div class="count">Base sur ${reviewsCount} avis</div></div></div>` : "";
-
-    const reviewsHtml = reviews.map((rev) => `<div class="review-item"><div class="review-header"><div class="review-author">${escapeHtml(rev.author_name)}</div><div class="review-stars">${renderStars(rev.rating)}</div></div><div class="review-date">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div class="review-comment">${escapeHtml(rev.comment)}</div>` : ""}</div>`).join("");
-    const reviewsSection = reviews.length > 0 ? `<section class="card"><h2>Avis (${reviewsCount})</h2>${ratingSummary}${reviewsHtml}</section>` : "";
-    const reviewButton = `<section class="card" style="text-align:center"><h3>Laisser un avis</h3><a class="button btn-review" href="/pro/${person.id}/avis">⭐ Laisser un avis</a></section>`;
-    const bigVisual = `<div style="width: 100%; max-width: 340px; height: 220px; margin: 0 auto 24px auto; border-radius: 20px; overflow: hidden;">${renderMetierVisual(person.profession, proCategory, person.photo_activite_url, { size: "lg" })}</div>`;
+    let ratingHeader = reviewsCount > 0 ? `<div style="color: #ed8936; font-size: 20px; font-weight: 700; margin-top: 8px;">${renderStars(avgRating)} <span style="font-size: 15px; color: #718096; font-weight: 400;">(${reviewsCount} avis)</span></div>` : `<div style="color: #a0aec0; font-size: 14px; font-style: italic; margin-top: 8px;">Pas encore d'avis</div>`;
+    let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fefcbf; border-radius: 12px; margin-bottom: 16px;"><div style="font-size: 32px; font-weight: 800; color: #b7791f;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #ed8936;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #744210;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
+    const reviewsHtml = reviews.map((rev) => `<div style="background: white; border: 1px solid #edf2f7; padding: 16px; border-radius: 12px; margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-weight: 700; color: #1a202c;">${escapeHtml(rev.author_name)}</div><div style="color: #ed8936; font-size: 14px;">${renderStars(rev.rating)}</div></div><div style="font-size: 12px; color: #a0aec0; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div style="color: #4a5568; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}</div>`).join("");
 
     const content = `
-      <div class="pro-header"><h1>${escapeHtml(displayName)}</h1><div class="profession">${escapeHtml(person.profession)}</div><div class="location">📍 ${escapeHtml(person.city)}</div><div style="margin-top:16px">${renderKycBadge("lg")}</div>${ratingHeader}</div>
-      <section class="card">${bigVisual}<h2>Description</h2><p>${escapeHtml(person.service_description).replace(/\n/g, "<br>")}</p>${contactButtons}<p style="margin-top:32px; text-align:center;"><a class="button secondary" href="/">← Retour</a></p></section>
-      ${reviewsSection} ${reviewButton}
+      <div style="max-width: 800px; margin: 0 auto;">
+        <!-- BLOC 1 : EN-TÊTE -->
+        <div class="card" style="text-align: center; padding: 32px 24px; border-radius: 20px;">
+          <div style="margin-bottom: 16px;">${renderKycBadge("lg")}</div>
+          <h1 style="color: #1a202c; font-size: 26px; margin-bottom: 4px;">${escapeHtml(displayName)}</h1>
+          <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
+          <div style="color: #718096; font-size: 14px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+          ${ratingHeader}
+        </div>
+        <!-- BLOC 2 : DESCRIPTION ET INFOS -->
+        <div class="card" style="border-radius: 20px;">
+          <h2 style="font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #4a5568; white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; background: #f8f9fa; padding: 16px; border-radius: 12px;">
+            <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Zone d'intervention</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.service_area ? escapeHtml(person.service_area) : "Non spécifiée"}</div></div>
+            <div><div style="font-size: 12px; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Disponibilité</div><div style="font-size: 14px; font-weight: 600; color: #1a202c;">${person.availability ? escapeHtml(person.availability) : "Non spécifiée"}</div></div>
+          </div>
+          <div style="margin-top: 24px;">${contactButtons}</div>
+        </div>
+        <!-- BLOC 3 : AVIS -->
+        <div class="card" style="border-radius: 20px; background: #f8fafc;">
+          <h2 style="font-size: 18px; margin-bottom: 16px;">Avis des clients (${reviewsCount})</h2>
+          ${ratingSummary}${reviewsHtml || `<p style="color: #718096; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
+          <div style="text-align: center; margin-top: 24px;"><a class="button btn-review" href="/pro/${person.id}/avis" style="width: 100%; border-radius: 12px; padding: 14px; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
+        </div>
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;"><a href="/recherche" style="color: #718096; font-size: 14px; text-decoration: underline;">← Retour à la recherche</a></div>
+      </div>
     `;
     res.send(page(displayName, content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
@@ -1356,7 +1384,6 @@ app.use((err, req, res, next) => {
 });
 async function startServer() {
   try {
-    // 1. Création initiale de la table avec TOUTES les colonnes pour éviter les erreurs
     await pool.query(`
       CREATE TABLE IF NOT EXISTS professional_applications (
         id SERIAL PRIMARY KEY, full_name VARCHAR(150) NOT NULL, company_name VARCHAR(200),
@@ -1374,9 +1401,10 @@ async function startServer() {
       )
     `);
 
-    // 2. Migrations pour les bases qui existaient déjà
     const migrations = [
+      // ✅ SUPPRIME L'ANCIENNE RÈGLE QUI BLOQUAIT LE STATUT 'payment_pending'
       `ALTER TABLE professional_applications DROP CONSTRAINT IF EXISTS professional_applications_status_check`,
+      
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(200)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN NOT NULL DEFAULT true`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_kyc_url TEXT`,
@@ -1396,7 +1424,6 @@ async function startServer() {
     ];
     for (const q of migrations) { try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); } }
 
-    // 3. Autres tables
     await pool.query(`CREATE TABLE IF NOT EXISTS job_offers (id SERIAL PRIMARY KEY, company_name VARCHAR(200) NOT NULL, job_title VARCHAR(200) NOT NULL, city VARCHAR(100) NOT NULL, contract_type VARCHAR(50) NOT NULL, description TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, expires_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS cities (id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE, display_order INTEGER NOT NULL DEFAULT 0)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS neighborhoods (id SERIAL PRIMARY KEY, city_id INTEGER NOT NULL REFERENCES cities(id) ON DELETE CASCADE, name VARCHAR(150) NOT NULL, UNIQUE (city_id, name))`);
@@ -1406,7 +1433,6 @@ async function startServer() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, action VARCHAR(100) NOT NULL, target_type VARCHAR(50), target_id INTEGER, details TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
 
-    // 4. Index
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
@@ -1418,7 +1444,6 @@ async function startServer() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON admin_logs(action)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_payment_status ON professional_applications(payment_status)`);
 
-    // 5. Données de base (Villes, Quartiers, Métiers)
     const citiesData = [["Cotonou", 1], ["Abomey-Calavi", 2], ["Porto-Novo", 3], ["Parakou", 4], ["Bohicon", 5], ["Natitingou", 6], ["Ouidah", 7], ["Abomey", 8], ["Lokossa", 9], ["Djougou", 10], ["Kandi", 11], ["Malanville", 12], ["Savalou", 13], ["Dassa-Zoumè", 14], ["Savè", 15], ["Nikki", 16], ["Tchaourou", 17], ["Allada", 18], ["Comè", 19], ["Banikoara", 20], ["Sakété", 21], ["Pobè", 22], ["Adjohoun", 23], ["Akpro-Missérété", 24], ["Avrankou", 25], ["Sèmè-Podji", 26], ["Aplahoué", 27], ["Dogbo", 28], ["Grand-Popo", 29], ["Zagnanado", 30], ["Agbangnizoun", 31], ["Ouaké", 32], ["Bassila", 33], ["Boukoumbé", 34], ["Tanguiéta", 35], ["Copargo", 36], ["Glazoué", 37], ["Bantè", 38], ["Ouèssè", 39], ["Kalalé", 40]];
     for (const [name, order] of citiesData) { await pool.query(`INSERT INTO cities (name, display_order) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [name, order]); }
 
@@ -1481,7 +1506,6 @@ async function startServer() {
     let orderCounter = 0;
     for (const [name, category] of profs) { orderCounter += 1; await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]); }
 
-    // 6. Nettoyage des dossiers impayés
     setInterval(async () => {
       try {
         const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
