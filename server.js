@@ -531,18 +531,17 @@ app.get("/", async (req, res) => {
           <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
-          <div class="pro-card-top">
-            <div>
-              <div class="pro-name">${escapeHtml(displayName)}</div>
-              <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
-              <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
-            </div>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-              ${renderKycBadge()}
-              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
-              ${typeBadge}
-            </div>
-          </div>
+         <div class="pro-card-top">
+  <div>
+    <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
+    <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+    <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
+  </div>
+  <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+    ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
+    ${typeBadge}
+  </div>
+</div>
           
           <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
           
