@@ -3,7 +3,7 @@ const { Pool } = require("pg");
 const crypto = require("crypto");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
-const compression = require("compression"); // ✅ BLOC D : Ajout de la compression
+const compression = require("compression");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,7 +23,6 @@ const KKIAPAY_PRIVATE_KEY = process.env.KKIAPAY_PRIVATE_KEY;
 const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
-// ✅ BLOC A : Sécurisation du paiement via variable d'environnement
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
 
 const PAYMENT_AMOUNT = 500;
@@ -69,7 +68,7 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
-app.use(compression()); // ✅ BLOC D : Activation de la compression
+app.use(compression()); 
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
@@ -125,7 +124,6 @@ function readCookie(req, name) {
   return null;
 }
 
-// ✅ BLOC D : Fonction pour gérer l'ID visiteur anonyme (favoris)
 function getOrCreateVisitorId(req, res) {
   let vid = readCookie(req, "tm_visitor_id");
   if (!vid || vid.length < 20) {
@@ -227,7 +225,7 @@ function page(title, content, proConnected) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="description" content="TrouveMoi - Mise en relation au Benin.">
       <meta name="theme-color" content="#1e40af">
-      <link rel="manifest" href="/manifest.json"> <!-- ✅ BLOC E : PWA -->
+      <link rel="manifest" href="/manifest.json">
       <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%231e40af'/%3E%3Ctext x='25' y='35' text-anchor='middle' font-family='Arial' font-size='22' font-weight='900' fill='white'%3ETM%3C/text%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
       <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
@@ -282,7 +280,6 @@ function page(title, content, proConnected) {
         .badge-local { background: #dbeafe; color: #1e40af; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
         .badge-ambulant { background: #fef3c7; color: #92400e; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
-        /* ✅ BLOC D : Badge Top Pro & Bouton Favori */
         .top-pro-badge { background: linear-gradient(135deg, #f59e0b, #eab308); color: white; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(245,158,11,0.3); margin-top: 4px; }
         .favorite-btn { position: absolute; top: 16px; right: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .favorite-btn:hover { transform: scale(1.1); }
@@ -298,7 +295,6 @@ function page(title, content, proConnected) {
         .muted { color: #6b7280; font-style: italic; }
         .prof-group { font-weight: 800; color: #1e40af; }
 
-        /* ✅ ÉTOILES CLIQUABLES (formulaire d'avis) */
         .star-rating-input { display: inline-flex; flex-direction: row-reverse; justify-content: flex-end; gap: 4px; margin-bottom: 14px; }
         .star-rating-input input[type="radio"] { display: none; }
         .star-rating-input label { font-size: 32px; color: #d1d5db; cursor: pointer; margin: 0; padding: 0 4px; transition: color 0.15s, transform 0.15s; }
@@ -307,7 +303,6 @@ function page(title, content, proConnected) {
         .star-rating-input input[type="radio"]:checked ~ label { color: #f59e0b; }
         .star-rating-input label:hover { transform: scale(1.1); }
 
-        /* ✅ CARTES STATS (dashboard admin) */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
         .stat-card { background: white; border-radius: 12px; padding: 24px 16px; text-align: center; border-left: 4px solid #3b82f6; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
         .stat-card.warning { border-left-color: #f59e0b; }
@@ -317,7 +312,6 @@ function page(title, content, proConnected) {
         .stat-number { font-size: 32px; font-weight: 800; color: #1e40af; line-height: 1; }
         .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-top: 8px; }
 
-        /* ✅ BLOC CODE PRO (page paiement) */
         .pro-code-box { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .pro-code-value { font-family: "Courier New", monospace; font-weight: 800; letter-spacing: 3px; }
 
@@ -388,12 +382,10 @@ function page(title, content, proConnected) {
       <script>
         function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }
         
-        // ✅ BLOC E : Enregistrement du Service Worker pour le PWA
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.register('/sw.js').catch(err => console.log('Erreur SW:', err));
         }
 
-        // ✅ BLOC D : Script pour les favoris
         async function toggleFav(e, id) {
           e.preventDefault();
           const btn = e.currentTarget;
@@ -447,7 +439,7 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
 app.get("/", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
-    const visitorId = getOrCreateVisitorId(req, res); // ✅ BLOC D
+    const visitorId = getOrCreateVisitorId(req, res);
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12; const offset = (currentPage - 1) * limit;
 
@@ -458,7 +450,6 @@ app.get("/", async (req, res) => {
     const totalPros = parseInt(countResult.rows[0].count);
     const totalPages = Math.ceil(totalPros / limit);
 
-    // ✅ BLOC D : Ajout de is_favorite
     const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, p.type_lieu, p.latitude, p.longitude, p.est_ouvert, 
       (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
       (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
@@ -466,7 +457,6 @@ app.get("/", async (req, res) => {
       FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
     const result = await pool.query(query, [limit, offset, visitorId]);
 
-    // ✅ BLOC B : Catégories populaires
     const categoriesResult = await pool.query(`
       SELECT pr.category, COUNT(*) as count
       FROM professional_applications p
@@ -482,7 +472,6 @@ app.get("/", async (req, res) => {
       </a>
     `).join("");
 
-    // ✅ BLOC B : Derniers avis clients
     const lastReviewsResult = await pool.query(`
       SELECT r.author_name, r.rating, r.comment, p.full_name, p.company_name, p.id as pro_id
       FROM reviews r
@@ -507,7 +496,7 @@ app.get("/", async (req, res) => {
       const displayName = getDisplayName(person);
       const reviewsCount = Number(person.reviews_count || 0);
       const avgRating = Number(person.avg_rating || 0);
-      const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
+      const isTopPro = avgRating >= 4.5 && reviewsCount >= 10;
       
       let hash = 0; const key = String(person.profession);
       for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
@@ -541,7 +530,6 @@ app.get("/", async (req, res) => {
 
       return `
         <article class="pro-card" style="border-left: 6px solid ${borderColor};">
-          <!-- ✅ BLOC D : Bouton favori -->
           <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
@@ -553,7 +541,7 @@ app.get("/", async (req, res) => {
             </div>
             <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
               ${renderKycBadge()}
-              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""} <!-- ✅ BLOC D -->
+              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
               ${typeBadge}
             </div>
           </div>
@@ -592,7 +580,6 @@ app.get("/", async (req, res) => {
         </div>
       </div>
 
-      <!-- ✅ BLOC B : Catégories Populaires -->
       ${categoriesResult.rows.length > 0 ? `
       <div style="text-align: center; margin-bottom: 40px;">
         <h3 style="font-size: 18px; margin-bottom: 16px; color: #374151;">Explorer par catégorie</h3>
@@ -607,7 +594,6 @@ app.get("/", async (req, res) => {
         <a class="button" href="/emplois" style="background: #10b981; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">💼 Offres d'emploi</a>
       </div>
 
-      <!-- ✅ BLOC B : Comment ça marche -->
       <div style="background: white; border-radius: 20px; padding: 40px 20px; margin-bottom: 40px; border: 1px solid #e5e7eb; text-align: center;">
         <h2 style="margin-bottom: 30px;">Comment ça marche ?</h2>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 900px; margin: 0 auto;">
@@ -637,7 +623,6 @@ app.get("/", async (req, res) => {
       </div>
       ${renderPagination(currentPage, totalPages, "/")}
 
-      <!-- ✅ BLOC B : Derniers Avis Clients -->
       ${lastReviewsResult.rows.length > 0 ? `
       <div style="max-width: 800px; margin: 60px auto 20px auto;">
         <h2 style="text-align: center; margin-bottom: 20px;">Ce que disent les clients</h2>
@@ -675,7 +660,7 @@ app.get("/recherche", async (req, res) => {
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
     const category = String(req.query.category || "").trim().slice(0, 100);
-    const sort = String(req.query.sort || "pertinence").trim(); // ✅ BLOC B
+    const sort = String(req.query.sort || "pertinence").trim();
     
     const isSearching = profession !== "" || city !== "" || category !== "";
     
@@ -701,7 +686,6 @@ app.get("/recherche", async (req, res) => {
       totalPros = parseInt(countResult.rows[0].count);
       totalPages = Math.ceil(totalPros / limit);
 
-      // ✅ BLOC B : Tri
       let orderBy = "p.created_at DESC"; 
       if (sort === "rating") {
         orderBy = "avg_rating DESC, reviews_count DESC, p.created_at DESC";
@@ -723,7 +707,7 @@ app.get("/recherche", async (req, res) => {
         const displayName = getDisplayName(person);
         const reviewsCount = Number(person.reviews_count || 0);
         const avgRating = Number(person.avg_rating || 0);
-        const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
+        const isTopPro = avgRating >= 4.5 && reviewsCount >= 10;
         
         let hash = 0; const key = String(person.profession);
         for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
@@ -800,7 +784,6 @@ app.get("/recherche", async (req, res) => {
           <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
           <datalist id="cities-list">${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}</datalist>
 
-          <!-- ✅ BLOC B : Menu de tri -->
           <select name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
             <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
             <option value="rating" ${sort === 'rating' ? 'selected' : ''}>Mieux notés</option>
@@ -841,7 +824,6 @@ app.get("/recherche", async (req, res) => {
               if (el) el.innerHTML = '📍 À ' + p.distance.toFixed(1) + ' km';
             });
 
-            // ✅ BLOC B : Tri par distance via Javascript
             if (sortMode === "distance") {
               const grid = document.getElementById('pros-grid');
               if (grid) {
@@ -864,7 +846,6 @@ app.get("/recherche", async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
 });
 
-// ✅ BLOC C : API de tracking (vues / clics)
 app.post("/api/track/:id/:type", async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -881,7 +862,6 @@ app.post("/api/track/:id/:type", async (req, res) => {
   } catch (e) { res.json({ ok: false }); }
 });
 
-// ✅ BLOC D : API Favoris
 app.post("/api/favorite/:id", async (req, res) => {
   try {
     const visitorId = getOrCreateVisitorId(req, res);
@@ -899,7 +879,6 @@ app.post("/api/favorite/:id", async (req, res) => {
   } catch (e) { res.json({ ok: false }); }
 });
 
-// ✅ BLOC D : Page Mes Favoris
 app.get("/mes-favoris", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const visitorId = getOrCreateVisitorId(req, res);
@@ -949,11 +928,9 @@ app.get("/mes-favoris", async (req, res) => {
 app.get("/pro/:id", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
-    const visitorId = getOrCreateVisitorId(req, res);
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
 
-    // ✅ BLOC C : Tracker la vue
     pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
 
     const result = await pool.query(`
@@ -961,7 +938,6 @@ app.get("/pro/:id", async (req, res) => {
     if (!result.rows.length) return res.redirect(303, "/");
     const person = result.rows[0];
 
-    // ✅ BLOC D : Récupération des pros similaires
     const similarResult = await pool.query(`
       SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating
       FROM professional_applications p
@@ -985,7 +961,7 @@ app.get("/pro/:id", async (req, res) => {
 
     const reviewsCount = Number(person.reviews_count || 0);
     const avgRating = Number(person.avg_rating || 0);
-    const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
+    const isTopPro = avgRating >= 4.5 && reviewsCount >= 10;
 
     const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, pro_response, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
     const reviews = reviewsResult.rows;
@@ -994,7 +970,6 @@ app.get("/pro/:id", async (req, res) => {
     const shareText = encodeURIComponent("Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi");
     const shareUrl = encodeURIComponent(`${baseUrl}/pro/${person.id}`);
 
-    // ✅ BLOC C : Boutons avec tracking
     let contactButtons = "";
     if (person.phone_public && phoneClean) {
       contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
@@ -1008,7 +983,6 @@ app.get("/pro/:id", async (req, res) => {
 
     let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fde68a;"><div style="font-size: 36px; font-weight: 800; color: #b45309;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #f59e0b;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #92400e;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
     
-    // ✅ BLOC C : Affichage de la réponse du pro
     const reviewsHtml = reviews.map((rev) => `
       <div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -1031,7 +1005,6 @@ app.get("/pro/:id", async (req, res) => {
       galerieHtml = `<div class="card" style="padding: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2><div class="gallery-grid">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
     }
 
-    // ✅ BLOC B : Badge ouvert corrigé (uniquement si ouvert)
     const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `
       <div style="margin-bottom: 16px;">
         <span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
@@ -1040,11 +1013,9 @@ app.get("/pro/:id", async (req, res) => {
       </div>
     ` : "";
 
-    // ✅ BLOC C : Bannière congés
     const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
     const leaveBadge = isOnLeave ? `<div class="alert alert-warning" style="margin-bottom:16px; text-align:center; font-size:14px;">🌴 Ce professionnel est actuellement indisponible jusqu'au ${new Date(person.unavailable_until).toLocaleDateString("fr-FR")}.</div>` : "";
 
-    // ✅ BLOC C : Horaires 7j/7
     let horairesHtml = "";
     if (person.horaires_json) {
       const h = JSON.parse(person.horaires_json);
@@ -1063,7 +1034,6 @@ app.get("/pro/:id", async (req, res) => {
       <div style="max-width: 800px; margin: 0 auto;">
         ${leaveBadge}
         <div class="card" style="text-align: center; padding: 32px 24px; position:relative;">
-          <!-- ✅ BLOC D : Bouton Favori -->
           <div class="favorite-btn" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
@@ -1107,7 +1077,6 @@ app.get("/pro/:id", async (req, res) => {
           <div style="text-align: center; margin-top: 24px;"><a class="button warning" href="/pro/${person.id}/avis" style="width: 100%; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
         </div>
 
-        <!-- ✅ BLOC D : Pros similaires -->
         ${similarHtml ? `
         <div style="margin-top: 24px;">
           <h2 style="font-size: 18px; margin-bottom: 16px;">Vous aimerez aussi...</h2>
@@ -1117,7 +1086,6 @@ app.get("/pro/:id", async (req, res) => {
 
         <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;">
           <a href="/recherche" style="color: #6b7280; font-size: 14px; text-decoration: underline; display: block; margin-bottom: 16px;">← Retour à la recherche</a>
-          <!-- ✅ BLOC B : Signaler -->
           <a href="/contact?report=${person.id}" style="color: #ef4444; font-size: 13px; text-decoration: none; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 20px; background: #fef2f2;">⚠️ Signaler ce professionnel</a>
         </div>
       </div>
@@ -1194,7 +1162,6 @@ app.get("/devenir-professionnel", async (req, res) => {
     for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
     const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}" class="prof-group">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
 
-    // ✅ BLOC C : Grille des horaires 7j/7 pour l'inscription
     const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
     let horairesHtml = "";
     jours.forEach(j => {
@@ -1212,7 +1179,6 @@ app.get("/devenir-professionnel", async (req, res) => {
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
         ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
-        <!-- ✅ BLOC B : Fond gris doux -->
         <form action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
@@ -1260,7 +1226,6 @@ app.get("/devenir-professionnel", async (req, res) => {
             <label>Adresse exacte / Point de repère</label>
             <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
             
-            <!-- ✅ BLOC C : Grille des horaires -->
             <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e5e7eb;">
               <h4 style="font-size:14px; margin-bottom:12px; color:#374151;">Horaires d'ouverture</h4>
               ${horairesHtml}
@@ -1310,11 +1275,10 @@ app.get("/devenir-professionnel", async (req, res) => {
           }
         }
 
-        // ✅ BLOC B : Correction du bug du quartier "Autre"
         citySelect.addEventListener('change', async function() { 
           const city = citySelect.value; 
           neighborhoodSelect.innerHTML = ''; 
-          neighborhoodOtherBlock.classList.add('hidden'); // On cache par défaut
+          neighborhoodOtherBlock.classList.add('hidden'); 
           if (!city) { neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; return; } 
           neighborhoodSelect.innerHTML = '<option value="">Chargement...</option>'; 
           try { 
@@ -1423,7 +1387,6 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
   finalProfession = String(finalProfession).trim().slice(0, 150);
   if (finalNeighborhood) finalNeighborhood = String(finalNeighborhood).trim().slice(0, 150);
 
-  // ✅ BLOC C : Construction du JSON des horaires 7j/7
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesObj = {};
   jours.forEach(j => {
@@ -1445,7 +1408,6 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
     const finalStatus = BYPASS_PAYMENT ? 'pending' : 'payment_pending';
     const finalPaymentStatus = BYPASS_PAYMENT ? 'paid' : 'unpaid';
 
-    // ✅ BLOC C : Utilisation de horaires_json dans l'INSERT
     await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude, horaires_json) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`,
       [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson]);
 
@@ -1595,7 +1557,6 @@ app.get("/mon-espace-pro", async (req, res) => {
     gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
     myReviews = (await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
     
-    // ✅ BLOC C : Récupération des stats
     const statsRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proConnected.pro.id]);
     if (statsRes.rows.length) { stats.views = Number(statsRes.rows[0].v || 0); stats.phone = Number(statsRes.rows[0].p || 0); stats.wa = Number(statsRes.rows[0].w || 0); }
   } catch (error) { return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected)); }
@@ -1609,7 +1570,6 @@ app.get("/mon-espace-pro", async (req, res) => {
 
   const gdprHtml = gdprRequests.map((req) => `<article class="card" style="padding:16px; margin-bottom:10px;"><p><span class="badge badge-${req.status}">${GDPR_STATUS_LABELS[req.status]}</span> <strong>${GDPR_TYPE_LABELS[req.request_type]}</strong></p></article>`).join("");
   
-  // ✅ BLOC C : Formulaire de réponse aux avis
   const myReviewsHtml = myReviews.map((rev) => `
     <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:12px; border:1px solid #e5e7eb;">
       <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
@@ -1634,7 +1594,6 @@ app.get("/mon-espace-pro", async (req, res) => {
 
   const phoneStatus = proConnected.pro.phone_public ? `<span class="badge badge-approved">Public</span>` : `<span class="badge badge-closed">Privé</span>`;
   
-  // ✅ BLOC C : Statut congés
   const isOnLeave = proConnected.pro.unavailable_until && new Date(proConnected.pro.unavailable_until) > new Date();
   const leaveStatus = isOnLeave ? `<span class="badge badge-rejected">En congés jusqu'au ${new Date(proConnected.pro.unavailable_until).toLocaleDateString("fr-FR")}</span>` : `<span class="badge badge-approved">Actif</span>`;
 
@@ -1661,7 +1620,6 @@ app.get("/mon-espace-pro", async (req, res) => {
         <p style="margin-bottom:6px;"><span class="label">Visibilite :</span> ${phoneStatus}</p>
         <p style="margin-bottom:6px;"><span class="label">Statut :</span> ${leaveStatus}</p>
 
-        <!-- ✅ BLOC C : Bloc statistiques -->
         <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
           <p style="font-weight: bold; margin-bottom: 12px; font-size:14px; color:#1e40af;">📊 Statistiques (30 derniers jours)</p>
           <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>Vues du profil :</span> <strong>${stats.views}</strong></div>
@@ -1669,7 +1627,6 @@ app.get("/mon-espace-pro", async (req, res) => {
           <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Clics "WhatsApp" :</span> <strong>${stats.wa}</strong></div>
         </div>
 
-        <!-- ✅ BLOC C : Bloc congés -->
         <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
           <form action="/mon-espace-pro/conges" method="POST" style="margin:0;">
             <label style="margin-top:0; font-size:12px;">M'absent jusqu'au :</label>
@@ -1728,7 +1685,6 @@ app.post("/mon-espace-pro/toggle-status", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-// ✅ BLOC C : Route pour gérer les congés
 app.post("/mon-espace-pro/conges", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1738,7 +1694,6 @@ app.post("/mon-espace-pro/conges", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-// ✅ BLOC C : Route pour répondre aux avis
 app.post("/mon-espace-pro/avis/:id/repondre", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1774,7 +1729,6 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
     neighborhoodOptions = `<option value="${escapeHtml(proConnected.pro.neighborhood)}" selected>${escapeHtml(proConnected.pro.neighborhood)}</option>` + neighborhoodOptions;
   }
 
-  // ✅ BLOC C : Grille horaires 7j/7
   const h = proConnected.pro.horaires_json ? JSON.parse(proConnected.pro.horaires_json) : {};
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesHtml = "";
@@ -1888,7 +1842,7 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
             document.getElementById('longitude-edit').value = position.coords.longitude;
             status.innerText = "✅ Nouvelle position enregistrée !";
           },
-          (error) => { status.innerText = "❌ Impossible de vous localiser."; }
+          (error) { status.innerText = "❌ Impossible de vous localiser."; }
         );
       }
     </script>
@@ -1907,7 +1861,6 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
     finalNeighborhood = custom || null;
   }
 
-  // ✅ BLOC C : Construction du JSON des horaires
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesObj = {};
   jours.forEach(j => {
@@ -2058,7 +2011,6 @@ app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
   res.redirect(303, "/mon-espace-pro"); 
 });
 
-// ✅ BLOC C : Reopen sécurisé
 app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => { 
   const proConnected = await getConnectedPro(req); 
   if (proConnected) await pool.query(`UPDATE job_offers SET status = 'approved', expires_at = NOW() + INTERVAL '${OFFER_DURATION_DAYS} days' WHERE id = $1 AND pro_id = $2 AND status = 'closed'`, [Number(req.params.id), proConnected.pro.id]); 
@@ -2119,7 +2071,7 @@ async function adminMenu(current, csrf) {
     { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, 
     { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
     { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount },
-    { href: "/admin/blog", label: "📝 Blog", badge: 0 } // ✅ BLOC E
+    { href: "/admin/blog", label: "📝 Blog", badge: 0 }
   ];
   return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
@@ -2312,7 +2264,6 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
     }).join("");
 
     const menu = await adminMenu("/admin/candidatures", csrf); 
-    // ✅ BLOC B : Correction de la pagination (plus de double ?)
     const paginationHtml = renderPagination(currentPage, totalPages, "/admin/candidatures", filter !== 'all' ? { filter } : {});
     const filterBar = `<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;"><a class="button ${filter === 'all' ? '' : 'secondary'}" href="/admin/candidatures" style="padding:8px 16px; font-size:13px;">📋 Tout</a><a class="button ${filter === 'unpaid' ? '' : 'secondary'}" href="/admin/candidatures?filter=unpaid" style="padding:8px 16px; font-size:13px;">⏳ Impayés</a><a class="button ${filter === 'pending' ? '' : 'secondary'}" href="/admin/candidatures?filter=pending" style="padding:8px 16px; font-size:13px;">📥 En attente</a><a class="button ${filter === 'approved' ? '' : 'secondary'}" href="/admin/candidatures?filter=approved" style="padding:8px 16px; font-size:13px;">✅ Approuvés</a></div>`;
     
@@ -2320,7 +2271,6 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC B : Validation de l'ID
 app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
   try {
     const id = Number(req.params.id), status = req.body.status, reason = req.body.rejection_reason || null;
@@ -2354,7 +2304,6 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
   } catch (e) { res.redirect(303, "/admin/candidatures"); }
 });
 
-// ✅ BLOC A & B : Validation de l'ID + Transaction SQL pour suppression complète
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
@@ -2404,7 +2353,6 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
         <div class="review-stars" style="margin:10px 0; font-size:24px; color:#f59e0b;">${renderStars(r.rating)}</div>
         <p style="background:#f9fafb; padding:16px; border-radius:12px; font-style:italic;">"${escapeHtml(r.comment || "Aucun commentaire")}"</p>
         
-        <!-- ✅ BLOC C : Affichage de la réponse du pro -->
         ${r.pro_response ? `<div style="margin-top:12px; padding:12px; background:#eff6ff; border-left:3px solid #3b82f6; border-radius:6px; font-size:13px;"><strong>Réponse du pro :</strong><br>${escapeHtml(r.pro_response)}</div>` : ""}
         
         <div class="actions" style="margin-top:16px;">
@@ -2426,7 +2374,6 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC B : Validation ID
 app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
@@ -2447,7 +2394,6 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC B : Validation ID
 app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/emplois");
@@ -2468,7 +2414,6 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC B : Validation ID
 app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/messages");
@@ -2486,7 +2431,6 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC A & B : Traitement RGPD effectif + Validation ID
 app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/rgpd");
@@ -2532,7 +2476,6 @@ app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) =
   }
 });
 
-// ✅ BLOC E : Gestion du Blog
 app.get("/admin/blog", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
   try {
@@ -2600,7 +2543,6 @@ app.get("/conditions", (req, res) => {
   res.send(page("Conditions", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Conditions d'utilisation</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Acceptation</h2><p>En utilisant TrouveMoi, vous acceptez ces conditions.</p><h2>2. Nature du service</h2><p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p><h2>3. Inscription des professionnels</h2><p>Les pros doivent fournir des informations exactes (dont leur NPI). Toute fausse déclaration entraîne le rejet définitif du dossier.</p><h2>4. Frais d'inscription</h2><p>L'inscription des professionnels est soumise à des frais uniques de ${PAYMENT_AMOUNT} FCFA. Ce paiement ne garantit pas l'approbation du dossier.</p><h2>5. Avis clients</h2><p>Les avis sont modérés. Tout avis injurieux, diffamatoire ou spam sera supprimé sans préavis.</p></section>`, null));
 });
 
-// ✅ BLOC A : Page Mentions Légales
 app.get("/mentions-legales", (req, res) => {
   res.send(page("Mentions légales", `
     <section class="card" style="max-width: 800px; margin: 0 auto;">
@@ -2634,7 +2576,6 @@ app.get("/confidentialite", (req, res) => {
   res.send(page("Confidentialite", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Politique de confidentialité</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Données collectées</h2><p>Nom, téléphone, NPI, ville, métier, photos (profil et KYC), avis, messages, données de paiement.</p><h2>2. Utilisation</h2><p>Mise en relation, affichage des profils, vérification d'identité, gestion des offres et avis.</p><h2>3. Protection</h2><p>Les photos d'identité et de vérification KYC sont strictement privées. Seuls les administrateurs y ont accès pour validation.</p><h2>4. Vos droits</h2><p>Vous disposez des droits d'accès, rectification, suppression et opposition. Contactez-nous via le <a href="/contact" style="color:#2563eb;">formulaire de contact</a>.</p></section>`, null));
 });
 
-// ✅ BLOC B & C : Contact avec pré-remplissage signalement + validation stricte
 app.get("/contact", async (req, res) => {
   const proConnected = await getConnectedPro(req); 
   const proId = String(req.query.pro || "").trim();
@@ -2679,7 +2620,6 @@ app.post("/contact", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur d'envoi.</h2>", null)); }
 });
 
-// ✅ BLOC E : Routes du Blog Public
 app.get("/blog", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   try {
@@ -2715,7 +2655,6 @@ app.get("/blog/:slug", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ BLOC E : Page Partenariats
 app.get("/partenariats", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   res.send(page("Partenariats", `
@@ -2737,7 +2676,6 @@ app.get("/partenariats", async (req, res) => {
   `, proConnected));
 });
 
-// ✅ BLOC E : Fichiers PWA (Manifest & Service Worker)
 app.get("/manifest.json", (req, res) => {
   res.json({
     name: "TrouveMoi - Pros du Bénin",
@@ -2768,7 +2706,6 @@ app.get("/sw.js", (req, res) => {
 
 app.get("/health", (req, res) => res.json({ status: "ok", application: "TrouveMoi", time: new Date().toISOString() }));
 
-// ✅ BLOC C : Health database protégé par token
 app.get("/health/database", async (req, res) => {
   const healthToken = process.env.HEALTH_TOKEN;
   if (healthToken) {
@@ -2780,7 +2717,6 @@ app.get("/health/database", async (req, res) => {
   try { await pool.query("SELECT 1"); res.json({ status: "ok", database: "connected" }); } catch (e) { res.status(500).json({ status: "error", message: "database unreachable" }); }
 });
 
-// ✅ BLOC A : Cron externe
 app.get("/cron/cleanup", async (req, res) => {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && String(req.query.token || "").trim() !== cronSecret) {
@@ -2811,7 +2747,6 @@ app.get("/cron/cleanup", async (req, res) => {
   }
 });
 
-// ✅ BLOC B7 : Anti-injection Host
 function getSafeHost(req) {
   return String(req.get("host") || "").replace(/[^a-zA-Z0-9.:\-]/g, "");
 }
@@ -2835,7 +2770,6 @@ app.get("/sitemap.xml", async (req, res) => {
 
 app.use((req, res) => { res.status(404).send(page("Introuvable", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>404</h1><p>La page demandée n'existe pas.</p><a class='button' href='/'>Retour</a></section>", null)); });
 
-// ✅ BLOC B6 : Error handler blindé
 app.use((err, req, res, next) => {
   console.error("Erreur non geree :", err.message);
   if (res.headersSent) return next(err);
@@ -2888,7 +2822,6 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS adresse_exacte TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS type_lieu VARCHAR(20) DEFAULT 'ambulant'`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS est_ouvert BOOLEAN DEFAULT true`,
-      // ✅ BLOC A & C : Nouvelles colonnes
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS heure_ouverture VARCHAR(10)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS heure_fermeture VARCHAR(10)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS horaires_json TEXT`,
@@ -2911,7 +2844,6 @@ async function startServer() {
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, action VARCHAR(100) NOT NULL, target_type VARCHAR(50), target_id INTEGER, details TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
     
-    // ✅ BLOC C, D, E : Nouvelles tables
     await pool.query(`CREATE TABLE IF NOT EXISTS pro_stats (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE CASCADE, date DATE NOT NULL DEFAULT CURRENT_DATE, views INTEGER DEFAULT 0, phone_clicks INTEGER DEFAULT 0, wa_clicks INTEGER DEFAULT 0, UNIQUE(pro_id, date))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS client_favorites (id SERIAL PRIMARY KEY, visitor_id VARCHAR(64) NOT NULL, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(visitor_id, pro_id))`);
     await pool.query(`CREATE TABLE IF NOT EXISTS blog_posts (id SERIAL PRIMARY KEY, slug VARCHAR(255) UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, content TEXT NOT NULL, meta_description VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
@@ -2988,17 +2920,14 @@ async function startServer() {
     let orderCounter = 0;
     for (const [name, category] of profs) { orderCounter += 1; await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]); }
 
-    // ✅ BLOC A : Cron interne mis à jour (48h + 90 jours)
     setInterval(async () => {
       try {
-        // 1. Impayés > 48h
         const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
         for (const row of expired.rows) {
           await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
           await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
         }
         
-        // 2. Rejetés / Corrections > 90 jours
         const oldRejected = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status IN ('rejected', 'corrections_requested') AND updated_at < NOW() - INTERVAL '90 days'`);
         for (const row of oldRejected.rows) {
           await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
