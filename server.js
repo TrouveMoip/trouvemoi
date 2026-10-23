@@ -534,7 +534,7 @@ app.get("/", async (req, res) => {
       const typeBadge = person.type_lieu === 'fixe' 
         ? `<span class="badge-local">🏠 Local fixe</span>` 
         : `<span class="badge-ambulant">🚗 Ambulant</span>`;
-
+      
       let rawPhone = (person.phone || "").replace(/\D/g, "");
       if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
       if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
