@@ -27,6 +27,9 @@ const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 
 const PAYMENT_AMOUNT = 500;
 
+// ✅ NOUVEAU : Clé secrète reCAPTCHA
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024, files: 5 },
@@ -96,6 +99,21 @@ const reviewAttempts = new Map();
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
+
+// ✅ NOUVEAU : Fonction de vérification reCAPTCHA
+async function verifyRecaptcha(token) {
+  if (!RECAPTCHA_SECRET_KEY) return true; // Si pas de clé (mode test)
+  if (!token) return false;
+  try {
+    const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=${RECAPTCHA_SECRET_KEY}&response=${token}`
+    });
+    const data = await res.json();
+    return data.success && data.score >= 0.5;
+  } catch (e) { return false; }
+}
 
 function createSessionToken(payload) {
   const secret = process.env.ADMIN_SESSION_SECRET;
@@ -230,6 +248,7 @@ function page(title, content, proConnected) {
       <title>${escapeHtml(title)} - TrouveMoi</title>
       <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
       <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-6YQ5R6M4ET');</script>
+      <script src="https://www.google.com/recaptcha/api.js?render=6LelG_0tAAAAAGyx3z4xqCkxZ6rga6sF0RQ_RUtC"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 0; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
@@ -273,8 +292,11 @@ function page(title, content, proConnected) {
         .badge-pending { background: #fef3c7; color: #92400e; } .badge-approved { background: #d1fae5; color: #065f46; } .badge-rejected { background: #fee2e2; color: #991b1b; } .badge-closed { background: #e5e7eb; color: #374151; }
         .badge-processed { background: #dbeafe; color: #1e40af; text-transform: none; letter-spacing: 0; }
         .badge-new { display: inline-block; background: #ef4444; color: white; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; margin-left: 6px; text-transform: none; letter-spacing: 0; }
+        
+        /* ✅ NOUVEAU : Badge KYC (Tick bleu) */
         .kyc-tick { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1d9bf0; color: white; border-radius: 50%; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
+        .kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
+
         .badge-local { background: #dbeafe; color: #1e40af; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
         .badge-ambulant { background: #fef3c7; color: #92400e; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
@@ -400,6 +422,11 @@ function page(title, content, proConnected) {
               btn.querySelector('svg').setAttribute('stroke', '#6b7280');
             }
           }
+        }
+
+        async function getRecaptchaToken() {
+          if (typeof grecaptcha === 'undefined') return "";
+          return await grecaptcha.execute('6LelG_0tAAAAAGyx3z4xqCkxZ6rga6sF0RQ_RUtC', {action: 'submit'});
         }
       </script>
     </body>
@@ -531,17 +558,18 @@ app.get("/", async (req, res) => {
           <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
-         <div class="pro-card-top">
-  <div>
-    <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
-    <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
-    <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
-  </div>
-  <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-    ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
-    ${typeBadge}
-  </div>
-</div>
+          <div class="pro-card-top">
+            <div>
+              <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
+              <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
+              <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+              <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
+            </div>
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
+              ${typeBadge}
+            </div>
+          </div>
           
           <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
           
@@ -739,12 +767,12 @@ app.get("/recherche", async (req, res) => {
             </div>
             <div class="pro-card-top">
               <div>
-                <div class="pro-name">${escapeHtml(displayName)}</div>
+                <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
+                <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
                 <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
                 <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
               </div>
               <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                ${renderKycBadge()}
                 ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
                 ${typeBadge}
               </div>
@@ -899,7 +927,7 @@ app.get("/mes-favoris", async (req, res) => {
         </div>
         <div class="pro-card-top">
           <div>
-            <div class="pro-name">${escapeHtml(displayName)}</div>
+            <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
             <div class="pro-meta">${escapeHtml(person.profession)}</div>
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
           </div>
@@ -1034,10 +1062,10 @@ app.get("/pro/:id", async (req, res) => {
           <div class="favorite-btn" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
-         
           ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
           ${openStatusBadge}
-         <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge("lg")}</h1>
+          <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
+          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge("lg")}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
           <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
           <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${reviewsCount > 0 ? `${renderStars(avgRating)} <span style="font-size: 15px; color: #6b7280; font-weight: 400;">(${reviewsCount} avis)</span>` : `<span style="font-size: 15px; color: #9ca3af; font-weight: 400;">Pas encore d'avis</span>`}</div>
@@ -1176,7 +1204,10 @@ app.get("/devenir-professionnel", async (req, res) => {
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
         ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
-        <form action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+        <!-- ✅ MODIFIÉ : Ajout de l'ID pour reCAPTCHA et du champ caché -->
+        <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
+          <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="">
+          
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
             <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="Dupont BTP"></div>
@@ -1256,6 +1287,16 @@ app.get("/devenir-professionnel", async (req, res) => {
       <script>
         const citySelect = document.getElementById('city'); const neighborhoodSelect = document.getElementById('neighborhood'); const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); const professionSelect = document.getElementById('profession'); const professionOtherBlock = document.getElementById('profession-other-block'); const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
         
+        // ✅ NOUVEAU : Écouteur pour reCAPTCHA
+        document.getElementById('form-inscription').addEventListener('submit', async function(e) {
+          if (!document.getElementById('recaptcha_token').value) {
+            e.preventDefault();
+            const token = await getRecaptchaToken();
+            document.getElementById('recaptcha_token').value = token;
+            this.submit();
+          }
+        });
+
         function filterProfessions() {
           const search = document.getElementById('search-profession').value.toLowerCase();
           const select = document.getElementById('profession');
@@ -1334,6 +1375,11 @@ app.get("/api/neighborhoods", async (req, res) => {
 });
 
 app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
+  // ✅ NOUVEAU : Vérification reCAPTCHA
+  const recaptchaToken = req.body.recaptcha_token;
+  const isHuman = await verifyRecaptcha(recaptchaToken);
+  if (!isHuman) return res.status(400).send(page("Erreur", "<h2>Vérification anti-robot échouée. Veuillez réessayer.</h2>", null));
+
   const ip = req.ip || "unknown"; const now = Date.now();
   const attempts = contactAttempts.get(`cand_${ip}`) || { count: 0, startedAt: now };
   if (now - attempts.startedAt > 60 * 60 * 1000) { attempts.count = 0; attempts.startedAt = now; }
@@ -2581,10 +2627,16 @@ app.get("/contact", async (req, res) => {
   const defaultSubject = reportId ? `Signalement du professionnel #${reportId}` : "";
   const defaultMessage = reportId ? `Bonjour, je souhaite signaler le professionnel #${reportId} pour le motif suivant : \n\n` : "";
 
-  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form action="/contact" method="POST"><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30" placeholder="0194010345"></div></div><label>Sujet *</label><input name="subject" value="${escapeHtml(defaultSubject)}" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000">${escapeHtml(defaultMessage)}</textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form></section>`, proConnected));
+  // ✅ MODIFIÉ : Ajout de l'ID pour reCAPTCHA et du champ caché
+  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form id="form-contact" action="/contact" method="POST"><input type="hidden" name="recaptcha_token" id="recaptcha_token_contact" value=""><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30" placeholder="0194010345"></div></div><label>Sujet *</label><input name="subject" value="${escapeHtml(defaultSubject)}" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000">${escapeHtml(defaultMessage)}</textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form><script>document.getElementById('form-contact').addEventListener('submit', async function(e) { if (!document.getElementById('recaptcha_token_contact').value) { e.preventDefault(); const token = await getRecaptchaToken(); document.getElementById('recaptcha_token_contact').value = token; this.submit(); } });</script></section>`, proConnected));
 });
 
 app.post("/contact", async (req, res) => {
+  // ✅ NOUVEAU : Vérification reCAPTCHA
+  const recaptchaToken = req.body.recaptcha_token;
+  const isHuman = await verifyRecaptcha(recaptchaToken);
+  if (!isHuman) return res.status(400).send(page("Erreur", "<h2>Vérification anti-robot échouée.</h2>", null));
+
   const { name, email, phone, subject, message, pro_id } = req.body;
   if (!name || !subject || !message || (!email && !phone)) return res.status(400).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Infos manquantes.</h2><a href='/contact' class='button'>Retour</a></section>", null));
   
