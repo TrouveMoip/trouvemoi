@@ -202,8 +202,8 @@ function renderStars(rating) {
 }
 
 function renderKycBadge(size) {
-  const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
-  return `<span class="${cls}" title="Identite verifiee">Verifie KYC</span>`;
+  const cls = size === "lg" ? "kyc-tick kyc-tick-lg" : "kyc-tick";
+  return `<span class="${cls}" title="Identité vérifiée par KYC">✓</span>`;
 }
 
 function renderLogo() {
