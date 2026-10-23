@@ -2564,7 +2564,7 @@ app.get("/mentions-legales", (req, res) => {
       <p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
 
       <h2>3. Hébergement</h2>
-      <p>Le site est hébergé par : <strong>Render</strong> (ou votre hébergeur).</p>
+      <p>Le site est hébergé par : <strong>Render</strong>.</p>
 
       <h2>4. Propriété intellectuelle</h2>
       <p>L'ensemble du contenu du site TrouveMoi (textes, images, logos, base de données) est la propriété exclusive de ADK SERVICES. Toute reproduction, même partielle, sans autorisation écrite préalable est strictement interdite.</p>
