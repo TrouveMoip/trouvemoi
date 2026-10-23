@@ -225,7 +225,6 @@ function renderLogo() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 55" width="240" height="50" style="display:inline-block;vertical-align:middle;max-width:100%" aria-label="TrouveMoi"><rect x="2" y="5" width="48" height="45" rx="12" fill="white"/><text x="26" y="38" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="900" fill="#1e40af" letter-spacing="-1.5">TM</text><text x="62" y="39" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="900" fill="white" letter-spacing="-0.8">TrouveMoi</text></svg>`;
 }
 
-// ✅ MODIFIÉ : Ajout du lien Favoris dans le menu
 function buildMenu(proConnected) {
   if (proConnected) {
     return `<nav><a href="/">Professionnels</a><a href="/mes-favoris">❤️ Favoris</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
@@ -245,7 +244,6 @@ function page(title, content, proConnected) {
       <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%231e40af'/%3E%3Ctext x='25' y='35' text-anchor='middle' font-family='Arial' font-size='22' font-weight='900' fill='white'%3ETM%3C/text%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
       
-      <!-- ✅ Script reCAPTCHA v3 -->
       <script src="https://www.google.com/recaptcha/api.js?render=6LelG_0tAAAAAGyx3z4xqCkxZ6rga6sF0RQ_RUtC"></script>
       
       <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
@@ -1196,6 +1194,9 @@ app.get("/devenir-professionnel", async (req, res) => {
       </div>`;
     });
 
+    // ✅ NOUVEAU : Préparation de la liste pour le JavaScript
+    const allProfNames = professionsResult.rows.map(p => p.name);
+
     const content = `
       <section class="card" style="max-width: 800px; margin: 0 auto;">
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
@@ -1224,10 +1225,10 @@ app.get("/devenir-professionnel", async (req, res) => {
             <div><label>Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Choisir</option></select><div id="neighborhood-other-block" class="hidden" style="margin-top:10px;"><input name="neighborhood_other" maxlength="150" placeholder="Precisez"></div></div>
           </div>
 
-          <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
+          <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe; position: relative;">
             <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
-            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" autocomplete="off" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
-            <div id="custom-suggestions" style="background: white; border: 1px solid #cbd5e0; border-radius: 0 0 8px 8px; display: none; max-height: 200px; overflow-y: auto; margin-top: -14px; margin-bottom: 14px; position: relative; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" oninput="filterProfessions()" autocomplete="off" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
+            <div id="custom-suggestions" style="background: white; border: 1px solid #cbd5e0; border-radius: 0 0 8px 8px; display: none; max-height: 200px; overflow-y: auto; position: absolute; left: 16px; right: 16px; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -1282,7 +1283,13 @@ app.get("/devenir-professionnel", async (req, res) => {
         </form>
       </section>
       <script>
-        const citySelect = document.getElementById('city'); const neighborhoodSelect = document.getElementById('neighborhood'); const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); const professionSelect = document.getElementById('profession'); const professionOtherBlock = document.getElementById('profession-other-block'); const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
+        const citySelect = document.getElementById('city'); 
+        const neighborhoodSelect = document.getElementById('neighborhood'); 
+        const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); 
+        const professionSelect = document.getElementById('profession'); 
+        const professionOtherBlock = document.getElementById('profession-other-block'); 
+        const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); 
+        const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
         
         document.getElementById('form-inscription').addEventListener('submit', async function(e) {
           if (!document.getElementById('recaptcha_token').value) {
@@ -1293,19 +1300,33 @@ app.get("/devenir-professionnel", async (req, res) => {
           }
         });
 
-        // ✅ Nouvelle recherche de métier
+        // ✅ NOUVEAU : Recherche de métier 100% fiable
+        const allProfessionsList = ${JSON.stringify(allProfNames)};
+
         function filterProfessions() {
           const search = document.getElementById('search-profession').value.toLowerCase();
           const box = document.getElementById('custom-suggestions');
-          if (search.length < 2) { box.style.display = 'none'; return; }
-          const options = document.querySelectorAll('#profession option');
+          
+          if (search.length < 2) { 
+            box.style.display = 'none'; 
+            return; 
+          }
+          
           let html = '';
-          options.forEach(opt => {
-            if (opt.value && opt.value.toLowerCase().includes(search)) {
-            html += '<div onclick=\'selectProfession(&quot;' + opt.value.replace(/"/g, '&quot;') + '&quot;)\' style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">' + opt.value + '</div>';
+          allProfessionsList.forEach(function(profName) {
+            if (profName.toLowerCase().includes(search)) {
+              html += '<div onclick="selectProfession(this.innerText)" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">' + profName + '</div>';
+            }
           });
-          if (html) { box.innerHTML = html; box.style.display = 'block'; } else { box.style.display = 'none'; }
+          
+          if (html) { 
+            box.innerHTML = html; 
+            box.style.display = 'block'; 
+          } else { 
+            box.style.display = 'none'; 
+          }
         }
+
         function selectProfession(val) {
           document.getElementById('profession').value = val;
           document.getElementById('search-profession').value = val;
