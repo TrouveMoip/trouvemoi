@@ -1274,11 +1274,11 @@ app.get("/devenir-professionnel", async (req, res) => {
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>1. Photo d'identité (visage) *</label><input name="photo_profil" type="file" accept="image/*" required></div>
-            <div><label>2. Pièce d'identité (recto) *</label><input name="photo_identite" type="file" accept="image/*" required></div>
-          </div>
-          <label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
-          <input name="photo_kyc" type="file" accept="image/*" required>
+            <div><label>1. Photo d'identité (visage) *</label><input id="photo_profil" name="photo_profil" type="file" accept="image/*" required></div>
+  <div><label>2. Pièce d'identité (recto) *</label><input id="photo_identite" name="photo_identite" type="file" accept="image/*" required></div>
+</div>
+<label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
+<input id="photo_kyc" name="photo_kyc" type="file" accept="image/*" required>
           
           <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
           <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px; width: 100%;">Envoyer ma candidature</button></div>
