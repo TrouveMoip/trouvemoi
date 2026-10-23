@@ -24,10 +24,8 @@ const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
-
 const PAYMENT_AMOUNT = 500;
 
-// ✅ NOUVEAU : Clé secrète reCAPTCHA
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
 const upload = multer({
@@ -100,9 +98,8 @@ const reviewAttempts = new Map();
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
 
-// ✅ NOUVEAU : Fonction de vérification reCAPTCHA
 async function verifyRecaptcha(token) {
-  if (!RECAPTCHA_SECRET_KEY) return true; // Si pas de clé (mode test)
+  if (!RECAPTCHA_SECRET_KEY) return true; 
   if (!token) return false;
   try {
     const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
@@ -228,11 +225,12 @@ function renderLogo() {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 55" width="240" height="50" style="display:inline-block;vertical-align:middle;max-width:100%" aria-label="TrouveMoi"><rect x="2" y="5" width="48" height="45" rx="12" fill="white"/><text x="26" y="38" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="900" fill="#1e40af" letter-spacing="-1.5">TM</text><text x="62" y="39" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="900" fill="white" letter-spacing="-0.8">TrouveMoi</text></svg>`;
 }
 
+// ✅ MODIFIÉ : Ajout du lien Favoris dans le menu
 function buildMenu(proConnected) {
   if (proConnected) {
-    return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
+    return `<nav><a href="/">Professionnels</a><a href="/mes-favoris">❤️ Favoris</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
   }
-  return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/contact">Contact</a></nav>`;
+  return `<nav><a href="/">Professionnels</a><a href="/mes-favoris">❤️ Favoris</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/contact">Contact</a></nav>`;
 }
 function page(title, content, proConnected) {
   return `
@@ -246,9 +244,12 @@ function page(title, content, proConnected) {
       <link rel="manifest" href="/manifest.json">
       <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%231e40af'/%3E%3Ctext x='25' y='35' text-anchor='middle' font-family='Arial' font-size='22' font-weight='900' fill='white'%3ETM%3C/text%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
+      
+      <!-- ✅ Script reCAPTCHA v3 -->
+      <script src="https://www.google.com/recaptcha/api.js?render=6LelG_0tAAAAAGyx3z4xqCkxZ6rga6sF0RQ_RUtC"></script>
+      
       <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
       <script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-6YQ5R6M4ET');</script>
-      <script src="https://www.google.com/recaptcha/api.js?render=6LelG_0tAAAAAGyx3z4xqCkxZ6rga6sF0RQ_RUtC"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 0; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
@@ -275,7 +276,7 @@ function page(title, content, proConnected) {
         input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; font-family: inherit; background: #fdfdfd; transition: border-color 0.2s, box-shadow 0.2s; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); background: white; }
         textarea { resize: vertical; min-height: 100px; }
-        input[type="file"] { padding: 10px; background: #f8fafc; border: 2px dashed #cbd5e0; cursor: pointer; }
+        input[type="file"] { padding: 10px; background: #f8fafc; border: 2px dashed #cbd5e0; cursor: pointer; transition: all 0.2s; }
         input[type="checkbox"], input[type="radio"] { width: auto; margin-right: 8px; }
         optgroup { font-weight: 800; color: #1e40af; font-style: normal; background: #eff6ff; padding: 6px 0; font-size: 15px; }
         optgroup option { font-weight: 400; color: #222; background: white; font-size: 15px; }
@@ -293,7 +294,6 @@ function page(title, content, proConnected) {
         .badge-processed { background: #dbeafe; color: #1e40af; text-transform: none; letter-spacing: 0; }
         .badge-new { display: inline-block; background: #ef4444; color: white; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; margin-left: 6px; text-transform: none; letter-spacing: 0; }
         
-        /* ✅ NOUVEAU : Badge KYC (Tick bleu) */
         .kyc-tick { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1d9bf0; color: white; border-radius: 50%; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
 
@@ -534,7 +534,7 @@ app.get("/", async (req, res) => {
       const typeBadge = person.type_lieu === 'fixe' 
         ? `<span class="badge-local">🏠 Local fixe</span>` 
         : `<span class="badge-ambulant">🚗 Ambulant</span>`;
-      
+
       let rawPhone = (person.phone || "").replace(/\D/g, "");
       if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
       if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
@@ -560,7 +560,6 @@ app.get("/", async (req, res) => {
           </div>
           <div class="pro-card-top">
             <div>
-              <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
               <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
               <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
               <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
@@ -767,7 +766,6 @@ app.get("/recherche", async (req, res) => {
             </div>
             <div class="pro-card-top">
               <div>
-                <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
                 <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
                 <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
                 <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
@@ -1064,7 +1062,6 @@ app.get("/pro/:id", async (req, res) => {
           </div>
           ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
           ${openStatusBadge}
-          <!-- ✅ MODIFIÉ : Le tick KYC est à côté du nom -->
           <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge("lg")}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
           <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
@@ -1204,7 +1201,6 @@ app.get("/devenir-professionnel", async (req, res) => {
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
         ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
-        <!-- ✅ MODIFIÉ : Ajout de l'ID pour reCAPTCHA et du champ caché -->
         <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
           <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="">
           
@@ -1230,7 +1226,8 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
             <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
-            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
+            <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" onkeyup="filterProfessions()" autocomplete="off" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
+            <div id="custom-suggestions" style="background: white; border: 1px solid #cbd5e0; border-radius: 0 0 8px 8px; display: none; max-height: 200px; overflow-y: auto; margin-top: -14px; margin-bottom: 14px; position: relative; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -1275,10 +1272,10 @@ app.get("/devenir-professionnel", async (req, res) => {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div><label>1. Photo d'identité (visage) *</label><input id="photo_profil" name="photo_profil" type="file" accept="image/*" required></div>
-  <div><label>2. Pièce d'identité (recto) *</label><input id="photo_identite" name="photo_identite" type="file" accept="image/*" required></div>
-</div>
-<label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
-<input id="photo_kyc" name="photo_kyc" type="file" accept="image/*" required>
+            <div><label>2. Pièce d'identité (recto) *</label><input id="photo_identite" name="photo_identite" type="file" accept="image/*" required></div>
+          </div>
+          <label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
+          <input id="photo_kyc" name="photo_kyc" type="file" accept="image/*" required>
           
           <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
           <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px; width: 100%;">Envoyer ma candidature</button></div>
@@ -1287,7 +1284,6 @@ app.get("/devenir-professionnel", async (req, res) => {
       <script>
         const citySelect = document.getElementById('city'); const neighborhoodSelect = document.getElementById('neighborhood'); const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); const professionSelect = document.getElementById('profession'); const professionOtherBlock = document.getElementById('profession-other-block'); const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
         
-        // ✅ NOUVEAU : Écouteur pour reCAPTCHA
         document.getElementById('form-inscription').addEventListener('submit', async function(e) {
           if (!document.getElementById('recaptcha_token').value) {
             e.preventDefault();
@@ -1297,21 +1293,46 @@ app.get("/devenir-professionnel", async (req, res) => {
           }
         });
 
+        // ✅ Nouvelle recherche de métier
         function filterProfessions() {
           const search = document.getElementById('search-profession').value.toLowerCase();
-          const select = document.getElementById('profession');
-          const optgroups = select.getElementsByTagName('optgroup');
-          for (let g = 0; g < optgroups.length; g++) {
-            let hasVisible = false;
-            const options = optgroups[g].getElementsByTagName('option');
-            for (let i = 0; i < options.length; i++) {
-              const text = options[i].text.toLowerCase();
-              if (text.includes(search)) { options[i].style.display = ""; hasVisible = true; }
-              else { options[i].style.display = "none"; }
+          const box = document.getElementById('custom-suggestions');
+          if (search.length < 2) { box.style.display = 'none'; return; }
+          const options = document.querySelectorAll('#profession option');
+          let html = '';
+          options.forEach(opt => {
+            if (opt.value && opt.value.toLowerCase().includes(search)) {
+              html += `<div onclick="selectProfession('${opt.value.replace(/'/g, "\\'")}')" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">${opt.value}</div>`;
             }
-            optgroups[g].style.display = hasVisible ? "" : "none";
-          }
+          });
+          if (html) { box.innerHTML = html; box.style.display = 'block'; } else { box.style.display = 'none'; }
         }
+        function selectProfession(val) {
+          document.getElementById('profession').value = val;
+          document.getElementById('search-profession').value = val;
+          document.getElementById('custom-suggestions').style.display = 'none';
+          document.getElementById('profession').dispatchEvent(new Event('change'));
+        }
+
+        // ✅ Retour visuel sur les photos
+        ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
+          const input = document.getElementById(id);
+          if(input) {
+            input.addEventListener('change', function() {
+              if (this.files && this.files.length > 0) {
+                this.style.border = "3px solid #10b981"; 
+                this.style.backgroundColor = "#ecfdf5"; 
+                if (!this.nextElementSibling || !this.nextElementSibling.classList.contains('photo-ok')) {
+                  const msg = document.createElement('div');
+                  msg.className = 'photo-ok';
+                  msg.style.cssText = 'color: #10b981; font-size: 13px; font-weight: bold; margin-top: -10px; margin-bottom: 15px;';
+                  msg.innerHTML = '✅ Photo sélectionnée';
+                  this.parentNode.insertBefore(msg, this.nextSibling);
+                }
+              }
+            });
+          }
+        });
 
         citySelect.addEventListener('change', async function() { 
           const city = citySelect.value; 
@@ -1375,7 +1396,6 @@ app.get("/api/neighborhoods", async (req, res) => {
 });
 
 app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
-  // ✅ NOUVEAU : Vérification reCAPTCHA
   const recaptchaToken = req.body.recaptcha_token;
   const isHuman = await verifyRecaptcha(recaptchaToken);
   if (!isHuman) return res.status(400).send(page("Erreur", "<h2>Vérification anti-robot échouée. Veuillez réessayer.</h2>", null));
@@ -2627,12 +2647,10 @@ app.get("/contact", async (req, res) => {
   const defaultSubject = reportId ? `Signalement du professionnel #${reportId}` : "";
   const defaultMessage = reportId ? `Bonjour, je souhaite signaler le professionnel #${reportId} pour le motif suivant : \n\n` : "";
 
-  // ✅ MODIFIÉ : Ajout de l'ID pour reCAPTCHA et du champ caché
   res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form id="form-contact" action="/contact" method="POST"><input type="hidden" name="recaptcha_token" id="recaptcha_token_contact" value=""><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30" placeholder="0194010345"></div></div><label>Sujet *</label><input name="subject" value="${escapeHtml(defaultSubject)}" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000">${escapeHtml(defaultMessage)}</textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form><script>document.getElementById('form-contact').addEventListener('submit', async function(e) { if (!document.getElementById('recaptcha_token_contact').value) { e.preventDefault(); const token = await getRecaptchaToken(); document.getElementById('recaptcha_token_contact').value = token; this.submit(); } });</script></section>`, proConnected));
 });
 
 app.post("/contact", async (req, res) => {
-  // ✅ NOUVEAU : Vérification reCAPTCHA
   const recaptchaToken = req.body.recaptcha_token;
   const isHuman = await verifyRecaptcha(recaptchaToken);
   if (!isHuman) return res.status(400).send(page("Erreur", "<h2>Vérification anti-robot échouée.</h2>", null));
