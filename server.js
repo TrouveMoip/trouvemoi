@@ -1302,8 +1302,7 @@ app.get("/devenir-professionnel", async (req, res) => {
           let html = '';
           options.forEach(opt => {
             if (opt.value && opt.value.toLowerCase().includes(search)) {
-              html += `<div onclick="selectProfession('${opt.value.replace(/'/g, "\\'")}')" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">${opt.value}</div>`;
-            }
+             html += `<div onclick='selectProfession("${opt.value.replace(/"/g, "&quot;")}")' style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">${opt.value}</div>`;
           });
           if (html) { box.innerHTML = html; box.style.display = 'block'; } else { box.style.display = 'none'; }
         }
