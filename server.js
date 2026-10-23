@@ -3,6 +3,7 @@ const { Pool } = require("pg");
 const crypto = require("crypto");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
+const compression = require("compression"); // ✅ BLOC D : Ajout de la compression
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,8 +23,8 @@ const KKIAPAY_PRIVATE_KEY = process.env.KKIAPAY_PRIVATE_KEY;
 const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
-// ✅ INTERRUPTEUR POUR DÉSACTIVER LE PAIEMENT LORS DES TESTS
-const BYPASS_PAYMENT = true; 
+// ✅ BLOC A : Sécurisation du paiement via variable d'environnement
+const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
 
 const PAYMENT_AMOUNT = 500;
 
@@ -68,6 +69,7 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
+app.use(compression()); // ✅ BLOC D : Activation de la compression
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
@@ -121,6 +123,238 @@ function readCookie(req, name) {
     if (key === name) return val.join("=");
   }
   return null;
+}
+
+// ✅ BLOC D : Fonction pour gérer l'ID visiteur anonyme (favoris)
+function getOrCreateVisitorId(req, res) {
+  let vid = readCookie(req, "tm_visitor_id");
+  if (!vid || vid.length < 20) {
+    vid = crypto.randomBytes(16).toString("hex");
+    const currentCookies = res.getHeader("Set-Cookie") || [];
+    const newCookie = `tm_visitor_id=${vid}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`;
+    res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
+  }
+  return vid;
+}
+
+function setSessionCookie(res, token) { res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
+function clearSessionCookie(res) { res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`); }
+function setProCookie(res, code) { res.setHeader("Set-Cookie", `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
+function clearProCookie(res) { res.setHeader("Set-Cookie", `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`); }
+
+function requireAdmin(req, res, next) {
+  const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
+  if (!session) { clearSessionCookie(res); return res.redirect(303, "/admin"); }
+  req.adminSession = session; next();
+}
+
+function verifyCsrf(req, res, next) {
+  const csrf = req.adminSession?.csrf;
+  if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) {
+    return res.status(403).send(page("Refuse", "<h1>Erreur CSRF</h1>", null));
+  }
+  next();
+}
+
+function generateProCode() { return `TM${crypto.randomInt(10000, 100000)}`; }
+async function generateUniqueProCode() {
+  let code, exists = true, attempts = 0;
+  while (exists && attempts < 20) {
+    code = generateProCode();
+    exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0;
+    attempts++;
+  }
+  return code;
+}
+
+async function getConnectedPro(req) {
+  const code = readCookie(req, PRO_COOKIE);
+  if (!code) return null;
+  const result = await pool.query(`SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]);
+  return result.rows.length ? { pro: result.rows[0], code } : null;
+}
+
+function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
+function getCsrf(req) { return req.adminSession?.csrf || ""; }
+
+async function logAdminAction(action, targetType, targetId, details) {
+  try {
+    await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]);
+  } catch (e) { console.error("Erreur log admin :", e.message); }
+}
+
+async function verifyKkiapayTransaction(transactionId) {
+  try {
+    const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": KKIAPAY_PUBLIC_KEY, "x-private-key": KKIAPAY_PRIVATE_KEY },
+      body: JSON.stringify({ transactionId })
+    });
+    if (!res.ok) return { success: false, reason: `HTTP ${res.status}` };
+    const data = await res.json();
+    return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), method: data.method || null };
+  } catch (e) { return { success: false, reason: "network" }; }
+}
+
+function renderStars(rating) {
+  let html = "";
+  const full = Math.floor(rating), half = (rating - full) >= 0.5;
+  for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆";
+  return html;
+}
+
+function renderKycBadge(size) {
+  const cls = size === "lg" ? "badge-verified badge-verified-lg" : "badge-verified";
+  return `<span class="${cls}" title="Identite verifiee">Verifie KYC</span>`;
+}
+
+function renderLogo() {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 55" width="240" height="50" style="display:inline-block;vertical-align:middle;max-width:100%" aria-label="TrouveMoi"><rect x="2" y="5" width="48" height="45" rx="12" fill="white"/><text x="26" y="38" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="900" fill="#1e40af" letter-spacing="-1.5">TM</text><text x="62" y="39" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="900" fill="white" letter-spacing="-0.8">TrouveMoi</text></svg>`;
+}
+
+function buildMenu(proConnected) {
+  if (proConnected) {
+    return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
+  }
+  return `<nav><a href="/">Professionnels</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/contact">Contact</a></nav>`;
+}
+// === FIN PARTIE 1 ===const express = require("express");
+const { Pool } = require("pg");
+const crypto = require("crypto");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const compression = require("compression"); // ✅ BLOC D : Ajout de la compression
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+if (!process.env.DATABASE_URL) { console.error("Erreur : DATABASE_URL manquante."); process.exit(1); }
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) { console.error("Erreur : Variables Cloudinary manquantes."); process.exit(1); }
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
+
+const KKIAPAY_PUBLIC_KEY = process.env.KKIAPAY_PUBLIC_KEY;
+const KKIAPAY_PRIVATE_KEY = process.env.KKIAPAY_PRIVATE_KEY;
+const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
+const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
+
+// ✅ BLOC A : Sécurisation du paiement via variable d'environnement
+const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
+
+const PAYMENT_AMOUNT = 500;
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowed.includes(file.mimetype)) return cb(new Error("Format non autorise."));
+    cb(null, true);
+  }
+});
+
+function uploadToCloudinary(buffer, folder, publicId) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: folder, public_id: publicId, resource_type: "image", transformation: [{ width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" }] },
+      (error, result) => { if (error) return reject(error); resolve(result); }
+    );
+    stream.end(buffer);
+  });
+}
+
+async function deleteFromCloudinary(publicId) {
+  if (!publicId) return;
+  try {
+    const urlParts = publicId.split("/upload/");
+    if (urlParts.length < 2) return;
+    let path = urlParts[1];
+    if (path.startsWith("v")) path = path.replace(/^v\d+\//, "");
+    const cleanId = path.replace(/\.[^.]+$/, "");
+    await cloudinary.uploader.destroy(cleanId, { invalidate: true });
+  } catch (error) { console.error("Erreur suppression Cloudinary :", error.message); }
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false }
+});
+
+pool.on("error", (error) => console.error("Erreur DB :", error.message));
+
+app.use(express.urlencoded({ extended: true, limit: "20kb" }));
+app.use(express.json({ limit: "20kb" }));
+app.use(compression()); // ✅ BLOC D : Activation de la compression
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
+
+const SESSION_COOKIE = "tm_admin_session";
+const SESSION_DURATION = 4 * 60 * 60 * 1000;
+const PRO_COOKIE = "tm_pro_session";
+
+const ALLOWED_STATUSES = ["pending", "under_review", "approved", "rejected", "corrections_requested"];
+const STATUS_LABELS = { pending: "En attente", under_review: "En cours", approved: "Approuvee", rejected: "Refusee", corrections_requested: "Corrections demandees" };
+const JOB_STATUSES = ["pending", "approved", "rejected", "closed"];
+const JOB_STATUS_LABELS = { pending: "En attente", approved: "Approuvee", rejected: "Refusee", closed: "Cloturee" };
+const REVIEW_STATUSES = ["pending", "approved", "rejected"];
+const REVIEW_STATUS_LABELS = { pending: "En attente", approved: "Approuve", rejected: "Rejete" };
+const GDPR_TYPE_LABELS = { access: "Acces", deletion: "Suppression", rectification: "Rectification", opposition: "Opposition" };
+const GDPR_STATUS_LABELS = { pending: "En attente", processed: "Traitee", rejected: "Refusee" };
+const JOB_CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Interim", "Freelance", "Apprentissage", "Autre"];
+const OFFER_DURATION_DAYS = 15;
+const CONTACT_PREFERENCES = ["whatsapp", "email"];
+
+const loginAttempts = new Map();
+const resetAttempts = new Map();
+const trackingAttempts = new Map();
+const contactAttempts = new Map();
+const reviewAttempts = new Map();
+
+function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function safeEqual(a, b) { const b1 = Buffer.from(String(a)), b2 = Buffer.from(String(b)); return b1.length === b2.length && crypto.timingSafeEqual(b1, b2); }
+
+function createSessionToken(payload) {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret || secret.length < 32) throw new Error("Secret trop court.");
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return `${encoded}.${crypto.createHmac("sha256", secret).update(encoded).digest("base64url")}`;
+}
+
+function verifySessionToken(token) {
+  try {
+    if (!token || !process.env.ADMIN_SESSION_SECRET) return null;
+    const [encoded, signature] = token.split(".");
+    if (!encoded || !signature) return null;
+    const expected = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url");
+    if (!safeEqual(signature, expected)) return null;
+    const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+    return (payload.expiresAt > Date.now() && typeof payload.csrf === "string") ? payload : null;
+  } catch { return null; }
+}
+
+function readCookie(req, name) {
+  for (const item of (req.headers.cookie || "").split(";")) {
+    const [key, ...val] = item.trim().split("=");
+    if (key === name) return val.join("=");
+  }
+  return null;
+}
+
+// ✅ BLOC D : Fonction pour gérer l'ID visiteur anonyme (favoris)
+function getOrCreateVisitorId(req, res) {
+  let vid = readCookie(req, "tm_visitor_id");
+  if (!vid || vid.length < 20) {
+    vid = crypto.randomBytes(16).toString("hex");
+    const currentCookies = res.getHeader("Set-Cookie") || [];
+    const newCookie = `tm_visitor_id=${vid}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`;
+    res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
+  }
+  return vid;
 }
 
 function setSessionCookie(res, token) { res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
@@ -213,6 +447,7 @@ function page(title, content, proConnected) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta name="description" content="TrouveMoi - Mise en relation au Benin.">
       <meta name="theme-color" content="#1e40af">
+      <link rel="manifest" href="/manifest.json"> <!-- ✅ BLOC E : PWA -->
       <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' rx='10' fill='%231e40af'/%3E%3Ctext x='25' y='35' text-anchor='middle' font-family='Arial' font-size='22' font-weight='900' fill='white'%3ETM%3C/text%3E%3C/svg%3E">
       <title>${escapeHtml(title)} - TrouveMoi</title>
       <script async src="https://www.googletagmanager.com/gtag/js?id=G-6YQ5R6M4ET"></script>
@@ -266,6 +501,12 @@ function page(title, content, proConnected) {
         .badge-verified-lg::before { font-size: 16px; }
         .badge-local { background: #dbeafe; color: #1e40af; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
         .badge-ambulant { background: #fef3c7; color: #92400e; font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+
+        /* ✅ BLOC D : Badge Top Pro & Bouton Favori */
+        .top-pro-badge { background: linear-gradient(135deg, #f59e0b, #eab308); color: white; font-weight: 800; font-size: 11px; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(245,158,11,0.3); margin-top: 4px; }
+        .favorite-btn { position: absolute; top: 16px; right: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .favorite-btn:hover { transform: scale(1.1); }
+        .favorite-btn.active { background: #fee2e2; border-color: #fecaca; }
 
         .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; font-weight: 500; border: 1px solid transparent; }
         .alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
@@ -356,14 +597,41 @@ function page(title, content, proConnected) {
       <footer>
         <div class="footer-content">
           <div class="footer-col"><h4>TrouveMoi</h4><p style="color:#9ca3af;font-size:14px">La plateforme beninoise de mise en relation.</p></div>
-          <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
-          <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/conditions">Conditions</a><a href="/confidentialite">Confidentialite</a></div>
+          <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/mes-favoris">Mes favoris</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
+          <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/blog">Blog</a><a href="/partenariats">Partenariats</a><a href="/conditions">Conditions</a><a href="/mentions-legales">Mentions légales</a><a href="/confidentialite">Confidentialite</a></div>
           <div class="footer-col"><h4>Contact</h4><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
         </div>
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
       <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'"><span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span><img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px;"></div>
-      <script>function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }</script>
+      
+      <script>
+        function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }
+        
+        // ✅ BLOC E : Enregistrement du Service Worker pour le PWA
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('Erreur SW:', err));
+        }
+
+        // ✅ BLOC D : Script pour les favoris
+        async function toggleFav(e, id) {
+          e.preventDefault();
+          const btn = e.currentTarget;
+          const res = await fetch('/api/favorite/' + id, { method: 'POST' });
+          const data = await res.json();
+          if (data.ok) {
+            if (data.isFav) {
+              btn.classList.add('active');
+              btn.querySelector('svg').setAttribute('fill', '#ef4444');
+              btn.querySelector('svg').setAttribute('stroke', '#ef4444');
+            } else {
+              btn.classList.remove('active');
+              btn.querySelector('svg').setAttribute('fill', 'none');
+              btn.querySelector('svg').setAttribute('stroke', '#6b7280');
+            }
+          }
+        }
+      </script>
     </body>
     </html>
   `;
@@ -399,6 +667,7 @@ function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
 app.get("/", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
+    const visitorId = getOrCreateVisitorId(req, res); // ✅ BLOC D
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12; const offset = (currentPage - 1) * limit;
 
@@ -409,12 +678,48 @@ app.get("/", async (req, res) => {
     const totalPros = parseInt(countResult.rows[0].count);
     const totalPages = Math.ceil(totalPros / limit);
 
-    const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, p.type_lieu, p.latitude, p.longitude, p.est_ouvert, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
-    const result = await pool.query(query, [limit, offset]);
+    // ✅ BLOC D : Ajout de is_favorite
+    const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.experience, p.service_description, p.service_area, p.availability, p.photo_activite_url, p.type_lieu, p.latitude, p.longitude, p.est_ouvert, 
+      (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+      (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
+      EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite
+      FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
+    const result = await pool.query(query, [limit, offset, visitorId]);
 
-    const professionsResult = await pool.query("SELECT name, category FROM professions");
-    const categoryByProfession = {};
-    for (const p of professionsResult.rows) { categoryByProfession[p.name] = p.category; }
+    // ✅ BLOC B : Catégories populaires
+    const categoriesResult = await pool.query(`
+      SELECT pr.category, COUNT(*) as count
+      FROM professional_applications p
+      JOIN professions pr ON p.profession = pr.name
+      WHERE p.status = 'approved' AND pr.category IS NOT NULL
+      GROUP BY pr.category
+      ORDER BY count DESC
+      LIMIT 8
+    `);
+    const categoriesHtml = categoriesResult.rows.map(c => `
+      <a href="/recherche?category=${encodeURIComponent(c.category)}" class="button secondary" style="padding: 10px 20px; border-radius: 30px; margin: 5px; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; background: white; border: 1px solid #e5e7eb; color: #374151;">
+        ${escapeHtml(c.category)} <span style="background: #f3f4f6; padding: 2px 8px; border-radius: 10px; font-size: 11px; color: #6b7280;">${c.count}</span>
+      </a>
+    `).join("");
+
+    // ✅ BLOC B : Derniers avis clients
+    const lastReviewsResult = await pool.query(`
+      SELECT r.author_name, r.rating, r.comment, p.full_name, p.company_name, p.id as pro_id
+      FROM reviews r
+      JOIN professional_applications p ON p.id = r.pro_id
+      WHERE r.status = 'approved' AND p.status = 'approved'
+      ORDER BY r.created_at DESC LIMIT 3
+    `);
+    const lastReviewsHtml = lastReviewsResult.rows.map(rev => `
+      <div class="card" style="padding: 20px; background: #fffbeb; border: 1px solid #fde68a; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <div style="font-weight: 700; color: #111827;">${escapeHtml(rev.author_name)}</div>
+          <div style="color: #f59e0b; font-size: 14px;">${renderStars(rev.rating)}</div>
+        </div>
+        <p style="font-size: 14px; color: #4b5563; font-style: italic;">"${escapeHtml(rev.comment || "Aucun commentaire")}"</p>
+        <div style="font-size: 12px; color: #92400e; margin-top: 8px; text-align: right;">— à propos de <a href="/pro/${rev.pro_id}" style="color: #b45309; font-weight: bold;">${escapeHtml(rev.company_name || rev.full_name)}</a></div>
+      </div>
+    `).join("");
 
     const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
     
@@ -422,6 +727,7 @@ app.get("/", async (req, res) => {
       const displayName = getDisplayName(person);
       const reviewsCount = Number(person.reviews_count || 0);
       const avgRating = Number(person.avg_rating || 0);
+      const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
       
       let hash = 0; const key = String(person.profession);
       for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
@@ -435,7 +741,6 @@ app.get("/", async (req, res) => {
         ? `<span class="badge-local">🏠 Local fixe</span>` 
         : `<span class="badge-ambulant">🚗 Ambulant</span>`;
 
-      // ✅ PATCH A3.1 — WhatsApp robuste
       let rawPhone = (person.phone || "").replace(/\D/g, "");
       if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
       if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
@@ -456,6 +761,10 @@ app.get("/", async (req, res) => {
 
       return `
         <article class="pro-card" style="border-left: 6px solid ${borderColor};">
+          <!-- ✅ BLOC D : Bouton favori -->
+          <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
           <div class="pro-card-top">
             <div>
               <div class="pro-name">${escapeHtml(displayName)}</div>
@@ -464,6 +773,7 @@ app.get("/", async (req, res) => {
             </div>
             <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
               ${renderKycBadge()}
+              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""} <!-- ✅ BLOC D -->
               ${typeBadge}
             </div>
           </div>
@@ -502,9 +812,41 @@ app.get("/", async (req, res) => {
         </div>
       </div>
 
+      <!-- ✅ BLOC B : Catégories Populaires -->
+      ${categoriesResult.rows.length > 0 ? `
+      <div style="text-align: center; margin-bottom: 40px;">
+        <h3 style="font-size: 18px; margin-bottom: 16px; color: #374151;">Explorer par catégorie</h3>
+        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
+          ${categoriesHtml}
+        </div>
+      </div>
+      ` : ""}
+
       <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 40px;">
         <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">👤 Devenir professionnel</a>
         <a class="button" href="/emplois" style="background: #10b981; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">💼 Offres d'emploi</a>
+      </div>
+
+      <!-- ✅ BLOC B : Comment ça marche -->
+      <div style="background: white; border-radius: 20px; padding: 40px 20px; margin-bottom: 40px; border: 1px solid #e5e7eb; text-align: center;">
+        <h2 style="margin-bottom: 30px;">Comment ça marche ?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 900px; margin: 0 auto;">
+          <div>
+            <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
+            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">1. Cherchez</h3>
+            <p style="font-size: 14px; color: #6b7280;">Trouvez le professionnel qu'il vous faut par métier ou par ville.</p>
+          </div>
+          <div>
+            <div style="font-size: 40px; margin-bottom: 12px;">📞</div>
+            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">2. Contactez</h3>
+            <p style="font-size: 14px; color: #6b7280;">Appelez ou écrivez sur WhatsApp directement, sans intermédiaire.</p>
+          </div>
+          <div>
+            <div style="font-size: 40px; margin-bottom: 12px;">🤝</div>
+            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">3. Rencontrez</h3>
+            <p style="font-size: 14px; color: #6b7280;">Rencontrez-le en personne et payez uniquement après la prestation.</p>
+          </div>
+        </div>
       </div>
 
       <div class="alert alert-warning" style="text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.</div>
@@ -514,6 +856,14 @@ app.get("/", async (req, res) => {
         ${prosCards || `<div class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></div>`}
       </div>
       ${renderPagination(currentPage, totalPages, "/")}
+
+      <!-- ✅ BLOC B : Derniers Avis Clients -->
+      ${lastReviewsResult.rows.length > 0 ? `
+      <div style="max-width: 800px; margin: 60px auto 20px auto;">
+        <h2 style="text-align: center; margin-bottom: 20px;">Ce que disent les clients</h2>
+        ${lastReviewsHtml}
+      </div>
+      ` : ""}
 
       <script>
         const prosGeo = ${prosDataJS};
@@ -541,9 +891,13 @@ app.get("/", async (req, res) => {
 app.get("/recherche", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
+    const visitorId = getOrCreateVisitorId(req, res);
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
-    const isSearching = profession !== "" || city !== "";
+    const category = String(req.query.category || "").trim().slice(0, 100);
+    const sort = String(req.query.sort || "pertinence").trim(); // ✅ BLOC B
+    
+    const isSearching = profession !== "" || city !== "" || category !== "";
     
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12; const offset = (currentPage - 1) * limit;
@@ -561,13 +915,27 @@ app.get("/recherche", async (req, res) => {
       let whereClause = ` WHERE p.status = 'approved'`; const values = [];
       if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
       if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
+      if (category) { values.push(category); whereClause += ` AND p.profession IN (SELECT name FROM professions WHERE category = $${values.length})`; }
 
       const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
       totalPros = parseInt(countResult.rows[0].count);
       totalPages = Math.ceil(totalPros / limit);
 
-      const queryValues = [...values, limit, offset];
-      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.service_description, p.type_lieu, p.latitude, p.longitude, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p ${whereClause} ORDER BY p.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+      // ✅ BLOC B : Tri
+      let orderBy = "p.created_at DESC"; 
+      if (sort === "rating") {
+        orderBy = "avg_rating DESC, reviews_count DESC, p.created_at DESC";
+      }
+
+      const queryValues = [...values, visitorId, limit, offset];
+      const query = `
+        SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.neighborhood, p.profession, p.service_description, p.type_lieu, p.latitude, p.longitude, 
+        (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+        (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
+        EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $${queryValues.length - 2}) AS is_favorite
+        FROM professional_applications p ${whereClause} 
+        ORDER BY ${orderBy} 
+        LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
       result = await pool.query(query, queryValues);
 
       const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
@@ -575,6 +943,7 @@ app.get("/recherche", async (req, res) => {
         const displayName = getDisplayName(person);
         const reviewsCount = Number(person.reviews_count || 0);
         const avgRating = Number(person.avg_rating || 0);
+        const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
         
         let hash = 0; const key = String(person.profession);
         for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
@@ -586,7 +955,6 @@ app.get("/recherche", async (req, res) => {
 
         const typeBadge = person.type_lieu === 'fixe' ? `<span class="badge-local">🏠 Local fixe</span>` : `<span class="badge-ambulant">🚗 Ambulant</span>`;
         
-        // ✅ PATCH A3.2 — WhatsApp robuste
         let rawPhone = (person.phone || "").replace(/\D/g, "");
         if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
         if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
@@ -605,6 +973,9 @@ app.get("/recherche", async (req, res) => {
 
         return `
           <article class="pro-card" style="border-left: 6px solid ${borderColor};">
+            <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+            </div>
             <div class="pro-card-top">
               <div>
                 <div class="pro-name">${escapeHtml(displayName)}</div>
@@ -613,6 +984,7 @@ app.get("/recherche", async (req, res) => {
               </div>
               <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
                 ${renderKycBadge()}
+                ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
                 ${typeBadge}
               </div>
             </div>
@@ -629,8 +1001,8 @@ app.get("/recherche", async (req, res) => {
         `;
       }).join("");
 
-      prosSection = `<div class="pros-grid">${prosCards}</div>`;
-      paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city });
+      prosSection = `<div class="pros-grid" id="pros-grid">${prosCards}</div>`;
+      paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city, category, sort });
       prosDataJS = JSON.stringify(result.rows.map(p => ({ id: p.id, lat: p.latitude, lon: p.longitude })).filter(p => p.lat && p.lon));
     }
 
@@ -640,15 +1012,24 @@ app.get("/recherche", async (req, res) => {
         <a href="/" style="color: #6b7280; font-size: 14px; text-decoration: none;">← Retour à l'accueil</a>
       </div>
       
-      <section class="card" style="max-width: 800px; margin: 0 auto 30px auto; background: #f8fafc;">
-        <form action="/recherche" method="GET" style="display: flex; flex-direction: column; gap: 12px;">
-          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon, Coiffeur...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+      <section class="card" style="max-width: 900px; margin: 0 auto 30px auto; background: #f8fafc;">
+        <form action="/recherche" method="GET" style="display: flex; flex-wrap: wrap; gap: 12px;">
+          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
           <datalist id="professions-list">${Object.entries(professionsByCategory).map(([cat, names]) => names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")).join("")}</datalist>
           
-          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou, Parakou...)" autocomplete="off" style="width: 100%; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
           <datalist id="cities-list">${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}</datalist>
+
+          <!-- ✅ BLOC B : Menu de tri -->
+          <select name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
+            <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
+            <option value="rating" ${sort === 'rating' ? 'selected' : ''}>Mieux notés</option>
+            <option value="distance" ${sort === 'distance' ? 'selected' : ''}>Plus proches</option>
+          </select>
+
+          <button type="submit" style="flex: 0 0 120px; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Filtrer</button>
           
-          <button type="submit" style="width: 100%; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Rechercher</button>
+          ${category ? `<input type="hidden" name="category" value="${escapeHtml(category)}"><div style="width: 100%; font-size: 14px; color: #1e40af; margin-top: 8px;">Filtre actif : Catégorie <strong>${escapeHtml(category)}</strong> <a href="/recherche" style="color: #ef4444; margin-left: 10px;">(Effacer)</a></div>` : ""}
         </form>
       </section>
       
@@ -657,12 +1038,14 @@ app.get("/recherche", async (req, res) => {
         ${prosSection} ${paginationHtml}
       ` : `
         <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 20px; border: 1px dashed #cbd5e0;">
-          <p style="font-size: 18px; color: #718096; margin: 0;">👆 Entrez un métier ou une ville pour voir les professionnels.</p>
+          <p style="font-size: 18px; color: #718096; margin: 0;">👆 Entrez un métier, une ville ou choisissez une catégorie.</p>
         </div>
       `}
 
       <script>
         const prosGeo = ${prosDataJS};
+        const sortMode = "${sort}";
+        
         if (prosGeo.length > 0 && navigator.geolocation) {
           navigator.geolocation.getCurrentPosition((pos) => {
             const cLat = pos.coords.latitude, cLon = pos.coords.longitude;
@@ -672,10 +1055,27 @@ app.get("/recherche", async (req, res) => {
               const dLon = (p.lon - cLon) * Math.PI / 180;
               const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(cLat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
               const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-              const distance = (R * c).toFixed(1);
+              p.distance = (R * c);
+              
               const el = document.getElementById('dist-' + p.id);
-              if (el) el.innerHTML = '📍 À ' + distance + ' km';
+              if (el) el.innerHTML = '📍 À ' + p.distance.toFixed(1) + ' km';
             });
+
+            // ✅ BLOC B : Tri par distance via Javascript
+            if (sortMode === "distance") {
+              const grid = document.getElementById('pros-grid');
+              if (grid) {
+                const cards = Array.from(grid.children);
+                cards.sort((a, b) => {
+                  const idA = a.querySelector('[id^="dist-"]').id.replace('dist-', '');
+                  const idB = b.querySelector('[id^="dist-"]').id.replace('dist-', '');
+                  const distA = prosGeo.find(p => p.id == idA)?.distance || 99999;
+                  const distB = prosGeo.find(p => p.id == idB)?.distance || 99999;
+                  return distA - distB;
+                });
+                cards.forEach(card => grid.appendChild(card));
+              }
+            }
           });
         }
       </script>
@@ -684,20 +1084,119 @@ app.get("/recherche", async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
 });
 
+// ✅ BLOC C : API de tracking (vues / clics)
+app.post("/api/track/:id/:type", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const type = req.params.type;
+    if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
+    let col = "";
+    if (type === "view") col = "views";
+    else if (type === "phone") col = "phone_clicks";
+    else if (type === "wa") col = "wa_clicks";
+    else return res.json({ ok: false });
+
+    await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1`, [id]);
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false }); }
+});
+
+// ✅ BLOC D : API Favoris
+app.post("/api/favorite/:id", async (req, res) => {
+  try {
+    const visitorId = getOrCreateVisitorId(req, res);
+    const proId = Number(req.params.id);
+    if (!Number.isSafeInteger(proId) || proId < 1) return res.json({ ok: false });
+
+    const check = await pool.query("SELECT 1 FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+    if (check.rows.length) {
+      await pool.query("DELETE FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+      res.json({ ok: true, isFav: false });
+    } else {
+      await pool.query("INSERT INTO client_favorites (visitor_id, pro_id) VALUES ($1, $2)", [visitorId, proId]);
+      res.json({ ok: true, isFav: true });
+    }
+  } catch (e) { res.json({ ok: false }); }
+});
+
+// ✅ BLOC D : Page Mes Favoris
+app.get("/mes-favoris", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const visitorId = getOrCreateVisitorId(req, res);
+  
+  const result = await pool.query(`
+    SELECT p.*, 
+    (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+    (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating 
+    FROM professional_applications p 
+    JOIN client_favorites cf ON p.id = cf.pro_id 
+    WHERE cf.visitor_id = $1 AND p.status = 'approved'
+    ORDER BY cf.created_at DESC
+  `, [visitorId]);
+
+  const cards = result.rows.map(person => {
+    const displayName = getDisplayName(person);
+    return `
+      <article class="pro-card" style="border-left: 6px solid #ef4444;">
+        <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </div>
+        <div class="pro-card-top">
+          <div>
+            <div class="pro-name">${escapeHtml(displayName)}</div>
+            <div class="pro-meta">${escapeHtml(person.profession)}</div>
+            <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
+          </div>
+        </div>
+        <div class="pro-actions">
+          <a href="/pro/${person.id}" class="button pro-profile-link">Voir le profil →</a>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  res.send(page("Mes Favoris", `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1>❤️ Mes Favoris</h1>
+      <a href="/" style="color: #6b7280; font-size: 14px;">← Retour à l'accueil</a>
+    </div>
+    <div class="pros-grid">
+      ${cards || `<div class="card"><p style="text-align:center;">Vous n'avez pas encore de favoris. Cliquez sur le cœur d'un professionnel pour le sauvegarder ici.</p></div>`}
+    </div>
+  `, proConnected));
+});
+
 app.get("/pro/:id", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
+    const visitorId = getOrCreateVisitorId(req, res);
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+
+    // ✅ BLOC C : Tracker la vue
+    pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
 
     const result = await pool.query(`
       SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id]);
     if (!result.rows.length) return res.redirect(303, "/");
     const person = result.rows[0];
 
+    // ✅ BLOC D : Récupération des pros similaires
+    const similarResult = await pool.query(`
+      SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating
+      FROM professional_applications p
+      WHERE p.status = 'approved' AND p.id != $1 AND (p.city = $2 OR p.profession = $3)
+      ORDER BY RANDOM() LIMIT 3
+    `, [id, person.city, person.profession]);
+    const similarHtml = similarResult.rows.map(sim => `
+      <a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;">
+        <div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div>
+        <div style="font-size:13px; color:#6b7280; margin-top:4px;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div>
+      </a>
+    `).join("");
+
     const displayName = getDisplayName(person);
     
-    // ✅ PATCH A3.3 — WhatsApp robuste
     let rawPhone = (person.phone || "").replace(/\D/g, "");
     if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
     if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
@@ -706,19 +1205,21 @@ app.get("/pro/:id", async (req, res) => {
 
     const reviewsCount = Number(person.reviews_count || 0);
     const avgRating = Number(person.avg_rating || 0);
+    const isTopPro = avgRating >= 4.5 && reviewsCount >= 10; // ✅ BLOC D
 
-    const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
+    const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, pro_response, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
     const reviews = reviewsResult.rows;
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
     const shareText = encodeURIComponent("Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi");
     const shareUrl = encodeURIComponent(`${baseUrl}/pro/${person.id}`);
 
+    // ✅ BLOC C : Boutons avec tracking
     let contactButtons = "";
     if (person.phone_public && phoneClean) {
       contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-        <a class="button" href="tel:${escapeHtml(phoneClean)}" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
-        ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
+        <a class="button" href="tel:${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
+        ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
       </div>
       <div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; font-size: 14px;">📤 Partager ce profil</a></div>`;
     } else {
@@ -726,7 +1227,23 @@ app.get("/pro/:id", async (req, res) => {
     }
 
     let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fde68a;"><div style="font-size: 36px; font-weight: 800; color: #b45309;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #f59e0b;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #92400e;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
-    const reviewsHtml = reviews.map((rev) => `<div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 12px;"><div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;"><div style="font-weight: 700; color: #111827;">${escapeHtml(rev.author_name)}</div><div style="color: #f59e0b; font-size: 14px;">${renderStars(rev.rating)}</div></div><div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>${rev.comment ? `<div style="color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}</div>`).join("");
+    
+    // ✅ BLOC C : Affichage de la réponse du pro
+    const reviewsHtml = reviews.map((rev) => `
+      <div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 700; color: #111827;">${escapeHtml(rev.author_name)}</div>
+          <div style="color: #f59e0b; font-size: 14px;">${renderStars(rev.rating)}</div>
+        </div>
+        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>
+        ${rev.comment ? `<div style="color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}
+        
+        ${rev.pro_response ? `
+        <div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px; color: #065f46;">
+          <strong>Réponse du professionnel :</strong><br>${escapeHtml(rev.pro_response).replace(/\n/g, "<br>")}
+        </div>` : ""}
+      </div>
+    `).join("");
 
     const photosGalerie = [person.photo_galerie_1, person.photo_galerie_2, person.photo_galerie_3].filter(url => url !== null && url !== "");
     let galerieHtml = "";
@@ -734,18 +1251,44 @@ app.get("/pro/:id", async (req, res) => {
       galerieHtml = `<div class="card" style="padding: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2><div class="gallery-grid">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
     }
 
-    const openStatusBadge = person.type_lieu === 'fixe' ? `
+    // ✅ BLOC B : Badge ouvert corrigé (uniquement si ouvert)
+    const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `
       <div style="margin-bottom: 16px;">
-        <span class="badge" style="background:${person.est_ouvert ? '#d1fae5' : '#fee2e2'}; color:${person.est_ouvert ? '#065f46' : '#991b1b'}; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
-          ${person.est_ouvert ? '🟢 Ouvert actuellement' : '🔴 Fermé actuellement'}
+        <span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+          🟢 Ouvert actuellement
         </span>
       </div>
     ` : "";
 
+    // ✅ BLOC C : Bannière congés
+    const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
+    const leaveBadge = isOnLeave ? `<div class="alert alert-warning" style="margin-bottom:16px; text-align:center; font-size:14px;">🌴 Ce professionnel est actuellement indisponible jusqu'au ${new Date(person.unavailable_until).toLocaleDateString("fr-FR")}.</div>` : "";
+
+    // ✅ BLOC C : Horaires 7j/7
+    let horairesHtml = "";
+    if (person.horaires_json) {
+      const h = JSON.parse(person.horaires_json);
+      const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+      let rows = "";
+      jours.forEach(j => {
+        if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
+        else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
+      });
+      horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
+    } else if (person.heure_ouverture || person.heure_fermeture) {
+      horairesHtml = `<p style="font-size: 14px; margin-bottom: 16px; color: #1e40af; font-weight: 600;">🕒 Horaires : ${person.heure_ouverture || '?'} - ${person.heure_fermeture || '?'}</p>`;
+    }
+
     const content = `
       <div style="max-width: 800px; margin: 0 auto;">
-        <div class="card" style="text-align: center; padding: 32px 24px;">
+        ${leaveBadge}
+        <div class="card" style="text-align: center; padding: 32px 24px; position:relative;">
+          <!-- ✅ BLOC D : Bouton Favori -->
+          <div class="favorite-btn" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
           <div style="margin-bottom: 16px;">${renderKycBadge("lg")}</div>
+          ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
           ${openStatusBadge}
           <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
@@ -766,13 +1309,9 @@ app.get("/pro/:id", async (req, res) => {
           <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
             <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3>
             <p style="font-size: 14px; margin-bottom: 8px; color: #1e40af; font-weight: 500;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Adresse non spécifiée"}</p>
-            
-            ${person.heure_ouverture || person.heure_fermeture ? `
-              <p style="font-size: 14px; margin-bottom: 16px; color: #1e40af; font-weight: 600;">🕒 Horaires : ${person.heure_ouverture || '?'} - ${person.heure_fermeture || '?'}</p>
-            ` : ""}
-
+            ${horairesHtml}
             ${person.latitude && person.longitude ? `
-              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px;">🗺️ Voir l'itinéraire sur Google Maps</a>
+              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
             ` : ""}
           </div>
           ` : ""}
@@ -787,7 +1326,20 @@ app.get("/pro/:id", async (req, res) => {
           ${ratingSummary}${reviewsHtml || `<p style="color: #6b7280; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
           <div style="text-align: center; margin-top: 24px;"><a class="button warning" href="/pro/${person.id}/avis" style="width: 100%; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
         </div>
-        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;"><a href="/recherche" style="color: #6b7280; font-size: 14px; text-decoration: underline;">← Retour à la recherche</a></div>
+
+        <!-- ✅ BLOC D : Pros similaires -->
+        ${similarHtml ? `
+        <div style="margin-top: 24px;">
+          <h2 style="font-size: 18px; margin-bottom: 16px;">Vous aimerez aussi...</h2>
+          ${similarHtml}
+        </div>
+        ` : ""}
+
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;">
+          <a href="/recherche" style="color: #6b7280; font-size: 14px; text-decoration: underline; display: block; margin-bottom: 16px;">← Retour à la recherche</a>
+          <!-- ✅ BLOC B : Signaler -->
+          <a href="/contact?report=${person.id}" style="color: #ef4444; font-size: 13px; text-decoration: none; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 20px; background: #fef2f2;">⚠️ Signaler ce professionnel</a>
+        </div>
       </div>
     `;
     res.send(page(displayName, content, proConnected));
@@ -862,12 +1414,25 @@ app.get("/devenir-professionnel", async (req, res) => {
     for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
     const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}" class="prof-group">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
 
+    // ✅ BLOC C : Grille des horaires 7j/7 pour l'inscription
+    const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+    let horairesHtml = "";
+    jours.forEach(j => {
+      horairesHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px;">${j}</div>
+        <input type="time" name="h_${j}_o" style="margin:0; width:110px; padding:8px;">
+        <span>à</span>
+        <input type="time" name="h_${j}_f" style="margin:0; width:110px; padding:8px;">
+        <label style="margin:0; display:flex; align-items:center; gap:4px; font-size:12px;"><input type="checkbox" name="h_${j}_ferme" value="yes" style="margin:0;"> Fermé</label>
+      </div>`;
+    });
+
     const content = `
       <section class="card" style="max-width: 800px; margin: 0 auto;">
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
         ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
-        <!-- ✅ PATCH A2.1 — fond gris doux sur le formulaire -->
+        <!-- ✅ BLOC B : Fond gris doux -->
         <form action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
@@ -911,20 +1476,14 @@ app.get("/devenir-professionnel", async (req, res) => {
             <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
           </div>
 
-          <!-- ✅ PATCH A2.2 — ajout des horaires -->
           <div id="localisation-block" class="hidden">
             <label>Adresse exacte / Point de repère</label>
             <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-              <div>
-                <label>Heure d'ouverture</label>
-                <input type="time" name="heure_ouverture" style="margin-bottom: 10px;">
-              </div>
-              <div>
-                <label>Heure de fermeture</label>
-                <input type="time" name="heure_fermeture" style="margin-bottom: 10px;">
-              </div>
+            <!-- ✅ BLOC C : Grille des horaires -->
+            <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e5e7eb;">
+              <h4 style="font-size:14px; margin-bottom:12px; color:#374151;">Horaires d'ouverture</h4>
+              ${horairesHtml}
             </div>
 
             <input type="hidden" name="latitude" id="latitude">
@@ -971,11 +1530,11 @@ app.get("/devenir-professionnel", async (req, res) => {
           }
         }
 
-        // ✅ PATCH B2 — on ne révèle plus le bloc "Autre quartier" par erreur
+        // ✅ BLOC B : Correction du bug du quartier "Autre"
         citySelect.addEventListener('change', async function() { 
           const city = citySelect.value; 
           neighborhoodSelect.innerHTML = ''; 
-          neighborhoodOtherBlock.classList.add('hidden');
+          neighborhoodOtherBlock.classList.add('hidden'); // On cache par défaut
           if (!city) { neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; return; } 
           neighborhoodSelect.innerHTML = '<option value="">Chargement...</option>'; 
           try { 
@@ -988,10 +1547,12 @@ app.get("/devenir-professionnel", async (req, res) => {
             const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; neighborhoodSelect.appendChild(otherOpt); 
           } catch (e) { neighborhoodSelect.innerHTML = '<option value="">Erreur</option>'; } 
         });
+        
         neighborhoodSelect.addEventListener('change', function() { 
           if (neighborhoodSelect.value === '__AUTRE__') neighborhoodOtherBlock.classList.remove('hidden'); 
           else neighborhoodOtherBlock.classList.add('hidden');
         });
+        
         professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
         whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
         emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
@@ -1031,7 +1592,6 @@ app.get("/api/neighborhoods", async (req, res) => {
   } catch (error) { res.status(500).json({ neighborhoods: [] }); }
 });
 
-// ✅ PATCH A2.3 — déstructuration + INSERT avec heure_ouverture / heure_fermeture
 app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
   const ip = req.ip || "unknown"; const now = Date.now();
   const attempts = contactAttempts.get(`cand_${ip}`) || { count: 0, startedAt: now };
@@ -1039,7 +1599,7 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
   if (attempts.count >= 3) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p></section>", null));
   attempts.count++; contactAttempts.set(`cand_${ip}`, attempts);
 
-  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email, type_lieu, adresse_exacte, latitude, longitude, heure_ouverture, heure_fermeture } = req.body;
+  const { full_name, company_name, phone, npi, phone_public, city, neighborhood, neighborhood_other, profession, profession_other, experience, service_description, service_area, availability, gdpr_consent, contact_preference, whatsapp_number, contact_email, type_lieu, adresse_exacte, latitude, longitude } = req.body;
 
   if (gdpr_consent !== "yes") return res.status(400).send(page("Erreur", "<h2>Consentement RGPD obligatoire.</h2>", null));
 
@@ -1083,6 +1643,16 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
   finalProfession = String(finalProfession).trim().slice(0, 150);
   if (finalNeighborhood) finalNeighborhood = String(finalNeighborhood).trim().slice(0, 150);
 
+  // ✅ BLOC C : Construction du JSON des horaires 7j/7
+  const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  let horairesObj = {};
+  jours.forEach(j => {
+    if (req.body[`h_${j}_ferme`] === "yes") horairesObj[j] = null;
+    else if (req.body[`h_${j}_o`] && req.body[`h_${j}_f`]) horairesObj[j] = { o: req.body[`h_${j}_o`], f: req.body[`h_${j}_f`] };
+    else horairesObj[j] = null;
+  });
+  const horairesJson = JSON.stringify(horairesObj);
+
   const uploadedUrls = [];
   try {
     const timestamp = Date.now();
@@ -1095,9 +1665,9 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
     const finalStatus = BYPASS_PAYMENT ? 'pending' : 'payment_pending';
     const finalPaymentStatus = BYPASS_PAYMENT ? 'paid' : 'unpaid';
 
-    // ✅ PATCH A2.3 — INSERT avec heure_ouverture ($27) + heure_fermeture ($28) + latitude/longitude sécurisés
-    await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude, heure_ouverture, heure_fermeture) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28) RETURNING id`,
-      [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude || null, longitude || null, heure_ouverture || null, heure_fermeture || null]);
+    // ✅ BLOC C : Utilisation de horaires_json dans l'INSERT
+    await pool.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude, horaires_json) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`,
+      [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson]);
 
     if (BYPASS_PAYMENT) {
       res.send(page("Succes", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#10b981;">Succès !</h1><p>Votre candidature a bien été enregistrée et est en attente d'examen.</p><div class="alert alert-info" style="margin-top:20px;"><strong>Votre code de suivi est : <span style="font-size:24px; font-family:monospace; font-weight:bold;">${escapeHtml(trackingCode)}</span></strong></div><a class="button" href="/suivi-dossier" style="margin-top:20px;">Suivre mon dossier</a></section>`, null));
@@ -1239,11 +1809,15 @@ app.get("/mon-espace-pro", async (req, res) => {
     return res.send(page("Espace pro", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align: center;">Espace pro</h1><form action="/mon-espace-pro/login" method="POST"><label>Code pro</label><input name="pro_code" required maxlength="10" placeholder="TM12345" style="text-transform:uppercase; text-align:center; font-size:20px;"><button type="submit" style="width: 100%;">Se connecter</button></form><div style="text-align:center; margin-top:20px; font-size:14px;"><p><a href="/suivi-dossier">Suivre mon dossier</a></p><p><a href="/mon-espace-pro/reinitialiser" style="color:#ef4444;">🔐 Code perdu</a></p></div></section>`, null));
   }
 
-  let offers = [], gdprRequests = [], myReviews = [];
+  let offers = [], gdprRequests = [], myReviews = [], stats = { views: 0, phone: 0, wa: 0 };
   try {
     offers = (await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id])).rows;
     gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
     myReviews = (await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
+    
+    // ✅ BLOC C : Récupération des stats
+    const statsRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proConnected.pro.id]);
+    if (statsRes.rows.length) { stats.views = Number(statsRes.rows[0].v || 0); stats.phone = Number(statsRes.rows[0].p || 0); stats.wa = Number(statsRes.rows[0].w || 0); }
   } catch (error) { return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected)); }
 
   const now = new Date();
@@ -1254,8 +1828,35 @@ app.get("/mon-espace-pro", async (req, res) => {
   }).join("");
 
   const gdprHtml = gdprRequests.map((req) => `<article class="card" style="padding:16px; margin-bottom:10px;"><p><span class="badge badge-${req.status}">${GDPR_STATUS_LABELS[req.status]}</span> <strong>${GDPR_TYPE_LABELS[req.request_type]}</strong></p></article>`).join("");
-  const myReviewsHtml = myReviews.map((rev) => `<div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:12px; border:1px solid #e5e7eb;"><div style="display:flex; justify-content:space-between; margin-bottom:8px;"><div style="font-weight:700;">${escapeHtml(rev.author_name)}</div><div><span class="badge badge-${rev.status}">${REVIEW_STATUS_LABELS[rev.status]}</span></div></div><div style="color:#f59e0b;">${renderStars(rev.rating)}</div>${rev.comment ? `<p style="margin-top:8px; font-size:14px; color:#4b5563;">${escapeHtml(rev.comment)}</p>` : ""}</div>`).join("");
+  
+  // ✅ BLOC C : Formulaire de réponse aux avis
+  const myReviewsHtml = myReviews.map((rev) => `
+    <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:12px; border:1px solid #e5e7eb;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <div style="font-weight:700;">${escapeHtml(rev.author_name)}</div>
+        <div><span class="badge badge-${rev.status}">${REVIEW_STATUS_LABELS[rev.status]}</span></div>
+      </div>
+      <div style="color:#f59e0b; margin-bottom:8px;">${renderStars(rev.rating)}</div>
+      ${rev.comment ? `<p style="margin-bottom:12px; font-size:14px; color:#4b5563;">"${escapeHtml(rev.comment)}"</p>` : ""}
+      
+      ${rev.pro_response ? `
+        <div style="background:white; padding:12px; border-left:3px solid #10b981; font-size:13px; color:#065f46; border-radius:4px;">
+          <strong>Votre réponse :</strong><br>${escapeHtml(rev.pro_response).replace(/\n/g, "<br>")}
+        </div>
+      ` : `
+        <form action="/mon-espace-pro/avis/${rev.id}/repondre" method="POST" style="margin-top:8px;">
+          <textarea name="response" placeholder="Répondre à cet avis..." required maxlength="2000" rows="2" style="width:100%; padding:8px; border-radius:8px; border:1px solid #cbd5e0; font-size:13px; margin-bottom:8px;"></textarea>
+          <button type="submit" class="secondary" style="padding:6px 12px; font-size:12px; margin:0;">Répondre</button>
+        </form>
+      `}
+    </div>
+  `).join("");
+
   const phoneStatus = proConnected.pro.phone_public ? `<span class="badge badge-approved">Public</span>` : `<span class="badge badge-closed">Privé</span>`;
+  
+  // ✅ BLOC C : Statut congés
+  const isOnLeave = proConnected.pro.unavailable_until && new Date(proConnected.pro.unavailable_until) > new Date();
+  const leaveStatus = isOnLeave ? `<span class="badge badge-rejected">En congés jusqu'au ${new Date(proConnected.pro.unavailable_until).toLocaleDateString("fr-FR")}</span>` : `<span class="badge badge-approved">Actif</span>`;
 
   res.send(page("Espace pro", `
     <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
@@ -1278,10 +1879,28 @@ app.get("/mon-espace-pro", async (req, res) => {
         <p style="margin-bottom:6px;"><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p>
         <p style="margin-bottom:6px;"><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p>
         <p style="margin-bottom:6px;"><span class="label">Visibilite :</span> ${phoneStatus}</p>
-      
+        <p style="margin-bottom:6px;"><span class="label">Statut :</span> ${leaveStatus}</p>
+
+        <!-- ✅ BLOC C : Bloc statistiques -->
+        <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <p style="font-weight: bold; margin-bottom: 12px; font-size:14px; color:#1e40af;">📊 Statistiques (30 derniers jours)</p>
+          <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>Vues du profil :</span> <strong>${stats.views}</strong></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>Clics "Appeler" :</span> <strong>${stats.phone}</strong></div>
+          <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Clics "WhatsApp" :</span> <strong>${stats.wa}</strong></div>
+        </div>
+
+        <!-- ✅ BLOC C : Bloc congés -->
+        <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
+          <form action="/mon-espace-pro/conges" method="POST" style="margin:0;">
+            <label style="margin-top:0; font-size:12px;">M'absent jusqu'au :</label>
+            <input type="date" name="unavailable_until" value="${proConnected.pro.unavailable_until ? new Date(proConnected.pro.unavailable_until).toISOString().split('T')[0] : ''}" style="padding:8px; margin-bottom:8px;">
+            <button type="submit" class="warning" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Enregistrer congés</button>
+          </form>
+        </div>
+
       ${proConnected.pro.type_lieu === 'fixe' ? `
-      <div style="margin-top: 20px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
-        <p style="margin-bottom: 10px; font-weight: bold;">Statut de votre boutique :</p>
+      <div style="margin-top: 20px; padding: 16px; background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe;">
+        <p style="margin-bottom: 10px; font-weight: bold; font-size:14px; color:#1e40af;">Statut de la boutique :</p>
         <form action="/mon-espace-pro/toggle-status" method="POST" style="margin:0;">
           <button type="submit" class="${proConnected.pro.est_ouvert ? 'success' : 'danger'}" style="width: 100%; border-radius:8px; padding:10px;">
             ${proConnected.pro.est_ouvert ? '🟢 Ouvert (Cliquez pour fermer)' : '🔴 Fermé (Cliquez pour ouvrir)'}
@@ -1329,7 +1948,28 @@ app.post("/mon-espace-pro/toggle-status", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
-// ✅ PATCH A4 + B4 — Modifier profil avec horaires + gestion "__AUTRE__" quartier
+// ✅ BLOC C : Route pour gérer les congés
+app.post("/mon-espace-pro/conges", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const date = req.body.unavailable_until;
+  const val = date ? new Date(date) : null;
+  await pool.query(`UPDATE professional_applications SET unavailable_until = $1 WHERE id = $2`, [val, proConnected.pro.id]);
+  res.redirect(303, "/mon-espace-pro");
+});
+
+// ✅ BLOC C : Route pour répondre aux avis
+app.post("/mon-espace-pro/avis/:id/repondre", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  const response = String(req.body.response || "").trim().slice(0, 2000);
+  if (Number.isSafeInteger(id) && id > 0 && response) {
+    await pool.query(`UPDATE reviews SET pro_response = $1, pro_response_at = NOW() WHERE id = $2 AND pro_id = $3`, [response, id, proConnected.pro.id]);
+  }
+  res.redirect(303, "/mon-espace-pro");
+});
+
 app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -1350,10 +1990,26 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
       }
     }
   }
-  // Si le quartier actuel n'est pas dans la liste officielle (saisi manuellement), on l'ajoute en tête
   if (proConnected.pro.neighborhood && !currentNeighborhoodInList) {
     neighborhoodOptions = `<option value="${escapeHtml(proConnected.pro.neighborhood)}" selected>${escapeHtml(proConnected.pro.neighborhood)}</option>` + neighborhoodOptions;
   }
+
+  // ✅ BLOC C : Grille horaires 7j/7
+  const h = proConnected.pro.horaires_json ? JSON.parse(proConnected.pro.horaires_json) : {};
+  const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  let horairesHtml = "";
+  jours.forEach(j => {
+    const o = h[j]?.o || "";
+    const f = h[j]?.f || "";
+    const ferme = h[j] === null;
+    horairesHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px;">${j}</div>
+      <input type="time" name="h_${j}_o" value="${o}" style="margin:0; width:110px; padding:8px;">
+      <span>à</span>
+      <input type="time" name="h_${j}_f" value="${f}" style="margin:0; width:110px; padding:8px;">
+      <label style="margin:0; display:flex; align-items:center; gap:4px; font-size:12px;"><input type="checkbox" name="h_${j}_ferme" ${ferme ? 'checked' : ''} value="yes" style="margin:0;"> Fermé</label>
+    </div>`;
+  });
 
   res.send(page("Modifier Profil", `
     <section class="card" style="max-width: 600px; margin: 40px auto;">
@@ -1389,16 +2045,9 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
           <label>Adresse exacte / Point de repère</label>
           <input name="adresse_exacte" value="${escapeHtml(proConnected.pro.adresse_exacte || '')}" maxlength="200" placeholder="Ex: Carrefour Ste Rita...">
           
-          <!-- ✅ PATCH A4 — Horaires -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-            <div>
-              <label>Heure d'ouverture</label>
-              <input type="time" name="heure_ouverture" value="${proConnected.pro.heure_ouverture || ''}">
-            </div>
-            <div>
-              <label>Heure de fermeture</label>
-              <input type="time" name="heure_fermeture" value="${proConnected.pro.heure_fermeture || ''}">
-            </div>
+          <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e5e7eb;">
+            <h4 style="font-size:14px; margin-bottom:12px; color:#374151;">Horaires d'ouverture</h4>
+            ${horairesHtml}
           </div>
 
           <input type="hidden" name="latitude" id="latitude-edit" value="${proConnected.pro.latitude || ''}">
@@ -1466,12 +2115,11 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
   `, proConnected));
 });
 
-// ✅ PATCH A4 + B4 — UPDATE avec horaires + gestion "__AUTRE__"
 app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  const { city, neighborhood, neighborhood_other, type_lieu, adresse_exacte, latitude, longitude, heure_ouverture, heure_fermeture } = req.body;
+  const { city, neighborhood, neighborhood_other, type_lieu, adresse_exacte, latitude, longitude } = req.body;
   
   let finalNeighborhood = neighborhood;
   if (neighborhood === "__AUTRE__") {
@@ -1479,13 +2127,23 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
     finalNeighborhood = custom || null;
   }
 
+  // ✅ BLOC C : Construction du JSON des horaires
+  const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  let horairesObj = {};
+  jours.forEach(j => {
+    if (req.body[`h_${j}_ferme`] === "yes") horairesObj[j] = null;
+    else if (req.body[`h_${j}_o`] && req.body[`h_${j}_f`]) horairesObj[j] = { o: req.body[`h_${j}_o`], f: req.body[`h_${j}_f`] };
+    else horairesObj[j] = null;
+  });
+  const horairesJson = JSON.stringify(horairesObj);
+
   try {
     await pool.query(
       `UPDATE professional_applications 
        SET city = $1, neighborhood = $2, type_lieu = $3, adresse_exacte = $4, 
-           latitude = $5, longitude = $6, heure_ouverture = $7, heure_fermeture = $8 
-       WHERE id = $9`,
-      [city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, heure_ouverture || null, heure_fermeture || null, proConnected.pro.id]
+           latitude = $5, longitude = $6, horaires_json = $7 
+       WHERE id = $8`,
+      [city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson, proConnected.pro.id]
     );
     res.redirect(303, "/mon-espace-pro");
   } catch (e) {
@@ -1620,7 +2278,7 @@ app.post("/mon-espace-pro/offre/:id/close", async (req, res) => {
   res.redirect(303, "/mon-espace-pro"); 
 });
 
-// ✅ PATCH B3 — reopen sécurisé (uniquement depuis le statut "closed")
+// ✅ BLOC C : Reopen sécurisé
 app.post("/mon-espace-pro/offre/:id/reopen", async (req, res) => { 
   const proConnected = await getConnectedPro(req); 
   if (proConnected) await pool.query(`UPDATE job_offers SET status = 'approved', expires_at = NOW() + INTERVAL '${OFFER_DURATION_DAYS} days' WHERE id = $1 AND pro_id = $2 AND status = 'closed'`, [Number(req.params.id), proConnected.pro.id]); 
@@ -1680,7 +2338,8 @@ async function adminMenu(current, csrf) {
     { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
     { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, 
     { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
-    { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount }
+    { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount },
+    { href: "/admin/blog", label: "📝 Blog", badge: 0 } // ✅ BLOC E
   ];
   return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
@@ -1873,7 +2532,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
     }).join("");
 
     const menu = await adminMenu("/admin/candidatures", csrf); 
-    // ✅ PATCH B1 — pagination corrigée (baseUrl + queryParams séparés)
+    // ✅ BLOC B : Correction de la pagination (plus de double ?)
     const paginationHtml = renderPagination(currentPage, totalPages, "/admin/candidatures", filter !== 'all' ? { filter } : {});
     const filterBar = `<div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;"><a class="button ${filter === 'all' ? '' : 'secondary'}" href="/admin/candidatures" style="padding:8px 16px; font-size:13px;">📋 Tout</a><a class="button ${filter === 'unpaid' ? '' : 'secondary'}" href="/admin/candidatures?filter=unpaid" style="padding:8px 16px; font-size:13px;">⏳ Impayés</a><a class="button ${filter === 'pending' ? '' : 'secondary'}" href="/admin/candidatures?filter=pending" style="padding:8px 16px; font-size:13px;">📥 En attente</a><a class="button ${filter === 'approved' ? '' : 'secondary'}" href="/admin/candidatures?filter=approved" style="padding:8px 16px; font-size:13px;">✅ Approuvés</a></div>`;
     
@@ -1881,7 +2540,7 @@ app.get("/admin/candidatures", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ PATCH B5 — validation id
+// ✅ BLOC B : Validation de l'ID
 app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
   try {
     const id = Number(req.params.id), status = req.body.status, reason = req.body.rejection_reason || null;
@@ -1915,12 +2574,11 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
   } catch (e) { res.redirect(303, "/admin/candidatures"); }
 });
 
-// ✅ PATCH B5 + C4 — validation id + transaction SQL (tout ou rien)
+// ✅ BLOC A & B : Validation de l'ID + Transaction SQL pour suppression complète
 app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
   
-  // On récupère les URLs Cloudinary AVANT la transaction (pour suppression externe)
   let cloudinaryUrls = [];
   try {
     const proResult = await pool.query(`SELECT full_name, phone, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE id = $1`, [id]);
@@ -1928,7 +2586,6 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
     const p = proResult.rows[0];
     cloudinaryUrls = [p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url, p.photo_galerie_1, p.photo_galerie_2, p.photo_galerie_3].filter(u => u);
     
-    // ✅ Transaction pour que toutes les DELETE soient atomiques
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -1945,7 +2602,6 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
       client.release();
     }
     
-    // Suppression Cloudinary (hors transaction, best-effort)
     await Promise.allSettled(cloudinaryUrls.map(url => deleteFromCloudinary(url)));
     await logAdminAction("delete_application", "pro", id, `Nom: ${p.full_name} | Téléphone: ${p.phone}`);
     res.redirect(303, "/admin/candidatures");
@@ -1959,13 +2615,38 @@ app.get("/admin/avis", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
-    const reviews = result.rows.map(r => `<article class="card" style="margin-bottom:20px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;"><div><h2 style="margin-bottom:4px; font-size:18px;">Avis de ${escapeHtml(r.author_name)}</h2><p class="muted" style="font-size:14px;">Concernant : <strong>${escapeHtml(r.pro_name || "Inconnu")}</strong></p></div><span class="badge badge-${r.status}">${REVIEW_STATUS_LABELS[r.status]}</span></div><div class="review-stars" style="margin:10px 0; font-size:24px; color:#f59e0b;">${renderStars(r.rating)}</div><p style="background:#f9fafb; padding:16px; border-radius:12px; font-style:italic;">"${escapeHtml(r.comment || "Aucun commentaire")}"</p><div class="actions" style="margin-top:16px;"><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="approved"><button class="success" style="padding:8px 24px; font-size:14px;">Approuver</button></form><form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><input type="hidden" name="status" value="rejected"><button class="danger" style="padding:8px 24px; font-size:14px;">Rejeter</button></form></div></article>`).join("");
+    const reviews = result.rows.map(r => `
+      <article class="card" style="margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+          <div><h2 style="margin-bottom:4px; font-size:18px;">Avis de ${escapeHtml(r.author_name)}</h2><p class="muted" style="font-size:14px;">Concernant : <strong>${escapeHtml(r.pro_name || "Inconnu")}</strong></p></div>
+          <span class="badge badge-${r.status}">${REVIEW_STATUS_LABELS[r.status]}</span>
+        </div>
+        <div class="review-stars" style="margin:10px 0; font-size:24px; color:#f59e0b;">${renderStars(r.rating)}</div>
+        <p style="background:#f9fafb; padding:16px; border-radius:12px; font-style:italic;">"${escapeHtml(r.comment || "Aucun commentaire")}"</p>
+        
+        <!-- ✅ BLOC C : Affichage de la réponse du pro -->
+        ${r.pro_response ? `<div style="margin-top:12px; padding:12px; background:#eff6ff; border-left:3px solid #3b82f6; border-radius:6px; font-size:13px;"><strong>Réponse du pro :</strong><br>${escapeHtml(r.pro_response)}</div>` : ""}
+        
+        <div class="actions" style="margin-top:16px;">
+          <form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <input type="hidden" name="status" value="approved">
+            <button class="success" style="padding:8px 24px; font-size:14px;">Approuver</button>
+          </form>
+          <form action="/admin/avis/${r.id}/statut" method="POST" style="display:inline">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <input type="hidden" name="status" value="rejected">
+            <button class="danger" style="padding:8px 24px; font-size:14px;">Rejeter</button>
+          </form>
+        </div>
+      </article>
+    `).join("");
     const menu = await adminMenu("/admin/avis", csrf);
     res.send(page("Avis", `<h1 style="text-align:center; margin-bottom:30px;">Avis</h1>${menu}${reviews || '<section class="card"><p class="muted" style="text-align:center;">Aucun avis.</p></section>'}`, null));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ PATCH B5 — validation id
+// ✅ BLOC B : Validation ID
 app.post("/admin/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/avis");
@@ -1986,7 +2667,7 @@ app.get("/admin/emplois", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ PATCH B5 — validation id
+// ✅ BLOC B : Validation ID
 app.post("/admin/emplois/:id/status", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/emplois");
@@ -2007,7 +2688,7 @@ app.get("/admin/messages", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ PATCH B5 — validation id
+// ✅ BLOC B : Validation ID
 app.post("/admin/messages/:id/read", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/messages");
@@ -2025,13 +2706,108 @@ app.get("/admin/rgpd", requireAdmin, async (req, res) => {
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ✅ PATCH B5 — validation id
+// ✅ BLOC A & B : Traitement RGPD effectif + Validation ID
 app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => { 
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/rgpd");
-  await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]); 
-  await logAdminAction("gdpr_processed", "gdpr", id, null); 
-  res.redirect(303, "/admin/rgpd"); 
+  
+  try {
+    const reqResult = await pool.query("SELECT pro_id, request_type FROM gdpr_requests WHERE id = $1", [id]);
+    if (!reqResult.rows.length) return res.redirect(303, "/admin/rgpd");
+    
+    const { pro_id, request_type } = reqResult.rows[0];
+
+    if (request_type === 'deletion' && pro_id) {
+      const proResult = await pool.query(`SELECT full_name, phone, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE id = $1`, [pro_id]);
+      if (proResult.rows.length) {
+        const p = proResult.rows[0];
+        const cloudinaryUrls = [p.photo_profil_url, p.photo_identite_url, p.photo_kyc_url, p.photo_activite_url, p.photo_galerie_1, p.photo_galerie_2, p.photo_galerie_3].filter(u => u);
+        
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query(`DELETE FROM contact_messages WHERE pro_id = $1`, [pro_id]);
+          await client.query(`DELETE FROM reviews WHERE pro_id = $1`, [pro_id]);
+          await client.query(`DELETE FROM job_offers WHERE pro_id = $1`, [pro_id]);
+          await client.query(`DELETE FROM professional_applications WHERE id = $1`, [pro_id]);
+          await client.query('COMMIT');
+        } catch (txErr) {
+          await client.query('ROLLBACK');
+          throw txErr;
+        } finally {
+          client.release();
+        }
+        
+        await Promise.allSettled(cloudinaryUrls.map(url => deleteFromCloudinary(url)));
+        await logAdminAction("gdpr_deletion", "pro", pro_id, `Nom: ${p.full_name} | Téléphone: ${p.phone}`);
+      }
+    }
+
+    await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]); 
+    await logAdminAction("gdpr_processed", "gdpr", id, `Type: ${request_type}`);
+    res.redirect(303, "/admin/rgpd"); 
+  } catch (e) {
+    console.error("Erreur RGPD:", e);
+    res.redirect(303, "/admin/rgpd");
+  }
+});
+
+// ✅ BLOC E : Gestion du Blog
+app.get("/admin/blog", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  try {
+    const result = await pool.query(`SELECT * FROM blog_posts ORDER BY created_at DESC`);
+    const posts = result.rows.map(p => `
+      <article class="card" style="margin-bottom: 20px;">
+        <div style="display:flex; justify-content:space-between;">
+          <h2 style="font-size: 18px;">${escapeHtml(p.title)}</h2>
+          <span class="badge badge-approved">Publié</span>
+        </div>
+        <p class="muted" style="font-size:14px; margin-top:8px;">Lien : <a href="/blog/${p.slug}" target="_blank" style="color:#2563eb;">/blog/${p.slug}</a></p>
+      </article>
+    `).join("");
+    
+    const menu = await adminMenu("/admin/blog", csrf);
+    res.send(page("Blog", `
+      <h1 style="text-align:center; margin-bottom:30px;">Gestion du Blog</h1>
+      ${menu}
+      
+      <section class="card" style="margin-top:20px; background:#f8fafc;">
+        <h2>Ajouter un article</h2>
+        <form action="/admin/blog" method="POST" style="margin-top:16px;">
+          <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+          <label>Titre de l'article *</label>
+          <input name="title" required maxlength="255" placeholder="Ex: Comment trouver un bon maçon à Cotonou">
+          
+          <label>Lien URL (Slug) *</label>
+          <input name="slug" required maxlength="255" placeholder="Ex: comment-trouver-bon-macon-cotonou" pattern="[a-z0-9-]+" title="Uniquement des minuscules, chiffres et tirets">
+          
+          <label>Description courte (SEO) *</label>
+          <textarea name="meta_description" required maxlength="255" rows="2" placeholder="Résumé de l'article pour Google..."></textarea>
+          
+          <label>Contenu de l'article *</label>
+          <textarea name="content" required rows="10" placeholder="Écrivez votre article ici..."></textarea>
+          
+          <button type="submit" class="success" style="margin-top:10px;">Publier l'article</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top:20px;">
+        <h2>Articles publiés (${result.rows.length})</h2>
+        ${posts || '<p class="muted">Aucun article.</p>'}
+      </section>
+    `, null));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+});
+
+app.post("/admin/blog", requireAdmin, verifyCsrf, async (req, res) => {
+  const { title, slug, meta_description, content } = req.body;
+  try {
+    await pool.query(`INSERT INTO blog_posts (title, slug, meta_description, content) VALUES ($1, $2, $3, $4)`, [title, slug, meta_description, content]);
+    res.redirect(303, "/admin/blog");
+  } catch (e) {
+    res.status(500).send(page("Erreur", "<h2>Erreur. Le slug est peut-être déjà utilisé.</h2><a href='/admin/blog'>Retour</a>", null));
+  }
 });
 
 app.post("/admin/logout", requireAdmin, verifyCsrf, (req, res) => { clearSessionCookie(res); res.redirect(303, "/admin"); });
@@ -2044,27 +2820,61 @@ app.get("/conditions", (req, res) => {
   res.send(page("Conditions", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Conditions d'utilisation</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Acceptation</h2><p>En utilisant TrouveMoi, vous acceptez ces conditions.</p><h2>2. Nature du service</h2><p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p><h2>3. Inscription des professionnels</h2><p>Les pros doivent fournir des informations exactes (dont leur NPI). Toute fausse déclaration entraîne le rejet définitif du dossier.</p><h2>4. Frais d'inscription</h2><p>L'inscription des professionnels est soumise à des frais uniques de ${PAYMENT_AMOUNT} FCFA. Ce paiement ne garantit pas l'approbation du dossier.</p><h2>5. Avis clients</h2><p>Les avis sont modérés. Tout avis injurieux, diffamatoire ou spam sera supprimé sans préavis.</p></section>`, null));
 });
 
+// ✅ BLOC A : Page Mentions Légales
+app.get("/mentions-legales", (req, res) => {
+  res.send(page("Mentions légales", `
+    <section class="card" style="max-width: 800px; margin: 0 auto;">
+      <h1 style="text-align:center;">Mentions Légales</h1>
+      <p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p>
+      
+      <h2>1. Éditeur du site</h2>
+      <p>Le site <strong>TrouveMoi</strong> est édité et exploité par :</p>
+      <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
+        <li><strong>Raison sociale :</strong> ADK SERVICES</li>
+        <li><strong>Forme juridique :</strong> Entreprise Individuelle</li>
+        <li><strong>N° RCCM :</strong> RB/COT/18 A 40963</li>
+        <li><strong>N° IFU :</strong> 0201810443413</li>
+        <li><strong>Siège social :</strong> Agla Hlazounto, Cotonou, Bénin</li>
+        <li><strong>Email :</strong> contact@trouvemoi.bj</li>
+      </ul>
+
+      <h2>2. Responsable de la publication</h2>
+      <p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
+
+      <h2>3. Hébergement</h2>
+      <p>Le site est hébergé par : <strong>Render</strong> (ou votre hébergeur).</p>
+
+      <h2>4. Propriété intellectuelle</h2>
+      <p>L'ensemble du contenu du site TrouveMoi (textes, images, logos, base de données) est la propriété exclusive de ADK SERVICES. Toute reproduction, même partielle, sans autorisation écrite préalable est strictement interdite.</p>
+    </section>
+  `, null));
+});
+
 app.get("/confidentialite", (req, res) => {
   res.send(page("Confidentialite", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Politique de confidentialité</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Données collectées</h2><p>Nom, téléphone, NPI, ville, métier, photos (profil et KYC), avis, messages, données de paiement.</p><h2>2. Utilisation</h2><p>Mise en relation, affichage des profils, vérification d'identité, gestion des offres et avis.</p><h2>3. Protection</h2><p>Les photos d'identité et de vérification KYC sont strictement privées. Seuls les administrateurs y ont accès pour validation.</p><h2>4. Vos droits</h2><p>Vous disposez des droits d'accès, rectification, suppression et opposition. Contactez-nous via le <a href="/contact" style="color:#2563eb;">formulaire de contact</a>.</p></section>`, null));
 });
 
+// ✅ BLOC B & C : Contact avec pré-remplissage signalement + validation stricte
 app.get("/contact", async (req, res) => {
-  const proConnected = await getConnectedPro(req); const proId = String(req.query.pro || "").trim();
-  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form action="/contact" method="POST"><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30" placeholder="0194010345"></div></div><label>Sujet *</label><input name="subject" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000"></textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form></section>`, proConnected));
+  const proConnected = await getConnectedPro(req); 
+  const proId = String(req.query.pro || "").trim();
+  const reportId = String(req.query.report || "").trim();
+  
+  const defaultSubject = reportId ? `Signalement du professionnel #${reportId}` : "";
+  const defaultMessage = reportId ? `Bonjour, je souhaite signaler le professionnel #${reportId} pour le motif suivant : \n\n` : "";
+
+  res.send(page("Contact", `<section class="card" style="max-width: 600px; margin: 0 auto;"><h1 style="text-align:center;">Nous contacter</h1><p style="text-align:center; color:#6b7280; margin-bottom:30px;">Une question ? Écrivez-nous.</p><form action="/contact" method="POST"><input type="hidden" name="pro_id" value="${escapeHtml(proId)}"><label>Votre nom *</label><input name="name" required maxlength="150"><div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;"><div><label>Votre email</label><input type="email" name="email" maxlength="254"></div><div><label>Votre téléphone</label><input type="tel" name="phone" maxlength="30" placeholder="0194010345"></div></div><label>Sujet *</label><input name="subject" value="${escapeHtml(defaultSubject)}" required maxlength="200"><label>Message *</label><textarea name="message" required rows="5" maxlength="5000">${escapeHtml(defaultMessage)}</textarea><div style="text-align:center; margin-top:20px;"><button type="submit" style="padding:14px 40px;">Envoyer</button></div></form></section>`, proConnected));
 });
 
-// ✅ PATCH C1 — validation email + téléphone Bénin côté serveur
 app.post("/contact", async (req, res) => {
   const { name, email, phone, subject, message, pro_id } = req.body;
   if (!name || !subject || !message || (!email && !phone)) return res.status(400).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Infos manquantes.</h2><a href='/contact' class='button'>Retour</a></section>", null));
   
-  // ✅ C1 — Validation email si fourni
   const safeEmail = String(email || "").trim().slice(0, 254);
   if (safeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(safeEmail)) {
     return res.status(400).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Email invalide.</h2><a href='/contact' class='button'>Retour</a></section>", null));
   }
   
-  // ✅ C1 — Validation téléphone Bénin si fourni
   let safePhone = String(phone || "").trim().replace(/[\s().-]/g, "").slice(0, 30);
   if (safePhone) {
     let phoneNorm = safePhone.replace(/^(?:\+?229|00229)/, "");
@@ -2089,9 +2899,96 @@ app.post("/contact", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur d'envoi.</h2>", null)); }
 });
 
+// ✅ BLOC E : Routes du Blog Public
+app.get("/blog", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  try {
+    const result = await pool.query(`SELECT slug, title, meta_description, created_at FROM blog_posts ORDER BY created_at DESC`);
+    const posts = result.rows.map(p => `
+      <article class="card" style="margin-bottom:20px;">
+        <h2 style="font-size:22px;"><a href="/blog/${p.slug}" style="color:#1e40af; text-decoration:none;">${escapeHtml(p.title)}</a></h2>
+        <div style="font-size:12px; color:#6b7280; margin-bottom:10px;">Publié le ${new Date(p.created_at).toLocaleDateString("fr-FR")}</div>
+        <p style="color:#4b5563; font-size:15px;">${escapeHtml(p.meta_description || "")}</p>
+        <a href="/blog/${p.slug}" class="button secondary" style="margin-top:10px;">Lire la suite →</a>
+      </article>
+    `).join("");
+    
+    res.send(page("Blog", `<div style="max-width:800px; margin:0 auto;"><h1 style="text-align:center; margin-bottom:30px;">Le Blog de TrouveMoi</h1>${posts || '<p style="text-align:center;">Aucun article pour le moment.</p>'}</div>`, proConnected));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+});
+
+app.get("/blog/:slug", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  try {
+    const result = await pool.query(`SELECT * FROM blog_posts WHERE slug = $1`, [req.params.slug]);
+    if (!result.rows.length) return res.redirect(303, "/blog");
+    const post = result.rows[0];
+    
+    res.send(page(post.title, `
+      <div style="max-width:800px; margin:0 auto; background:white; padding:40px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+        <a href="/blog" style="color:#6b7280; text-decoration:none; font-size:14px; margin-bottom:20px; display:inline-block;">← Retour au blog</a>
+        <h1 style="color:#1e3a8a; font-size:32px; margin-bottom:10px;">${escapeHtml(post.title)}</h1>
+        <div style="font-size:13px; color:#6b7280; margin-bottom:30px; border-bottom:1px solid #e5e7eb; padding-bottom:20px;">Publié le ${new Date(post.created_at).toLocaleDateString("fr-FR")}</div>
+        <div style="font-size:16px; line-height:1.8; color:#374151; white-space:pre-wrap;">${escapeHtml(post.content)}</div>
+      </div>
+    `, proConnected));
+  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+});
+
+// ✅ BLOC E : Page Partenariats
+app.get("/partenariats", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  res.send(page("Partenariats", `
+    <section class="card" style="max-width: 800px; margin: 0 auto; text-align: center; padding: 40px;">
+      <div style="font-size: 60px; margin-bottom: 20px;">🤝</div>
+      <h1 style="color:#1e3a8a;">Partenariats & Associations</h1>
+      <p style="font-size: 16px; color: #4b5563; margin-bottom: 30px;">Vous êtes une association de métiers (coiffeurs, maçons, taxis-motos) ou une organisation professionnelle au Bénin ?</p>
+      <div style="background: #eff6ff; padding: 24px; border-radius: 12px; border: 1px solid #bfdbfe; text-align: left; margin-bottom: 30px;">
+        <h3 style="color:#1e3a8a; margin-bottom: 10px;">Pourquoi devenir partenaire ?</h3>
+        <ul style="margin-left: 20px; line-height: 1.8; color: #1e40af;">
+          <li>Inscrivez vos membres en masse sur TrouveMoi.</li>
+          <li>Offrez à vos adhérents une vitrine numérique gratuite.</li>
+          <li>Aidez-les à trouver plus de clients au quotidien.</li>
+          <li>Bénéficiez d'un accompagnement dédié.</li>
+        </ul>
+      </div>
+      <a href="/contact?subject=Partenariat" class="button success" style="font-size: 16px; padding: 14px 30px;">Devenir Partenaire</a>
+    </section>
+  `, proConnected));
+});
+
+// ✅ BLOC E : Fichiers PWA (Manifest & Service Worker)
+app.get("/manifest.json", (req, res) => {
+  res.json({
+    name: "TrouveMoi - Pros du Bénin",
+    short_name: "TrouveMoi",
+    description: "Trouvez un professionnel vérifié au Bénin",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#f4f7f6",
+    theme_color: "#1e40af",
+    icons: [
+      { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg", sizes: "192x192", type: "image/jpeg" },
+      { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg", sizes: "512x512", type: "image/jpeg" }
+    ]
+  });
+});
+
+app.get("/sw.js", (req, res) => {
+  res.type("application/javascript");
+  res.send(`
+    const CACHE_NAME = 'trouvemoi-v1';
+    self.addEventListener('install', (e) => { self.skipWaiting(); });
+    self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+    self.addEventListener('fetch', (e) => {
+      e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    });
+  `);
+});
+
 app.get("/health", (req, res) => res.json({ status: "ok", application: "TrouveMoi", time: new Date().toISOString() }));
 
-// ✅ PATCH C5 — Health database protégé par token (si HEALTH_TOKEN défini en env)
+// ✅ BLOC C : Health database protégé par token
 app.get("/health/database", async (req, res) => {
   const healthToken = process.env.HEALTH_TOKEN;
   if (healthToken) {
@@ -2103,7 +3000,38 @@ app.get("/health/database", async (req, res) => {
   try { await pool.query("SELECT 1"); res.json({ status: "ok", database: "connected" }); } catch (e) { res.status(500).json({ status: "error", message: "database unreachable" }); }
 });
 
-// ✅ PATCH B7 — Host header safe (anti-injection)
+// ✅ BLOC A : Cron externe
+app.get("/cron/cleanup", async (req, res) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && String(req.query.token || "").trim() !== cronSecret) {
+    return res.status(401).send("Non autorisé");
+  }
+  
+  try {
+    let deletedCount = 0;
+    
+    const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
+    for (const row of expired.rows) {
+      await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
+      deletedCount++;
+    }
+
+    const oldRejected = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status IN ('rejected', 'corrections_requested') AND updated_at < NOW() - INTERVAL '90 days'`);
+    for (const row of oldRejected.rows) {
+      await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
+      deletedCount++;
+    }
+
+    res.json({ success: true, deleted: deletedCount });
+  } catch (e) {
+    console.error("Erreur cron cleanup:", e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ✅ BLOC B7 : Anti-injection Host
 function getSafeHost(req) {
   return String(req.get("host") || "").replace(/[^a-zA-Z0-9.:\-]/g, "");
 }
@@ -2118,7 +3046,8 @@ app.get("/sitemap.xml", async (req, res) => {
     const safeHost = getSafeHost(req);
     const base = `${req.protocol}://${safeHost}`;
     const pros = await pool.query(`SELECT id FROM professional_applications WHERE status = 'approved' LIMIT 1000`);
-    const urls = [`${base}/`, `${base}/recherche`, `${base}/emplois`, `${base}/devenir-professionnel`, `${base}/a-propos`, `${base}/contact`, `${base}/conditions`, `${base}/confidentialite`, ...pros.rows.map(p => `${base}/pro/${p.id}`)];
+    const posts = await pool.query(`SELECT slug FROM blog_posts LIMIT 500`);
+    const urls = [`${base}/`, `${base}/recherche`, `${base}/emplois`, `${base}/devenir-professionnel`, `${base}/a-propos`, `${base}/contact`, `${base}/conditions`, `${base}/confidentialite`, `${base}/blog`, ...pros.rows.map(p => `${base}/pro/${p.id}`), ...posts.rows.map(p => `${base}/blog/${p.slug}`)];
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(u => `  <url><loc>${u}</loc></url>`).join("\n")}\n</urlset>`;
     res.type("application/xml").send(xml);
   } catch (e) { res.status(500).send("error"); }
@@ -2126,7 +3055,7 @@ app.get("/sitemap.xml", async (req, res) => {
 
 app.use((req, res) => { res.status(404).send(page("Introuvable", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>404</h1><p>La page demandée n'existe pas.</p><a class='button' href='/'>Retour</a></section>", null)); });
 
-// ✅ PATCH B6 — Error handler blindé (headers already sent)
+// ✅ BLOC B6 : Error handler blindé
 app.use((err, req, res, next) => {
   console.error("Erreur non geree :", err.message);
   if (res.headersSent) return next(err);
@@ -2152,6 +3081,7 @@ async function startServer() {
         payment_ref VARCHAR(100), payment_amount INTEGER DEFAULT 500, payment_date TIMESTAMP, payment_method VARCHAR(30),
         latitude DECIMAL(10, 8), longitude DECIMAL(11, 8), adresse_exacte TEXT, type_lieu VARCHAR(20) DEFAULT 'ambulant', est_ouvert BOOLEAN DEFAULT true,
         heure_ouverture VARCHAR(10), heure_fermeture VARCHAR(10),
+        horaires_json TEXT, unavailable_until TIMESTAMP,
         photo_galerie_1 TEXT, photo_galerie_2 TEXT, photo_galerie_3 TEXT
       )
     `);
@@ -2178,9 +3108,13 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS adresse_exacte TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS type_lieu VARCHAR(20) DEFAULT 'ambulant'`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS est_ouvert BOOLEAN DEFAULT true`,
-      // ✅ PATCH A1.2 — horaires
+      // ✅ BLOC A & C : Nouvelles colonnes
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS heure_ouverture VARCHAR(10)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS heure_fermeture VARCHAR(10)`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS horaires_json TEXT`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until TIMESTAMP`,
+      `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_response TEXT`,
+      `ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_response_at TIMESTAMP`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_1 TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_2 TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_3 TEXT`,
@@ -2196,6 +3130,11 @@ async function startServer() {
     await pool.query(`CREATE TABLE IF NOT EXISTS gdpr_requests (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE SET NULL, request_type VARCHAR(30) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE, author_name VARCHAR(100) NOT NULL, rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5), comment TEXT, status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`);
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_logs (id SERIAL PRIMARY KEY, action VARCHAR(100) NOT NULL, target_type VARCHAR(50), target_id INTEGER, details TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`);
+    
+    // ✅ BLOC C, D, E : Nouvelles tables
+    await pool.query(`CREATE TABLE IF NOT EXISTS pro_stats (id SERIAL PRIMARY KEY, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE CASCADE, date DATE NOT NULL DEFAULT CURRENT_DATE, views INTEGER DEFAULT 0, phone_clicks INTEGER DEFAULT 0, wa_clicks INTEGER DEFAULT 0, UNIQUE(pro_id, date))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS client_favorites (id SERIAL PRIMARY KEY, visitor_id VARCHAR(64) NOT NULL, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE CASCADE, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(visitor_id, pro_id))`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS blog_posts (id SERIAL PRIMARY KEY, slug VARCHAR(255) UNIQUE NOT NULL, title VARCHAR(255) NOT NULL, content TEXT NOT NULL, meta_description VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`);
 
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
@@ -2269,10 +3208,19 @@ async function startServer() {
     let orderCounter = 0;
     for (const [name, category] of profs) { orderCounter += 1; await pool.query(`INSERT INTO professions (name, category, display_order) VALUES ($1, $2, $3) ON CONFLICT (name) DO NOTHING`, [name, category, orderCounter]); }
 
+    // ✅ BLOC A : Cron interne mis à jour (48h + 90 jours)
     setInterval(async () => {
       try {
+        // 1. Impayés > 48h
         const expired = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status = 'payment_pending' AND payment_status = 'unpaid' AND created_at < NOW() - INTERVAL '48 hours'`);
         for (const row of expired.rows) {
+          await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
+          await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
+        }
+        
+        // 2. Rejetés / Corrections > 90 jours
+        const oldRejected = await pool.query(`SELECT id, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, photo_galerie_1, photo_galerie_2, photo_galerie_3 FROM professional_applications WHERE status IN ('rejected', 'corrections_requested') AND updated_at < NOW() - INTERVAL '90 days'`);
+        for (const row of oldRejected.rows) {
           await Promise.allSettled([row.photo_profil_url, row.photo_identite_url, row.photo_kyc_url, row.photo_activite_url, row.photo_galerie_1, row.photo_galerie_2, row.photo_galerie_3].map(url => url && deleteFromCloudinary(url)));
           await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [row.id]);
         }
