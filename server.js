@@ -24,7 +24,7 @@ const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
-const PAYMENT_AMOUNT = 1500;
+const PAYMENT_AMOUNT = 1500; // ✅ MODIFIÉ : 1500 FCFA
 
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
@@ -252,7 +252,7 @@ function page(title, content, proConnected) {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 0; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
         header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
-        .header-content { max-width: 1100px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+        .header-content { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         .logo { display: inline-flex; align-items: center; text-decoration: none; }
         .logo svg { display: block; height: 45px; width: auto; max-width: 100%; }
         .tagline { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 2px; }
@@ -260,7 +260,7 @@ function page(title, content, proConnected) {
         nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; transition: background 0.2s; }
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); color: white; }
         
-        main { max-width: 1100px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
+        main { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
         .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #eef2f5; }
         .card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
         
@@ -333,16 +333,17 @@ function page(title, content, proConnected) {
         .pro-code-box { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 20px; border-radius: 12px; text-align: center; }
         .pro-code-value { font-family: "Courier New", monospace; font-weight: 800; letter-spacing: 3px; }
 
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-top: 24px; }
-        .pro-card { background: white; border-radius: 16px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
-        .pro-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.08); }
-        .pro-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 10px; }
-        .pro-name { font-size: 18px; font-weight: 800; color: #111827; line-height: 1.2; margin-bottom: 4px; }
-        .pro-meta { font-size: 13px; color: #6b7280; font-weight: 500; display: flex; align-items: center; gap: 6px; }
-        .pro-desc { font-size: 14px; color: #4b5563; margin: 12px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-grow: 1; }
+        /* ✅ NOUVEAU DESIGN DES CARTES : Plus compactes et 4 par ligne sur PC */
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 24px; }
+        .pro-card { background: white; border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+        .pro-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .pro-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+        .pro-name { font-size: 16px; font-weight: 800; color: #111827; line-height: 1.2; margin-bottom: 2px; }
+        .pro-meta { font-size: 12px; color: #6b7280; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        .pro-desc { font-size: 13px; color: #4b5563; margin: 8px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-grow: 1; }
         
-        .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
-        .pro-actions a { padding: 10px; font-size: 13px; border-radius: 8px; margin: 0; }
+        .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
+        .pro-actions a { padding: 8px; font-size: 12px; border-radius: 6px; margin: 0; text-align: center; font-weight: 600; }
         .pro-profile-link { grid-column: span 2; background: #f3f4f6; color: #374151; font-weight: 700; }
         .pro-profile-link:hover { background: #e5e7eb; }
 
@@ -358,11 +359,11 @@ function page(title, content, proConnected) {
         .admin-content { padding: 20px; border-top: 1px solid #e5e7eb; }
 
         footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; }
-        .footer-content { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
         .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; font-weight: 800; }
         .footer-col a { display: block; color: #9ca3af; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
         .footer-col a:hover { color: white; }
-        .footer-bottom { max-width: 1100px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
+        .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
 
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
@@ -438,7 +439,7 @@ function jobContactButtons(job) {
   if (job.contact_whatsapp) {
     let wa = job.contact_whatsapp.replace(/^\+/, "");
     if (!wa.startsWith("229")) wa = "229" + wa;
-    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank">💬 WhatsApp</a>`);
+    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank">💬 WhatsApp</a>`);
   }
   return b.length ? `<div class="contact-buttons" style="display:flex; gap:10px;">${b.join("")}</div>` : "";
 }
@@ -526,11 +527,11 @@ app.get("/", async (req, res) => {
       const borderColor = palettes[Math.abs(hash) % palettes.length];
       
       let ratingHtml = reviewsCount > 0 
-        ? `<div style="font-size: 14px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 12px;">(${reviewsCount} avis)</span></div>`
-        : `<div style="font-size: 12px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
+        ? `<div style="font-size: 13px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 11px;">(${reviewsCount})</span></div>`
+        : `<div style="font-size: 11px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
 
       const typeBadge = person.type_lieu === 'fixe' 
-        ? `<span class="badge-local">🏠 Local fixe</span>` 
+        ? `<span class="badge-local">🏠 Local</span>` 
         : `<span class="badge-ambulant">🚗 Ambulant</span>`;
 
       let rawPhone = (person.phone || "").replace(/\D/g, "");
@@ -543,41 +544,41 @@ app.get("/", async (req, res) => {
       if (person.phone_public && cleanPhone) {
         actionButtons = `
           <a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
-          ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
+          ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
         `;
       } else {
         actionButtons = `
-          <a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter via le site</a>
+          <a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter</a>
         `;
       }
 
       return `
-        <article class="pro-card" style="border-left: 6px solid ${borderColor};">
-          <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <article class="pro-card" style="border-left: 4px solid ${borderColor};">
+          <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris" style="top: 12px; right: 12px; width: 30px; height: 30px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
           </div>
           <div class="pro-card-top">
             <div>
               <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
-              <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+              <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
               <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
             </div>
-            <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-              ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
+            <div style="text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; margin-right: 20px;">
+              ${isTopPro ? `<span class="top-pro-badge" style="font-size: 9px; padding: 2px 6px;">⭐ Top</span>` : ""}
               ${typeBadge}
             </div>
           </div>
           
-          <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
+          <div class="pro-desc" style="font-size: 12px;">${escapeHtml(person.service_description || "")}</div>
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 4px;">
             ${ratingHtml}
-            <span id="dist-${person.id}" style="font-size: 12px; font-weight: 700; color: #2563eb;"></span>
+            <span id="dist-${person.id}" style="font-size: 11px; font-weight: 700; color: #2563eb;"></span>
           </div>
 
-          <div class="pro-actions">
+          <div class="pro-actions" style="gap: 4px;">
             ${actionButtons}
-            <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link">Voir le profil →</a>
+            <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
           </div>
         </article>
       `;
@@ -616,27 +617,6 @@ app.get("/", async (req, res) => {
         <a class="button" href="/emplois" style="background: #10b981; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">💼 Offres d'emploi</a>
       </div>
 
-      <div style="background: white; border-radius: 20px; padding: 40px 20px; margin-bottom: 40px; border: 1px solid #e5e7eb; text-align: center;">
-        <h2 style="margin-bottom: 30px;">Comment ça marche ?</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; max-width: 900px; margin: 0 auto;">
-          <div>
-            <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
-            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">1. Cherchez</h3>
-            <p style="font-size: 14px; color: #6b7280;">Trouvez le professionnel qu'il vous faut par métier ou par ville.</p>
-          </div>
-          <div>
-            <div style="font-size: 40px; margin-bottom: 12px;">📞</div>
-            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">2. Contactez</h3>
-            <p style="font-size: 14px; color: #6b7280;">Appelez ou écrivez sur WhatsApp directement, sans intermédiaire.</p>
-          </div>
-          <div>
-            <div style="font-size: 40px; margin-bottom: 12px;">🤝</div>
-            <h3 style="font-size: 16px; color: #1e40af; margin-bottom: 8px;">3. Rencontrez</h3>
-            <p style="font-size: 14px; color: #6b7280;">Rencontrez-le en personne et payez uniquement après la prestation.</p>
-          </div>
-        </div>
-      </div>
-
       <div class="alert alert-warning" style="text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.</div>
 
       <h2 style="text-align: center; margin: 40px 0 20px 0;">Derniers professionnels inscrits</h2>
@@ -665,7 +645,7 @@ app.get("/", async (req, res) => {
               const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
               const distance = (R * c).toFixed(1);
               const el = document.getElementById('dist-' + p.id);
-              if (el) el.innerHTML = '📍 À ' + distance + ' km';
+              if (el) el.innerHTML = '📍 ' + distance + ' km';
             });
           });
         }
@@ -736,10 +716,10 @@ app.get("/recherche", async (req, res) => {
         const borderColor = palettes[Math.abs(hash) % palettes.length];
         
         let ratingHtml = reviewsCount > 0 
-          ? `<div style="font-size: 14px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 12px;">(${reviewsCount} avis)</span></div>`
-          : `<div style="font-size: 12px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
+          ? `<div style="font-size: 13px; color: #ed8936; font-weight: 600;">${renderStars(avgRating)} <span style="color: #718096; font-weight: 400; font-size: 11px;">(${reviewsCount})</span></div>`
+          : `<div style="font-size: 11px; color: #a0aec0; font-style: italic;">Pas encore d'avis</div>`;
 
-        const typeBadge = person.type_lieu === 'fixe' ? `<span class="badge-local">🏠 Local fixe</span>` : `<span class="badge-ambulant">🚗 Ambulant</span>`;
+        const typeBadge = person.type_lieu === 'fixe' ? `<span class="badge-local">🏠 Local</span>` : `<span class="badge-ambulant">🚗 Ambulant</span>`;
         
         let rawPhone = (person.phone || "").replace(/\D/g, "");
         if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
@@ -751,36 +731,36 @@ app.get("/recherche", async (req, res) => {
         if (person.phone_public && cleanPhone) {
           actionButtons = `
             <a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
-            ${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
+            ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
           `;
         } else {
-          actionButtons = `<a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter via le site</a>`;
+          actionButtons = `<a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter</a>`;
         }
 
         return `
-          <article class="pro-card" style="border-left: 6px solid ${borderColor};">
-            <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          <article class="pro-card" style="border-left: 4px solid ${borderColor};">
+            <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" title="Ajouter aux favoris" style="top: 12px; right: 12px; width: 30px; height: 30px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             </div>
             <div class="pro-card-top">
               <div>
                 <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge()}</div>
-                <div class="pro-meta" style="color: ${borderColor}; font-weight: 700;">${escapeHtml(person.profession)}</div>
+                <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
                 <div class="pro-meta">📍 ${escapeHtml(person.city)} ${person.neighborhood ? `- ${escapeHtml(person.neighborhood)}` : ""}</div>
               </div>
-              <div style="text-align: right; display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
-                ${isTopPro ? `<span class="top-pro-badge">⭐ Top Pro</span>` : ""}
+              <div style="text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; margin-right: 20px;">
+                ${isTopPro ? `<span class="top-pro-badge" style="font-size: 9px; padding: 2px 6px;">⭐ Top</span>` : ""}
                 ${typeBadge}
               </div>
             </div>
-            <div class="pro-desc">${escapeHtml(person.service_description || "")}</div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="pro-desc" style="font-size: 12px;">${escapeHtml(person.service_description || "")}</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 4px;">
               ${ratingHtml}
-              <span id="dist-${person.id}" style="font-size: 12px; font-weight: 700; color: #2563eb;"></span>
+              <span id="dist-${person.id}" style="font-size: 11px; font-weight: 700; color: #2563eb;"></span>
             </div>
-            <div class="pro-actions">
+            <div class="pro-actions" style="gap: 4px;">
               ${actionButtons}
-              <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link">Voir le profil →</a>
+              <a href="/pro/${encodeURIComponent(person.id)}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
             </div>
           </article>
         `;
@@ -842,7 +822,7 @@ app.get("/recherche", async (req, res) => {
               p.distance = (R * c);
               
               const el = document.getElementById('dist-' + p.id);
-              if (el) el.innerHTML = '📍 À ' + p.distance.toFixed(1) + ' km';
+              if (el) el.innerHTML = '📍 ' + p.distance.toFixed(1) + ' km';
             });
 
             if (sortMode === "distance") {
@@ -917,9 +897,9 @@ app.get("/mes-favoris", async (req, res) => {
   const cards = result.rows.map(person => {
     const displayName = getDisplayName(person);
     return `
-      <article class="pro-card" style="border-left: 6px solid #ef4444;">
-        <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+      <article class="pro-card" style="border-left: 4px solid #ef4444;">
+        <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())" style="top: 12px; right: 12px; width: 30px; height: 30px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
         </div>
         <div class="pro-card-top">
           <div>
@@ -928,8 +908,8 @@ app.get("/mes-favoris", async (req, res) => {
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
           </div>
         </div>
-        <div class="pro-actions">
-          <a href="/pro/${person.id}" class="button pro-profile-link">Voir le profil →</a>
+        <div class="pro-actions" style="margin-top: 12px; gap: 4px;">
+          <a href="/pro/${person.id}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
         </div>
       </article>
     `;
@@ -995,7 +975,7 @@ app.get("/pro/:id", async (req, res) => {
     if (person.phone_public && phoneClean) {
       contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
         <a class="button" href="tel:${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
-        ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
+        ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
       </div>
       <div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; font-size: 14px;">📤 Partager ce profil</a></div>`;
     } else {
@@ -1194,7 +1174,6 @@ app.get("/devenir-professionnel", async (req, res) => {
       </div>`;
     });
 
-    // ✅ NOUVEAU : Préparation de la liste pour le JavaScript
     const allProfNames = professionsResult.rows.map(p => p.name);
 
     const content = `
@@ -1300,7 +1279,6 @@ app.get("/devenir-professionnel", async (req, res) => {
           }
         });
 
-        // ✅ NOUVEAU : Recherche de métier 100% fiable
         const allProfessionsList = ${JSON.stringify(allProfNames)};
 
         function filterProfessions() {
@@ -1334,7 +1312,6 @@ app.get("/devenir-professionnel", async (req, res) => {
           document.getElementById('profession').dispatchEvent(new Event('change'));
         }
 
-        // ✅ Retour visuel sur les photos
         ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
           const input = document.getElementById(id);
           if(input) {
@@ -1749,12 +1726,12 @@ app.get("/mon-espace-pro", async (req, res) => {
     </section>
     
     <section class="card" style="margin-top:20px;">
-      <h2 style="font-size:20px; margin-bottom:16px;">RGPD</h2>
-      <div class="actions">
-        <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Mes données</a>
-      <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;">
-  <button class="danger" type="submit" onclick="return confirm('⚠️ ATTENTION : Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (photos, avis, offres).')">🗑️ Supprimer mon compte</button>
-</form>
+      <h2 style="font-size:20px; margin-bottom:16px;">RGPD & Confidentialité</h2>
+      <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Télécharger mes données</a>
+        <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
+          <button class="danger" type="submit" onclick="return confirm('⚠️ ATTENTION : Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (photos, avis, offres).')">🗑️ Supprimer mon compte</button>
+        </form>
       </div>
       ${gdprHtml}
     </section>
@@ -2625,7 +2602,7 @@ app.get("/a-propos", async (req, res) => {
 });
 
 app.get("/conditions", (req, res) => {
-  res.send(page("Conditions", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Conditions d'utilisation</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Acceptation</h2><p>En utilisant TrouveMoi, vous acceptez ces conditions.</p><h2>2. Nature du service</h2><p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p><h2>3. Inscription des professionnels</h2><p>Les pros doivent fournir des informations exactes (dont leur NPI). Toute fausse déclaration entraîne le rejet définitif du dossier.</p><h2>4. Frais d'inscription</h2><p>L'inscription des professionnels est soumise à des frais uniques de ${PAYMENT_AMOUNT} FCFA. Ce paiement ne garantit pas l'approbation du dossier.</p><h2>5. Avis clients</h2><p>Les avis sont modérés. Tout avis injurieux, diffamatoire ou spam sera supprimé sans préavis.</p></section>`, null));
+  res.send(page("Conditions", `<section class="card" style="max-width: 800px; margin: 0 auto;"><h1 style="text-align:center;">Conditions d'utilisation</h1><p class="muted" style="text-align:center; margin-bottom:30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p><h2>1. Acceptation</h2><p>En utilisant TrouveMoi, vous acceptez ces conditions.</p><h2>2. Nature du service</h2><p>TrouveMoi est une plateforme de mise en relation. Nous ne fournissons pas directement de services professionnels.</p><h2>3. Inscription des professionnels</h2><p>Les pros doivent fournir des informations exactes (dont leur NPI). Toute fausse déclaration entraîne le rejet définitif du dossier.</p><h2>4. Frais d'inscription</h2><p>L'inscription des professionnels est soumise à des frais uniques de ${PAYMENT_AMOUNT} FCFA. Ces frais couvrent les coûts de vérification d'identité (KYC) et de traitement de votre dossier. <strong>En cas de refus définitif de votre dossier par nos équipes (hors fausse déclaration), ces frais vous seront intégralement remboursés.</strong></p><h2>5. Avis clients</h2><p>Les avis sont modérés. Tout avis injurieux, diffamatoire ou spam sera supprimé sans préavis.</p></section>`, null));
 });
 
 app.get("/mentions-legales", (req, res) => {
@@ -2637,20 +2614,20 @@ app.get("/mentions-legales", (req, res) => {
       <h2>1. Éditeur du site</h2>
       <p>Le site <strong>TrouveMoi</strong> est édité et exploité par :</p>
       <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-  <li><strong>Raison sociale :</strong> ADK SERVICES</li>
-  <li><strong>Forme juridique :</strong> Entreprise Individuelle</li>
-  <li><strong>N° RCCM :</strong> RB/COT/18 A 40963</li>
-  <li><strong>N° IFU :</strong> 0201810443413</li>
-  <li><strong>Localisation :</strong> Cotonou, Bénin</li>
-  <li><strong>Contact :</strong> contact@trouvemoi.bj</li>
-</ul>
-<p>Pour toute demande d'information supplémentaire, veuillez utiliser notre <a href="/contact" style="color:#2563eb;">formulaire de contact</a> ou nous écrire à l'adresse email professionnelle ci-dessus.</p>
+        <li><strong>Raison sociale :</strong> ADK SERVICES</li>
+        <li><strong>Forme juridique :</strong> Entreprise Individuelle</li>
+        <li><strong>N° RCCM :</strong> RB/COT/18 A 40963</li>
+        <li><strong>N° IFU :</strong> 0201810443413</li>
+        <li><strong>Localisation :</strong> Cotonou, Bénin</li>
+        <li><strong>Contact :</strong> contact@trouvemoi.bj</li>
+      </ul>
+      <p>Pour toute demande d'information supplémentaire, veuillez utiliser notre <a href="/contact" style="color:#2563eb;">formulaire de contact</a> ou nous écrire à l'adresse email professionnelle ci-dessus.</p>
 
-<h2>2. Responsable de la publication</h2>
-<p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
+      <h2>2. Responsable de la publication</h2>
+      <p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
 
-<h2>3. Hébergement</h2>
-<p>Le site est hébergé par : <strong>Render</strong>.</p>
+      <h2>3. Hébergement</h2>
+      <p>Le site est hébergé par : <strong>Render</strong>.</p>
 
       <h2>4. Propriété intellectuelle</h2>
       <p>L'ensemble du contenu du site TrouveMoi (textes, images, logos, base de données) est la propriété exclusive de ADK SERVICES. Toute reproduction, même partielle, sans autorisation écrite préalable est strictement interdite.</p>
@@ -2882,7 +2859,7 @@ async function startServer() {
         status VARCHAR(30) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid',
-        payment_ref VARCHAR(100), payment_amount INTEGER DEFAULT 500, payment_date TIMESTAMP, payment_method VARCHAR(30),
+        payment_ref VARCHAR(100), payment_amount INTEGER DEFAULT 1500, payment_date TIMESTAMP, payment_method VARCHAR(30),
         latitude DECIMAL(10, 8), longitude DECIMAL(11, 8), adresse_exacte TEXT, type_lieu VARCHAR(20) DEFAULT 'ambulant', est_ouvert BOOLEAN DEFAULT true,
         heure_ouverture VARCHAR(10), heure_fermeture VARCHAR(10),
         horaires_json TEXT, unavailable_until TIMESTAMP,
@@ -2904,7 +2881,7 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS pro_code_updated_at TIMESTAMP`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) NOT NULL DEFAULT 'unpaid'`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_ref VARCHAR(100)`,
-      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_amount INTEGER DEFAULT 500`,
+      `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_amount INTEGER DEFAULT 1500`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_date TIMESTAMP`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30)`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8)`,
