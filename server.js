@@ -2637,19 +2637,20 @@ app.get("/mentions-legales", (req, res) => {
       <h2>1. Éditeur du site</h2>
       <p>Le site <strong>TrouveMoi</strong> est édité et exploité par :</p>
       <ul style="margin-left: 20px; margin-bottom: 20px; line-height: 1.8;">
-        <li><strong>Raison sociale :</strong> ADK SERVICES</li>
-        <li><strong>Forme juridique :</strong> Entreprise Individuelle</li>
-        <li><strong>N° RCCM :</strong> RB/COT/18 A 40963</li>
-        <li><strong>N° IFU :</strong> 0201810443413</li>
-        <li><strong>Siège social :</strong> Agla Hlazounto, Cotonou, Bénin</li>
-        <li><strong>Email :</strong> contact@trouvemoi.bj</li>
-      </ul>
+  <li><strong>Raison sociale :</strong> ADK SERVICES</li>
+  <li><strong>Forme juridique :</strong> Entreprise Individuelle</li>
+  <li><strong>N° RCCM :</strong> RB/COT/18 A 40963</li>
+  <li><strong>N° IFU :</strong> 0201810443413</li>
+  <li><strong>Localisation :</strong> Cotonou, Bénin</li>
+  <li><strong>Contact :</strong> contact@trouvemoi.bj</li>
+</ul>
+<p>Pour toute demande d'information supplémentaire, veuillez utiliser notre <a href="/contact" style="color:#2563eb;">formulaire de contact</a> ou nous écrire à l'adresse email professionnelle ci-dessus.</p>
 
-      <h2>2. Responsable de la publication</h2>
-      <p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
+<h2>2. Responsable de la publication</h2>
+<p>Le responsable de la publication est <strong>M. AKPE David</strong>, en sa qualité de Gérant de ADK SERVICES.</p>
 
-      <h2>3. Hébergement</h2>
-      <p>Le site est hébergé par : <strong>Render</strong>.</p>
+<h2>3. Hébergement</h2>
+<p>Le site est hébergé par : <strong>Render</strong>.</p>
 
       <h2>4. Propriété intellectuelle</h2>
       <p>L'ensemble du contenu du site TrouveMoi (textes, images, logos, base de données) est la propriété exclusive de ADK SERVICES. Toute reproduction, même partielle, sans autorisation écrite préalable est strictement interdite.</p>
