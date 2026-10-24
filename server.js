@@ -1752,7 +1752,9 @@ app.get("/mon-espace-pro", async (req, res) => {
       <h2 style="font-size:20px; margin-bottom:16px;">RGPD</h2>
       <div class="actions">
         <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Mes données</a>
-        <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;"><button class="danger" type="submit">🗑️ Suppression</button></form>
+      <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline;">
+  <button class="danger" type="submit" onclick="return confirm('⚠️ ATTENTION : Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (photos, avis, offres).')">🗑️ Supprimer mon compte</button>
+</form>
       </div>
       ${gdprHtml}
     </section>
