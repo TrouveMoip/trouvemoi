@@ -1209,8 +1209,10 @@ app.get("/devenir-professionnel", async (req, res) => {
       </div>`;
     });
 
-    const allProfNames = professionsResult.rows.map(p => p.name);
-    const refCookie = readCookie(req, "tm_ref") || "";
+   const allProfNames = professionsResult.rows.map(p => p.name);
+const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
+const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
+const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-bottom: 20px; border-left: 4px solid #f59e0b;"><strong>⚠️ AVERTISSEMENT IMPORTANT :</strong><br><br>Vous accédez à ce formulaire via un lien de parrainage.<br><br><strong>Si vous n'êtes pas un professionnel qualifié ou si votre métier n'est pas inscrit sur la plateforme TrouveMoi, veuillez ne pas continuer cette inscription.</strong><br><br>L'inscription n'est validée qu'après vérification de votre dossier (KYC). En cas de refus (faux profil, métier non inscrit sur la plateforme), les frais d'inscription ne seront pas remboursés.</div>` : "";
 
     const content = `
       <section class="card" style="max-width: 800px; margin: 0 auto;">
