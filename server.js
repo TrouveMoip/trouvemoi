@@ -1217,6 +1217,7 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
     const content = `
       <section class="card" style="max-width: 800px; margin: 0 auto;">
         <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
+        ${warningHtml}
         ${BYPASS_PAYMENT ? "" : `<div class="alert alert-warning"><h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3><p style="margin: 0; font-size: 14px;">Un paiement unique de <strong>${PAYMENT_AMOUNT} FCFA</strong> est requis.</p></div>`}
         
         <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
