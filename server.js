@@ -1801,7 +1801,7 @@ app.get("/mon-espace-pro", async (req, res) => {
       <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; border:1px solid #e5e7eb;">
   <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Votre lien de parrainage (à partager) :</p>
   <div style="display: flex; gap: 8px;">
-    <input id="referral-link" readonly value="https://trouvemoi.bj/?ref=${proConnected.pro.referral_code || ''}" style="width:100%; padding:8px; font-size:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px;">
+    <input id="referral-link" readonly value="https://trouvemoi.bj/devenir-professionnel?ref=${proConnected.pro.referral_code || ''}" style="width:100%; padding:8px; font-size:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px;">
     <button type="button" onclick="copyRefLink()" style="margin:0; padding:8px 12px; font-size:12px; border-radius:6px; background:#10b981; color:white; white-space:nowrap;">📋 Copier</button>
   </div>
 </div>
