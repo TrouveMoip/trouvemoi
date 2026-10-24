@@ -24,7 +24,7 @@ const KKIAPAY_SANDBOX = process.env.KKIAPAY_SANDBOX === "true";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true"; 
-const PAYMENT_AMOUNT = 500;
+const PAYMENT_AMOUNT = 1500;
 
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
