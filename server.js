@@ -438,7 +438,7 @@ function jobContactButtons(job) {
   if (job.contact_whatsapp) {
     let wa = job.contact_whatsapp.replace(/^\+/, "");
     if (!wa.startsWith("229")) wa = "229" + wa;
-    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour via TrouveMoi.")}" target="_blank">💬 WhatsApp</a>`);
+    b.push(`<a class="button whatsapp" href="https://wa.me/${escapeHtml(wa)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank">💬 WhatsApp</a>`);
   }
   return b.length ? `<div class="contact-buttons" style="display:flex; gap:10px;">${b.join("")}</div>` : "";
 }
