@@ -1841,6 +1841,18 @@ app.get("/mon-espace-pro", async (req, res) => {
       </div>
       ${gdprHtml}
     </section>
+    <script>
+  function copyRefLink() {
+    const copyText = document.getElementById("referral-link");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); // Pour les téléphones
+    navigator.clipboard.writeText(copyText.value).then(function() {
+      alert("✅ Lien copié ! Vous pouvez le coller sur WhatsApp.");
+    }).catch(function() {
+      alert("❌ Impossible de copier. Veuillez le faire manuellement.");
+    });
+  }
+</script>
   `, proConnected));
 });
 
