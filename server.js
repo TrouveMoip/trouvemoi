@@ -2932,7 +2932,7 @@ app.get("/manifest.json", (req, res) => {
     theme_color: "#1e40af",
     icons: [
       { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg", sizes: "192x192", type: "image/jpeg" },
-      { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg, sizes: "512x512", type: "image/jpeg" }
+      { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg", sizes: "512x512", type: "image/jpeg" }
     ]
   });
 });
