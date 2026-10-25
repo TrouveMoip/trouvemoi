@@ -1098,7 +1098,7 @@ app.get("/pro/:id", async (req, res) => {
             ${person.latitude && person.longitude ? `
               <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
             ` : ""}
-          </div>
+          </div> 
           ` : ""}
 
           <div style="margin-top: 24px;">${contactButtons}</div>
