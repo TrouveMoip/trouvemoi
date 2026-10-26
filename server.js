@@ -1151,15 +1151,24 @@ app.post("/pro/:id/avis", async (req, res) => {
 
   try {
     const proId = Number(req.params.id);
+    const visitorId = getOrCreateVisitorId(req, res);
     if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
     const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
     if (!check.rows.length) return res.redirect(303, "/");
+
+    // ✅ NOUVEAU : Vérifier la preuve de contact (dans les 30 derniers jours)
+    const contactProof = await pool.query(`SELECT id FROM pro_stats WHERE pro_id = $1 AND (phone_clicks > 0 OR wa_clicks > 0) AND last_visitor_id = $2 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proId, visitorId]);
+    
+    if (contactProof.rows.length === 0) {
+      return res.status(403).send(page("Preuve de contact requise", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444;">🔒 Preuve de contact requise</h1><p>Pour garantir l'authenticité des avis, seuls les clients ayant contacté ce professionnel via TrouveMoi (Appel ou WhatsApp) dans les 30 derniers jours peuvent laisser un avis.</p><a class="button" href="/pro/${proId}" style="margin-top:20px;">Retour au profil</a></section>`, null));
+    }
+
     const ratingNum = Number(req.body.rating);
     if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) return res.status(400).send(page("Erreur", "<h2>Note invalide (1 a 5).</h2>", null));
     const author = String(req.body.author_name || "").trim().slice(0, 100);
     if (!author) return res.status(400).send(page("Erreur", "<h2>Nom requis.</h2>", null));
     const comment = String(req.body.comment || "").slice(0, 3000);
-    await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status) VALUES ($1, $2, $3, $4, 'pending')`, [proId, author, ratingNum, comment]);
+    await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status, visitor_id) VALUES ($1, $2, $3, $4, 'pending', $5)`, [proId, author, ratingNum, comment, visitorId]);
     res.send(page("Succes", "<section class='card' style='text-align:center;'><h1>Merci !</h1><p>Votre avis sera examine.</p><a class='button' href='/'>Retour</a></section>", null));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
