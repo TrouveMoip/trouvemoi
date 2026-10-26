@@ -886,6 +886,7 @@ app.post("/api/track/:id/:type", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const type = req.params.type;
+    const visitorId = getOrCreateVisitorId(req, res);
     if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
     let col = "";
     if (type === "view") col = "views";
@@ -893,7 +894,7 @@ app.post("/api/track/:id/:type", async (req, res) => {
     else if (type === "wa") col = "wa_clicks";
     else return res.json({ ok: false });
 
-    await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1`, [id]);
+    await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1, last_visitor_id = $2`, [id, visitorId]);
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false }); }
 });
