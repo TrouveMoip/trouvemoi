@@ -17,7 +17,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
   secure: true
-});
+}); 
 
 const KKIAPAY_PUBLIC_KEY = process.env.KKIAPAY_PUBLIC_KEY;
 const KKIAPAY_PRIVATE_KEY = process.env.KKIAPAY_PRIVATE_KEY;
