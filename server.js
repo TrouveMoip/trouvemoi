@@ -2405,7 +2405,7 @@ let statsAll = { views: 0, phone: 0, wa: 0 };
     if (statsRes.rows.length) { stats.views = Number(statsRes.rows[0].v || 0); stats.phone = Number(statsRes.rows[0].p || 0); stats.wa = Number(statsRes.rows[0].w || 0); }
 
     const stats90Res = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '90 days'`, [proConnected.pro.id]);
-    const stats90 = { views: 0, phone: 0, wa: 0 };
+    stats90 = { views: 0, phone: 0, wa: 0 };
     if (stats90Res.rows.length) { stats90.views = Number(stats90Res.rows[0].v || 0); stats90.phone = Number(stats90Res.rows[0].p || 0); stats90.wa = Number(stats90Res.rows[0].w || 0); }
 
     const statsAllRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1`, [proConnected.pro.id]);
