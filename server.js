@@ -3081,6 +3081,8 @@ async function startServer() {
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_1 TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_2 TEXT`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_3 TEXT`,
+      `ALTER TABLE pro_stats ADD COLUMN IF NOT EXISTS last_visitor_id VARCHAR(64)`,
+`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS visitor_id VARCHAR(64)`,
       `UPDATE professional_applications SET payment_status = 'paid', payment_date = created_at WHERE status IN ('approved', 'pending', 'under_review') AND payment_status = 'unpaid'`
     ];
     for (const q of migrations) { try { await pool.query(q); } catch (e) { console.warn("Migration ignoree :", e.message); } }
