@@ -2409,7 +2409,7 @@ let statsAll = { views: 0, phone: 0, wa: 0 };
     if (stats90Res.rows.length) { stats90.views = Number(stats90Res.rows[0].v || 0); stats90.phone = Number(stats90Res.rows[0].p || 0); stats90.wa = Number(stats90Res.rows[0].w || 0); }
 
     const statsAllRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1`, [proConnected.pro.id]);
-    const statsAll = { views: 0, phone: 0, wa: 0 };
+    statsAll = { views: 0, phone: 0, wa: 0 };
     if (statsAllRes.rows.length) { statsAll.views = Number(statsAllRes.rows[0].v || 0); statsAll.phone = Number(statsAllRes.rows[0].p || 0); statsAll.wa = Number(statsAllRes.rows[0].w || 0); }
   } catch (error) { return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected)); }
 
