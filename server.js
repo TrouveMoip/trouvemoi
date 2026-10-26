@@ -246,7 +246,11 @@ function getOrCreateVisitorId(req, res) {
 
 function setSessionCookie(res, token) { res.setHeader("Set-Cookie", `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
 function clearSessionCookie(res) { res.setHeader("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`); }
-function setProCookie(res, code) { res.setHeader("Set-Cookie", `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
+function setProCookie(res, code) {
+  const currentCookies = res.getHeader("Set-Cookie") || [];
+  const newCookie = `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`;
+  res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
+}
 function clearProCookie(res) { res.setHeader("Set-Cookie", `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`); }
 
 async function requireAdmin(req, res, next) {
