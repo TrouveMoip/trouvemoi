@@ -2393,6 +2393,8 @@ app.get("/mon-espace-pro", async (req, res) => {
   }
 
   let offers = [], gdprRequests = [], myReviews = [], stats = { views: 0, phone: 0, wa: 0 }, withdrawals = [];
+let stats90 = { views: 0, phone: 0, wa: 0 };
+let statsAll = { views: 0, phone: 0, wa: 0 };
   try {
     offers = (await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id])).rows;
     gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
