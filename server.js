@@ -634,8 +634,15 @@ app.get("/", async (req, res) => {
           <h1 style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 12px; line-height: 1.2;">Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span></h1>
           <p style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px;">Des professionnels vérifiés au Bénin, en 1 clic.</p>
           
-          <a href="/recherche" class="button" style="background: #f59e0b; color: white; font-size: 18px; padding: 16px 40px; font-weight: 800; border-radius: 50px; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">🔍 Rechercher un pro</a>
-        </div>
+<a href="/recherche" class="button" style="background: #f59e0b; color: white; font-size: 18px; padding: 16px 40px; font-weight: 800; border-radius: 50px; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">🔍 Rechercher un pro</a>
+
+<div style="margin-top: 20px; max-width: 600px; margin-left: auto; margin-right: auto;">
+  <form action="/recherche" method="GET" style="display: flex; gap: 8px; background: white; padding: 8px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+    <input name="profession" placeholder="Quel métier ? (ex: maçon)" style="flex: 1; border: none; padding: 12px 20px; border-radius: 50px; margin: 0; font-size: 15px;">
+    <input name="city" placeholder="Ville" style="flex: 0 0 140px; border: none; padding: 12px 20px; border-radius: 50px; margin: 0; font-size: 15px; background: #f3f4f6;">
+    <button type="submit" style="margin: 0; padding: 12px 24px; border-radius: 50px; background: #2563eb;">Go</button>
+  </form>
+</div>        </div>
       </div>
 
       ${categoriesResult.rows.length > 0 ? `
