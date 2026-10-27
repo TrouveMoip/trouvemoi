@@ -1295,6 +1295,10 @@ app.post("/mon-compte/connexion-code", async (req, res) => {
     res.redirect(303, "/mon-compte");
   }
 });
+app.get("/mon-compte/deconnexion", (req, res) => {
+  res.setHeader("Set-Cookie", `tm_visitor_id=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
+  res.redirect(303, "/mon-compte");
+});
 
 app.post("/mon-compte/reinitialiser", async (req, res) => {
   const ip = req.ip || "unknown";
