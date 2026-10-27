@@ -1288,18 +1288,47 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
   if (!(await takeRateLimit(`client_reset:${ip}`, 3, 60 * 60 * 1000))) {
     return res.status(429).send(page("Trop de tentatives", "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p></section>", null));
   }
+
   const phone = cleanBeninPhone(req.body.phone);
   if (!phone) {
     return res.status(400).send(page("Erreur", "<h2>Numéro de téléphone invalide.</h2><a href='/mon-compte'>Retour</a>", null));
   }
-  const clientResult = await pool.query(`SELECT code FROM client_codes WHERE phone = $1`, [phone]);
-  if (!clientResult.rows.length) {
-    return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-compte'>Retour</a>", null));
+
+  try {
+    const smsCountResult = await pool.query(`
+      SELECT COUNT(*) FROM notifications 
+      WHERE recipient = $1 AND channel = 'sms' AND created_at >= date_trunc('month', CURRENT_DATE)
+    `, [phone]);
+
+    if (Number(smsCountResult.rows[0].count) >= 2) {
+      return res.status(429).send(page("Limite atteinte", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1 style="color:#f59e0b;">⚠️ Limite atteinte</h1>
+          <p>Vous avez déjà demandé 2 codes par SMS ce mois-ci.</p>
+          <p>Pour des raisons de sécurité et de coût, cette limite est stricte. Veuillez contacter notre support via WhatsApp si vous avez un problème.</p>
+          <a href="/contact" class="button">Nous contacter</a>
+        </section>
+      `, null));
+    }
+  } catch (error) {
+    console.error("Erreur vérification limite SMS :", error.message);
   }
+
+  const clientResult = await pool.query(`SELECT code FROM client_codes WHERE phone = $1`, [phone]);
+  
+  if (!clientResult.rows.length) {
+    return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><p>Vérifiez le numéro ou créez un compte.</p><a href='/mon-compte'>Retour</a>", null));
+  }
+
   const code = clientResult.rows[0].code;
-  await queueNotification({ recipient: phone, body: `TrouveMoi: Votre code de récupération est ${code}. Gardez-le précieusement.` });
+  
+  await queueNotification({
+    recipient: phone,
+    body: `TrouveMoi: Votre code de récupération est ${code}. Gardez-le précieusement.`
+  });
+
   res.send(page("Code envoyé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez un SMS avec votre code de récupération dans quelques instants.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
-});app.get("/pro/:id", async (req, res) => {
+});
   try {
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
