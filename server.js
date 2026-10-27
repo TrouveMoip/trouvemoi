@@ -4085,7 +4085,6 @@ async function cleanupExpiredDossiers() {
 
 /* --- DEMARRAGE DU SERVEUR ET MIGRATIONS --- */
 async function runVersionedMigrations(statements, key, version) {
-  return;
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
