@@ -4202,8 +4202,16 @@ async function startServer() {
       `ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`,
       `ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`
     ];
-    await runVersionedMigrations([...migrations, ...postMigrations], "schema", 1);
+    // await runVersionedMigrations([...migrations, ...postMigrations], "schema", 1);
 
+    // Création manuelle de la table de sécurité
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS rate_limits_v2 (
+    limit_key VARCHAR(200) PRIMARY KEY, 
+    count INTEGER NOT NULL DEFAULT 0, 
+    window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
