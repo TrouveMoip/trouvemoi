@@ -2568,12 +2568,14 @@ app.get("/mon-espace-pro/modifier-profil", async (req, res) => {
 
         <h3 style="margin-bottom:12px;">Identité et contact</h3>
 
-        <label>Nom complet *</label>
-        <input name="full_name" required maxlength="150" value="${escapeHtml(proConnected.pro.full_name)}">
+        <label>Nom complet (Vérifié KYC - Non modifiable)</label>
+<input name="full_name" value="${escapeHtml(proConnected.pro.full_name)}" readonly style="background:#e5e7eb; cursor:not-allowed; color:#6b7280;">
 
-        <label>Téléphone *</label>
-        <input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" title="10 chiffres commençant par 01" value="${escapeHtml(proConnected.pro.phone)}">
+<label>Nom de l'entreprise (Modifiable)</label>
+<input name="company_name" maxlength="200" value="${escapeHtml(proConnected.pro.company_name || '')}" placeholder="Ex: ADK Services">
 
+<label>Téléphone *</label>
+<input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" title="10 chiffres commençant par 01" value="${escapeHtml(proConnected.pro.phone)}">
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
           <div>
             <label>Préférence de contact</label>
