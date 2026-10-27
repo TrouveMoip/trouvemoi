@@ -2749,12 +2749,12 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
   try {
     await pool.query(
       `UPDATE professional_applications
-       SET full_name = $1, phone = $2, contact_email = $3, contact_preference = $4,
-           whatsapp_number = $5, city = $6, neighborhood = $7, type_lieu = $8,
-           adresse_exacte = $9, latitude = $10, longitude = $11, horaires_json = $12,
-           updated_at = NOW()
-       WHERE id = $13`,
-      [safeName, cleanPhone, email || null, preference, cleanWhatsapp, city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson, proConnected.pro.id]
+       SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4,
+     whatsapp_number = $5, city = $6, neighborhood = $7, type_lieu = $8,
+     adresse_exacte = $9, latitude = $10, longitude = $11, horaires_json = $12,
+     updated_at = NOW()
+ WHERE id = $13`,
+[company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson, proConnected.pro.id]
     );
     if (cleanPhone !== proConnected.pro.phone) {
       await logAdminAction("pro_phone_updated", "pro", proConnected.pro.id, `Ancien: ${proConnected.pro.phone} | Nouveau: ${cleanPhone}`);
