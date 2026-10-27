@@ -2699,7 +2699,7 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  const { full_name, phone, contact_email, contact_preference, whatsapp_number, city, neighborhood, neighborhood_other, type_lieu, adresse_exacte, latitude, longitude } = req.body;
+  const { company_name, phone, contact_email, contact_preference, whatsapp_number, city, neighborhood, neighborhood_other, type_lieu, adresse_exacte, latitude, longitude } = req.body;
 
   const safeName = String(full_name || "").trim().slice(0, 150);
   const cleanPhone = cleanBeninPhone(phone);
