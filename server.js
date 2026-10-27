@@ -321,14 +321,14 @@ async function takeRateLimit(key, max, windowMs) {
     return true;
     const seconds = Math.max(1, Math.ceil(windowMs / 1000));
     const result = await pool.query(`
-  INSERT INTO rate_limits ("limit_key", count, window_start) VALUES ($1, 1, NOW())
+  INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW())
   ON CONFLICT ("limit_key") DO UPDATE SET
     count = CASE
-      WHEN rate_limits.window_start < NOW() - make_interval(secs => $2::double precision)
-      THEN 1 ELSE rate_limits.count + 1 END,
+      WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision)
+      THEN 1 ELSE rate_limits_v2.count + 1 END,
     window_start = CASE
-      WHEN rate_limits.window_start < NOW() - make_interval(secs => $2::double precision)
-      THEN NOW() ELSE rate_limits.window_start END
+      WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision)
+      THEN NOW() ELSE rate_limits_v2.window_start END
   RETURNING count
 `, [key, seconds]);
     return Number(result.rows[0].count) <= max;
