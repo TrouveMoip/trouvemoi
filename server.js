@@ -318,7 +318,6 @@ function reportError(context, error) {
 
 async function takeRateLimit(key, max, windowMs) {
   try {
-    return true;
     const seconds = Math.max(1, Math.ceil(windowMs / 1000));
     const result = await pool.query(`
   INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW())
@@ -336,7 +335,6 @@ async function takeRateLimit(key, max, windowMs) {
 }
 
 async function clearRateLimit(key) {
-  return;
   try { await pool.query("DELETE FROM rate_limits WHERE limit_key = $1", [key]); } catch (error) { console.error("Erreur reinitialisation limitation :", error.message); }
 }
 
