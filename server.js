@@ -1206,7 +1206,7 @@ app.get("/mon-compte", async (req, res) => {
   
   const clientResult = await pool.query(`SELECT * FROM client_codes WHERE visitor_id = $1`, [visitorId]);
   const client = clientResult.rows[0];
-  const isConnected = client && client.phone; // Est-ce que l'appareil est déjà connecté ?
+  const isConnected = client && client.phone;
 
   const favorites = await pool.query(`SELECT COUNT(*) FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
   const count = Number(favorites.rows[0]?.count || 0);
@@ -1214,7 +1214,7 @@ app.get("/mon-compte", async (req, res) => {
   let content = "";
 
   if (isConnected) {
-    // CAS 1 : Le client est déjà connecté sur cet appareil
+    // CAS 1 : Le client est déjà connecté
     const code = await getOrCreateClientCode(visitorId);
     content = `
       <h2 style="text-align:center;">Bonjour ${escapeHtml(client.full_name)}</h2>
@@ -1229,37 +1229,49 @@ app.get("/mon-compte", async (req, res) => {
       <div style="text-align:center;"><a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:13px;">Se déconnecter de cet appareil</a></div>
     `;
   } else {
-    // CAS 2 : Le client n'est pas connecté sur cet appareil. On lui propose TOUTES les options.
+    // CAS 2 : Le client n'est pas connecté. On affiche les boutons.
     content = `
       <h2 style="text-align:center; margin-bottom:20px;">Accéder à mes favoris</h2>
       
-      <!-- Option A : J'ai déjà un code -->
-      <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
-        <h3 style="font-size:16px; margin-bottom:10px;">1. J'ai déjà mon code</h3>
-        <form action="/mon-compte/connexion-code" method="POST">
-          <input name="code" required maxlength="6" placeholder="Ex: A7B9K2" style="text-transform:uppercase; text-align:center; letter-spacing:2px; font-size:18px;">
-          <button type="submit" style="width:100%; margin-top:8px;">Me connecter</button>
-        </form>
+      <!-- BOUTON 1 : J'ai un code -->
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-code').style.display='block'; document.getElementById('form-oublie').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#f8fafc; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">
+          🔑 J'ai déjà un code (Se connecter)
+        </button>
+        <div id="form-code" style="display:none; margin-top:10px; padding:15px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+          <form action="/mon-compte/connexion-code" method="POST">
+            <input name="code" required maxlength="6" placeholder="Ex: A7B9K2" style="text-transform:uppercase; text-align:center; letter-spacing:2px; font-size:18px;">
+            <button type="submit" style="width:100%; margin-top:8px;">Me connecter</button>
+          </form>
+        </div>
       </div>
 
-      <!-- Option B : J'ai oublié mon code -->
-      <div style="background:#fffbeb; padding:16px; border-radius:12px; border:1px solid #fde68a; margin-bottom:20px;">
-        <h3 style="font-size:16px; margin-bottom:10px; color:#92400e;">2. J'ai oublié mon code</h3>
-        <p style="font-size:13px; color:#92400e; margin-bottom:10px;">Entrez votre numéro pour recevoir un SMS.</p>
-        <form action="/mon-compte/reinitialiser" method="POST">
-          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0194010345" style="text-align:center;">
-          <button type="submit" class="warning" style="width:100%; margin-top:8px;">Recevoir mon code par SMS</button>
-        </form>
+      <!-- BOUTON 2 : J'ai oublié mon code -->
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-oublie').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">
+          🤔 J'ai oublié mon code (Recevoir par SMS)
+        </button>
+        <div id="form-oublie" style="display:none; margin-top:10px; padding:15px; background:#fffbeb; border-radius:10px; border:1px solid #fde68a;">
+          <p style="font-size:13px; color:#92400e; margin-bottom:10px;">Entrez votre numéro pour recevoir un SMS.</p>
+          <form action="/mon-compte/reinitialiser" method="POST">
+            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="text-align:center;">
+            <button type="submit" class="warning" style="width:100%; margin-top:8px;">Recevoir mon code par SMS</button>
+          </form>
+        </div>
       </div>
 
-      <!-- Option C : Je suis nouveau -->
-      <div style="background:#eff6ff; padding:16px; border-radius:12px; border:1px solid #bfdbfe;">
-        <h3 style="font-size:16px; margin-bottom:10px; color:#1e40af;">3. Je n'ai pas encore de compte</h3>
-        <form action="/mon-compte/enregistrer" method="POST">
-          <input name="full_name" required maxlength="150" placeholder="Votre nom complet" style="margin-bottom:8px;">
-          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="Votre numéro (0194010345)" style="margin-bottom:8px;">
-          <button type="submit" class="success" style="width:100%; margin-top:8px;">Créer mon compte</button>
-        </form>
+      <!-- BOUTON 3 : Je suis nouveau -->
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-nouveau').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-oublie').style.display='none';" style="width:100%; text-align:left; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">
+          ✨ Je n'ai pas encore de compte (Créer un compte)
+        </button>
+        <div id="form-nouveau" style="display:none; margin-top:10px; padding:15px; background:#eff6ff; border-radius:10px; border:1px solid #bfdbfe;">
+          <form action="/mon-compte/enregistrer" method="POST">
+            <input name="full_name" required maxlength="150" placeholder="Votre nom complet" style="margin-bottom:8px;">
+            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="margin-bottom:8px;">
+            <button type="submit" class="success" style="width:100%; margin-top:8px;">Créer mon compte</button>
+          </form>
+        </div>
       </div>
     `;
   }
