@@ -4212,6 +4212,8 @@ await pool.query(`
     window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
 `);
+    await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`);
+await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_pros_status ON professional_applications(status)`);
