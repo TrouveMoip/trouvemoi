@@ -1426,30 +1426,64 @@ app.get("/mes-favoris", async (req, res) => {
 app.get("/mon-compte", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const visitorId = getOrCreateVisitorId(req, res);
-  const code = await getOrCreateClientCode(visitorId);
+  
+  // On récupère les infos du client
+  const clientResult = await pool.query(`SELECT * FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+  const client = clientResult.rows[0];
+  
   const favorites = await pool.query(`SELECT COUNT(*) FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
   const count = Number(favorites.rows[0]?.count || 0);
 
-  res.send(page("Mon compte", `
-    <section class="card" style="max-width: 600px; margin: 40px auto;">
-      <h1 style="text-align:center;">Mon compte</h1>
-      <p style="font-size:14px; color:#4b5563;">Vos favoris sont liés à cet appareil. Pour les retrouver ailleurs, utilisez votre code de récupération :</p>
-      <div class="pro-code-box" style="margin: 20px 0;">
-        <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Code de récupération</div>
-        <div class="pro-code-value" style="font-size:32px;">${escapeHtml(code || "Indisponible")}</div>
-      </div>
-      <p style="font-size:13px; color:#6b7280;">Notez ce code : il remplace un mot de passe. Ne le partagez pas.</p>
-      <p style="font-size:14px;"><strong>${count}</strong> favori(s) enregistré(s) sur cet appareil.</p>
-      <div style="text-align:center; margin:16px 0;"><a class="button" href="/mes-favoris">❤️ Voir mes favoris</a></div>
-      <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
-      <h2 style="font-size:18px;">Restaurer mes favoris</h2>
-      <form action="/mon-compte/restaurer" method="POST">
-        <label>Code de récupération</label>
-        <input name="code" required maxlength="12" placeholder="ABCD2345EF" style="text-transform:uppercase; text-align:center; letter-spacing:2px;">
-        <button type="submit" style="width:100%; margin-top:8px;">Restaurer</button>
-      </form>
-    </section>
-  `, proConnected));
+  let content = "";
+
+  if (!client || !client.phone) {
+    // Si le client n'a pas encore de nom/téléphone, on lui demande de s'enregistrer
+    content = `
+      <section class="card" style="max-width: 600px; margin: 40px auto;">
+        <h1 style="text-align:center;">Créer mon compte client</h1>
+        <p style="font-size:14px; color:#4b5563; text-align:center; margin-bottom:20px;">Enregistrez-vous pour sécuriser vos favoris et pouvoir les retrouver si vous changez d'appareil.</p>
+        
+        <form action="/mon-compte/enregistrer" method="POST">
+          <label>Nom complet *</label>
+          <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont">
+          
+          <label>Numéro de téléphone *</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0194010345" title="10 chiffres commençant par 01">
+          
+          <button type="submit" style="width:100%; margin-top:10px;">Créer mon compte</button>
+        </form>
+      </section>
+    `;
+  } else {
+    // Si le client est déjà enregistré, on affiche son code de récupération
+    const code = await getOrCreateClientCode(visitorId); // Génère le code s'il n'en a pas
+    content = `
+      <section class="card" style="max-width: 600px; margin: 40px auto;">
+        <h1 style="text-align:center;">Bonjour ${escapeHtml(client.full_name)}</h1>
+        <p style="font-size:14px; color:#4b5563;">Vos favoris sont liés à cet appareil. Pour les retrouver ailleurs, utilisez votre code de récupération :</p>
+        
+        <div class="pro-code-box" style="margin: 20px 0;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Code de récupération</div>
+          <div class="pro-code-value" style="font-size:32px;">${escapeHtml(code || "Indisponible")}</div>
+        </div>
+        
+        <p style="font-size:14px;"><strong>${count}</strong> favori(s) enregistré(s) sur cet appareil.</p>
+        <div style="text-align:center; margin:16px 0;"><a class="button" href="/mes-favoris">❤️ Voir mes favoris</a></div>
+        
+        <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
+        <h2 style="font-size:18px;">Restaurer mes favoris</h2>
+        <p style="font-size:13px; color:#6b7280; margin-bottom:12px;">Vous avez perdu votre code ? Entrez votre numéro de téléphone pour en recevoir un nouveau par SMS.</p>
+        
+        <form action="/mon-compte/reinitialiser" method="POST">
+          <label>Numéro de téléphone</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0194010345" style="text-align:center;">
+          <button type="submit" class="warning" style="width:100%; margin-top:8px;">Recevoir un code par SMS</button>
+        </form>
+      </section>
+    `;
+  }
+
+  res.send(page("Mon compte", content, proConnected));
 });
 
 app.post("/mon-compte/restaurer", async (req, res) => {
