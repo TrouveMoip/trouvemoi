@@ -1265,7 +1265,20 @@ app.post("/mon-compte/enregistrer", async (req, res) => {
   if (!fullName || !phone) {
     return res.status(400).send(page("Erreur", "<h2>Nom ou numéro invalide.</h2><a href='/mon-compte'>Retour</a>", null));
   }
-  const code = await getOrCreateClientCode(visitorId);
+
+  const existingPhone = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
+  
+  if (existingPhone.rows.length > 0) {
+    return res.status(400).send(page("Compte existant", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1 style="color:#ef4444;">⚠️ Numéro déjà utilisé</h1>
+        <p>Un compte existe déjà avec ce numéro. Utilisez le formulaire <strong>"Restaurer mes favoris"</strong> pour recevoir votre code.</p>
+        <a href="/mon-compte" class="button">Retour</a>
+      </section>
+    `, null));
+  }
+
+  await getOrCreateClientCode(visitorId);
   await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2 WHERE visitor_id = $3`, [fullName, phone, visitorId]);
   res.redirect(303, "/mon-compte");
 });
