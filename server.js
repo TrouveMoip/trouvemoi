@@ -2701,11 +2701,10 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
 
   const { company_name, phone, contact_email, contact_preference, whatsapp_number, city, neighborhood, neighborhood_other, type_lieu, adresse_exacte, latitude, longitude } = req.body;
 
-  const safeName = String(full_name || "").trim().slice(0, 150);
   const cleanPhone = cleanBeninPhone(phone);
-  if (!safeName || !cleanPhone) {
-    return res.status(400).send(page("Erreur", "<h2>Nom ou téléphone invalide (format 01XXXXXXXX).</h2>", proConnected));
-  }
+ if (!cleanPhone) {
+  return res.status(400).send(page("Erreur", "<h2>Téléphone invalide (format 01XXXXXXXX).</h2>", proConnected));
+}
 
   const email = String(contact_email || "").trim().slice(0, 254);
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
