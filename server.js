@@ -1271,30 +1271,29 @@ app.get("/mon-compte", async (req, res) => {
   `, proConnected));
 });
 
-app.post("/mon-compte/enregistrer", async (req, res) => {
+app.post("/mon-compte/connexion-code", async (req, res) => {
+  const code = String(req.body.code || "").trim().toUpperCase();
   const visitorId = getOrCreateVisitorId(req, res);
-  const fullName = String(req.body.full_name || "").trim().slice(0, 150);
-  const phone = cleanBeninPhone(req.body.phone);
 
-  if (!fullName || !phone) {
-    return res.status(400).send(page("Erreur", "<h2>Nom ou numéro invalide.</h2><a href='/mon-compte'>Retour</a>", null));
+  if (!code) return res.redirect(303, "/mon-compte");
+
+  try {
+    // On cherche si ce code existe et on récupère l'identifiant du téléphone lié
+    const result = await pool.query(`SELECT visitor_id FROM client_codes WHERE code = $1`, [code]);
+    
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", "<h2>Code introuvable. Vérifiez votre code.</h2><a href='/mon-compte'>Retour</a>", null));
+    }
+
+    // On lie ce nouvel appareil (visitorId) au compte existant
+    const originalVisitorId = result.rows[0].visitor_id;
+    await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE visitor_id = $2`, [visitorId, originalVisitorId]);
+
+    res.redirect(303, "/mon-compte");
+  } catch (error) {
+    console.error("Erreur connexion code :", error.message);
+    res.redirect(303, "/mon-compte");
   }
-
-  const existingPhone = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
-  
-  if (existingPhone.rows.length > 0) {
-    return res.status(400).send(page("Compte existant", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1 style="color:#ef4444;">⚠️ Numéro déjà utilisé</h1>
-        <p>Un compte existe déjà avec ce numéro. Utilisez le formulaire <strong>"Restaurer mes favoris"</strong> pour recevoir votre code.</p>
-        <a href="/mon-compte" class="button">Retour</a>
-      </section>
-    `, null));
-  }
-
-  await getOrCreateClientCode(visitorId);
-  await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2 WHERE visitor_id = $3`, [fullName, phone, visitorId]);
-  res.redirect(303, "/mon-compte");
 });
 
 app.post("/mon-compte/reinitialiser", async (req, res) => {
