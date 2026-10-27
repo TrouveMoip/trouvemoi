@@ -287,7 +287,7 @@ async function getConnectedPro(req) {
 function generateClientCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
-  for (let index = 0; index < 10; index += 1) code += alphabet[crypto.randomInt(0, alphabet.length)];
+  for (let index = 0; index < 6; index += 1) code += alphabet[crypto.randomInt(0, alphabet.length)];
   return code;
 }
 
