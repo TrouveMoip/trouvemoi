@@ -1486,6 +1486,26 @@ app.get("/mon-compte", async (req, res) => {
   res.send(page("Mon compte", content, proConnected));
 });
 
+app.post("/mon-compte/enregistrer", async (req, res) => {
+  const visitorId = getOrCreateVisitorId(req, res);
+  const fullName = String(req.body.full_name || "").trim().slice(0, 150);
+  const phone = cleanBeninPhone(req.body.phone);
+
+  if (!fullName || !phone) {
+    return res.status(400).send(page("Erreur", "<h2>Nom ou numéro invalide.</h2><a href='/mon-compte'>Retour</a>", null));
+  }
+
+  // On génère un code de récupération unique
+  const code = await getOrCreateClientCode(visitorId);
+
+  // On met à jour la base de données avec le nom et le téléphone
+  await pool.query(
+    `UPDATE client_codes SET full_name = $1, phone = $2 WHERE visitor_id = $3`,
+    [fullName, phone, visitorId]
+  );
+
+  res.redirect(303, "/mon-compte");
+});
 app.post("/mon-compte/restaurer", async (req, res) => {
   const ip = req.ip || "unknown";
   if (!(await takeRateLimit(`restore:${ip}`, 10, 15 * 60 * 1000))) {
