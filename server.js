@@ -4757,8 +4757,9 @@ await pool.query(`CREATE TABLE IF NOT EXISTS reviews (id SERIAL PRIMARY KEY, pro
       `CREATE INDEX IF NOT EXISTS idx_review_reports_status ON review_reports(status)`,
       `CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, channel VARCHAR(20) NOT NULL, recipient VARCHAR(254) NOT NULL, subject VARCHAR(200), body TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', error TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, sent_at TIMESTAMP)`,
       `CREATE TABLE IF NOT EXISTS rate_limits (key VARCHAR(200) PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-      `CREATE TABLE IF NOT EXISTS client_codes (code VARCHAR(12) PRIMARY KEY, visitor_id VARCHAR(64) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`
-    ];
+`CREATE TABLE IF NOT EXISTS client_codes (code VARCHAR(12) PRIMARY KEY, visitor_id VARCHAR(64) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`,
+`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`    ];
     await runVersionedMigrations([...migrations, ...postMigrations], "schema", 1);
 
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
