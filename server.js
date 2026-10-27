@@ -1329,7 +1329,8 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
 
   res.send(page("Code envoyé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez un SMS avec votre code de récupération dans quelques instants.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
 });
-  try {
+ app.get("/pro/:id", async (req, res) => { 
+   try {
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
