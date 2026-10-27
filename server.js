@@ -1297,7 +1297,7 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
   try {
     const smsCountResult = await pool.query(`
       SELECT COUNT(*) FROM notifications 
-      WHERE recipient = $1 AND channel = 'sms' AND created_at >= date_trunc('month', CURRENT_DATE)
+      WHERE recipient = $1 AND channel = 'sms' AND created_at >= date_trunc('month', CURRENT_DATE) 
     `, [phone]);
 
     if (Number(smsCountResult.rows[0].count) >= 2) {
