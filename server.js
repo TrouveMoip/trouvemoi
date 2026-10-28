@@ -3193,12 +3193,76 @@ async function adminMenu(current, csrf) {
     { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
     { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount },
     { href: "/admin/retraits", label: "💸 Retraits", badge: withdrawalsCount },
+    { href: "/admin/dons", label: "❤️ Dons", badge: 0 },
     { href: "/admin/blog", label: "📝 Blog", badge: 0 },
     { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
     { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed }
   ];
   return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
+app.get("/admin/dons", requireAdmin, async (req, res) => {
+  try {
+    const csrf = getCsrf(req);
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 50;
+    const offset = (currentPage - 1) * limit;
+    
+    const countResult = await pool.query("SELECT COUNT(*) FROM global_donations");
+    const total = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
+    
+    const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
+    
+    const sumResult = await pool.query("SELECT COALESCE(SUM(amount), 0) as total_amount FROM global_donations");
+    const totalAmount = Number(sumResult.rows[0].total_amount);
+
+    const rows = result.rows.map(d => `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px; font-size: 13px;">${new Date(d.created_at).toLocaleString("fr-FR")}</td>
+        <td style="padding: 12px; font-weight: 700; color: #10b981;">${d.amount} FCFA</td>
+        <td style="padding: 12px; font-size: 14px;">
+          ${d.donor_name === "Anonyme" ? `<em style="color:#6b7280;">Anonyme</em>` : `<strong>${escapeHtml(d.donor_name)}</strong>`}
+        </td>
+        <td style="padding: 12px; font-size: 12px; color: #6b7280;"><code>${escapeHtml(d.transaction_id)}</code></td>
+      </tr>
+    `).join("");
+
+    const menu = await adminMenu("/admin/dons", csrf);
+    const paginationHtml = renderPagination(currentPage, totalPages, "/admin/dons");
+
+    res.send(page("Dons", `
+      <h1 style="text-align:center; margin-bottom:20px;">❤️ Dons reçus</h1>
+      ${menu}
+      
+      <div class="stats-grid" style="margin-top: 20px; margin-bottom: 20px;">
+        <div class="stat-card success" style="grid-column: span 2;">
+          <div class="stat-number" style="color: #059669; font-size: 36px;">${totalAmount} FCFA</div>
+          <div class="stat-label">Total récolté</div>
+        </div>
+      </div>
+
+      <section class="card" style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Montant</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Donateur</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Réf. Transaction</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="4" style="text-align: center; padding: 20px; color: #6b7280;">Aucun don pour le moment.</td></tr>`}
+          </tbody>
+        </table>
+      </section>
+      ${paginationHtml}
+    `, null));
+  } catch (error) { 
+    console.error("Erreur page dons:", error.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
+  }
+});
 
 app.get("/admin/dashboard", requireAdmin, async (req, res) => {
   try {
