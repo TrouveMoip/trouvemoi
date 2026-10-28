@@ -443,10 +443,36 @@ function renderLogo() {
 }
 
 function buildMenu(proConnected) {
-  if (proConnected) {
-    return `<nav><a href="/">Professionnels</a><a href="/mes-favoris">❤️ Favoris</a><a href="/emplois">Emploi</a><a href="/mon-espace-pro">Mon espace pro</a><a href="/publier-emploi">📢 Publier une offre</a><form action="/mon-espace-pro/logout" method="POST" style="display:inline"><button type="submit" style="background:transparent;border:none;color:white;padding:8px 14px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">Deconnexion</button></form></nav>`;
-  }
-  return `<nav><a href="/">Professionnels</a><a href="/mes-favoris">❤️ Favoris</a><a href="/emplois">Emploi</a><a href="/devenir-professionnel">Devenir pro</a><a href="/mon-espace-pro">Espace pro</a><a href="/mon-compte">Mon compte</a><a href="/contact">Contact</a></nav>`;
+  const mainLinks = `
+    <a href="/">Professionnels</a>
+    <a href="/emplois">Emploi</a>
+    ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier une offre</a>`}
+  `;
+  const secondaryLinks = `
+    <a href="/mes-favoris">❤️ Favoris</a>
+    ${proConnected ? `<a href="/mon-espace-pro">Mon espace pro</a>` : `<a href="/mon-espace-pro">Espace pro</a>`}
+    <a href="/mon-compte">Mon compte</a>
+    <a href="/contact">Contact</a>
+    ${proConnected ? `<form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin:0;"><button type="submit">Déconnexion</button></form>` : ''}
+  `;
+  
+  return `
+    <nav>
+      <div class="desktop-menu">
+        ${mainLinks}
+        ${secondaryLinks}
+      </div>
+      <div class="mobile-menu">
+        <div class="main-links">
+          ${mainLinks}
+          <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
+        </div>
+        <div id="mobile-dropdown" class="mobile-dropdown">
+          ${secondaryLinks}
+        </div>
+      </div>
+    </nav>
+  `;
 }
 function page(title, content, proConnected, meta = {}) {
   const pageTitle = `${meta.title || title} - TrouveMoi`;
