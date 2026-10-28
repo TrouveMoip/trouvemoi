@@ -1797,12 +1797,12 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
           <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="">
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="Jean Dupont"></div>
-            <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="Dupont BTP"></div>
+            <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="momo"></div>
+            <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="momo BTP"></div>
           </div>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
+            <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0100000000" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
             <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
           </div>
           
