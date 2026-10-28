@@ -873,19 +873,40 @@ app.get("/", async (req, res) => {
 
     const content = `
       ${welcomeBanner}
-      <div style="position: relative; text-align: center; padding: 60px 20px; margin-bottom: 40px; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15); background-image: url('https://res.cloudinary.com/gxm35ndf/image/upload/v1792582418/pros.jpg'); background-size: cover; background-position: center;">
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(30,58,138,0.9) 0%, rgba(59,130,246,0.8) 100%); z-index: 1;"></div>
-        <div style="position: relative; z-index: 2; max-width: 800px; margin: 0 auto;">
-          <div style="display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); padding: 6px 16px; border-radius: 20px; color: white; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">
-  Déjà ${totalAllPros} pros vérifiés
+    <!-- NOUVELLE BANNIÈRE HERO AVEC 2 PHOTOS -->
+<div style="position: relative; background: white; border: 1px solid #e5e7eb; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 40px;">
+  <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; max-width: 1100px; margin: 0 auto; padding: 40px 20px; gap: 40px;">
+    
+    <!-- COLONNE GAUCHE : TEXTE -->
+    <div style="flex: 1 1 400px; text-align: left;">
+      <div style="display: inline-block; background: #eff6ff; border: 1px solid #bfdbfe; padding: 6px 16px; border-radius: 20px; color: #1e40af; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">
+        Déjà ${totalAllPros} pros vérifiés
+      </div>
+      <h1 style="font-size: 38px; font-weight: 800; color: #1e3a8a; margin-bottom: 16px; line-height: 1.2;">
+        Trouvez le professionnel<br>
+        <span style="color: #f59e0b;">qu'il vous faut près de chez vous.</span>
+      </h1>
+      <p style="font-size: 17px; color: #4b5563; margin-bottom: 30px;">
+        Des professionnels vérifiés au Bénin, à portée de clic.
+      </p>
+      <a href="/recherche" class="button" style="background: #f59e0b; color: white; font-size: 18px; padding: 16px 40px; font-weight: 800; border-radius: 50px; box-shadow: 0 4px 15px rgba(245,158,11,0.4); display: inline-block;">
+        🔍 Rechercher un pro
+      </a>
+    </div>
+
+    <!-- COLONNE DROITE : LES 2 PHOTOS -->
+    <div style="flex: 1 1 400px; position: relative; display: flex; justify-content: center; align-items: center; min-height: 350px;">
+      
+      <!-- PHOTO PRINCIPALE (Le menuisier) -->
+      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1793214672/ali-mkumbwa-PxlKOcj0a3Q-unsplash_1.jpg" alt="Menuisier au travail" style="width: 85%; height: 320px; object-fit: cover; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; z-index: 1; margin-left: auto;">
+
+      <!-- PHOTO SECONDAIRE (Le couturier) -->
+      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1793214724/ali-mkumbwa-1SAFRlUY0lk-unsplash.jpg" alt="Couturier au travail" style="width: 55%; height: 220px; object-fit: cover; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: absolute; bottom: 0px; left: 0px; border: 4px solid white; z-index: 2;">
+      
+    </div>
+
+  </div>
 </div>
-          
-          <h1 style="font-size: 32px; font-weight: 800; color: white; margin-bottom: 12px; line-height: 1.2;">Trouvez le professionnel<br><span style="color: #fbbf24;">qu'il vous faut près de chez vous.</span></h1>
-          <p style="font-size: 16px; color: rgba(255,255,255,0.9); margin-bottom: 30px;">Des professionnels vérifiés au Bénin, en 1 clic.</p>
-          
-<a href="/recherche" class="button" style="background: #f59e0b; color: white; font-size: 18px; padding: 16px 40px; font-weight: 800; border-radius: 50px; box-shadow: 0 4px 15px rgba(245,158,11,0.4); margin-top: 30px; margin-bottom: 20px; display: inline-block;">🔍 Rechercher un pro</a>
-
-
       
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; max-width: 800px; margin: 50px auto 50px auto; padding: 0 20px;">
   <a href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 24px; border-radius: 16px; text-decoration: none; text-align: center; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(37,99,235,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s;">
