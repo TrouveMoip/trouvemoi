@@ -4564,6 +4564,17 @@ await pool.query(`
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
 `);
+    // Création de la table du Blog
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS blog_posts (
+    id SERIAL PRIMARY KEY, 
+    title VARCHAR(200) NOT NULL, 
+    slug VARCHAR(250) UNIQUE NOT NULL, 
+    content TEXT NOT NULL, 
+    published BOOLEAN NOT NULL DEFAULT false, 
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`);
     await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`);
 await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
