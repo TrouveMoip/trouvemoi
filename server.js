@@ -4200,10 +4200,15 @@ app.get("/partenariats", async (req, res) => {
 });
 
 app.get("/blog", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const articles = (await pool.query(`SELECT * FROM blog_posts WHERE published = true ORDER BY created_at DESC`)).rows;
-  const list = articles.map(a => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:20px;"><a href="/blog/${a.slug}" style="text-decoration:none; color:#1e40af;">${escapeHtml(a.title)}</a></h2><p class="muted" style="font-size:13px;">Publié le ${new Date(a.created_at).toLocaleDateString("fr-FR")}</p><p style="margin-top:10px; color:#4b5563;">${escapeHtml(a.content).slice(0, 200)}...</p></article>`).join("");
-  res.send(page("Blog", `<h1 style="text-align:center; margin-bottom:30px;">Le Blog de TrouveMoi</h1><div style="max-width:800px; margin:0 auto;">${list || '<p style="text-align:center;">Aucun article pour le moment.</p>'}</div>`, proConnected));
+  try {
+    const proConnected = await getConnectedPro(req);
+    const articles = (await pool.query(`SELECT * FROM blog_posts WHERE published = true ORDER BY created_at DESC`)).rows;
+    const list = articles.map(a => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:20px;"><a href="/blog/${a.slug}" style="text-decoration:none; color:#1e40af;">${escapeHtml(a.title)}</a></h2><p class="muted" style="font-size:13px;">Publié le ${new Date(a.created_at).toLocaleDateString("fr-FR")}</p><p style="margin-top:10px; color:#4b5563;">${escapeHtml(a.content).slice(0, 200)}...</p></article>`).join("");
+    res.send(page("Blog", `<h1 style="text-align:center; margin-bottom:30px;">Le Blog de TrouveMoi</h1><div style="max-width:800px; margin:0 auto;">${list || '<p style="text-align:center; color:#6b7280; font-style:italic;">Aucun article pour le moment. Revenez bientôt !</p>'}</div>`, proConnected));
+  } catch (error) {
+    console.error("Erreur blog:", error.message);
+    res.status(500).send(page("Erreur", "<h2>Le blog est temporairement indisponible.</h2>", null));
+  }
 });
 
 app.get("/blog/:slug", async (req, res) => {
