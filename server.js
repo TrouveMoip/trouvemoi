@@ -887,11 +887,18 @@ app.get("/", async (req, res) => {
 
 
       
-
-      <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 40px;">
-        <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">👤 Devenir professionnel</a>
-        <a class="button" href="/emplois" style="background: #10b981; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">💼 Offres d'emploi</a>
-      </div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; max-width: 800px; margin: 50px auto 50px auto; padding: 0 20px;">
+  <a href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 24px; border-radius: 16px; text-decoration: none; text-align: center; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(37,99,235,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s;">
+    <span style="font-size: 36px; margin-bottom: 12px;">👤</span>
+    Devenir professionnel
+    <span style="font-size: 13px; font-weight: 400; opacity: 0.9; margin-top: 6px;">Inscrivez-vous et trouvez des clients</span>
+  </a>
+  <a href="/emplois" style="background: #10b981; color: white; padding: 24px; border-radius: 16px; text-decoration: none; text-align: center; font-weight: 700; font-size: 16px; box-shadow: 0 4px 15px rgba(16,185,129,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.2s;">
+    <span style="font-size: 36px; margin-bottom: 12px;">💼</span>
+    Offres d'emploi
+    <span style="font-size: 13px; font-weight: 400; opacity: 0.9; margin-top: 6px;">Découvrez les opportunités</span>
+  </a>
+</div>
 
       <div class="alert alert-warning" style="text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.</div>
 
