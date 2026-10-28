@@ -4199,6 +4199,29 @@ async function runVersionedMigrations(statements, key, version) {
   }
 }
 
+// --- SEO : Robots.txt ---
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain");
+  res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`);
+});
+
+// --- SEO : Sitemap dynamique ---
+app.get("/sitemap.xml", async (req, res) => {
+  try {
+    const pros = await pool.query("SELECT id, updated_at FROM professional_applications WHERE status = 'approved'");
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${APP_URL}/</loc><priority>1.0</priority></url>\n  <url><loc>${APP_URL}/recherche</loc><priority>0.8</priority></url>\n  <url><loc>${APP_URL}/emplois</loc><priority>0.8</priority></url>\n  <url><loc>${APP_URL}/blog</loc><priority>0.7</priority></url>`;
+    
+    pros.rows.forEach(pro => {
+      xml += `\n  <url><loc>${APP_URL}/pro/${pro.id}</loc><lastmod>${new Date(pro.updated_at).toISOString()}</lastmod><priority>0.9</priority></url>`;
+    });
+    
+    xml += `\n</urlset>`;
+    res.type("application/xml").send(xml);
+  } catch (error) {
+    res.status(500).end();
+  }
+});
+
 async function startServer() {
   try {
     await pool.query(`
