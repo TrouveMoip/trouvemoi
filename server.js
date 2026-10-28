@@ -5,7 +5,7 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
 
-const app = express();
+const app = express(); 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
