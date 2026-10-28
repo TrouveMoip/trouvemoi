@@ -1066,28 +1066,28 @@ app.get("/recherche", async (req, res) => {
       </div>
       
       <section class="card" style="max-width: 900px; margin: 0 auto 30px auto; background: #f8fafc;">
-        <form action="/recherche" method="GET" style="display: flex; flex-wrap: wrap; gap: 12px;">
-          <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
-          <datalist id="professions-list">${Object.entries(professionsByCategory).map(([cat, names]) => names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(cat)}</option>`).join("")).join("")}</datalist>
-          
-          <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
-          <datalist id="cities-list">${citiesResult.rows.map(c => `<option value="${escapeHtml(c.name)}">`).join("")}</datalist>
+       <form action="/recherche" method="GET" style="display: flex; flex-wrap: wrap; gap: 12px;">
+  <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  
+  <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  
+  <input name="neighborhood" value="${escapeHtml(req.query.neighborhood || "")}" placeholder="Quartier (ex: Akpakpa)" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
 
-          <select id="sort-select" name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
-            <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
-            <option value="rating" ${sort === 'rating' ? 'selected' : ''}>Mieux notés</option>
-            <option value="distance" ${sort === 'distance' ? 'selected' : ''}>Plus proches</option>
-          </select>
+  <select id="sort-select" name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
+    <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
+    <option value="rating" ${sort === 'rating' ? 'selected' : ''}>Mieux notés</option>
+    <option value="distance" ${sort === 'distance' ? 'selected' : ''}>Plus proches</option>
+  </select>
 
-          <button type="button" onclick="useMyPosition()" class="button secondary" style="flex: 0 0 170px; margin: 0; padding: 16px; border-radius: 12px; font-size: 14px;">📍 Autour de moi</button>
+  <button type="button" onclick="useMyPosition()" class="button secondary" style="flex: 0 0 170px; margin: 0; padding: 16px; border-radius: 12px; font-size: 14px;">📍 Autour de moi</button>
 
-          <button type="submit" style="flex: 0 0 120px; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Filtrer</button>
+  <button type="submit" style="flex: 0 0 120px; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Filtrer</button>
 
-          <input type="hidden" name="lat" id="lat-input" value="${hasCoords ? lat : ""}">
-          <input type="hidden" name="lng" id="lng-input" value="${hasCoords ? lng : ""}">
-          
-          ${category ? `<input type="hidden" name="category" value="${escapeHtml(category)}"><div style="width: 100%; font-size: 14px; color: #1e40af; margin-top: 8px;">Filtre actif : Catégorie <strong>${escapeHtml(category)}</strong> <a href="/recherche" style="color: #ef4444; margin-left: 10px;">(Effacer)</a></div>` : ""}
-        </form>
+  <input type="hidden" name="lat" id="lat-input" value="${hasCoords ? lat : ""}">
+  <input type="hidden" name="lng" id="lng-input" value="${hasCoords ? lng : ""}">
+  
+  ${category ? `<input type="hidden" name="category" value="${escapeHtml(category)}"><div style="width: 100%; font-size: 14px; color: #1e40af; margin-top: 8px;">Filtre actif : Catégorie <strong>${escapeHtml(category)}</strong> <a href="/recherche" style="color: #ef4444; margin-left: 10px;">(Effacer)</a></div>` : ""}
+</form>
       </section>
       
       ${isSearching ? `
