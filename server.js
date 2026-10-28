@@ -4329,6 +4329,17 @@ await pool.query(`
     window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
 `);
+    // Table des dons globaux
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS global_donations (
+    id SERIAL PRIMARY KEY,
+    amount INTEGER NOT NULL,
+    transaction_id VARCHAR(100) UNIQUE,
+    donor_name VARCHAR(100),
+    message TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`);
     await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`);
 await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
