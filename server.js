@@ -4580,6 +4580,11 @@ await pool.query(`
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
   )
 `);
+    // Mise à jour forcée de la table du blog
+await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS title VARCHAR(200) NOT NULL DEFAULT 'Sans titre'`);
+await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS slug VARCHAR(250)`);
+await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS content TEXT`);
+await pool.query(`ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS published BOOLEAN NOT NULL DEFAULT false`);
     await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`);
 await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
