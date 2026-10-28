@@ -632,6 +632,20 @@ function page(title, content, proConnected, meta = {}) {
         .footer-col a:hover { color: white; }
         .facebook-btn { display: inline-flex; align-items: center; justify-content: center; background: #1877F2; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; margin-top: 10px; transition: background 0.2s; }
         .facebook-btn:hover { background: #166fe5; }
+        /* GESTION DU MENU RESPONSIVE */
+.desktop-menu { display: flex; gap: 6px; align-items: center; }
+.mobile-menu { display: none; }
+
+@media (max-width: 768px) {
+  .desktop-menu { display: none; }
+  .mobile-menu { display: flex; flex-direction: column; width: 100%; position: relative; margin-top: 10px; }
+  .main-links { display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 5px; }
+  .main-links a { flex: 1; text-align: center; padding: 10px 5px; font-size: 13px; }
+  .burger-btn { background: transparent; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0 10px; }
+  .mobile-dropdown { display: none; flex-direction: column; background: #1e3a8a; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-top: 5px; }
+  .mobile-dropdown.show { display: flex; }
+  .mobile-dropdown a, .mobile-dropdown form button { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); width: 100%; display: block; }
+}
         .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
