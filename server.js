@@ -4274,12 +4274,26 @@ app.get("/soutenir", async (req, res) => {
   const content = `
     <section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;">
       <h1 style="color:#f59e0b;">❤️ Soutenir TrouveMoi</h1>
-      <p style="color:#4b5563; margin-bottom:30px;">TrouveMoi est une plateforme gratuite pour les clients et les professionnels. Vos dons nous aident à maintenir le site, à vérifier les identités (KYC) et à faire connaître la plateforme au Bénin.</p>
+      <p style="color:#4b5563; margin-bottom:30px;">Votre expérience sur TrouveMoi a été satisfaisante ? Vous avez trouvé le professionnel qu'il vous fallait ? Faites-nous un don pour soutenir la plateforme et nous aider à l'améliorer chaque jour.</p>
       
       <div style="background:#f8fafc; padding:24px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
         <label style="font-size:16px; margin-bottom:10px; display:block;">Entrez le montant de votre don (FCFA) :</label>
         <input type="number" id="custom-amount" placeholder="Ex: 500" min="100" style="text-align:center; font-size:24px; font-weight:bold; max-width:250px; margin:0 auto 15px auto; padding:15px;">
-        <button onclick="payerDon(document.getElementById('custom-amount').value)" style="width:100%; padding:15px; font-size:18px; background:#10b981; color:white; border:none; border-radius:12px; font-weight:bold;">Faire un don</button>
+        
+        <!-- SECTION NOM OU ANONYMAT -->
+        <div style="margin: 15px 0; text-align: left; max-width: 350px; margin-left: auto; margin-right: auto;">
+          <label style="display: flex; align-items: center; cursor: pointer; font-weight: 500; color: #4b5563;">
+            <input type="checkbox" id="is-anonymous" onchange="toggleNameField()" style="width: 20px; height: 20px; margin-right: 10px;">
+            Je préfère rester anonyme
+          </label>
+        </div>
+
+        <div id="name-field" style="margin-bottom:15px;">
+          <label style="font-size:14px; display:block; margin-bottom:5px;">Votre nom (ou nom de l'entreprise) :</label>
+          <input type="text" id="donor-name" placeholder="Ex: Jean Dupont" style="text-align:center; max-width:350px; margin:0 auto; padding:12px; width:100%; border:1px solid #cbd5e0; border-radius:8px;">
+        </div>
+
+        <button onclick="payerDon(document.getElementById('custom-amount').value)" style="width:100%; padding:15px; font-size:18px; background:#10b981; color:white; border:none; border-radius:12px; font-weight:bold; margin-top:10px;">Faire un don</button>
       </div>
 
       <p style="margin-top:20px;"><a href="/" style="color:#6b7280; font-size:14px;">← Retour à l'accueil</a></p>
@@ -4287,19 +4301,38 @@ app.get("/soutenir", async (req, res) => {
 
     <script src="https://cdn.kkiapay.me/k.js"></script>
     <script>
+      function toggleNameField() {
+        const isAnon = document.getElementById('is-anonymous').checked;
+        document.getElementById('name-field').style.display = isAnon ? 'none' : 'block';
+        if (isAnon) document.getElementById('donor-name').value = "";
+      }
+
       function payerDon(montant) {
         const amount = parseInt(montant);
         if (!amount || amount < 100) {
           alert("Le montant minimum est de 100 FCFA.");
           return;
         }
+
+        const isAnon = document.getElementById('is-anonymous').checked;
+        let donorName = "Anonyme";
         
+        if (!isAnon) {
+          donorName = document.getElementById('donor-name').value.trim();
+          if (!donorName) {
+            alert("Veuillez entrer votre nom ou cocher 'Je préfère rester anonyme'.");
+            return;
+          }
+        }
+        
+        const kkiapayData = "DON-GLOBAL|" + encodeURIComponent(donorName);
+
         openKkiapayWidget({ 
           amount: amount, 
           api_key: "${KKIAPAY_PUBLIC_KEY}", 
           sandbox: ${KKIAPAY_SANDBOX}, 
           callback: "${APP_URL}/don/verifier", 
-          data: "DON-GLOBAL-" + Date.now(), 
+          data: kkiapayData, 
           theme: "#f59e0b", 
           position: "center" 
         });
