@@ -896,14 +896,7 @@ app.get("/", async (req, res) => {
   </form>
 </div>
 
-      ${categoriesResult.rows.length > 0 ? `
-      <div style="text-align: center; margin-bottom: 40px;">
-        <h3 style="font-size: 18px; margin-bottom: 16px; color: #374151;">Explorer par catégorie</h3>
-        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-          ${categoriesHtml}
-        </div>
-      </div>
-      ` : ""}
+      
 
       <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 40px;">
         <a class="button" href="/devenir-professionnel" style="background: #2563eb; color: white; padding: 16px 24px; font-weight: 700; border-radius: 12px; flex: 1 1 250px;">👤 Devenir professionnel</a>
