@@ -4204,6 +4204,53 @@ async function runVersionedMigrations(statements, key, version) {
   }
 }
 
+app.get("/soutenir", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  
+  const content = `
+    <section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;">
+      <h1 style="color:#f59e0b;">❤️ Soutenir TrouveMoi</h1>
+      <p style="color:#4b5563; margin-bottom:30px;">TrouveMoi est une plateforme gratuite pour les clients et les professionnels. Vos dons nous aident à maintenir le site, à vérifier les identités (KYC) et à faire connaître la plateforme au Bénin.</p>
+      
+      <div style="background:#f8fafc; padding:24px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+        <label style="font-size:16px; margin-bottom:10px; display:block;">Entrez le montant de votre don (FCFA) :</label>
+        <input type="number" id="custom-amount" placeholder="Ex: 500" min="100" style="text-align:center; font-size:24px; font-weight:bold; max-width:250px; margin:0 auto 15px auto; padding:15px;">
+        <button onclick="payerDon(document.getElementById('custom-amount').value)" style="width:100%; padding:15px; font-size:18px; background:#10b981; color:white; border:none; border-radius:12px; font-weight:bold;">Faire un don</button>
+      </div>
+
+      <p style="margin-top:20px;"><a href="/" style="color:#6b7280; font-size:14px;">← Retour à l'accueil</a></p>
+    </section>
+
+    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <script>
+      function payerDon(montant) {
+        const amount = parseInt(montant);
+        if (!amount || amount < 100) {
+          alert("Le montant minimum est de 100 FCFA.");
+          return;
+        }
+        
+        openKkiapayWidget({ 
+          amount: amount, 
+          api_key: "${KKIAPAY_PUBLIC_KEY}", 
+          sandbox: ${KKIAPAY_SANDBOX}, 
+          callback: "${APP_URL}/don/verifier", 
+          data: "DON-GLOBAL-" + Date.now(), 
+          theme: "#f59e0b", 
+          position: "center" 
+        });
+      }
+
+      addSuccessListener(function(response) {
+        if (response && response.transactionId) {
+          window.location.href = "/don/verifier?transaction_id=" + encodeURIComponent(response.transactionId);
+        }
+      });
+    </script>
+  `;
+  res.send(page("Soutenir TrouveMoi", content, proConnected));
+});
+
 // --- SEO : Robots.txt ---
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain");
