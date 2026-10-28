@@ -4356,18 +4356,32 @@ app.get("/don/verifier", async (req, res) => {
     const verification = await verifyKkiapayTransaction(transactionId);
     
     if (verification.success) {
+      let donorName = "Anonyme";
+      
+      if (verification.reference && verification.reference.startsWith("DON-GLOBAL|")) {
+        const parts = verification.reference.split("|");
+        if (parts[1]) {
+          donorName = decodeURIComponent(parts[1]);
+        }
+      }
+
       await pool.query(
-        `INSERT INTO global_donations (amount, transaction_id) VALUES ($1, $2) ON CONFLICT (transaction_id) DO NOTHING`,
-        [verification.amount, transactionId]
+        `INSERT INTO global_donations (amount, transaction_id, donor_name) VALUES ($1, $2, $3) ON CONFLICT (transaction_id) DO NOTHING`,
+        [verification.amount, transactionId, donorName]
       );
       
-      await logAdminAction("donation_received", "global", null, `Don de ${verification.amount} FCFA`);
+      await logAdminAction("donation_received", "global", null, `Don de ${verification.amount} FCFA par ${donorName}`);
       
+      const merciMessage = donorName === "Anonyme" 
+        ? "Merci infiniment pour votre don anonyme !" 
+        : `Merci infiniment <strong>${escapeHtml(donorName)}</strong> pour votre don !`;
+
       res.send(page("Merci !", `
         <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
           <div style="font-size:64px; margin-bottom:20px;">🙏</div>
-          <h1 style="color:#10b981;">Merci infiniment !</h1>
-          <p>Votre don de <strong>${verification.amount} FCFA</strong> a bien été reçu.</p>
+          <h1 style="color:#10b981;">Merci !</h1>
+          <p style="font-size:18px;">${merciMessage}</p>
+          <p>Votre contribution de <strong>${verification.amount} FCFA</strong> a bien été reçue.</p>
           <p style="color:#6b7280; font-size:14px;">Grâce à vous, TrouveMoi continue de grandir et d'aider les professionnels du Bénin.</p>
           <a href="/" class="button" style="margin-top:20px;">Retour à l'accueil</a>
         </section>
@@ -4380,7 +4394,6 @@ app.get("/don/verifier", async (req, res) => {
     res.redirect(303, "/soutenir");
   }
 });
-
 // --- SEO : Robots.txt ---
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain");
