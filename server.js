@@ -4250,6 +4250,39 @@ app.get("/soutenir", async (req, res) => {
   `;
   res.send(page("Soutenir TrouveMoi", content, proConnected));
 });
+app.get("/don/verifier", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const transactionId = String(req.query.transaction_id || "").trim();
+  if (!transactionId) return res.redirect(303, "/");
+
+  try {
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success) {
+      await pool.query(
+        `INSERT INTO global_donations (amount, transaction_id) VALUES ($1, $2) ON CONFLICT (transaction_id) DO NOTHING`,
+        [verification.amount, transactionId]
+      );
+      
+      await logAdminAction("donation_received", "global", null, `Don de ${verification.amount} FCFA`);
+      
+      res.send(page("Merci !", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <div style="font-size:64px; margin-bottom:20px;">🙏</div>
+          <h1 style="color:#10b981;">Merci infiniment !</h1>
+          <p>Votre don de <strong>${verification.amount} FCFA</strong> a bien été reçu.</p>
+          <p style="color:#6b7280; font-size:14px;">Grâce à vous, TrouveMoi continue de grandir et d'aider les professionnels du Bénin.</p>
+          <a href="/" class="button" style="margin-top:20px;">Retour à l'accueil</a>
+        </section>
+      `, proConnected));
+    } else {
+      res.redirect(303, "/soutenir");
+    }
+  } catch (error) {
+    console.error("Erreur don :", error.message);
+    res.redirect(303, "/soutenir");
+  }
+});
 
 // --- SEO : Robots.txt ---
 app.get("/robots.txt", (req, res) => {
