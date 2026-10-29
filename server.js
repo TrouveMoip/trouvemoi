@@ -1594,16 +1594,16 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
             <div><div style="font-size: 12px; color: #6b7280; text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Disponibilité</div><div style="font-size: 14px; font-weight: 600; color: #111827;">${person.availability ? escapeHtml(person.availability) : "Non spécifiée"}</div></div>
           </div>
 
-          ${person.type_lieu === 'fixe' ? `
-          <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
-            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3>
-            <p style="font-size: 14px; margin-bottom: 8px; color: #1e40af; font-weight: 500;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Adresse non spécifiée"}</p>
-            ${horairesHtml}
-            ${person.latitude && person.longitude ? `
-              <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
-        ${hasMap ? `<iframe title="Carte de localisation" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${mapBbox}&layer=mapnik&marker=${mapLat}%2C${mapLng}" style="width:100%; height:220px; border:1px solid #bfdbfe; border-radius:8px; margin-top:12px;"></iframe>` : ""}
-          </div> 
-          ` : ""}
+         ${person.type_lieu === 'fixe' ? `
+<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
+  <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3>
+  <p style="font-size: 14px; margin-bottom: 8px; color: #1e40af; font-weight: 500;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Adresse non spécifiée"}</p>
+  ${horairesHtml}
+  ${person.latitude && person.longitude ? `
+    <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
+  ` : ""}
+</div> 
+` : ""}
 
           <div style="margin-top: 24px;">${contactButtons}</div>
         </div>
