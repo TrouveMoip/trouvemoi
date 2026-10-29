@@ -3268,6 +3268,33 @@ async function adminMenu(current, csrf) {
   ];
   return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
+app.get("/admin/qrcode", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const menu = await adminMenu("/admin/qrcode", csrf);
+  
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(APP_URL)}`;
+
+  res.send(page("QR Code Officiel", `
+    <h1 style="text-align:center; margin-bottom:20px;">📱 Code QR Officiel</h1>
+    ${menu}
+    
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
+      <h2 style="font-size: 20px; margin-bottom: 10px; color: #1e3a8a;">Code QR de TrouveMoi</h2>
+      <p style="font-size: 14px; color: #4b5563; margin-bottom: 24px;">Imprimez ce code sur vos flyers, affiches ou cartes de visite. Il redirige directement vers la page d'accueil de la plateforme.</p>
+      
+      <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; display: inline-block;">
+        <img src="${qrUrl}" alt="QR Code TrouveMoi" style="width: 250px; height: 250px; display: block; border-radius: 8px;">
+      </div>
+      
+      <div style="margin-top: 24px;">
+        <a href="${qrUrl}" target="_blank" class="button" style="background: #10b981; width: 100%; border-radius: 8px; font-size: 16px; padding: 12px;">
+          📥 Télécharger le Code QR en haute définition
+        </a>
+      </div>
+      <p style="font-size: 12px; color: #9ca3af; margin-top: 16px;">Scannez avec l'appareil photo de votre téléphone.</p>
+    </section>
+  `, null));
+});
 app.get("/admin/dons", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
