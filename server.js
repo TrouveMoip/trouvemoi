@@ -646,6 +646,19 @@ function page(title, content, proConnected, meta = {}) {
   .mobile-dropdown a, .mobile-dropdown form button { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); width: 100%; display: block; }
 }
         .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
+        /* ANIMATION DU MESSAGE D'ALERTE */
+@keyframes pulse-alert {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.alert-animated {
+  animation: pulse-alert 2s infinite;
+  background-color: #fef2f2 !important;
+  border: 2px solid #ef4444 !important;
+  color: #991b1b !important;
+  font-weight: 700;
+}
         @media (max-width: 600px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
