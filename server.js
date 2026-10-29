@@ -911,10 +911,10 @@ app.get("/", async (req, res) => {
     <div style="flex: 1 1 400px; position: relative; display: flex; justify-content: center; align-items: center; min-height: 350px;">
       
       <!-- PHOTO PRINCIPALE (Le menuisier) -->
-      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1793214672/ali-mkumbwa-PxlKOcj0a3Q-unsplash_1.jpg" alt="Menuisier au travail" style="width: 85%; height: 320px; object-fit: cover; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; z-index: 1; margin-left: auto;">
+      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/f_auto,q_auto,w_600/v1793214672/ali-mkumbwa-PxlKOcj0a3Q-unsplash_1.jpg" alt="Menuisier au travail" style="width: 85%; height: 320px; object-fit: cover; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); position: relative; z-index: 1; margin-left: auto;">
 
       <!-- PHOTO SECONDAIRE (Le couturier) -->
-      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1793214724/ali-mkumbwa-1SAFRlUY0lk-unsplash.jpg" alt="Couturier au travail" style="width: 55%; height: 220px; object-fit: cover; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: absolute; bottom: 0px; left: 0px; border: 4px solid white; z-index: 2;">
+      <img src="https://res.cloudinary.com/gxm35ndf/image/upload/f_auto,q_auto,w_500/v1793214724/ali-mkumbwa-1SAFRlUY0lk-unsplash.jpg" alt="Couturier au travail" style="width: 55%; height: 220px; object-fit: cover; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: absolute; bottom: 0px; left: 0px; border: 4px solid white; z-index: 2;">
       
     </div>
 
