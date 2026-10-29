@@ -1601,8 +1601,7 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
             ${horairesHtml}
             ${person.latitude && person.longitude ? `
               <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
-              ${hasMap ? `<iframe title="Carte de localisation" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=${mapBbox}&layer=mapnik&marker=${mapLat}%2C${mapLng}" style="width:100%; height:220px; border:1px solid #bfdbfe; border-radius:8px; margin-top:12px;"></iframe>` : ""}
-            ` : ""}
+              
           </div> 
           ` : ""}
 
