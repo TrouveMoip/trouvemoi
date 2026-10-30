@@ -335,7 +335,7 @@ async function takeRateLimit(key, max, windowMs) {
 }
 
 async function clearRateLimit(key) {
-  try { await pool.query("DELETE FROM rate_limits WHERE limit_key = $1", [key]); } catch (error) { console.error("Erreur reinitialisation limitation :", error.message); }
+  try { await pool.query("DELETE FROM rate_limits_v2 WHERE limit_key = $1", [key]); } catch (error) { console.error("Erreur reinitialisation limitation :", error.message); }
 }
 
 function toInternationalBenin(phone) {
