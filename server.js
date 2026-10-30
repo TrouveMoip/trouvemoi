@@ -1508,11 +1508,27 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
       </div>
     `).join("");
 
-    const photosGalerie = [person.photo_galerie_1, person.photo_galerie_2, person.photo_galerie_3].filter(url => url !== null && url !== "");
-    let galerieHtml = "";
-    if (photosGalerie.length > 0) {
-      galerieHtml = `<div class="card" style="padding: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2><div class="gallery-grid">${photosGalerie.map(url => `<img src="${escapeHtml(url)}" onclick="zoomImage(this.src)">`).join("")}</div></div>`;
-    }
+    const galerieData = [
+  { url: person.photo_galerie_1, desc: person.photo_galerie_1_desc },
+  { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc },
+  { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }
+].filter(item => item.url);
+
+let galerieHtml = "";
+if (galerieData.length > 0) {
+  galerieHtml = `
+    <div class="card" style="padding: 24px;">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2>
+      <div class="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+        ${galerieData.map(item => `
+          <div style="text-align:center;">
+            <img src="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" style="width:100%; height:140px; object-fit:cover; border-radius:12px; cursor:pointer;">
+            ${item.desc ? `<p style="font-size:13px; color:#4b5563; margin-top:8px; font-weight:500;">${escapeHtml(item.desc)}</p>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    </div>`;
+}
 
     const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `
       <div style="margin-bottom: 16px;">
