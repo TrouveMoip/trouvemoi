@@ -2977,16 +2977,20 @@ app.get("/mon-espace-pro/modifier-galerie", async (req, res) => {
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const successMsg = req.query.success ? `<div class="alert alert-success">✅ Galerie mise à jour !</div>` : "";
   const slots = [1, 2, 3].map((index) => {
-    const url = proConnected.pro[`photo_galerie_${index}`];
-    return `<div style="margin-bottom:16px;">
-      <label>Photo ${index}</label>
-      ${url ? `<img src="${escapeHtml(url)}" style="height:80px; border-radius:8px; margin-bottom:8px; display:block;">
-        <form action="/mon-espace-pro/modifier-galerie/${index}/supprimer" method="POST" style="margin:0 0 8px;">
-          <button class="danger" type="submit" onclick="return confirm('Supprimer cette photo ?')" style="padding:6px 12px; font-size:12px; margin:0;">🗑️ Supprimer</button>
-        </form>` : ""}
-      <input type="file" name="photo${index}" accept="image/*">
-    </div>`;
-  }).join("");
+  const url = proConnected.pro[`photo_galerie_${index}`];
+  const desc = proConnected.pro[`photo_galerie_${index}_desc`] || "";
+  return `<div style="margin-bottom:24px; background:white; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+    <label>Photo ${index}</label>
+    ${url ? `<img src="${escapeHtml(url)}" style="height:100px; border-radius:8px; margin-bottom:12px; display:block;">
+      <form action="/mon-espace-pro/modifier-galerie/${index}/supprimer" method="POST" style="margin:0 0 12px;">
+        <button class="danger" type="submit" onclick="return confirm('Supprimer cette photo ?')" style="padding:6px 12px; font-size:12px; margin:0;">🗑️ Supprimer la photo</button>
+      </form>` : ""}
+    <input type="file" name="photo${index}" accept="image/*" style="margin-bottom:12px;">
+    
+    <label style="margin-top:8px;">Description de la photo ${index} (facultatif)</label>
+    <input type="text" name="desc${index}" value="${escapeHtml(desc)}" maxlength="100" placeholder="Ex: Plat de Wô traditionnel" style="width:100%; padding:10px; border:1px solid #cbd5e0; border-radius:8px;">
+  </div>`;
+}).join("");
 
   res.send(page("Ma Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1 style="text-align:center;">📸 Ma Galerie</h1><p style="text-align:center; color:#6b7280; margin-bottom:24px;">Ajoutez jusqu'à 3 photos, ou supprimez celles que vous ne voulez plus.</p>${successMsg}<form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data" style="background:#f9fafb; padding:20px; border-radius:12px;">${slots}<button type="submit" style="width:100%; margin-top:10px;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
 });
