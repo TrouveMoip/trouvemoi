@@ -2999,13 +2999,35 @@ app.post("/mon-espace-pro/modifier-galerie", upload.fields([{ name: 'photo1', ma
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   try {
-    const files = req.files; let newGalerie = { 1: proConnected.pro.photo_galerie_1, 2: proConnected.pro.photo_galerie_2, 3: proConnected.pro.photo_galerie_3 };
-    for (let i = 1; i <= 3; i++) { if (files && files[`photo${i}`] && files[`photo${i}`][0]) { const result = await uploadToCloudinary(files[`photo${i}`][0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_${i}_${Date.now()}`); if (newGalerie[i]) await deleteFromCloudinary(newGalerie[i]); newGalerie[i] = result.secure_url; } }
-    await pool.query(`UPDATE professional_applications SET photo_galerie_1 = $1, photo_galerie_2 = $2, photo_galerie_3 = $3 WHERE id = $4`, [newGalerie[1], newGalerie[2], newGalerie[3], proConnected.pro.id]);
-    res.redirect(303, "/mon-espace-pro/modifier-galerie?success=1");
-  } catch (e) { res.redirect(303, "/mon-espace-pro/modifier-galerie"); }
-});
+    const files = req.files; 
+    let newGalerie = { 1: proConnected.pro.photo_galerie_1, 2: proConnected.pro.photo_galerie_2, 3: proConnected.pro.photo_galerie_3 };
+    
+    // On récupère les descriptions
+    const desc1 = String(req.body.desc1 || "").trim().slice(0, 100);
+    const desc2 = String(req.body.desc2 || "").trim().slice(0, 100);
+    const desc3 = String(req.body.desc3 || "").trim().slice(0, 100);
 
+    for (let i = 1; i <= 3; i++) { 
+      if (files && files[`photo${i}`] && files[`photo${i}`][0]) { 
+        const result = await uploadToCloudinary(files[`photo${i}`][0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_${i}_${Date.now()}`); 
+        if (newGalerie[i]) await deleteFromCloudinary(newGalerie[i]); 
+        newGalerie[i] = result.secure_url; 
+      } 
+    }
+    
+    await pool.query(
+      `UPDATE professional_applications 
+       SET photo_galerie_1 = $1, photo_galerie_2 = $2, photo_galerie_3 = $3,
+           photo_galerie_1_desc = $4, photo_galerie_2_desc = $5, photo_galerie_3_desc = $6
+       WHERE id = $7`, 
+      [newGalerie[1], newGalerie[2], newGalerie[3], desc1 || null, desc2 || null, desc3 || null, proConnected.pro.id]
+    );
+    res.redirect(303, "/mon-espace-pro/modifier-galerie?success=1");
+  } catch (e) { 
+    console.error(e);
+    res.redirect(303, "/mon-espace-pro/modifier-galerie"); 
+  }
+});
 app.post("/mon-espace-pro/modifier-galerie/:slot/supprimer", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
