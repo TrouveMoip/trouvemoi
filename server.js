@@ -1589,17 +1589,32 @@ if (galerieData.length > 0) {
       <div style="max-width: 800px; margin: 0 auto;">
         ${jsonLdHtml}
         ${leaveBadge}
-        <div class="card" style="text-align: center; padding: 32px 24px; position:relative;">
-          <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-          </div>
-          ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
-          ${openStatusBadge}
-          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
-          <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
-          <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-          <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${reviewsCount > 0 ? `${renderStars(avgRating)} <span style="font-size: 15px; color: #6b7280; font-weight: 400;">(${reviewsCount} avis)</span>` : `<span style="font-size: 15px; color: #9ca3af; font-weight: 400;">Pas encore d'avis</span>`}</div>
-        </div>
+       <div class="card" style="padding: 32px 24px; position:relative;">
+  <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px; z-index: 10;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+  </div>
+  
+  <div style="display: flex; flex-wrap: wrap; gap: 30px; align-items: center; justify-content: center;">
+    
+    <!-- COLONNE GAUCHE : PHOTO -->
+    ${person.photo_activite_url ? `
+    <div style="flex: 1 1 250px; max-width: 320px; text-align: center;">
+      <img src="${escapeHtml(person.photo_activite_url)}" alt="${escapeHtml(displayName)}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    </div>
+    ` : ""}
+
+    <!-- COLONNE DROITE : INFOS -->
+    <div style="flex: 2 1 350px; text-align: center;">
+      ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
+      ${openStatusBadge}
+      <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
+      <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(person.profession)}</div>
+      <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+      <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${reviewsCount > 0 ? `${renderStars(avgRating)} <span style="font-size: 15px; color: #6b7280; font-weight: 400;">(${reviewsCount} avis)</span>` : `<span style="font-size: 15px; color: #9ca3af; font-weight: 400;">Pas encore d'avis</span>`}</div>
+    </div>
+
+  </div>
+</div>
         
         <div class="card">
           <h2 style="font-size: 18px; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
