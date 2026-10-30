@@ -2970,6 +2970,10 @@ app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
 app.post("/mon-espace-pro/modifier-photo", upload.single("photo_activite"), async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected || !req.file) return res.redirect(303, "/mon-espace-pro/modifier-photo");
+  // Vérification de la limite d'upload (1 fois par semaine)
+if (!(await takeRateLimit(`photo_limit:${proConnected.pro.id}`, 1, 7 * 24 * 60 * 60 * 1000))) {
+  return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier vos photos qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
+}
   try {
     const result = await uploadToCloudinary(req.file.buffer, "trouvemoi/activites", `activite_${proConnected.pro.id}_${Date.now()}`);
     if (proConnected.pro.photo_activite_url) await deleteFromCloudinary(proConnected.pro.photo_activite_url);
