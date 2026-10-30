@@ -3016,6 +3016,10 @@ app.get("/mon-espace-pro/modifier-galerie", async (req, res) => {
 app.post("/mon-espace-pro/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }, { name: 'photo3', maxCount: 1 }]), async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  // Vérification de la limite d'upload (1 fois par semaine)
+if (!(await takeRateLimit(`photo_limit:${proConnected.pro.id}`, 1, 7 * 24 * 60 * 60 * 1000))) {
+  return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier vos photos qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
+}
   try {
     const files = req.files; 
     let newGalerie = { 1: proConnected.pro.photo_galerie_1, 2: proConnected.pro.photo_galerie_2, 3: proConnected.pro.photo_galerie_3 };
