@@ -4611,7 +4611,10 @@ async function startServer() {
       `ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`
     ];
     // await runVersionedMigrations([...migrations, ...postMigrations], "schema", 1);
-
+// Ajout des descriptions pour la galerie
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_1_desc VARCHAR(100)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_2_desc VARCHAR(100)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_3_desc VARCHAR(100)`);
     // Création manuelle de la table de sécurité
 await pool.query(`
   CREATE TABLE IF NOT EXISTS rate_limits_v2 (
