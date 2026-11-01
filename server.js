@@ -3292,8 +3292,8 @@ app.post("/admin/login", async (req, res) => {
   if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) {
     return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
   }
-  if (ADMIN_TOTP_SECRET && !verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) {
-    return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
+if (!verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) {   
+  return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
   }
 
   await clearRateLimit(rateKey);
