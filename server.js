@@ -3292,10 +3292,15 @@ app.post("/offres-emploi", async (req, res) => {
 app.post("/admin/login", async (req, res) => {
   const address = req.ip || "unknown";
   const rateKey = `admin_login:${address}`;
-  if (!(await takeRateLimit(rateKey, 5, 15 * 60 * 1000))) return res.status(429).send("Trop de tentatives.");
+  
+  if (!(await takeRateLimit(rateKey, 5, 15 * 60 * 1000))) {
+    return res.status(429).send("Trop de tentatives.");
+  }
+  
   if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) {
     return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
   }
+  
   if (ADMIN_TOTP_SECRET && !verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) {
     return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
   }
