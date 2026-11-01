@@ -3269,7 +3269,7 @@ app.post("/offres-emploi", async (req, res) => {
     }
   }
   clearSessionCookie(res);
-  res.send(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required style="text-align:center; font-size:20px;">${ADMIN_TOTP_SECRET ? `<label>Code de validation (6 chiffres)</label><input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px; letter-spacing:4px;">` : ""}<button style="width:100%; margin-top:10px;">Connexion</button></form></section>`, null));
+res.envoyer(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required style="text-align:center; font-size:20px;"><label>Code de validation (6 chiffres)</label><input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px; letter-spacing:4px;"><button style="width:100%; margin-top:10px;">Connexion</button></form></section>`, null));
 });
 
 app.post("/admin/login", async (req, res) => {
