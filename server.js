@@ -3280,9 +3280,10 @@ app.post("/offres-emploi", async (req, res) => {
       <input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px; letter-spacing:4px;">
       
       <button style="width:100%; margin-top:10px;">Connexion</button>
-    </form>
-  </section>
-`, null));
+      </form>
+    </section>
+  `, null));
+});
 
 app.post("/admin/login", async (req, res) => {
   const address = req.ip || "unknown";
