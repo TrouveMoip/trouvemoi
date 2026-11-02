@@ -4375,61 +4375,72 @@ app.get("/mentions-legales", async (req, res) => {
 app.get("/confidentialite", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const content = `
-    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
-      <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Politique de Confidentialité</h1>
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
       
-      <p><em>Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</em></p>
+      <h1 style="font-size: 26px; color: #111827; margin-bottom: 10px; font-weight: bold;">Politique de Confidentialité</h1>
+      <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p>
       
-      <p>La présente politique de confidentialité est fondée sur les dispositions du Code du Numérique en République du Bénin. Elle a pour but de vous informer sur la manière dont <strong>ADK Services (TrouveMoi)</strong> collecte, utilise et protège vos données personnelles.</p>
+      <p style="margin-bottom: 24px; color: #374151;">Comment nous collectons, utilisons et protégeons vos données sur <strong>TrouveMoi</strong>.</p>
 
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">1. Responsable du traitement</h2>
-      <p>Le responsable du traitement des données est <strong>ADK Services</strong>, représentée par son Gérant, M. David AKPE.<br>
-      Contact : contact@trouvemoi.bj</p>
-
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">2. Données personnelles collectées</h2>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
-        <li><strong>Pour les clients :</strong> Nom, numéro de téléphone, données de navigation (cookies, adresse IP).</li>
-        <li><strong>Pour les professionnels :</strong> Nom complet, numéro de téléphone, adresse email, NPI, photos d'identité (recto/verso), photo de vérification KYC, photos d'activité, ville/quartier.</li>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Responsable du traitement</h2>
+      <ul style="margin-left: 20px; color: #374151; margin-bottom: 24px;">
+        <li><strong>Éditeur :</strong> ADK Services (TrouveMoi)</li>
+        <li><strong>Finalité :</strong> Mise en relation entre clients et professionnels vérifiés au Bénin</li>
+        <li><strong>Contact :</strong> contact@trouvemoi.bj</li>
       </ul>
 
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">3. Finalités du traitement</h2>
-      <p>Vos données sont collectées uniquement pour :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
-        <li>La mise en relation entre les clients et les professionnels.</li>
-        <li>La vérification d'identité (KYC) pour lutter contre les arnaques et les faux profils.</li>
-        <li>La gestion des paiements et des abonnements.</li>
-        <li>L'envoi de notifications par SMS.</li>
-        <li>La mesure d'audience (statistiques anonymes via Google Analytics).</li>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Base légale</h2>
+      <ul style="margin-left: 20px; color: #374151; margin-bottom: 24px;">
+        <li><strong>Exécution du service demandé :</strong> création de compte, gestion de profil, mise en relation.</li>
+        <li><strong>Intérêt légitime :</strong> sécurité du site, lutte contre la fraude et les faux profils.</li>
+        <li><strong>Consentement :</strong> mesure d'audience optionnelle, cookies analytiques et géolocalisation du navigateur.</li>
       </ul>
 
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">4. Base légale et Consentement</h2>
-      <p>Le traitement de vos données repose sur votre <strong>consentement explicite</strong>. Lors de votre inscription, vous devez obligatoirement cocher une case acceptant la présente politique. Pour les cookies, un bandeau d'information vous permet d'accepter ou de refuser leur dépôt lors de votre première visite.</p>
-
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">5. Destinataires et Sous-traitants</h2>
-      <p>Vos données ne sont jamais revendues. Elles sont traitées par nos soins et par nos sous-traitants techniques (dont les politiques de confidentialité sont strictes) :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
-        <li><strong>Render :</strong> Hébergement de la base de données (PostgreSQL).</li>
-        <li><strong>Cloudinary :</strong> Stockage sécurisé des images (photos KYC).</li>
-        <li><strong>Kkiapay :</strong> Gestion des transactions financières.</li>
-        <li><strong>Termii :</strong> Envoi des SMS (numéros de téléphone uniquement).</li>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Données que nous traitons</h2>
+      <ul style="margin-left: 20px; color: #374151; margin-bottom: 24px;">
+        <li><strong>Compte client :</strong> nom, numéro de téléphone, code de récupération.</li>
+        <li><strong>Profil professionnel :</strong> nom, téléphone, adresse email, NPI, photos d'identité (KYC), photos d'activité, ville/quartier.</li>
+        <li><strong>Localisation :</strong> coordonnées fournies par vous lors de la recherche (facultatif).</li>
+        <li><strong>Navigation :</strong> pages vues, favoris, données techniques (adresse IP, type d'appareil).</li>
       </ul>
 
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">6. Durée de conservation</h2>
-      <p>Vos données sont conservées tant que votre compte est actif. Les dossiers d'inscription non payés sont automatiquement supprimés après 48 heures. Si vous demandez la suppression de votre compte, vos données (photos, profil) sont effacées immédiatement, à l'exception des factures conservées pour obligations comptables légales.</p>
-
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">7. Vos Droits</h2>
-      <p>Conformément à la loi, vous disposez des droits suivants :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
-        <li><strong>Droit d'accès :</strong> Télécharger vos données depuis votre Espace Pro.</li>
-        <li><strong>Droit à l'effacement (droit à l'oubli) :</strong> Supprimer votre compte via le bouton dédié.</li>
-        <li><strong>Droit de rectification :</strong> Modifier vos informations.</li>
-        <li>Pour toute demande, contactez-nous à contact@trouvemoi.bj. Nous répondons dans un délai maximum de 30 jours.</li>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Finalités</h2>
+      <ul style="margin-left: 20px; color: #374151; margin-bottom: 24px;">
+        <li>Publier et rechercher des professionnels par métier et par zone.</li>
+        <li>Afficher les résultats à proximité si vous l'autorisez.</li>
+        <li>Vérifier l'identité des professionnels (KYC) pour assurer la sécurité des clients.</li>
+        <li>Gérer les paiements et les abonnements.</li>
+        <li>Améliorer le produit (statistiques anonymisées).</li>
       </ul>
 
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">8. Sécurité</h2>
-      <p>Nous mettons en œuvre des mesures de sécurité techniques strictes : chiffrement HTTPS (SSL/TLS), requêtes paramétrées (anti-injection SQL), et protection de l'espace administrateur par mot de passe et double authentification (2FA).</p>
-      
-      <div style="margin-top: 40px; text-align: center;">
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Durée de conservation</h2>
+      <p style="margin-bottom: 24px; color: #374151;">
+        Les données du compte et du profil sont conservées tant que votre compte est actif, puis archivées ou supprimées selon les contraintes légales. Les dossiers non payés sont supprimés après 48h. Vous pouvez demander la suppression de votre compte à tout moment via votre espace dédié.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Destinataires & sous-traitants</h2>
+      <p style="margin-bottom: 24px; color: #374151;">
+        L'accès aux données est limité à l'équipe habilitée. Nos prestataires techniques (hébergeur web, service de stockage d'images, service de paiement et d'envoi de SMS) traitent les données strictement pour notre compte et selon nos instructions. <strong>Aucune donnée n'est vendue à des tiers.</strong>
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Cookies & mesure d'audience</h2>
+      <p style="margin-bottom: 24px; color: #374151;">
+        Des cookies techniques indispensables au fonctionnement du site sont utilisés (maintien de la session). La mesure d'audience est activée uniquement avec votre consentement. Vous pouvez retirer votre consentement via le bandeau cookies à tout moment.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Géolocalisation</h2>
+      <p style="margin-bottom: 24px; color: #374151;">
+        La géolocalisation du navigateur est facultative et soumise à votre accord. Les fonds de carte utilisent des services tiers (OpenStreetMap). Les coordonnées peuvent être approximatives.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Vos droits</h2>
+      <p style="margin-bottom: 24px; color: #374151;">
+        Vous disposez des droits d'accès, de rectification, d'effacement, d'opposition, de limitation et de portabilité dans les limites légales. Vous pouvez exercer ces droits en nous contactant à <strong>contact@trouvemoi.bj</strong> ou via les boutons dédiés dans votre espace.
+      </p>
+
+      <div style="margin-top: 40px; text-align: center;" class="no-print">
+        <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+        <br>
         <a href="/" class="button secondary">← Retour à l'accueil</a>
       </div>
     </section>
