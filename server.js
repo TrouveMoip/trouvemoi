@@ -4319,7 +4319,57 @@ app.get("/a-propos", async (req, res) => {
 
 app.get("/mentions-legales", async (req, res) => {
   const proConnected = await getConnectedPro(req);
-  res.send(page("Mentions légales", `<section class="card" style="max-width: 800px; margin: 40px auto;"><h1>Mentions légales</h1><h2>Éditeur du site</h2><p>TrouveMoi.bj<br>Contact : contact@trouvemoi.bj</p><h2>Hébergement</h2><p>Render (San Francisco, USA)</p><h2>Propriété intellectuelle</h2><p>Tous les éléments du site TrouveMoi.bj sont protégés par le droit d'auteur.</p></section>`, proConnected));
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
+      
+      <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold;">Mentions légales</h1>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Déclaration à l'APDP</h2>
+      
+      <p style="margin-bottom: 16px; color: #374151;">
+        Conformément à la loi 2017-20 portant code du numérique en République du Bénin (Livre 5ième relatif à la protection des données personnelles et de la vie privée), le site a fait l'objet d'une déclaration auprès de l'Autorité de Protection des Données Personnelles (<a href="https://www.apdp.bj" target="_blank" style="color: #2563eb; text-decoration: underline;">www.apdp.bj</a>) sous le numéro 
+        <span style="background-color: #fef08a; padding: 2px 6px; border-radius: 4px; font-style: italic; color: #854d0e;">[ Numéro de récépissé en cours d'attribution ]</span>.
+      </p>
+
+      <p style="margin-bottom: 16px; color: #374151;">
+        En tout état de cause <strong>ADK SERVICES</strong> collecte des informations personnelles relatives à l'utilisateur que pour le besoin de certains services proposés par le site <strong>trouvemoi.bj</strong>. L'utilisateur fournit ces informations en toute connaissance de cause, notamment lorsqu'il procède par lui-même à leur saisie. Conformément aux dispositions de la loi 2017-20 portant code du numérique en République du Bénin, tout utilisateur dispose d'un droit d'accès, de rectification et d'opposition aux données personnelles le concernant, en effectuant sa demande écrite et signée, accompagnée d'une copie du titre d'identité avec signature du titulaire de la pièce, en précisant l'adresse à laquelle la réponse doit être envoyée. Aucune information personnelle de l'utilisateur du site <strong>trouvemoi.bj</strong> n'est publiée à l'insu de l'utilisateur, échangée, transférée, cédée ou vendue sur un support quelconque à des tiers.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Droit d'accès</h2>
+      
+      <p style="margin-bottom: 16px; color: #374151;">
+        En application de cette loi, les internautes disposent d'un droit d'accès, de rectification, de modification et de suppression concernant les données qui les concernent personnellement. Ce droit peut être exercé par voie postale auprès de <strong>ADK SERVICES</strong> ou par voie électronique à l'adresse email suivante : <strong>contact@trouvemoi.bj</strong>. Les informations personnelles collectées ne sont en aucun cas confiées à des tiers.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Confidentialité</h2>
+      
+      <p style="margin-bottom: 16px; color: #374151;">
+        Vos données personnelles sont confidentielles et ne seront en aucun cas communiquées à des tiers.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Propriété intellectuelle</h2>
+      
+      <p style="margin-bottom: 16px; color: #374151;">
+        Tout le contenu du présent site, incluant, de façon non limitative, les graphismes, images, textes, vidéos, animations, sons, logos, gifs et icônes ainsi que leur mise en forme sont la propriété exclusive de <strong>ADK SERVICES</strong> à l'exception des marques, logos ou contenus appartenant à d'autres sociétés partenaires ou auteurs.
+      </p>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de <strong>ADK SERVICES</strong>.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Conditions de service</h2>
+      
+      <p style="margin-bottom: 16px; color: #374151;">
+        L'utilisation de la plateforme <strong>TrouveMoi</strong> implique l'acceptation pleine et entière des présentes conditions. Les professionnels s'engagent à fournir des informations exactes notamment lors de la vérification d'identité (KYC) et à traiter les clients avec respect. Les clients s'engagent à ne pas utiliser la plateforme à des fins frauduleuses. <strong>TrouveMoi</strong> se réserve le droit de suspendre ou supprimer tout compte ne respectant pas ces règles, ou dont le dossier KYC s'avérerait falsifié. <strong>TrouveMoi</strong> agit en tant qu'intermédiaire technique de mise en relation et ne peut être tenu responsable des litiges commerciaux entre clients et professionnels.
+      </p>
+
+      <div style="margin-top: 40px; text-align: center;" class="no-print">
+        <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+        <br>
+        <a href="/" class="button secondary">← Retour à l'accueil</a>
+      </div>
+    </section>
+  `;
+  res.send(page("Mentions Légales", content, proConnected));
 });
 
 app.get("/confidentialite", async (req, res) => {
