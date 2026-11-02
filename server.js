@@ -4439,7 +4439,70 @@ app.get("/confidentialite", async (req, res) => {
 
 app.get("/conditions", async (req, res) => {
   const proConnected = await getConnectedPro(req);
-  res.send(page("Conditions", `<section class="card" style="max-width: 800px; margin: 40px auto;"><h1>Conditions Générales d'Utilisation</h1><p>L'utilisation de TrouveMoi.bj implique l'acceptation pleine et entière des présentes conditions.</p><p>Les professionnels s'engagent à fournir des informations exactes et à traiter les clients avec respect.</p></section>`, proConnected));
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
+      <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
+      
+      <p><em>Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</em></p>
+      
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 1 : Objet</h2>
+      <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme <strong>TrouveMoi</strong>, éditée par ADK Services. TrouveMoi est une plateforme numérique de mise en relation entre des clients et des professionnels au Bénin. TrouveMoi agit en tant qu'intermédiaire technique et ne fournit pas directement les services proposés par les professionnels.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 2 : Accès au service</h2>
+      <p>L'accès à la plateforme est gratuit pour les clients qui souhaitent consulter les profils des professionnels. Pour les professionnels, l'inscription est soumise au paiement de frais d'inscription et à la validation de leur dossier (KYC) par l'équipe d'ADK Services. L'inscription ne devient effective qu'après validation du profil par l'administrateur.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 3 : Obligations des Utilisateurs (Clients)</h2>
+      <p>En utilisant le site, le client s'engage à :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li>Ne pas utiliser la plateforme à des fins frauduleuses ou illégales.</li>
+        <li>Ne pas usurper l'identité d'un tiers.</li>
+        <li>Faire preuve de prudence : TrouveMoi rappelle qu'il est fortement déconseillé de payer un professionnel avant de l'avoir rencontré physiquement.</li>
+        <li>Respecter les professionnels contactés.</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 4 : Obligations des Professionnels</h2>
+      <p>En s'inscrivant, le professionnel s'engage à :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li>Fournir des informations exactes et véridiques lors de son inscription (nom légal, NPI, téléphone, adresse).</li>
+        <li>Fournir des documents d'identité authentiques pour la vérification KYC. Toute tentative de fraude ou d'usurpation d'identité entraînera le rejet définitif du dossier sans remboursement.</li>
+        <li>Ne pas créer de faux profils ou de faux avis.</li>
+        <li>Réaliser les prestations promises auprès des clients avec professionnalisme.</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 5 : Responsabilité de la plateforme</h2>
+      <p>ADK Services met tout en œuvre pour vérifier l'identité des professionnels via le processus KYC. Cependant, TrouveMoi ne peut être tenu responsable :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li>De la qualité, de la sécurité ou de la légalité des services fournis par les professionnels.</li>
+        <li>Des litiges financiers ou commerciaux pouvant survenir entre un client et un professionnel.</li>
+        <li>Des dommages directs ou indirects résultant de l'utilisation des coordonnées fournies sur la plateforme.</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 6 : Avis des clients</h2>
+      <p>Les clients ayant contacté un professionnel via la plateforme peuvent laisser un avis. ADK Services se réserve le droit de modérer, de masquer ou de supprimer tout avis contenant des propos injurieux, diffamatoires, ou ne respectant pas la charte de la plateforme.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 7 : Propriété Intellectuelle</h2>
+      <p>Le code source, la structure, les logos, les textes et les graphismes de la plateforme TrouveMoi sont la propriété exclusive d'ADK Services. Toute reproduction ou utilisation non autorisée est strictement interdite.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 8 : Protection des Données Personnelles</h2>
+      <p>Dans le cadre de l'utilisation de la plateforme, des données personnelles sont collectées. Le traitement de ces données est détaillé dans notre <a href="/confidentialite" style="color: #2563eb; text-decoration: underline;">Politique de Confidentialité</a>, conformément au Code du Numérique en République du Bénin et aux directives de l'APDP.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 9 : Suspension et Résiliation</h2>
+      <p>ADK Services se réserve le droit de suspendre ou de supprimer définitivement le compte d'un utilisateur (client ou professionnel) en cas de non-respect des présentes CGU, de comportement frauduleux, de fausses déclarations, ou de non-paiement des frais d'abonnement ou d'inscription.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 10 : Modification des CGU</h2>
+      <p>ADK Services se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés de toute modification majeure par une notification sur le site.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 11 : Droit applicable et Juridiction</h2>
+      <p>Les présentes CGU sont soumises au droit béninois. En cas de litige, et à défaut de résolution amiable, les tribunaux de Cotonou (Bénin) seront seuls compétents.</p>
+      
+      <div style="margin-top: 40px; text-align: center;">
+        <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+        <br>
+        <a href="/" class="button secondary">← Retour à l'accueil</a>
+      </div>
+    </section>
+  `;
+  res.send(page("Conditions Générales", content, proConnected));
 });
 
 app.get("/partenariats", async (req, res) => {
