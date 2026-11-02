@@ -4324,7 +4324,67 @@ app.get("/mentions-legales", async (req, res) => {
 
 app.get("/confidentialite", async (req, res) => {
   const proConnected = await getConnectedPro(req);
-  res.send(page("Confidentialité", `<section class="card" style="max-width: 800px; margin: 40px auto;"><h1>Politique de confidentialité</h1><p>Nous collectons vos données personnelles (nom, téléphone, adresse) uniquement dans le but de faciliter la mise en relation entre clients et professionnels.</p><p>Vos données ne sont en aucun cas revendues à des tiers.</p><p>Conformément au RGPD, vous pouvez demander la suppression de vos données depuis votre espace pro.</p></section>`, proConnected));
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
+      <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Politique de Confidentialité</h1>
+      
+      <p><em>Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</em></p>
+      
+      <p>La présente politique de confidentialité est fondée sur les dispositions du Code du Numérique en République du Bénin. Elle a pour but de vous informer sur la manière dont <strong>ADK Services (TrouveMoi)</strong> collecte, utilise et protège vos données personnelles.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">1. Responsable du traitement</h2>
+      <p>Le responsable du traitement des données est <strong>ADK Services</strong>, représentée par son Gérant, M. David AKPE.<br>
+      Contact : contact@trouvemoi.bj</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">2. Données personnelles collectées</h2>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li><strong>Pour les clients :</strong> Nom, numéro de téléphone, données de navigation (cookies, adresse IP).</li>
+        <li><strong>Pour les professionnels :</strong> Nom complet, numéro de téléphone, adresse email, NPI, photos d'identité (recto/verso), photo de vérification KYC, photos d'activité, ville/quartier.</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">3. Finalités du traitement</h2>
+      <p>Vos données sont collectées uniquement pour :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li>La mise en relation entre les clients et les professionnels.</li>
+        <li>La vérification d'identité (KYC) pour lutter contre les arnaques et les faux profils.</li>
+        <li>La gestion des paiements et des abonnements.</li>
+        <li>L'envoi de notifications par SMS.</li>
+        <li>La mesure d'audience (statistiques anonymes via Google Analytics).</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">4. Base légale et Consentement</h2>
+      <p>Le traitement de vos données repose sur votre <strong>consentement explicite</strong>. Lors de votre inscription, vous devez obligatoirement cocher une case acceptant la présente politique. Pour les cookies, un bandeau d'information vous permet d'accepter ou de refuser leur dépôt lors de votre première visite.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">5. Destinataires et Sous-traitants</h2>
+      <p>Vos données ne sont jamais revendues. Elles sont traitées par nos soins et par nos sous-traitants techniques (dont les politiques de confidentialité sont strictes) :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li><strong>Render :</strong> Hébergement de la base de données (PostgreSQL).</li>
+        <li><strong>Cloudinary :</strong> Stockage sécurisé des images (photos KYC).</li>
+        <li><strong>Kkiapay :</strong> Gestion des transactions financières.</li>
+        <li><strong>Termii :</strong> Envoi des SMS (numéros de téléphone uniquement).</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">6. Durée de conservation</h2>
+      <p>Vos données sont conservées tant que votre compte est actif. Les dossiers d'inscription non payés sont automatiquement supprimés après 48 heures. Si vous demandez la suppression de votre compte, vos données (photos, profil) sont effacées immédiatement, à l'exception des factures conservées pour obligations comptables légales.</p>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">7. Vos Droits</h2>
+      <p>Conformément à la loi, vous disposez des droits suivants :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+        <li><strong>Droit d'accès :</strong> Télécharger vos données depuis votre Espace Pro.</li>
+        <li><strong>Droit à l'effacement (droit à l'oubli) :</strong> Supprimer votre compte via le bouton dédié.</li>
+        <li><strong>Droit de rectification :</strong> Modifier vos informations.</li>
+        <li>Pour toute demande, contactez-nous à contact@trouvemoi.bj. Nous répondons dans un délai maximum de 30 jours.</li>
+      </ul>
+
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">8. Sécurité</h2>
+      <p>Nous mettons en œuvre des mesures de sécurité techniques strictes : chiffrement HTTPS (SSL/TLS), requêtes paramétrées (anti-injection SQL), et protection de l'espace administrateur par mot de passe et double authentification (2FA).</p>
+      
+      <div style="margin-top: 40px; text-align: center;">
+        <a href="/" class="button secondary">← Retour à l'accueil</a>
+      </div>
+    </section>
+  `;
+  res.send(page("Politique de Confidentialité", content, proConnected));
 });
 
 app.get("/conditions", async (req, res) => {
