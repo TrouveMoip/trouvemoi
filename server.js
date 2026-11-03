@@ -1001,7 +1001,10 @@ app.get("/recherche", async (req, res) => {
 
     if (isSearching) {
       let whereClause = ` WHERE p.status = 'approved'`; const values = [];
-      if (profession) { values.push(`%${profession}%`); whereClause += ` AND p.profession ILIKE $${values.length}`; }
+      if (profession) { 
+  values.push(`%${profession}%`); 
+  whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length})`; 
+}
       if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
       if (category) { values.push(category); whereClause += ` AND (p.profession_category = $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category = $${values.length}))`; }
 
@@ -1102,7 +1105,7 @@ app.get("/recherche", async (req, res) => {
       
       <section class="card" style="max-width: 900px; margin: 0 auto 30px auto; background: #f8fafc;">
        <form action="/recherche" method="GET" style="display: flex; flex-wrap: wrap; gap: 12px;">
-  <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers (ex: Maçon...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers ou nom (ex: Maçon, nom de société...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
   
   <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
   
