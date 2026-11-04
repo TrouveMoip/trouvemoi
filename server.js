@@ -2128,6 +2128,11 @@ app.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, 
 
   let finalNeighborhood = (neighborhood === "__AUTRE__") ? neighborhood_other : neighborhood;
   let finalProfession = (profession === "__AUTRE__") ? profession_other : profession;
+  
+  // Sécurité : Forcer le local fixe pour les établissements
+if (METIERS_LOCAL_FIXE.includes(finalProfession) && type_lieu === 'ambulant') {
+  return res.status(400).send(page("Erreur", "<h2>Ce métier nécessite obligatoirement un local fixe. Veuillez retourner en arrière et sélectionner 'Local fixe'.</h2><a href='/devenir-professionnel' class='button'>Retour</a>", null));
+}
   const pref = contact_preference; const phoneIsPublic = phone_public === "yes"; const finalCompanyName = company_name && company_name.trim() ? company_name.trim() : null;
 
   if (!finalProfession || !String(finalProfession).trim()) return res.status(400).send(page("Erreur", "<h2>Métier manquant.</h2>", null));
