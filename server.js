@@ -1958,6 +1958,11 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
           
           <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;"><label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span></label></div>
           <div style="text-align: center; margin-top: 30px;"><button type="submit" style="padding: 16px 40px; font-size: 16px; width: 100%;">Envoyer ma candidature</button></div>
+          <div id="alert-metier-sensible" class="alert alert-danger hidden" style="margin-bottom: 20px; border-left: 4px solid #ef4444;">
+  <strong>⚠️ ATTENTION - PROFESSION RÉGLEMENTÉE</strong><br><br>
+  Ce métier exige une autorisation d'État. Votre dossier fera l'objet d'une <strong>vérification approfondie</strong> (Appel téléphonique et demande de Carte Professionnelle).<br><br>
+  <strong>Si vous ne pouvez pas justifier de votre agrément légal, ne continuez pas et ne payez pas.</strong> Aucun remboursement ne sera effectué en cas de rejet.
+</div>
         </form>
       </section>
       <script>
