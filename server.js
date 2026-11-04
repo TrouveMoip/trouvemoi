@@ -2047,6 +2047,21 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
         });
         
         //professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
+        professionSelect.addEventListener('change', function() {
+  const metierActuel = professionSelect.value;
+  const radioAmbulant = document.querySelector('input[name="type_lieu"][value="ambulant"]');
+  const radioFixe = document.querySelector('input[name="type_lieu"][value="fixe"]');
+  
+  if (METIERS_LOCAL_FIXE.includes(metierActuel)) {
+    radioFixe.checked = true; 
+    radioAmbulant.disabled = true; 
+    radioAmbulant.parentElement.style.opacity = '0.5'; 
+    toggleLocalisation(true); 
+  } else {
+    radioAmbulant.disabled = false; 
+    radioAmbulant.parentElement.style.opacity = '1';
+  }
+});
         whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
         emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
         
