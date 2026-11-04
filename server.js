@@ -2056,7 +2056,8 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
           if (neighborhoodSelect.value === '__AUTRE__') neighborhoodOtherBlock.classList.remove('hidden'); 
           else neighborhoodOtherBlock.classList.add('hidden');
         });
-        
+
+        const METIERS_SENSIBLES = ${JSON.stringify(METIERS_SENSIBLES)};
         const METIERS_LOCAL_FIXE = ${JSON.stringify(METIERS_LOCAL_FIXE)};
         //professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
         professionSelect.addEventListener('change', function() {
@@ -2073,6 +2074,16 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
     radioAmbulant.disabled = false; 
     radioAmbulant.parentElement.style.opacity = '1';
   }
+
+  // Affichage du message d'avertissement pour les métiers sensibles
+const alertSensible = document.getElementById('alert-metier-sensible');
+if (alertSensible) {
+  if (METIERS_SENSIBLES.includes(metierActuel)) {
+    alertSensible.classList.remove('hidden');
+  } else {
+    alertSensible.classList.add('hidden');
+  }
+}
 });
         whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
         emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
