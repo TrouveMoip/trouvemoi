@@ -1952,7 +1952,7 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
         const neighborhoodSelect = document.getElementById('neighborhood'); 
         const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); 
         const professionSelect = document.getElementById('profession'); 
-        const professionOtherBlock = document.getElementById('profession-other-block'); 
+        //const professionOtherBlock = document.getElementById('profession-other-block'); 
         const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); 
         const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
         
