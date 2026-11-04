@@ -5,6 +5,13 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
 
+const METIERS_LOCAL_FIXE = [
+  "Restaurant", "Maquis / Bar", "Fast-food / Snack", 
+  "Pharmacie (Établissement)", "Clinique / Hôpital", "Laboratoire d'analyses",
+  "École primaire / secondaire", "Université / Centre de formation",
+  "Hôtel", "Auberge / Motel", "Supermarché / Hypermarché", "Garage automobile"
+];
+
 const app = express(); 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
