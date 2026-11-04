@@ -12,6 +12,12 @@ const METIERS_LOCAL_FIXE = [
   "Hôtel", "Auberge / Motel", "Supermarché / Hypermarché", "Garage automobile"
 ];
 
+const METIERS_SENSIBLES = [
+  "Avocat", "Notaire", "Pharmacien", "Infirmier à domicile", 
+  "Infirmière à domicile", "Sage-femme", "Kinésithérapeute", 
+  "Ostéopathe", "Prothésiste dentaire", "Médecin"
+];
+
 const app = express(); 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
