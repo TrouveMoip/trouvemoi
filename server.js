@@ -1891,7 +1891,7 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div><label>Profession *</label><select id="profession" name="profession" required><option value="">Choisir</option>${professionOptions}</select><div id="profession-other-block" class="hidden" style="margin-top:10px;"><input name="profession_other" maxlength="150" placeholder="Precisez"></div></div>
+            <div><label>Profession *</label><select id="profession" name="profession" required><option value="">Choisir</option>${professionOptions}</select></div>
             <div><label>Experience</label><select name="experience"><option value="">Selectionnez</option><option value="Debutant">Debutant</option><option value="Moins de 2 ans">Moins de 2 ans</option><option value="2 a 5 ans">2 a 5 ans</option><option value="Plus de 5 ans">Plus de 5 ans</option></select></div>
           </div>
           <label>Description *</label><textarea name="service_description" rows="4" required maxlength="3000"></textarea>
