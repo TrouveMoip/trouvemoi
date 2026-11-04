@@ -2046,6 +2046,7 @@ const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-
           else neighborhoodOtherBlock.classList.add('hidden');
         });
         
+        const METIERS_LOCAL_FIXE = ${JSON.stringify(METIERS_LOCAL_FIXE)};
         //professionSelect.addEventListener('change', function() { if (professionSelect.value === '__AUTRE__') professionOtherBlock.classList.remove('hidden'); else professionOtherBlock.classList.add('hidden'); });
         professionSelect.addEventListener('change', function() {
   const metierActuel = professionSelect.value;
