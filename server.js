@@ -3111,6 +3111,85 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
+// --- DEBUT CODE AGENCES ---
+app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  // On liste les agences existantes du patron
+  const agenciesResult = await pool.query("SELECT * FROM agencies WHERE parent_pro_id = $1 ORDER BY created_at DESC", [proConnected.pro.id]);
+  
+  const listHtml = agenciesResult.rows.map(a => {
+    let badge = "";
+    if (a.status === "pending_payment") badge = `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Attente paiement</span>`;
+    else if (a.status === "pending_validation") badge = `<span class="badge" style="background:#dbeafe;color:#1e40af;">⏳ Attente validation</span>`;
+    else if (a.status === "approved") badge = `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ En ligne</span>`;
+    else badge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`;
+
+    return `<div style="padding:12px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+      <div><strong>${escapeHtml(a.name)}</strong><br><span style="font-size:12px; color:#6b7280;">${escapeHtml(a.address)}</span></div>
+      <div>${badge}</div>
+    </div>`;
+  }).join("");
+
+  res.send(page("Mes Agences", `
+    <section class="card" style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">🏢 Mes Agences</h1>
+        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+      </div>
+
+      <div style="background:#f8fafc; padding:20px; border-radius:12px; margin-bottom:30px; border:1px solid #e2e8f0;">
+        <h2 style="font-size:18px; margin-bottom:10px;">Ajouter une nouvelle agence</h2>
+        <p style="font-size:14px; color:#4b5563; margin-bottom:16px;">Chaque nouvelle agence coûte <strong>1500 FCFA</strong> (frais d'ouverture). Elle sera vérifiée par notre équipe avant d'être publiée.</p>
+        
+        <form action="/mon-espace-pro/agences/nouvelle" method="POST" enctype="multipart/form-data">
+          <label>Nom de l'agence *</label>
+          <input name="name" required maxlength="200" placeholder="Ex: Pharmacie du Peuple - Akpakpa">
+          
+          <label>Adresse exacte *</label>
+          <input name="address" required maxlength="300" placeholder="Ex: Carrefour Ste Rita">
+          
+          <input type="hidden" name="latitude" id="agency-lat">
+          <input type="hidden" name="longitude" id="agency-lng">
+          <button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
+          <p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold; margin-bottom:10px;"></p>
+
+          <label>Photo 1 (Façade) *</label>
+          <input name="photo_1" type="file" accept="image/*" required>
+          <label>Photo 2 (Intérieur)</label>
+          <input name="photo_2" type="file" accept="image/*">
+          <label>Photo 3 (Autre)</label>
+          <input name="photo_3" type="file" accept="image/*">
+
+          <div style="text-align:center; margin-top:20px;">
+            <button type="submit" style="padding:14px 40px;">Payer 1500 FCFA et créer</button>
+          </div>
+        </form>
+      </div>
+
+      <h2 style="font-size:18px; margin-bottom:10px;">Vos agences existantes</h2>
+      ${listHtml || `<p style="color:#6b7280;">Aucune agence pour le moment.</p>`}
+    </section>
+
+    <script>
+      function getLocationAgency() {
+        const status = document.getElementById('gps-status-agency');
+        if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
+        status.innerText = "Récupération...";
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            document.getElementById('agency-lat').value = position.coords.latitude;
+            document.getElementById('agency-lng').value = position.coords.longitude;
+            status.innerText = "✅ Position GPS enregistrée !";
+          },
+          (error) => { status.innerText = "❌ Impossible de vous localiser."; }
+        );
+      }
+    </script>
+  `, proConnected));
+});
+// --- FIN CODE AGENCES ---
 app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
