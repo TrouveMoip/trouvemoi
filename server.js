@@ -3118,15 +3118,14 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  res.send(page("Ajouter une Agence", `
+  res.send(page("Ajouter une agence", `
     <section class="card" style="max-width: 700px; margin: 40px auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <h1 style="margin:0;">➕ Ajouter une agence</h1>
-        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+        <h1 style="margin:0;">➕ Ajouter une agence</h1>
+        <a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour à mes agences</a>
       </div>
 
       <div style="background:#f8fafc; padding:20px; border-radius:12px; margin-bottom:30px; border:1px solid #e2e8f0;">
-        <h2 style="font-size:18px; margin-bottom:10px;">Informations de l'agence</h2>
         <p style="font-size:14px; color:#4b5563; margin-bottom:16px;">Chaque nouvelle agence coûte <strong>1500 FCFA</strong> (frais d'ouverture). Elle sera vérifiée par notre équipe avant d'être publiée.</p>
         
         <form action="/mon-espace-pro/agences/nouvelle" method="POST" enctype="multipart/form-data">
@@ -3153,27 +3152,23 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
           </div>
         </form>
       </div>
-
     </section>
 
     <script>
       function getLocationAgency() {
-  const status = document.getElementById('gps-status-agency');
-  if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
-  status.innerText = "Récupération...";
-  
-  navigator.geolocation.getCurrentPosition(
-    (position) => {
-      document.getElementById('agency-lat').value = position.coords.latitude;
-      document.getElementById('agency-lng').value = position.coords.longitude;
-      status.innerText = "✅ Position GPS enregistrée !";
-    },
-    (error) => { 
-      status.innerText = "❌ Impossible de vous localiser."; 
-    },
-    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-  );
-}
+        const status = document.getElementById('gps-status-agency');
+        if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
+        status.innerText = "Récupération...";
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            document.getElementById('agency-lat').value = position.coords.latitude;
+            document.getElementById('agency-lng').value = position.coords.longitude;
+            status.innerText = "✅ Position GPS enregistrée !";
+          },
+          (error) => { status.innerText = "❌ Impossible de vous localiser."; },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
     </script>
   `, proConnected));
 });
