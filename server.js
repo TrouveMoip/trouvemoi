@@ -3154,8 +3154,6 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
         </form>
       </div>
 
-      <h2 style="font-size:18px; margin-bottom:10px;">Vos agences existantes</h2>
-      ${listHtml || `<p style="color:#6b7280;">Aucune agence pour le moment.</p>`}
     </section>
 
     <script>
