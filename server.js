@@ -3131,6 +3131,93 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
+app.get("/agence/:id", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+
+    // On récupère l'agence ET les infos de contact du parent
+    const result = await pool.query(`
+      SELECT a.*, p.full_name, p.company_name, p.phone, p.whatsapp_number, p.phone_public, p.kyc_verified, p.profession 
+      FROM agencies a 
+      JOIN professional_applications p ON a.parent_pro_id = p.id 
+      WHERE a.id = $1 AND a.status = 'approved'
+    `, [id]);
+    
+    if (!result.rows.length) return res.redirect(303, "/");
+    const agency = result.rows[0];
+
+    const parentName = getDisplayName(agency);
+    
+    // Boutons de contact (on utilise le numéro du parent)
+    let contactButtons = "";
+    if (agency.phone_public && agency.phone) {
+      const cleanPhone = agency.phone.replace(/\D/g, "").replace(/^(?:00229|229)/, "");
+      const waNumber = /^\d{8,10}$/.test(cleanPhone) ? "229" + cleanPhone : null;
+      
+      contactButtons = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+          <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track/${agency.parent_pro_id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
+          ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre agence " + agency.name + ". Merci.")}" onclick="fetch('/api/track/${agency.parent_pro_id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : ""}
+        </div>
+      `;
+    }
+
+    // Préparation de la galerie
+    const galerieData = [
+      { url: agency.photo_1, desc: agency.photo_1_desc },
+      { url: agency.photo_2, desc: agency.photo_2_desc },
+      { url: agency.photo_3, desc: agency.photo_3_desc }
+    ].filter(item => item.url);
+
+    res.send(page(agency.name, `
+      <div style="max-width: 800px; margin: 0 auto;">
+        
+        <div class="card" style="padding: 32px 24px; position: relative;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <span class="badge" style="background:#8b5cf6; color:white; font-size: 14px; padding: 8px 16px;">🏢 Agence officielle</span>
+          </div>
+          
+          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px; text-align: center;">${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1>
+          <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">Réseau : ${escapeHtml(parentName)}</div>
+          
+          <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
+            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Adresse de l'agence</h3>
+            <p style="font-size: 14px; margin-bottom: 12px; color: #1e40af; font-weight: 500;">${escapeHtml(agency.address)}</p>
+            
+            ${agency.latitude && agency.longitude ? `
+              <a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(agency.latitude))},${escapeHtml(String(agency.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin:0;">🗺️ Voir l'itinéraire sur Google Maps</a>
+            ` : ""}
+          </div>
+
+          <div style="margin-top: 24px;">${contactButtons}</div>
+        </div>
+
+        ${galerieData.length > 0 ? `
+        <div class="card" style="padding: 24px;">
+          <h2 style="font-size: 18px; margin-bottom: 16px;">📸 Photos de l'agence</h2>
+          <div class="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+            ${galerieData.map(item => `
+              <div style="text-align:center;">
+                <img src="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" style="width:100%; height:140px; object-fit:cover; border-radius:12px; cursor:pointer;">
+                ${item.desc ? `<p style="font-size:13px; color:#4b5563; margin-top:8px; font-weight:500;">${escapeHtml(item.desc)}</p>` : ""}
+              </div>
+            `).join("")}
+          </div>
+        </div>` : ""}
+
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;">
+          <a href="/pro/${agency.parent_pro_id}" class="button secondary" style="margin-bottom: 16px;">← Voir le profil principal de ${escapeHtml(parentName)}</a>
+        </div>
+      </div>
+    `, proConnected, { title: `${agency.name} - ${parentName}`, description: `Agence de ${parentName} située à ${agency.address}` }));
+
+  } catch (e) {
+    console.error("Erreur page agence publique :", e);
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
+  }
+});
 // --- DEBUT CODE AGENCES ---
 app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   const proConnected = await getConnectedPro(req);
