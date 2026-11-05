@@ -3237,7 +3237,10 @@ app.get("/mon-espace-pro/agences/:id", async (req, res) => {
     <section class="card" style="max-width: 700px; margin: 40px auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h1 style="margin:0;">🏢 ${escapeHtml(agency.name)}</h1>
-        <a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour</a>
+        <div style="display:flex; gap:10px;">
+  <a href="/mon-espace-pro/agences/${agency.id}/modifier" class="button" style="background:#f59e0b; margin:0;">✏️ Modifier</a>
+  <a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour</a>
+</div>
       </div>
 
       <div style="margin-bottom:20px;">
@@ -3262,6 +3265,111 @@ app.get("/mon-espace-pro/agences/:id", async (req, res) => {
     </section>
   `, proConnected));
 });
+// --- DEBUT CODE MODIF SUPPRESSION AGENCE ---
+app.get("/mon-espace-pro/agences/:id/modifier", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro/agences");
+
+  const result = await pool.query(`SELECT * FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+  if (!result.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
+  const agency = result.rows[0];
+
+  res.send(page("Modifier l'agence", `
+    <section class="card" style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">✏️ Modifier l'agence</h1>
+        <a href="/mon-espace-pro/agences/${agency.id}" class="button secondary" style="margin:0;">← Annuler</a>
+      </div>
+
+      <form action="/mon-espace-pro/agences/${agency.id}/modifier" method="POST" enctype="multipart/form-data">
+        <label>Nom de l'agence *</label>
+        <input name="name" required maxlength="200" value="${escapeHtml(agency.name)}">
+        
+        <label>Adresse exacte *</label>
+        <input name="address" required maxlength="300" value="${escapeHtml(agency.address)}">
+        
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label>Photo 1 (Laisser vide pour garder)</label>
+            <input name="photo_1" type="file" accept="image/*">
+            <input name="desc1" maxlength="150" value="${escapeHtml(agency.photo_1_desc || '')}" placeholder="Description photo 1" style="margin-top:-10px; font-size:14px;">
+          </div>
+          <div>
+            <label>Photo 2</label>
+            <input name="photo_2" type="file" accept="image/*">
+            <input name="desc2" maxlength="150" value="${escapeHtml(agency.photo_2_desc || '')}" placeholder="Description photo 2" style="margin-top:-10px; font-size:14px;">
+          </div>
+          <div>
+            <label>Photo 3</label>
+            <input name="photo_3" type="file" accept="image/*">
+            <input name="desc3" maxlength="150" value="${escapeHtml(agency.photo_3_desc || '')}" placeholder="Description photo 3" style="margin-top:-10px; font-size:14px;">
+          </div>
+        </div>
+
+        <div style="text-align:center; margin-top:30px;">
+          <button type="submit" class="success" style="padding:14px 40px;">💾 Enregistrer les modifications</button>
+        </div>
+      </form>
+      
+      <div style="text-align:center; margin-top:40px; border-top:1px solid #e5e7eb; padding-top:20px;">
+        <form action="/mon-espace-pro/agences/${agency.id}/supprimer" method="POST" onsubmit="return confirm('Supprimer définitivement cette agence ?');">
+          <button type="submit" class="danger" style="background:transparent; color:#ef4444; border:1px solid #ef4444;">🗑️ Supprimer cette agence</button>
+        </form>
+      </div>
+    </section>
+  `, proConnected));
+});
+
+app.post("/mon-espace-pro/agences/:id/modifier", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  
+  const { name, address } = req.body;
+  const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
+  const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
+  const desc3 = String(req.body.desc3 || "").trim().slice(0, 150);
+  const files = req.files || {};
+
+  try {
+    // On récupère l'agence actuelle pour garder les anciennes photos si pas de nouvelles
+    const current = await pool.query(`SELECT photo_1, photo_2, photo_3 FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+    if (!current.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
+    
+    let p1 = current.rows[0].photo_1; let p2 = current.rows[0].photo_2; let p3 = current.rows[0].photo_3;
+
+    if (files.photo_1?.[0]) { const r = await uploadToCloudinary(files.photo_1[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_1`); p1 = r.secure_url; }
+    if (files.photo_2?.[0]) { const r = await uploadToCloudinary(files.photo_2[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_2`); p2 = r.secure_url; }
+    if (files.photo_3?.[0]) { const r = await uploadToCloudinary(files.photo_3[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_3`); p3 = r.secure_url; }
+
+    // On met à jour (et on repasse le statut en attente de validation pour que l'admin vérifie les changements)
+    await pool.query(
+      `UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, photo_1_desc = $6, photo_2_desc = $7, photo_3_desc = $8, status = 'pending_validation', updated_at = NOW() WHERE id = $9 AND parent_pro_id = $10`,
+      [name, address, p1, p2, p3, desc1 || null, desc2 || null, desc3 || null, id, proConnected.pro.id]
+    );
+    
+    res.redirect(303, `/mon-espace-pro/agences/${id}`);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la modification.</h2>", proConnected));
+  }
+});
+
+app.post("/mon-espace-pro/agences/:id/supprimer", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  
+  try {
+    await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+    res.redirect(303, "/mon-espace-pro/agences");
+  } catch (e) {
+    res.redirect(303, `/mon-espace-pro/agences/${id}`);
+  }
+});
+// --- FIN CODE MODIF SUPPRESSION AGENCE ---
 // --- FIN CODE AGENCES ---
 // --- DEBUT CODE AGENCES PAIEMENT ---
 app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
