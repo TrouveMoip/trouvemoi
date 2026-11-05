@@ -738,7 +738,7 @@ function zoomImage(src) {
 
 function rotateImage(degrees) {
   currentRotation += degrees;
-  document.getElementById('modal-img').style.transform = `rotate(${currentRotation}deg)`;
+  document.getElementById('modal-img').style.transform = 'rotate(' + currentRotation + 'deg)';
 }
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (registrations) {
