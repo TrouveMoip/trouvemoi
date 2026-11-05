@@ -3141,11 +3141,16 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
           <p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold; margin-bottom:10px;"></p>
 
           <label>Photo 1 (Façade) *</label>
-          <input name="photo_1" type="file" accept="image/*" required>
-          <label>Photo 2 (Intérieur)</label>
-          <input name="photo_2" type="file" accept="image/*">
-          <label>Photo 3 (Autre)</label>
-          <input name="photo_3" type="file" accept="image/*">
+<input name="photo_1" type="file" accept="image/*" required>
+<input name="desc1" maxlength="150" placeholder="Ex: Entrée principale" style="margin-top:-10px; margin-bottom:15px; font-size:14px;">
+
+<label>Photo 2 (Intérieur)</label>
+<input name="photo_2" type="file" accept="image/*">
+<input name="desc2" maxlength="150" placeholder="Ex: Salle d'attente" style="margin-top:-10px; margin-bottom:15px; font-size:14px;">
+
+<label>Photo 3 (Autre)</label>
+<input name="photo_3" type="file" accept="image/*">
+<input name="desc3" maxlength="150" placeholder="Ex: Zone de stockage" style="margin-top:-10px; margin-bottom:15px; font-size:14px;">
 
           <div style="text-align:center; margin-top:20px;">
             <button type="submit" style="padding:14px 40px;">Payer 1500 FCFA et créer</button>
