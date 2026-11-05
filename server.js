@@ -3647,6 +3647,7 @@ async function adminMenu(current, csrf) {
   } catch (e) {}
 
   const links = [
+    { href: "/admin/agences", label: "🏢 Agences", badge: 0 },
     { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
     { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, 
     { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
