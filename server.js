@@ -3269,6 +3269,9 @@ app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", m
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
   const { name, address, latitude, longitude } = req.body;
+  const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
+const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
+const desc3 = String(req.body.desc3 || "").trim().slice(0, 150);
   if (!name || !address) return res.status(400).send(page("Erreur", "<h2>Nom et adresse obligatoires.</h2>", proConnected));
 
   const files = req.files || {};
@@ -3283,9 +3286,9 @@ app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", m
 
     // 2. Enregistrement en base (statut : pending_payment)
     const insertResult = await pool.query(
-      `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}) RETURNING id`,
-      [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url]
+     `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, status) 
+ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}) RETURNING id`,
+[proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null]
     );
     const agencyId = insertResult.rows[0].id;
 
