@@ -3209,6 +3209,54 @@ app.get("/mon-espace-pro/agences", async (req, res) => {
     </section>
   `, proConnected));
 });
+app.get("/mon-espace-pro/agences/:id", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/mon-espace-pro/agences");
+
+  // On cherche l'agence en s'assurant qu'elle appartient bien à ce pro
+  const result = await pool.query(`SELECT * FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+  if (!result.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
+  
+  const agency = result.rows[0];
+
+  let badge = "";
+  if (agency.status === "pending_payment") badge = `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Attente paiement</span>`;
+  else if (agency.status === "pending_validation") badge = `<span class="badge" style="background:#dbeafe;color:#1e40af;">⏳ Attente validation</span>`;
+  else if (agency.status === "approved") badge = `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ En ligne</span>`;
+  else badge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`;
+
+  res.send(page("Détails de l'agence", `
+    <section class="card" style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">🏢 ${escapeHtml(agency.name)}</h1>
+        <a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour</a>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        ${badge}
+      </div>
+
+      <div style="background:#f9fafb; padding:20px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:20px;">
+        <p style="margin-bottom:8px;"><strong>Adresse :</strong> ${escapeHtml(agency.address)}</p>
+        ${agency.latitude && agency.longitude ? `
+          <p style="margin-bottom:8px;"><strong>Position GPS :</strong> Enregistrée</p>
+          <a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; padding:8px 16px; font-size:13px;">📍 Voir sur Google Maps</a>
+        ` : `<p style="margin-bottom:8px; color:#ef4444;"><strong>Position GPS :</strong> Non renseignée</p>`}
+      </div>
+
+      <h3 style="font-size:16px; margin-bottom:10px;">Photos de l'agence</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        ${agency.photo_1 ? `<img src="${escapeHtml(agency.photo_1)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+        ${agency.photo_2 ? `<img src="${escapeHtml(agency.photo_2)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+        ${agency.photo_3 ? `<img src="${escapeHtml(agency.photo_3)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+      </div>
+
+    </section>
+  `, proConnected));
+});
 // --- FIN CODE AGENCES ---
 // --- DEBUT CODE AGENCES PAIEMENT ---
 app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
