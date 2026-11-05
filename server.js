@@ -3446,6 +3446,22 @@ app.get("/mon-espace-pro/agences/:id/modifier", async (req, res) => {
         </form>
       </div>
     </section>
+    <script>
+  function getLocationEdit() {
+    const status = document.getElementById('gps-status-edit');
+    if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
+    status.innerText = "Récupération...";
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        document.getElementById('agency-lat-edit').value = position.coords.latitude;
+        document.getElementById('agency-lng-edit').value = position.coords.longitude;
+        status.innerText = "✅ Nouvelle position GPS enregistrée !";
+      },
+      (error) => { status.innerText = "❌ Impossible de vous localiser."; },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+</script>
   `, proConnected));
 });
 
