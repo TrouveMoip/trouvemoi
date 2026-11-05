@@ -3409,6 +3409,13 @@ app.get("/mon-espace-pro/agences/:id/modifier", async (req, res) => {
         
         <label>Adresse exacte *</label>
         <input name="address" required maxlength="300" value="${escapeHtml(agency.address)}">
+        <input type="hidden" name="latitude" id="agency-lat-edit" value="${agency.latitude || ''}">
+<input type="hidden" name="longitude" id="agency-lng-edit" value="${agency.longitude || ''}">
+
+<button type="button" onclick="getLocationEdit()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Mettre à jour ma position GPS</button>
+<p id="gps-status-edit" style="text-align:center; color:#2563eb; font-weight:bold; margin-bottom:10px;">
+  ${agency.latitude ? 'Position GPS déjà enregistrée.' : ''}
+</p>
         
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
