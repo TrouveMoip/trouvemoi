@@ -3118,15 +3118,15 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  res.send(page("Mes Agences", `
+  res.send(page("Ajouter une Agence", `
     <section class="card" style="max-width: 700px; margin: 40px auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h1 style="margin:0;">🏢 Mes Agences</h1>
+      <h1 style="margin:0;">➕ Ajouter une agence</h1>
         <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
       </div>
 
       <div style="background:#f8fafc; padding:20px; border-radius:12px; margin-bottom:30px; border:1px solid #e2e8f0;">
-        <h2 style="font-size:18px; margin-bottom:10px;">Ajouter une nouvelle agence</h2>
+        <h2 style="font-size:18px; margin-bottom:10px;">Informations de l'agence</h2>
         <p style="font-size:14px; color:#4b5563; margin-bottom:16px;">Chaque nouvelle agence coûte <strong>1500 FCFA</strong> (frais d'ouverture). Elle sera vérifiée par notre équipe avant d'être publiée.</p>
         
         <form action="/mon-espace-pro/agences/nouvelle" method="POST" enctype="multipart/form-data">
@@ -3175,6 +3175,45 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   );
 }
     </script>
+  `, proConnected));
+});
+app.get("/mon-espace-pro/agences", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const agenciesResult = await pool.query("SELECT * FROM agencies WHERE parent_pro_id = $1 ORDER BY created_at DESC", [proConnected.pro.id]);
+  
+  const listHtml = agenciesResult.rows.map(a => {
+    let badge = "";
+    if (a.status === "pending_payment") badge = `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Attente paiement</span>`;
+    else if (a.status === "pending_validation") badge = `<span class="badge" style="background:#dbeafe;color:#1e40af;">⏳ Attente validation</span>`;
+    else if (a.status === "approved") badge = `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ En ligne</span>`;
+    else badge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`;
+
+    return `
+      <div style="padding:16px; border:1px solid #e5e7eb; border-radius:12px; background:white; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <strong style="font-size:16px; color:#1e40af;">${escapeHtml(a.name)}</strong><br>
+          <span style="font-size:13px; color:#6b7280;">📍 ${escapeHtml(a.address)}</span>
+        </div>
+        <div>${badge}</div>
+      </div>
+    `;
+  }).join("");
+
+  res.send(page("Mes Agences", `
+    <section class="card" style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">📋 Mes Agences</h1>
+        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+      </div>
+      
+      <div style="margin-bottom:24px;">
+        <a href="/mon-espace-pro/agences/nouvelle" class="button" style="background:#8b5cf6; width:100%;">➕ Ajouter une nouvelle agence</a>
+      </div>
+
+      ${listHtml || `<div style="text-align:center; padding:40px; background:#f9fafb; border-radius:12px; border:1px dashed #cbd5e0;"><p style="color:#6b7280;">Vous n'avez pas encore d'agence.</p></div>`}
+    </section>
   `, proConnected));
 });
 // --- FIN CODE AGENCES ---
