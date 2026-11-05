@@ -3218,32 +3218,41 @@ app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", m
     const agencyId = insertResult.rows[0].id;
 
     // 3. Affichage du widget Kkiapay
-    res.send(page("Paiement Agence", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>💳 Finalisez l'ouverture</h1>
-        <p>Votre agence <strong>${escapeHtml(name)}</strong> est prête. Veuillez régler les frais d'ouverture de <strong>1500 FCFA</strong>.</p>
-        <button onclick="ouvrirPaiementAgence()" style="font-size:18px; padding:16px 48px; background:#10b981; font-weight:800; margin-top:20px; width:100%;">Payer 1500 FCFA</button>
-        <p style="margin-top:20px;"><a href="/mon-espace-pro/agences/nouvelle" style="color:#6b7280;">← Annuler et revenir</a></p>
-      </section>
-      <script src="https://cdn.kkiapay.me/k.js"></script>
-      <script>
-        function ouvrirPaiementAgence() { 
-          openKkiapayWidget({ 
-            amount: 1500, 
-            api_key: "${KKIAPAY_PUBLIC_KEY}", 
-            sandbox: ${KKIAPAY_SANDBOX}, 
-            callback: "${APP_URL}/mon-espace-pro/agences/verifier", 
-            data: "AGENCE-${agencyId}", 
-            theme: "#2563eb" 
-          }); 
-        }
-        addSuccessListener(function(response) { 
-          if (response && response.transactionId) { 
-            window.location.href = "/mon-espace-pro/agences/verifier?agency_id=${agencyId}&transaction_id=" + encodeURIComponent(response.transactionId); 
-          } 
-        });
-      </script>
-    `, proConnected));
+    // 3. Affichage du widget Kkiapay OU Redirection directe si mode test
+if (BYPASS_PAYMENT) {
+  res.send(page("Succès", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+    <h1>🎉 Agence créée (Mode Test)</h1>
+    <p>L'agence a bien été enregistrée sans paiement.</p>
+    <a href="/mon-espace-pro/agences/nouvelle" class="button" style="margin-top:20px;">Retour à mes agences</a>
+  </section>`, proConnected));
+} else {
+  res.send(page("Paiement Agence", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <h1>💳 Finalisez l'ouverture</h1>
+      <p>Votre agence <strong>${escapeHtml(name)}</strong> est prête. Veuillez régler les frais d'ouverture de <strong>1500 FCFA</strong>.</p>
+      <button onclick="ouvrirPaiementAgence()" style="font-size:18px; padding:16px 48px; background:#10b981; font-weight:800; margin-top:20px; width:100%;">Payer 1500 FCFA</button>
+      <p style="margin-top:20px;"><a href="/mon-espace-pro/agences/nouvelle" style="color:#6b7280;">← Annuler et revenir</a></p>
+    </section>
+    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <script>
+      function ouvrirPaiementAgence() { 
+        openKkiapayWidget({ 
+          amount: 1500, 
+          api_key: "${KKIAPAY_PUBLIC_KEY}", 
+          sandbox: ${KKIAPAY_SANDBOX}, 
+          callback: "${APP_URL}/mon-espace-pro/agences/verifier", 
+          data: "AGENCE-${agencyId}", 
+          theme: "#2563eb" 
+        }); 
+      }
+      addSuccessListener(function(response) { 
+        if (response && response.transactionId) { 
+          window.location.href = "/mon-espace-pro/agences/verifier?agency_id=${agencyId}&transaction_id=" + encodeURIComponent(response.transactionId); 
+        } 
+      });
+    </script>
+  `, proConnected));
+}
 
   } catch (e) {
     console.error(e);
