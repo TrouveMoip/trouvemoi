@@ -5323,6 +5323,9 @@ async function startServer() {
   photo_1 TEXT,
   photo_2 TEXT,
   photo_3 TEXT,
+  photo_1_desc VARCHAR(150),
+photo_2_desc VARCHAR(150),
+photo_3_desc VARCHAR(150),
   status VARCHAR(50) NOT NULL DEFAULT 'pending_payment',
   payment_reference VARCHAR(100) UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -5376,6 +5379,9 @@ async function startServer() {
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_1_desc VARCHAR(100)`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_2_desc VARCHAR(100)`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_3_desc VARCHAR(100)`);
+    await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_1_desc VARCHAR(150)`);
+await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_2_desc VARCHAR(150)`);
+await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_3_desc VARCHAR(150)`);
     // Création manuelle de la table de sécurité
 await pool.query(`
   CREATE TABLE IF NOT EXISTS rate_limits_v2 (
