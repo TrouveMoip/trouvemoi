@@ -727,7 +727,19 @@ function page(title, content, proConnected, meta = {}) {
   <img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px; transition: transform 0.3s;">
 </div>
       <script>
-        function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }
+      let currentRotation = 0;
+
+function zoomImage(src) { 
+  document.getElementById('image-modal').style.display = 'block'; 
+  document.getElementById('modal-img').src = src; 
+  currentRotation = 0; 
+  document.getElementById('modal-img').style.transform = `rotate(0deg)`;
+}
+
+function rotateImage(degrees) {
+  currentRotation += degrees;
+  document.getElementById('modal-img').style.transform = `rotate(${currentRotation}deg)`;
+}
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (registrations) {
             registrations.forEach(function (registration) { registration.unregister(); });
