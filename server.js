@@ -1550,7 +1550,25 @@ app.get("/pro/:id", async (req, res) => {
     const avgRating = Number(person.avg_rating || 0);
     const isTopPro = avgRating >= 4.5 && reviewsCount >= 10;
 
-    const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, pro_response, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
+   // Récupérer les agences approuvées
+const agenciesResult = await pool.query(`SELECT id, name, address FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [id]);
+let agenciesHtml = "";
+if (agenciesResult.rows.length > 0) {
+  agenciesHtml = `
+    <div class="card" style="margin-top: 20px; border-left: 4px solid #8b5cf6; background: #f8fafc;">
+      <h2 style="font-size: 18px; margin-bottom: 16px; color: #1e3a8a;">🏢 Nos agences</h2>
+      <div style="display: grid; gap: 10px;">
+        ${agenciesResult.rows.map(ag => `
+          <a href="/agence/${ag.id}" style="text-decoration: none; display: block; padding: 12px; background: white; border-radius: 8px; border: 1px solid #e5e7eb; transition: all 0.2s;">
+            <div style="font-weight: 700; color: #1e40af;">${escapeHtml(ag.name)}</div>
+            <div style="font-size: 13px; color: #6b7280;">📍 ${escapeHtml(ag.address)}</div>
+          </a>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+     const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, pro_response, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
     const reviews = reviewsResult.rows;
 
     const baseUrl = `${req.protocol}://${req.get("host")}`;
