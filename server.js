@@ -3202,10 +3202,6 @@ app.get("/mon-espace-pro/agences", async (req, res) => {
         <h1 style="margin:0;">📋 Mes Agences</h1>
         <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
       </div>
-      
-      <div style="margin-bottom:24px;">
-        <a href="/mon-espace-pro/agences/nouvelle" class="button" style="background:#8b5cf6; width:100%;">➕ Ajouter une nouvelle agence</a>
-      </div>
 
       ${listHtml || `<div style="text-align:center; padding:40px; background:#f9fafb; border-radius:12px; border:1px dashed #cbd5e0;"><p style="color:#6b7280;">Vous n'avez pas encore d'agence.</p></div>`}
     </section>
