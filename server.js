@@ -715,7 +715,17 @@ function page(title, content, proConnected, meta = {}) {
         </div>
         <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
       </footer>
-      <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9); cursor:zoom-out;" onclick="this.style.display='none'"><span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span><img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px;"></div>
+      <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9);" onclick="if(event.target.id === 'image-modal') this.style.display='none'">
+  <span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer; z-index:10000;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span>
+  
+  <!-- NOUVELLE BARRE D'OUTILS POUR TOURNER LES PHOTOS -->
+  <div style="position:absolute; top:15px; left:15px; z-index:10000; display:flex; gap:10px;" onclick="event.stopPropagation()">
+    <button onclick="rotateImage(-90)" style="background:#2563eb; color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold;">↺ Tourner à gauche</button>
+    <button onclick="rotateImage(90)" style="background:#2563eb; color:white; border:none; padding:10px 15px; border-radius:8px; cursor:pointer; font-weight:bold;">↻ Tourner à droite</button>
+  </div>
+
+  <img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px; transition: transform 0.3s;">
+</div>
       <script>
         function zoomImage(src) { document.getElementById('image-modal').style.display = 'block'; document.getElementById('modal-img').src = src; }
         if ('serviceWorker' in navigator) {
