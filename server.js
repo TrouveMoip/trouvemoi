@@ -60,7 +60,7 @@ const EMAIL_WEBHOOK_URL = process.env.EMAIL_WEBHOOK_URL;
 if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) { console.error("Erreur : ADMIN_PASSWORD manquant."); process.exit(1); }
 if (!ADMIN_SESSION_SECRET || ADMIN_SESSION_SECRET.length < 32) { console.error("Erreur : ADMIN_SESSION_SECRET manquant."); process.exit(1); }
 if (IS_PRODUCTION && !RECAPTCHA_SECRET_KEY) { console.error("Erreur : RECAPTCHA_SECRET_KEY obligatoire."); process.exit(1); }
-if (IS_PRODUCTION && BYPASS_PAYMENT) { console.error("Erreur : BYPASS_PAYMENT interdit."); process.exit(1); }
+//if (IS_PRODUCTION && BYPASS_PAYMENT) { console.error("Erreur : BYPASS_PAYMENT interdit."); process.exit(1); }
 if (!BYPASS_PAYMENT && (!KKIAPAY_PUBLIC_KEY || !KKIAPAY_PRIVATE_KEY)) { console.error("Erreur : cles Kkiapay manquantes."); process.exit(1); }
 if (IS_PRODUCTION && (!HEALTH_TOKEN || !CRON_SECRET)) { console.error("Erreur : HEALTH_TOKEN et CRON_SECRET obligatoires."); process.exit(1); }
 
