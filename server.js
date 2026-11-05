@@ -826,6 +826,40 @@ app.get("/", async (req, res) => {
       EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite
       FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
     const result = await pool.query(query, [limit, offset, visitorId]);
+    // Récupérer les agences récentes pour l'accueil
+const agenciesAccueil = await pool.query(`
+  SELECT a.id, a.name, a.address, p.company_name AS parent_name 
+  FROM agencies a 
+  JOIN professional_applications p ON a.parent_pro_id = p.id 
+  WHERE a.status = 'approved' 
+  ORDER BY a.created_at DESC LIMIT 3
+`);
+
+let agenciesAccueilHtml = "";
+if (agenciesAccueil.rows.length > 0) {
+  agenciesAccueilHtml = `
+    <h2 style="text-align: center; margin: 40px 0 20px 0;">🏢 Nos nouvelles agences</h2>
+    <div class="pros-grid">
+      ${agenciesAccueil.rows.map(ag => `
+        <article class="pro-card" style="border-left: 4px solid #8b5cf6;">
+          <div class="pro-card-top">
+            <div>
+              <div class="pro-name">${escapeHtml(ag.name)}</div>
+              <div class="pro-meta" style="color: #8b5cf6; font-weight: 700; font-size: 11px; text-transform: uppercase;">Réseau : ${escapeHtml(ag.parent_name || "Indépendant")}</div>
+              <div class="pro-meta">📍 ${escapeHtml(ag.address)}</div>
+            </div>
+            <div style="text-align: right;">
+              <span class="badge" style="background:#8b5cf6; color:white;">Agence</span>
+            </div>
+          </div>
+          <div class="pro-actions" style="margin-top: 12px;">
+            <a href="/agence/${ag.id}" class="button pro-profile-link" style="padding: 8px; font-size: 13px; background:#8b5cf6; color:white;">Voir l'agence →</a>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
 
     const categoriesResult = await pool.query(`
       SELECT pr.category, COUNT(*) as count
