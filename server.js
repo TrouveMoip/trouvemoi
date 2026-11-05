@@ -733,7 +733,7 @@ function zoomImage(src) {
   document.getElementById('image-modal').style.display = 'block'; 
   document.getElementById('modal-img').src = src; 
   currentRotation = 0; 
-  document.getElementById('modal-img').style.transform = `rotate(0deg)`;
+document.getElementById('modal-img').style.transform = 'rotate(0deg)';
 }
 
 function rotateImage(degrees) {
