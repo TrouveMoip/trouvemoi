@@ -3118,22 +3118,6 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  // On liste les agences existantes du patron
-  const agenciesResult = await pool.query("SELECT * FROM agencies WHERE parent_pro_id = $1 ORDER BY created_at DESC", [proConnected.pro.id]);
-  
-  const listHtml = agenciesResult.rows.map(a => {
-    let badge = "";
-    if (a.status === "pending_payment") badge = `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Attente paiement</span>`;
-    else if (a.status === "pending_validation") badge = `<span class="badge" style="background:#dbeafe;color:#1e40af;">⏳ Attente validation</span>`;
-    else if (a.status === "approved") badge = `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ En ligne</span>`;
-    else badge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`;
-
-    return `<div style="padding:12px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
-      <div><strong>${escapeHtml(a.name)}</strong><br><span style="font-size:12px; color:#6b7280;">${escapeHtml(a.address)}</span></div>
-      <div>${badge}</div>
-    </div>`;
-  }).join("");
-
   res.send(page("Mes Agences", `
     <section class="card" style="max-width: 700px; margin: 40px auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
