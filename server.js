@@ -3969,9 +3969,10 @@ if (!verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) {
 });
 
 async function adminMenu(current, csrf) {
-  let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0;
+  let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, agenciesCount = 0;
   try {
     gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
+    agenciesCount = Number((await pool.query("SELECT COUNT(*) FROM agencies WHERE status = 'pending_validation'")).rows[0].count);
     prosPendingCount = Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')")).rows[0].count);
     reviewsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count);
     msgsCount = Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false")).rows[0].count);
@@ -3981,7 +3982,7 @@ async function adminMenu(current, csrf) {
   } catch (e) {}
 
   const links = [
-    { href: "/admin/agences", label: "🏢 Agences", badge: 0 },
+    { href: "/admin/agences", label: "🏢 Agences", badge: agenciesCount },
     { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
     { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, 
     { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
