@@ -4998,7 +4998,23 @@ async function startServer() {
         id SERIAL PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(254) NOT NULL, phone VARCHAR(30), message TEXT NOT NULL,
         pro_id INTEGER, report_id INTEGER, is_read BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE TABLE IF NOT EXISTS blog_posts (id SERIAL PRIMARY KEY, title VARCHAR(200) NOT NULL, slug VARCHAR(250) UNIQUE NOT NULL, content TEXT NOT NULL, published BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+    CREATE TABLE IF NOT EXISTS blog_posts (id SERIAL PRIMARY KEY, title VARCHAR(200) NOT NULL, slug VARCHAR(250) UNIQUE NOT NULL, content TEXT NOT NULL, published BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);
+   
+   CREATE TABLE IF NOT EXISTS agencies (
+  id SERIAL PRIMARY KEY, 
+  parent_pro_id INTEGER NOT NULL REFERENCES professional_applications(id) ON DELETE CASCADE,
+  name VARCHAR(200) NOT NULL,
+  address VARCHAR(300) NOT NULL,
+  latitude DECIMAL(10, 8),
+  longitude DECIMAL(11, 8),
+  photo_1 TEXT,
+  photo_2 TEXT,
+  photo_3 TEXT,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending_payment',
+  payment_reference VARCHAR(100) UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
     `);
 
     const migrations = [
