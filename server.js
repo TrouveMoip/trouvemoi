@@ -2577,6 +2577,7 @@ app.get("/mon-espace-pro", async (req, res) => {
     
     <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
       <a class="button" href="/publier-emploi">📢 Publier une offre</a>
+      <a class="button" href="/mon-espace-pro/agences/nouvelle" style="background: #8b5cf6;">🏢 Ajouter une agence</a>
       <form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Deconnexion</button></form>
     </div>
     
