@@ -21,6 +21,8 @@ const METIERS_SENSIBLES = [
 const app = express(); 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+// ✅ FIX BUG #2 & #3 : Secure conditionnel — permet le dev en localhost
+const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 
 if (!process.env.DATABASE_URL) { console.error("Erreur : DATABASE_URL manquante."); process.exit(1); }
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) { console.error("Erreur : Variables Cloudinary manquantes."); process.exit(1); }
@@ -140,6 +142,13 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(b1, b2);
 }
 
+// ✅ FIX BUG #8 : helper de sanitization des coordonnées GPS (anti-XSS stockée)
+function safeCoord(value, max) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) && Math.abs(num) <= max ? num : null;
+}
+
 function normalizePhone(value) { return String(value || "").trim().replace(/[()\s.-]/g, ""); }
 
 function cleanBeninPhone(value) {
@@ -217,7 +226,7 @@ function getOrCreateVisitorId(req, res) {
   if (!vid || vid.length < 20) {
     vid = crypto.randomBytes(16).toString("hex");
     const currentCookies = res.getHeader("Set-Cookie") || [];
-    const newCookie = `tm_visitor_id=${vid}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`;
+    const newCookie = `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`;
     res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
   }
   return vid;
@@ -225,22 +234,22 @@ function getOrCreateVisitorId(req, res) {
 
 function setSessionCookie(res, token) { 
   const currentCookies = res.getHeader("Set-Cookie") || [];
-  const newCookie = `${SESSION_COOKIE}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`;
+  const newCookie = `${SESSION_COOKIE}=${token}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`;
   res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
 }
 function clearSessionCookie(res) { 
   const currentCookies = res.getHeader("Set-Cookie") || [];
-  const newCookie = `${SESSION_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+  const newCookie = `${SESSION_COOKIE}=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`;
   res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
 }
 function setProCookie(res, code) { 
   const currentCookies = res.getHeader("Set-Cookie") || [];
-  const newCookie = `${PRO_COOKIE}=${code}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`;
+  const newCookie = `${PRO_COOKIE}=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`;
   res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
 }
 function clearProCookie(res) { 
   const currentCookies = res.getHeader("Set-Cookie") || [];
-  const newCookie = `${PRO_COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`;
+  const newCookie = `${PRO_COOKIE}=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`;
   res.setHeader("Set-Cookie", Array.isArray(currentCookies) ? [...currentCookies, newCookie] : [currentCookies, newCookie].filter(Boolean));
 }
 
@@ -262,6 +271,7 @@ function verifyCsrf(req, res, next) {
 }
 
 function generateProCode() { return `TM${crypto.randomInt(10000000, 100000000)}`; }
+// ✅ FIX BUG #6 : throw si impossible de générer (au lieu de retourner null/undefined)
 async function generateUniqueProCode() {
   let code, exists = true, attempts = 0;
   while (exists && attempts < 20) {
@@ -269,6 +279,7 @@ async function generateUniqueProCode() {
     exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0;
     attempts++;
   }
+  if (exists || !code) throw new Error("Impossible de générer un code pro unique après 20 tentatives");
   return code;
 }
 
@@ -279,6 +290,7 @@ function generateReferralCode() {
   return result;
 }
 
+// ✅ FIX BUG #6 : throw si impossible de générer
 async function generateUniqueReferralCode() {
   let code, exists = true, attempts = 0;
   while (exists && attempts < 20) {
@@ -287,6 +299,7 @@ async function generateUniqueReferralCode() {
     exists = result.rows.length > 0;
     attempts++;
   }
+  if (exists || !code) throw new Error("Impossible de générer un code parrainage unique après 20 tentatives");
   return code;
 }
 
@@ -792,9 +805,11 @@ app.get("/", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
     const visitorId = getOrCreateVisitorId(req, res);
-    const refCode = req.query.ref;
+    // ✅ FIX BUG #2 : validation du refCode + res.append (ne remplace plus tm_visitor_id)
+    const rawRef = typeof req.query.ref === "string" ? req.query.ref.trim().toLowerCase() : "";
+    const refCode = /^[a-z0-9]{7}$/.test(rawRef) ? rawRef : null;
     if (refCode) {
-      res.setHeader("Set-Cookie", `tm_ref=${refCode}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+      res.append("Set-Cookie", `tm_ref=${refCode}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
     }
 
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
@@ -873,8 +888,9 @@ app.get("/", async (req, res) => {
 
       let actionButtons = "";
       if (person.phone_public && cleanPhone) {
+        // ✅ FIX BUG #4 : tel:+229 au lieu de tel:01XXXXXXXX
         actionButtons = `
-          <a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
+          <a href="tel:${escapeHtml("+229" + cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
           ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
         `;
       } else {
@@ -1007,7 +1023,6 @@ app.get("/", async (req, res) => {
     res.send(page("Accueil", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
 });
-
 app.get("/recherche", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
@@ -1015,12 +1030,18 @@ app.get("/recherche", async (req, res) => {
     const profession = String(req.query.profession || "").trim().slice(0, 150);
     const city = String(req.query.city || "").trim().slice(0, 100);
     const category = String(req.query.category || "").trim().slice(0, 100);
+    // ✅ FIX BUG #13 : lecture du champ neighborhood (ignoré auparavant)
+    const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
     const sort = String(req.query.sort || "pertinence").trim();
-    const lat = Number(req.query.lat);
-    const lng = Number(req.query.lng);
+    // ✅ FIX BUG #1 : hasCoords ne doit pas être true pour lat="" (Number("") === 0)
+    const hasLat = req.query.lat !== "" && req.query.lat != null;
+    const hasLng = req.query.lng !== "" && req.query.lng != null;
+    const lat = hasLat ? Number(req.query.lat) : NaN;
+    const lng = hasLng ? Number(req.query.lng) : NaN;
     const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
     
-    const isSearching = profession !== "" || city !== "" || category !== "";
+    // ✅ FIX BUG #13 : neighborhood entre dans isSearching
+    const isSearching = profession !== "" || city !== "" || category !== "" || neighborhood !== "";
     
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
     const limit = 12; const offset = (currentPage - 1) * limit;
@@ -1041,6 +1062,8 @@ app.get("/recherche", async (req, res) => {
   whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length})`; 
 }
       if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
+      // ✅ FIX BUG #13 : ajout du filtre neighborhood
+      if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
       if (category) { values.push(category); whereClause += ` AND (p.profession_category = $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category = $${values.length}))`; }
 
       const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
@@ -1090,8 +1113,9 @@ app.get("/recherche", async (req, res) => {
 
         let actionButtons = "";
         if (person.phone_public && cleanPhone) {
+          // ✅ FIX BUG #4 : tel:+229 au lieu de tel:01XXXXXXXX
           actionButtons = `
-            <a href="tel:${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
+            <a href="tel:${escapeHtml("+229" + cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>
             ${waNumber ? `<a href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}
           `;
         } else {
@@ -1128,7 +1152,15 @@ app.get("/recherche", async (req, res) => {
       }).join("");
 
       prosSection = `<div class="pros-grid" id="pros-grid">${prosCards}</div>`;
-      paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city, category, sort });
+      // ✅ FIX BUG #14 : transmission de neighborhood + lat/lng (si valides) dans la pagination
+      paginationHtml = renderPagination(currentPage, totalPages, "/recherche", {
+        profession,
+        city,
+        category,
+        neighborhood,
+        sort,
+        ...(hasCoords ? { lat, lng } : {})
+      });
       prosDataJS = JSON.stringify(result.rows.map(p => ({ id: p.id, lat: p.latitude, lon: p.longitude })).filter(p => p.lat && p.lon));
     }
 
@@ -1144,7 +1176,7 @@ app.get("/recherche", async (req, res) => {
   
   <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
   
-  <input name="neighborhood" value="${escapeHtml(req.query.neighborhood || "")}" placeholder="Quartier (ex: Akpakpa)" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  <input name="neighborhood" value="${escapeHtml(neighborhood)}" placeholder="Quartier (ex: Akpakpa)" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
 
   <select id="sort-select" name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
     <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
@@ -1226,7 +1258,9 @@ app.get("/recherche", async (req, res) => {
     `;
     res.send(page("Recherche", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); }
-});app.post("/api/track/:id/:type", async (req, res) => {
+});
+
+app.post("/api/track/:id/:type", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const type = req.params.type;
@@ -1309,7 +1343,6 @@ app.get("/mes-favoris", async (req, res) => {
     </div>
   `, proConnected));
 });
-
 app.get("/mon-compte", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const visitorId = getOrCreateVisitorId(req, res);
@@ -1417,8 +1450,10 @@ app.post("/mon-compte/connexion-code", async (req, res) => {
     res.redirect(303, "/mon-compte");
   }
 });
+
+// ✅ FIX BUG #3 : COOKIE_SECURE au lieu de Secure forcé
 app.get("/mon-compte/deconnexion", (req, res) => {
-  res.setHeader("Set-Cookie", `tm_visitor_id=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
+  res.setHeader("Set-Cookie", `tm_visitor_id=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`);
   res.redirect(303, "/mon-compte");
 });
 
@@ -1453,7 +1488,11 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
     console.error("Erreur vérification limite SMS :", error.message);
   }
 
-  const clientResult = await pool.query(`SELECT code FROM client_codes WHERE phone = $1`, [phone]);
+  // ✅ FIX BUG #12 : recherche défensive sur les deux formats possibles
+  const clientResult = await pool.query(
+    `SELECT code FROM client_codes WHERE REGEXP_REPLACE(phone, '[()+\\s.-]', '', 'g') IN ($1, $2)`,
+    [phone, `229${phone}`]
+  );
   
   if (!clientResult.rows.length) {
     return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><p>Vérifiez le numéro ou créez un compte.</p><a href='/mon-compte'>Retour</a>", null));
@@ -1468,7 +1507,8 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
 
   res.send(page("Code envoyé", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez un SMS avec votre code de récupération dans quelques instants.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
 });
- app.get("/pro/:id", async (req, res) => { 
+
+app.get("/pro/:id", async (req, res) => { 
    try {
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
@@ -1519,8 +1559,9 @@ app.post("/mon-compte/reinitialiser", async (req, res) => {
 
     let contactButtons = "";
     if (person.phone_public && phoneClean) {
+      // ✅ FIX BUG #4 : tel:+229 au lieu de tel:01XXXXXXXX
       contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-        <a class="button" href="tel:${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
+        <a class="button" href="tel:${escapeHtml("+229" + phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
         ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi. Je souhaiterais avoir des informations sur vos services. Merci.")}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
       </div>
       <div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; font-size: 14px;">📤 Partager ce profil</a></div>`;
@@ -1669,7 +1710,8 @@ if (galerieData.length > 0) {
   <p style="font-size: 14px; margin-bottom: 8px; color: #1e40af; font-weight: 500;">${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Adresse non spécifiée"}</p>
   ${horairesHtml}
   ${person.latitude && person.longitude ? `
-    <a href="https://www.google.com/maps/search/?api=1&query=${person.latitude},${person.longitude}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
+    <!-- ✅ FIX BUG #8 : escapeHtml sur les coordonnées pour éviter tout XSS stocké -->
+    <a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>
   ` : ""}
 </div> 
 ` : ""}
@@ -1706,7 +1748,6 @@ if (galerieData.length > 0) {
     }));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
-
 app.get("/pro/:id/avis/tous", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
@@ -2132,7 +2173,9 @@ if (alertSensible) {
     `;
     res.send(page("Devenir professionnel", content, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-});app.get("/api/neighborhoods", async (req, res) => {
+});
+
+app.get("/api/neighborhoods", async (req, res) => {
   try {
     const city = String(req.query.city || "").trim();
     if (!city) return res.json({ neighborhoods: [] });
@@ -2255,8 +2298,9 @@ if (METIERS_LOCAL_FIXE.includes(finalProfession) && type_lieu === 'ambulant') {
         return res.status(409).send(page("Inscription impossible", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444; justify-content: center;">⚠️ Doublon</h1><p><strong>Un dossier existe déjà avec ce numéro ou ce NPI.</strong></p><a class="button" href="/contact">📩 Nous contacter</a></section>`, null));
       }
 
+      // ✅ FIX BUG #8 : safeCoord au lieu de latitude||null (anti-XSS stockée)
       await client.query(`INSERT INTO professional_applications (full_name, company_name, phone, phone_public, city, neighborhood, profession, experience, service_description, service_area, availability, npi, photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url, contact_preference, whatsapp_number, contact_email, pro_code, tracking_code, status, payment_status, payment_amount, type_lieu, adresse_exacte, latitude, longitude, horaires_json, referred_by, profession_category) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,NULL,$16,$17,$18,NULL,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) RETURNING id`,
-        [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson, finalReferredBy, professionCategory]);
+        [full_name, finalCompanyName, cleanPhone, phoneIsPublic, city, finalNeighborhood, finalProfession, experience, service_description, service_area, availability, safeNpi, profilResult.secure_url, identiteResult.secure_url, kycResult.secure_url, pref, cleanWa, contact_email, trackingCode, finalStatus, finalPaymentStatus, PAYMENT_AMOUNT, type_lieu, adresse_exacte, safeCoord(latitude, 90), safeCoord(longitude, 180), horairesJson, finalReferredBy, professionCategory]);
       await client.query("COMMIT");
     } catch (transactionError) {
       await client.query("ROLLBACK").catch(() => {});
@@ -2276,7 +2320,6 @@ if (METIERS_LOCAL_FIXE.includes(finalProfession) && type_lieu === 'ambulant') {
     res.status(500).send(page("Erreur", `<h2>Impossible d'enregistrer.</h2><p>Veuillez réessayer ou nous contacter.</p>`, null));
   }
 });
-
 app.get("/paiement/:tracking", async (req, res) => {
   if (BYPASS_PAYMENT) return res.redirect(303, "/");
   try {
@@ -2434,14 +2477,26 @@ app.post("/candidatures/:id/corriger", upload.fields([{ name: "photo_identite", 
   if (!Number.isSafeInteger(id) || id < 1) return res.status(400).send(page("Erreur", "<h2>ID invalide.</h2>", null));
   const files = req.files || {}; const trackingCode = String(req.body.tracking_code || "").trim().toUpperCase();
   try {
-    const check = await pool.query("SELECT tracking_code FROM professional_applications WHERE id = $1", [id]);
-    if (!check.rows.length || check.rows[0].tracking_code !== trackingCode) return res.status(403).send(page("Erreur", "<h2>Refuse.</h2>", null));
+    // ✅ FIX BUG #11 : vérification du statut et du paiement avant correction
+    const check = await pool.query("SELECT tracking_code, status, payment_status FROM professional_applications WHERE id = $1", [id]);
+    if (!check.rows.length || check.rows[0].tracking_code !== trackingCode) {
+      return res.status(403).send(page("Erreur", "<h2>Refuse.</h2>", null));
+    }
+    const current = check.rows[0];
+    if (current.status === "payment_pending" || current.payment_status !== "paid") {
+      return res.status(403).send(page("Erreur", "<h2>Paiement requis. Ce dossier ne peut pas être corrigé avant paiement.</h2>", null));
+    }
+    if (!["corrections_requested", "rejected"].includes(current.status)) {
+      return res.status(403).send(page("Erreur", "<h2>Ce dossier n'est pas éligible à une correction.</h2>", null));
+    }
+
     if (files.photo_identite?.[0]) { const res1 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_corr_${Date.now()}`); await pool.query(`UPDATE professional_applications SET photo_identite_url = $1 WHERE id = $2`, [res1.secure_url, id]); }
     if (files.photo_kyc?.[0]) { const res2 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_corr_${Date.now()}`); await pool.query(`UPDATE professional_applications SET photo_kyc_url = $1 WHERE id = $2`, [res2.secure_url, id]); }
-    await pool.query(`UPDATE professional_applications SET status = 'pending', rejection_reason = NULL WHERE id = $1`, [id]);
+    await pool.query(`UPDATE professional_applications SET status = 'pending', rejection_reason = NULL, updated_at = NOW() WHERE id = $1`, [id]);
     res.send(page("Succes", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>Mis à jour !</h1><a href='/' class='button'>Accueil</a></section>", null));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-});app.get("/mon-espace-pro", async (req, res) => {
+});
+app.get("/mon-espace-pro", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) {
     return res.send(page("Espace pro", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align: center;">Espace pro</h1><form action="/mon-espace-pro/login" method="POST"><label>Code pro</label><input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;"><button type="submit" style="width: 100%;">Se connecter</button></form><div style="text-align:center; margin-top:20px; font-size:14px;"><p><a href="/suivi-dossier">Suivre mon dossier</a></p><p><a href="/mon-espace-pro/reinitialiser" style="color:#ef4444;">🔐 Code perdu</a></p></div></section>`, null));
@@ -2955,6 +3010,7 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
   const horairesJson = JSON.stringify(horairesObj);
 
   try {
+    // ✅ FIX BUG #8 : safeCoord au lieu de latitude||null / longitude||null
     await pool.query(
       `UPDATE professional_applications
        SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4,
@@ -2962,7 +3018,7 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
      adresse_exacte = $9, latitude = $10, longitude = $11, horaires_json = $12,
      updated_at = NOW()
  WHERE id = $13`,
-[company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, city, finalNeighborhood, type_lieu, adresse_exacte, latitude || null, longitude || null, horairesJson, proConnected.pro.id]
+[company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, city, finalNeighborhood, type_lieu, adresse_exacte, safeCoord(latitude, 90), safeCoord(longitude, 180), horairesJson, proConnected.pro.id]
     );
     if (cleanPhone !== proConnected.pro.phone) {
       await logAdminAction("pro_phone_updated", "pro", proConnected.pro.id, `Ancien: ${proConnected.pro.phone} | Nouveau: ${cleanPhone}`);
@@ -2973,18 +3029,23 @@ app.post("/mon-espace-pro/modifier-profil", async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur lors de la modification.</h2>", proConnected));
   }
 });
-
 app.post("/mon-espace-pro/login", async (req, res) => {
+  // ✅ FIX BUG #9 : séparation rate limit IP (30/15min) et rate limit par code (3/15min)
+  // Le compteur du code est reset sur succès, jamais celui de l'IP
   const ip = req.ip || "unknown";
-  const rateKey = `pro_login:${ip}`;
-  if (!(await takeRateLimit(rateKey, 10, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1></section>", null));
+  const ipKey = `pro_login:ip:${ip}`;
+  if (!(await takeRateLimit(ipKey, 30, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives</h1></section>", null));
 
   const code = String(req.body.pro_code || "").trim().toUpperCase();
   if (!/^TM\d{5,8}$/.test(code)) return res.status(400).send(page("Erreur", "<h2>Code invalide.</h2>", null));
+
+  const codeKey = `pro_login:code:${code}`;
+  if (!(await takeRateLimit(codeKey, 3, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>⏳ Trop de tentatives sur ce code</h1><p>Patientez 15 minutes.</p></section>", null));
+
   try {
     const result = await pool.query(`SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]);
     if (!result.rows.length) return res.status(401).send(page("Erreur", "<h2>Code incorrect.</h2>", null));
-    await clearRateLimit(rateKey); setProCookie(res, code); res.redirect(303, "/mon-espace-pro");
+    await clearRateLimit(codeKey); setProCookie(res, code); res.redirect(303, "/mon-espace-pro");
   } catch (error) { res.redirect(303, "/mon-espace-pro"); }
 });
 
@@ -3006,6 +3067,8 @@ app.post("/mon-espace-pro/reinitialiser", async (req, res) => {
     if (!result.rows.length || normalizePhone(result.rows[0].phone).slice(-4) !== phoneLast4) {
       return res.status(404).send(page("Erreur", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h2>Introuvable.</h2><p>Vérifiez le code de suivi et les 4 derniers chiffres du téléphone.</p></section>", null));
     }
+    // ✅ FIX BUG #6 : generateUniqueProCode() peut throw si 20 tentatives échouent.
+    // Le catch ci-dessous attrape ce throw et renvoie 500 propre au client.
     const newCode = await generateUniqueProCode();
     await pool.query(`UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`, [newCode, result.rows[0].id]);
     res.send(page("Nouveau code", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1 style="color:#10b981;">✅ Généré</h1><div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:24px 0;"><div style="font-size:12px; opacity:0.8; text-transform:uppercase;">Votre nouveau code pro</div><div style="font-size:42px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div></div><a class="button" href="/mon-espace-pro">Se connecter</a></section>`, null));
@@ -3060,16 +3123,23 @@ app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
 app.post("/mon-espace-pro/modifier-photo", upload.single("photo_activite"), async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected || !req.file) return res.redirect(303, "/mon-espace-pro/modifier-photo");
-  // Vérification de la limite d'upload (1 fois par semaine)
-if (!(await takeRateLimit(`photo_limit:${proConnected.pro.id}`, 1, 7 * 24 * 60 * 60 * 1000))) {
-  return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier vos photos qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
-}
+
+  // ✅ FIX BUG #5 : clé séparée pour la photo principale (ne partage plus avec la galerie)
+  const photoKey = `photo_main_limit:${proConnected.pro.id}`;
+  if (!(await takeRateLimit(photoKey, 1, 7 * 24 * 60 * 60 * 1000))) {
+    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier votre photo principale qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
+  }
   try {
     const result = await uploadToCloudinary(req.file.buffer, "trouvemoi/activites", `activite_${proConnected.pro.id}_${Date.now()}`);
     if (proConnected.pro.photo_activite_url) await deleteFromCloudinary(proConnected.pro.photo_activite_url);
     await pool.query(`UPDATE professional_applications SET photo_activite_url = $1 WHERE id = $2`, [result.secure_url, proConnected.pro.id]);
     res.redirect(303, "/mon-espace-pro/modifier-photo?success=upload");
-  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur upload.</h2>", proConnected)); }
+  } catch (e) {
+    // ✅ FIX BUG #5 : si Cloudinary/DB échoue, on rend le quota au pro
+    await clearRateLimit(photoKey);
+    console.error("Erreur upload photo principale :", e.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur upload.</h2><p>Veuillez réessayer.</p>", proConnected));
+  }
 });
 
 app.post("/mon-espace-pro/modifier-photo/supprimer", async (req, res) => {
@@ -3106,10 +3176,12 @@ app.get("/mon-espace-pro/modifier-galerie", async (req, res) => {
 app.post("/mon-espace-pro/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }, { name: 'photo3', maxCount: 1 }]), async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  // Vérification de la limite d'upload (1 fois par semaine)
-if (!(await takeRateLimit(`photo_limit:${proConnected.pro.id}`, 1, 7 * 24 * 60 * 60 * 1000))) {
-  return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier vos photos qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
-}
+
+  // ✅ FIX BUG #5 : clé séparée pour la galerie (ne partage plus avec la photo principale)
+  const galleryKey = `gallery_limit:${proConnected.pro.id}`;
+  if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) {
+    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⏳ Limite atteinte</h1><p>Pour éviter les abus, vous ne pouvez modifier votre galerie qu'une seule fois par semaine.</p><a href='/mon-espace-pro' class='button'>Retour à mon espace</a></section>", proConnected));
+  }
   try {
     const files = req.files; 
     let newGalerie = { 1: proConnected.pro.photo_galerie_1, 2: proConnected.pro.photo_galerie_2, 3: proConnected.pro.photo_galerie_3 };
@@ -3136,7 +3208,9 @@ if (!(await takeRateLimit(`photo_limit:${proConnected.pro.id}`, 1, 7 * 24 * 60 *
     );
     res.redirect(303, "/mon-espace-pro/modifier-galerie?success=1");
   } catch (e) { 
-    console.error(e);
+    // ✅ FIX BUG #5 : si Cloudinary/DB échoue, on rend le quota au pro
+    await clearRateLimit(galleryKey);
+    console.error("Erreur upload galerie :", e.message);
     res.redirect(303, "/mon-espace-pro/modifier-galerie"); 
   }
 });
@@ -3158,7 +3232,6 @@ app.post("/mon-espace-pro/modifier-galerie/:slot/supprimer", async (req, res) =>
     res.redirect(303, "/mon-espace-pro/modifier-galerie");
   }
 });
-
 app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -3330,7 +3403,8 @@ app.post("/offres-emploi", async (req, res) => {
     );
     res.send(page("Succes", "<section class='card' style='max-width: 500px; margin: 40px auto; text-align:center;'><h1>Soumise !</h1><p>Votre offre sera vérifiée avant publication.</p><a href='/mon-espace-pro' class='button'>Retour</a></section>", proConnected));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", proConnected)); }
-});app.get("/admin", async (req, res) => {
+});
+app.get("/admin", async (req, res) => {
   const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
   if (session?.jti) {
     try {
@@ -3420,6 +3494,7 @@ async function adminMenu(current, csrf) {
   ];
   return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
 }
+
 app.get("/admin/qrcode", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
   const menu = await adminMenu("/admin/qrcode", csrf);
@@ -3447,6 +3522,7 @@ app.get("/admin/qrcode", requireAdmin, async (req, res) => {
     </section>
   `, null));
 });
+
 app.get("/admin/dons", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
@@ -3815,7 +3891,9 @@ app.get("/admin/candidatures/:id/modifier", requireAdmin, async (req, res) => {
         <div style="text-align:center; margin-top:24px;"><button type="submit">💾 Enregistrer</button><a href="/admin/candidatures" class="button secondary">Annuler</a></div>
       </form>
     </section>`, null));
-});app.post("/admin/candidatures/:id/modifier", requireAdmin, verifyCsrf, async (req, res) => {
+});
+
+app.post("/admin/candidatures/:id/modifier", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/candidatures");
 
@@ -3874,6 +3952,8 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
     }
     
     if (status === "approved") {
+      // ✅ FIX BUG #6 : generateUniqueProCode/ReferralCode peuvent throw.
+      // Le try/catch global attrape et redirige proprement.
       let newCode = existing.rows[0].pro_code;
       let newRefCode = existing.rows[0].referral_code;
       
@@ -3896,6 +3976,12 @@ app.post("/admin/candidatures/:id/status", requireAdmin, verifyCsrf, async (req,
       }
     } else {
       await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
+
+      // ✅ FIX BUG #10 : si rejet, fermer automatiquement toutes ses offres d'emploi actives
+      if (status === "rejected") {
+        await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1 AND status IN ('pending', 'approved')`, [id]);
+      }
+
       await logAdminAction("update_status", "pro", id, `Nouveau statut: ${status}${reason ? ` | Motif: ${reason}` : ""}`);
       if (status === "rejected" || status === "corrections_requested") {
         const body = status === "rejected"
@@ -3922,7 +4008,9 @@ app.post("/admin/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, asy
   try {
     const check = await pool.query("SELECT id, status, pro_code FROM professional_applications WHERE id = $1", [id]);
     if (!check.rows.length || check.rows[0].status !== "approved") return res.redirect(303, "/admin/candidatures");
-    const oldCode = check.rows[0].pro_code; const newCode = await generateUniqueProCode();
+    const oldCode = check.rows[0].pro_code;
+    // ✅ FIX BUG #6 : generateUniqueProCode peut throw, catch global ci-dessous
+    const newCode = await generateUniqueProCode();
     await pool.query(`UPDATE professional_applications SET pro_code = $1, pro_code_updated_at = NOW() WHERE id = $2`, [newCode, id]);
     await logAdminAction("regenerate_code", "pro", id, `Ancien: ${oldCode} | Nouveau: ${newCode}`);
     res.redirect(303, "/admin/candidatures");
@@ -3994,7 +4082,6 @@ app.post("/admin/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (r
     res.redirect(303, "/admin/candidatures");
   }
 });
-
 app.get("/admin/avis", requireAdmin, async (req, res) => {
   try {
     const csrf = getCsrf(req);
@@ -4099,11 +4186,19 @@ app.post("/admin/signalisations/:id/rejeter", requireAdmin, verifyCsrf, async (r
 });
 
 app.get("/admin/messages", requireAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  const result = await pool.query(`SELECT * FROM contact_messages ORDER BY created_at DESC`);
-  const messages = result.rows.map(m => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${escapeHtml(m.name)}</h2><p class="muted" style="font-size:14px;">Email : ${escapeHtml(m.email)} ${m.phone ? `| Tel : ${escapeHtml(m.phone)}` : ""}</p><p style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(m.message)}</p><p class="muted" style="font-size:12px;">Reçu le ${new Date(m.created_at).toLocaleString("fr-FR")}</p></article>`).join("");
-  const menu = await adminMenu("/admin/messages", csrf);
-  res.send(page("Messages", `<h1 style="text-align:center; margin-bottom:30px;">Messages</h1>${menu}${messages || '<section class="card"><p class="muted" style="text-align:center;">Aucun message.</p></section>'}`, null));
+  try {
+    const csrf = getCsrf(req);
+    const result = await pool.query(`SELECT * FROM contact_messages ORDER BY created_at DESC`);
+    const messages = result.rows.map(m => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${escapeHtml(m.name)}</h2><p class="muted" style="font-size:14px;">Email : ${escapeHtml(m.email)} ${m.phone ? `| Tel : ${escapeHtml(m.phone)}` : ""}</p><p style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(m.message)}</p><p class="muted" style="font-size:12px;">Reçu le ${new Date(m.created_at).toLocaleString("fr-FR")}</p></article>`).join("");
+    const menu = await adminMenu("/admin/messages", csrf);
+    // ✅ FIX BUG #7 : marquer tous les messages comme lus APRÈS la génération du menu
+    // (le badge affiche encore l'ancien count sur la page courante, puis 0 à la prochaine navigation)
+    await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false`);
+    res.send(page("Messages", `<h1 style="text-align:center; margin-bottom:30px;">Messages</h1>${menu}${messages || '<section class="card"><p class="muted" style="text-align:center;">Aucun message.</p></section>'}`, null));
+  } catch (error) {
+    console.error("Erreur page messages :", error.message);
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
+  }
 });
 
 app.get("/admin/rgpd", requireAdmin, async (req, res) => {
@@ -4222,7 +4317,9 @@ app.post("/admin/retraits/:id/approuver", requireAdmin, verifyCsrf, async (req, 
     client.release();
   }
   res.redirect(303, "/admin/retraits");
-});app.post("/admin/retraits/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+});
+
+app.post("/admin/retraits/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/admin/retraits");
 
@@ -4325,7 +4422,6 @@ app.get("/admin/notifications", requireAdmin, async (req, res) => {
   const menu = await adminMenu("/admin/notifications", csrf);
   res.send(page("Notifications", `<h1 style="text-align:center; margin-bottom:30px;">Notifications (100 dernières)</h1>${menu}<section class="card" style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th style="padding:10px; text-align:left; font-size:12px;">Date</th><th style="padding:10px; text-align:left; font-size:12px;">Type</th><th style="padding:10px; text-align:left; font-size:12px;">Destinataire</th><th style="padding:10px; text-align:left; font-size:12px;">Message</th><th style="padding:10px; text-align:left; font-size:12px;">Statut</th></tr></thead><tbody>${rows || '<tr><td colspan="5" style="text-align:center; padding:20px;">Aucune notification.</td></tr>'}</tbody></table></section>`, null));
 });
-
 /* --- PAGES STATIQUES --- */
 app.get("/contact", async (req, res) => {
   const proConnected = await getConnectedPro(req);
@@ -4783,6 +4879,7 @@ app.get("/soutenir", async (req, res) => {
   `;
   res.send(page("Soutenir TrouveMoi", content, proConnected));
 });
+
 app.get("/don/verifier", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const transactionId = String(req.query.transaction_id || "").trim();
@@ -4830,6 +4927,7 @@ app.get("/don/verifier", async (req, res) => {
     res.redirect(303, "/soutenir");
   }
 });
+
 // --- SEO : Robots.txt ---
 app.get("/robots.txt", (req, res) => {
   res.type("text/plain");
@@ -4852,7 +4950,6 @@ app.get("/sitemap.xml", async (req, res) => {
     res.status(500).end();
   }
 });
-
 async function startServer() {
   try {
     await pool.query(`
@@ -4940,7 +5037,7 @@ async function startServer() {
       `CREATE TABLE IF NOT EXISTS review_reports (id SERIAL PRIMARY KEY, review_id INTEGER NOT NULL REFERENCES reviews(id) ON DELETE CASCADE, pro_id INTEGER REFERENCES professional_applications(id) ON DELETE CASCADE, reason TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, processed_at TIMESTAMP)`,
       `CREATE INDEX IF NOT EXISTS idx_review_reports_status ON review_reports(status)`,
       `CREATE TABLE IF NOT EXISTS notifications (id SERIAL PRIMARY KEY, channel VARCHAR(20) NOT NULL, recipient VARCHAR(254) NOT NULL, subject VARCHAR(200), body TEXT NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'pending', error TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, sent_at TIMESTAMP)`,
-`CREATE TABLE IF NOT EXISTS rate_limits_v2 (limit_key VARCHAR(200) PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,  
+      `CREATE TABLE IF NOT EXISTS rate_limits_v2 (limit_key VARCHAR(200) PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0, window_start TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
       `CREATE TABLE IF NOT EXISTS client_codes (code VARCHAR(12) PRIMARY KEY, visitor_id VARCHAR(64) NOT NULL UNIQUE, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
       `ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS full_name VARCHAR(150)`,
       `ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`
