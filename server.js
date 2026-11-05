@@ -1022,6 +1022,7 @@ if (agenciesAccueil.rows.length > 0) {
 <div class="alert alert-animated" style="text-align: center; border-radius: 12px; padding: 16px; margin-bottom: 24px; font-size: 15px;">
   <strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré en personne.
 </div>
+${agenciesAccueilHtml}
       <h2 style="text-align: center; margin: 40px 0 20px 0;">Derniers professionnels inscrits</h2>
       <div class="pros-grid">
         ${prosCards || `<div class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></div>`}
