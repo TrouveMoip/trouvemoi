@@ -3212,7 +3212,7 @@ app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", m
     // 2. Enregistrement en base (statut : pending_payment)
     const insertResult = await pool.query(
       `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_payment') RETURNING id`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}) RETURNING id`,
       [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url]
     );
     const agencyId = insertResult.rows[0].id;
