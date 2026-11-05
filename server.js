@@ -3179,6 +3179,7 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
         if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
         status.innerText = "Récupération...";
         navigator.geolocation.getCurrentPosition(
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
           (position) => {
             document.getElementById('agency-lat').value = position.coords.latitude;
             document.getElementById('agency-lng').value = position.coords.longitude;
