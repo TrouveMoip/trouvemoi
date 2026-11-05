@@ -3182,14 +3182,29 @@ app.get("/agence/:id", async (req, res) => {
           <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px; text-align: center;">${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1>
           <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; text-align: center;">Réseau : ${escapeHtml(parentName)}</div>
           
-          <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
-            <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Adresse de l'agence</h3>
-            <p style="font-size: 14px; margin-bottom: 12px; color: #1e40af; font-weight: 500;">${escapeHtml(agency.address)}</p>
-            
-            ${agency.latitude && agency.longitude ? `
-              <a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(agency.latitude))},${escapeHtml(String(agency.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin:0;">🗺️ Voir l'itinéraire sur Google Maps</a>
-            ` : ""}
-          </div>
+         <div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px; border: 1px solid #bfdbfe;">
+  <h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation de l'agence</h3>
+  <p style="font-size: 14px; margin-bottom: 16px; color: #1e40af; font-weight: 500;">${escapeHtml(agency.address)}</p>
+  
+  ${agency.latitude && agency.longitude ? `
+    <!-- 1. La carte interactive (OpenStreetMap) -->
+    <div style="margin-bottom: 16px; border-radius: 12px; overflow: hidden; border: 1px solid #cbd5e0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+      <iframe 
+        width="100%" 
+        height="250" 
+        frameborder="0" 
+        scrolling="no" 
+        marginheight="0" 
+        marginwidth="0" 
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${Number(agency.longitude) - 0.01}%2C${Number(agency.latitude) - 0.01}%2C${Number(agency.longitude) + 0.01}%2C${Number(agency.latitude) + 0.01}&amp;layer=mapnik&amp;marker=${agency.latitude}%2C${agency.longitude}" 
+        style="border: none;">
+      </iframe>
+    </div>
+    
+    <!-- 2. Le bouton pour ouvrir l'application Google Maps -->
+    <a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(agency.latitude))},${escapeHtml(String(agency.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin:0;">🗺️ Ouvrir dans Google Maps</a>
+  ` : `<div class="alert alert-warning" style="margin:0; font-size:14px;">Cet établissement n'a pas encore enregistré sa position GPS exacte sur la carte.</div>`}
+</div>
 
           <div style="margin-top: 24px;">${contactButtons}</div>
         </div>
