@@ -3190,6 +3190,96 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
   `, proConnected));
 });
 // --- FIN CODE AGENCES ---
+// --- DEBUT CODE AGENCES PAIEMENT ---
+app.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const { name, address, latitude, longitude } = req.body;
+  if (!name || !address) return res.status(400).send(page("Erreur", "<h2>Nom et adresse obligatoires.</h2>", proConnected));
+
+  const files = req.files || {};
+  if (!files.photo_1 || !files.photo_1[0]) return res.status(400).send(page("Erreur", "<h2>La photo 1 est obligatoire.</h2>", proConnected));
+
+  try {
+    // 1. Upload des photos sur Cloudinary
+    const p1 = await uploadToCloudinary(files.photo_1[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_1`);
+    let p2url = null; let p3url = null;
+    if (files.photo_2?.[0]) { const r2 = await uploadToCloudinary(files.photo_2[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_2`); p2url = r2.secure_url; }
+    if (files.photo_3?.[0]) { const r3 = await uploadToCloudinary(files.photo_3[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_3`); p3url = r3.secure_url; }
+
+    // 2. Enregistrement en base (statut : pending_payment)
+    const insertResult = await pool.query(
+      `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending_payment') RETURNING id`,
+      [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url]
+    );
+    const agencyId = insertResult.rows[0].id;
+
+    // 3. Affichage du widget Kkiapay
+    res.send(page("Paiement Agence", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>💳 Finalisez l'ouverture</h1>
+        <p>Votre agence <strong>${escapeHtml(name)}</strong> est prête. Veuillez régler les frais d'ouverture de <strong>1500 FCFA</strong>.</p>
+        <button onclick="ouvrirPaiementAgence()" style="font-size:18px; padding:16px 48px; background:#10b981; font-weight:800; margin-top:20px; width:100%;">Payer 1500 FCFA</button>
+        <p style="margin-top:20px;"><a href="/mon-espace-pro/agences/nouvelle" style="color:#6b7280;">← Annuler et revenir</a></p>
+      </section>
+      <script src="https://cdn.kkiapay.me/k.js"></script>
+      <script>
+        function ouvrirPaiementAgence() { 
+          openKkiapayWidget({ 
+            amount: 1500, 
+            api_key: "${KKIAPAY_PUBLIC_KEY}", 
+            sandbox: ${KKIAPAY_SANDBOX}, 
+            callback: "${APP_URL}/mon-espace-pro/agences/verifier", 
+            data: "AGENCE-${agencyId}", 
+            theme: "#2563eb" 
+          }); 
+        }
+        addSuccessListener(function(response) { 
+          if (response && response.transactionId) { 
+            window.location.href = "/mon-espace-pro/agences/verifier?agency_id=${agencyId}&transaction_id=" + encodeURIComponent(response.transactionId); 
+          } 
+        });
+      </script>
+    `, proConnected));
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la création.</h2>", proConnected));
+  }
+});
+
+// Route pour vérifier le paiement de l'agence
+app.get("/mon-espace-pro/agences/verifier", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const agencyId = Number(req.query.agency_id);
+  const transactionId = String(req.query.transaction_id || "").trim();
+  if (!agencyId || !transactionId) return res.redirect(303, "/mon-espace-pro/agences/nouvelle");
+
+  try {
+    // Vérification auprès de Kkiapay
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success && verification.amount >= 1500) {
+      // On met à jour l'agence
+      await pool.query(
+        `UPDATE agencies SET status = 'pending_validation', payment_reference = $1 WHERE id = $2 AND parent_pro_id = $3 AND status = 'pending_payment'`,
+        [transactionId, agencyId, proConnected.pro.id]
+      );
+      await logAdminAction("agency_paid", "agency", agencyId, `Paiement reçu: ${transactionId}`);
+      
+      res.send(page("Succès", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>🎉 Paiement réussi !</h1><p>Votre agence est en attente de validation par notre équipe.</p><a href="/mon-espace-pro/agences/nouvelle" class="button" style="margin-top:20px;">Retour à mes agences</a></section>`, proConnected));
+    } else {
+      res.status(400).send(page("Erreur", "<h2>Le paiement n'a pas pu être vérifié.</h2>", proConnected));
+    }
+  } catch (error) {
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected));
+  }
+});
+// --- FIN CODE AGENCES PAIEMENT ---
 app.get("/mon-espace-pro/modifier-photo", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
