@@ -4427,6 +4427,72 @@ app.post("/admin/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) =
   }
 });
 
+// --- DEBUT CODE ADMIN AGENCES ---
+app.get("/admin/agences", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`
+    SELECT a.*, p.full_name AS parent_name 
+    FROM agencies a 
+    JOIN professional_applications p ON a.parent_pro_id = p.id 
+    WHERE a.status != 'pending_payment'
+    ORDER BY CASE WHEN a.status = 'pending_validation' THEN 0 ELSE 1 END, a.created_at DESC
+  `);
+
+  const rows = result.rows.map(a => `
+    <article class="card" style="margin-bottom:20px; border-left: 4px solid #8b5cf6;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <h2 style="font-size:18px; margin-bottom:4px;">${escapeHtml(a.name)}</h2>
+          <p style="color:#6b7280; font-size:14px;">Réseau : <strong>${escapeHtml(a.parent_name)}</strong></p>
+          <p style="color:#6b7280; font-size:14px;">Adresse : ${escapeHtml(a.address)}</p>
+          <p style="color:#6b7280; font-size:12px;">Ref paiement : ${escapeHtml(a.payment_reference || "Inconnu")}</p>
+        </div>
+        <div>
+          ${a.status === 'pending_validation' ? `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ À valider</span>` : 
+            a.status === 'approved' ? `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ Validée</span>` : 
+            `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`}
+        </div>
+      </div>
+      
+      <div style="display:flex; gap:10px; margin-top:15px;">
+        ${a.photo_1 ? `<img src="${a.photo_1}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+        ${a.photo_2 ? `<img src="${a.photo_2}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+        ${a.photo_3 ? `<img src="${a.photo_3}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer;" onclick="zoomImage(this.src)">` : ""}
+      </div>
+
+      ${a.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${a.latitude},${a.longitude}" target="_blank" style="font-size:13px; color:#2563eb; display:inline-block; margin-top:10px;">📍 Voir sur Google Maps</a>` : ""}
+
+      ${a.status === 'pending_validation' ? `
+        <div style="margin-top:15px; display:flex; gap:10px;">
+          <form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <input type="hidden" name="status" value="approved">
+            <button class="success" style="padding:8px 16px;">Approuver</button>
+          </form>
+          <form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}">
+            <input type="hidden" name="status" value="rejected">
+            <button class="danger" style="padding:8px 16px;">Refuser</button>
+          </form>
+        </div>
+      ` : ""}
+    </article>
+  `).join("");
+
+  const menu = await adminMenu("/admin/agences", csrf);
+  res.send(page("Gestion des Agences", `<h1 style="text-align:center; margin-bottom:20px;">Gestion des Agences</h1>${menu}${rows || '<p style="text-align:center;">Aucune agence.</p>'}`, null));
+});
+
+app.post("/admin/agences/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const status = req.body.status;
+  if (["approved", "rejected"].includes(status)) {
+    await pool.query(`UPDATE agencies SET status = $1, updated_at = NOW() WHERE id = $2`, [status, id]);
+    await logAdminAction(`agency_${status}`, "agency", id, null);
+  }
+  res.redirect(303, "/admin/agences");
+});
+// --- FIN CODE ADMIN AGENCES ---
 app.get("/admin/retraits", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
   try {
