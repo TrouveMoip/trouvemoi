@@ -3186,14 +3186,16 @@ app.get("/mon-espace-pro/agences", async (req, res) => {
     else badge = `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`;
 
     return `
-      <div style="padding:16px; border:1px solid #e5e7eb; border-radius:12px; background:white; display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <div>
-          <strong style="font-size:16px; color:#1e40af;">${escapeHtml(a.name)}</strong><br>
-          <span style="font-size:13px; color:#6b7280;">📍 ${escapeHtml(a.address)}</span>
-        </div>
-        <div>${badge}</div>
+  <a href="/mon-espace-pro/agences/${a.id}" style="text-decoration:none; color:inherit; display:block; margin-bottom:12px;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+    <div style="padding:16px; border:1px solid #e5e7eb; border-radius:12px; background:white; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <strong style="font-size:16px; color:#1e40af;">${escapeHtml(a.name)}</strong><br>
+        <span style="font-size:13px; color:#6b7280;">📍 ${escapeHtml(a.address)}</span>
       </div>
-    `;
+      <div>${badge}</div>
+    </div>
+  </a>
+`;
   }).join("");
 
   res.send(page("Mes Agences", `
