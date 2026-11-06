@@ -1,7 +1,7 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, verifyRecaptcha, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone) {
-  const router = express.Router();
+module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT) {
+const router = express.Router();
 
   router.get("/devenir-professionnel", async (req, res) => {
     const proConnected = await getConnectedPro(req);
