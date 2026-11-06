@@ -3327,6 +3327,14 @@ app.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
           <label>Adresse exacte *</label>
           <input name="address" required maxlength="300" placeholder="Ex: Carrefour Ste Rita">
           
+          <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px dashed #cbd5e0; margin-bottom:15px;">
+  <p style="font-size:13px; color:#4b5563; margin-bottom:8px;"><strong>Contact de cette agence (optionnel)</strong><br>Laissez vide pour utiliser le numéro principal du compte.</p>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+    <div><label style="font-size:12px;">Téléphone</label><input name="agency_phone" type="tel" maxlength="30" placeholder="Ex: 0194010345" style="margin:0; padding:8px;"></div>
+    <div><label style="font-size:12px;">WhatsApp</label><input name="agency_whatsapp" type="tel" maxlength="30" placeholder="Ex: 0194010345" style="margin:0; padding:8px;"></div>
+  </div>
+</div>
+          
           <input type="hidden" name="latitude" id="agency-lat">
           <input type="hidden" name="longitude" id="agency-lng">
           <button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
