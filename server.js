@@ -228,7 +228,7 @@ const emploisRoutes = require('./route/emplois');
 const adminRoutes = require('./route/admin');
 
 // --- BRANCHEMENT DES ROUTES ---
-app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName));
+app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL));
 app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml));
 app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT));
 app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15));
