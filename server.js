@@ -3549,7 +3549,7 @@ app.post("/mon-espace-pro/agences/:id/modifier", upload.fields([{ name: "photo_1
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   const id = Number(req.params.id);
-  const { name, address, latitude, longitude } = req.body;
+  const { name, address, latitude, longitude, agency_phone, agency_whatsapp } = req.body;
   const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
   const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
   const desc3 = String(req.body.desc3 || "").trim().slice(0, 150);
@@ -3567,9 +3567,9 @@ app.post("/mon-espace-pro/agences/:id/modifier", upload.fields([{ name: "photo_1
     if (files.photo_3?.[0]) { const r = await uploadToCloudinary(files.photo_3[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_3`); p3 = r.secure_url; }
 
     // On met à jour (et on repasse le statut en attente de validation pour que l'admin vérifie les changements)
-    await pool.query(
-  `UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, photo_1_desc = $6, photo_2_desc = $7, photo_3_desc = $8, latitude = $9, longitude = $10, status = 'pending_validation', updated_at = NOW() WHERE id = $11 AND parent_pro_id = $12`,
-  [name, address, p1, p2, p3, desc1 || null, desc2 || null, desc3 || null, safeCoord(latitude, 90), safeCoord(longitude, 180), id, proConnected.pro.id]
+   await pool.query(
+  `UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, photo_1_desc = $6, photo_2_desc = $7, photo_3_desc = $8, latitude = $9, longitude = $10, phone = $11, whatsapp_number = $12, status = 'pending_validation', updated_at = NOW() WHERE id = $13 AND parent_pro_id = $14`,
+  [name, address, p1, p2, p3, desc1 || null, desc2 || null, desc3 || null, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, id, proConnected.pro.id]
 );
     
     res.redirect(303, `/mon-espace-pro/agences/${id}`);
