@@ -11,13 +11,11 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       if (active.rows.length) return res.redirect(303, "/admin/dashboard");
     }
     clearSessionCookie(res);
-    res.send(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required><label>Code de validation (6 chiffres)</label><input name="totp" required maxlength="6"><button style="width:100%;">Connexion</button></form></section>`, null));
+    res.send(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required style="text-align:center; font-size:20px;"><label>Code de validation (6 chiffres)</label><input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px;"><button style="width:100%; margin-top:10px;">Connexion</button></form></section>`, null));
   });
 
   router.post("/login", async (req, res) => {
     if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
-    
-    // Note: On utilise verifyTotp passé depuis server.js
     if (!verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
     
     const expiresAt = Date.now() + SESSION_DURATION;
@@ -30,19 +28,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
 
   router.get("/dashboard", requireAdmin, async (req, res) => {
     const menu = await adminMenu("/admin/dashboard", getCsrf(req));
-    res.send(page("Dashboard", `<h1>Tableau de bord</h1>${menu}<p>Bienvenue dans votre espace d'administration.</p>`, null));
+    res.send(page("Dashboard", `<h1>Tableau de bord</h1>${menu}`, null));
   });
 
   router.get("/agences", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT a.*, p.full_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status != 'pending_payment' ORDER BY a.created_at DESC`);
-    const rows = result.rows.map(a => `
-      <article class="card" style="margin-bottom:20px; border-left: 4px solid #8b5cf6;">
-        <h2>${escapeHtml(a.name)}</h2><p>Réseau : ${escapeHtml(a.parent_name)}</p><p>Statut : ${a.status}</p>
-        ${a.status === 'pending_validation' ? `<form action="/admin/agences/${a.id}/statut" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button> <button name="status" value="rejected" class="danger">Refuser</button></form>` : ""}
-      </article>`).join("");
-    const menu = await adminMenu("/admin/agences", csrf);
-    res.send(page("Agences", `<h1>Gestion des Agences</h1>${menu}${rows}`, null));
+    const rows = result.rows.map(a => `<article class="card"><h2>${escapeHtml(a.name)}</h2>${a.status === 'pending_validation' ? `<form action="/admin/agences/${a.id}/statut" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button> <button name="status" value="rejected" class="danger">Refuser</button></form>` : ""}</article>`).join("");
+    res.send(page("Agences", `<h1>Agences</h1>${await adminMenu("/admin/agences", csrf)}${rows}`, null));
   });
 
   router.post("/agences/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
@@ -50,19 +43,29 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.redirect(303, "/admin/agences");
   });
 
-  router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
-    await pool.query(`UPDATE admin_sessions SET revoked_at = NOW() WHERE jti = $1`, [req.adminSession.jti]).catch(() => {});
-    clearSessionCookie(res); res.redirect(303, "/admin");
+  router.get("/retraits", requireAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
+    const result = await pool.query(`SELECT w.*, p.full_name FROM withdrawal_requests w JOIN professional_applications p ON p.id = w.pro_id ORDER BY w.created_at DESC`);
+    const rows = result.rows.map(w => `<article class="card"><h2>${escapeHtml(w.full_name)} - ${w.amount} FCFA</h2>${w.status === 'pending' ? `<form action="/admin/retraits/${w.id}/approuver" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Approuver</button></form>` : w.status}</article>`).join("");
+    res.send(page("Retraits", `<h1>Retraits</h1>${await adminMenu("/admin/retraits", csrf)}${rows}`, null));
   });
 
-  // Route pour les messages
+  router.post("/retraits/:id/approuver", requireAdmin, verifyCsrf, async (req, res) => {
+    await pool.query(`UPDATE withdrawal_requests SET status = 'processed' WHERE id = $1`, [Number(req.params.id)]);
+    res.redirect(303, "/admin/retraits");
+  });
+
   router.get("/messages", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM contact_messages ORDER BY created_at DESC`);
-    const messages = result.rows.map(m => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:18px;">${escapeHtml(m.name)}</h2><p class="muted" style="font-size:14px;">Email : ${escapeHtml(m.email)} ${m.phone ? `| Tel : ${escapeHtml(m.phone)}` : ""}</p><p style="background:#f9fafb; padding:16px; border-radius:12px; margin:16px 0;">${escapeHtml(m.message)}</p><p class="muted" style="font-size:12px;">Reçu le ${new Date(m.created_at).toLocaleString("fr-FR")}</p></article>`).join("");
-    const menu = await adminMenu("/admin/messages", csrf);
+    const messages = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>${escapeHtml(m.email)}</p><p>${escapeHtml(m.message)}</p></article>`).join("");
     await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false`);
-    res.send(page("Messages", `<h1 style="text-align:center; margin-bottom:30px;">Messages</h1>${menu}${messages || '<section class="card"><p class="muted" style="text-align:center;">Aucun message.</p></section>'}`, null));
+    res.send(page("Messages", `<h1>Messages</h1>${await adminMenu("/admin/messages", csrf)}${messages}`, null));
+  });
+
+  router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
+    await pool.query(`UPDATE admin_sessions SET revoked_at = NOW() WHERE jti = $1`, [req.adminSession.jti]).catch(() => {});
+    clearSessionCookie(res); res.redirect(303, "/admin");
   });
 
   return router;
