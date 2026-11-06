@@ -60,5 +60,40 @@ module.exports = function(pool, page, getConnectedPro) {
     res.send(page("Politique de Confidentialité", content, proConnected));
   });
 
+// PAGE D'ACCUEIL
+router.get("/", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    
+    // On récupère les 6 derniers pros approuvés
+    const result = await pool.query("SELECT * FROM professional_applications WHERE status = 'approved' ORDER BY created_at DESC LIMIT 6");
+    
+    let cards = result.rows.map(p => `
+      <div class="pro-card">
+        <div class="pro-name">${escapeHtml(p.company_name || p.full_name)}</div>
+        <div class="pro-meta" style="color: #2563eb; font-weight: bold; text-transform: uppercase;">${escapeHtml(p.profession)}</div>
+        <div class="pro-meta">📍 ${escapeHtml(p.city)}</div>
+        <a href="/pro/${p.id}" class="button" style="margin-top: 10px; width: 100%;">Voir le profil</a>
+      </div>
+    `).join("");
+
+    res.send(page("Accueil", `
+      <div class="card" style="text-align: center; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 40px; border-radius: 16px; margin-bottom: 30px;">
+        <h1 style="color: white; font-size: 32px; margin-bottom: 10px;">Trouvez le professionnel qu'il vous faut</h1>
+        <p style="font-size: 16px; margin-bottom: 20px; opacity: 0.9;">Des professionnels vérifiés au Bénin, à portée de clic.</p>
+        <a href="/recherche" class="button" style="background: #f59e0b; font-size: 16px; padding: 14px 28px; font-weight: bold;">🔍 Rechercher un pro</a>
+      </div>
+      
+      <h2 style="text-align: center; margin-bottom: 20px;">Derniers professionnels inscrits</h2>
+      <div class="pros-grid">
+        ${cards || `<div class="card"><p style="text-align:center;">Aucun professionnel pour le moment.</p></div>`}
+      </div>
+    `, proConnected));
+    
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Erreur serveur");
+  }
+});
   return router;
 };
