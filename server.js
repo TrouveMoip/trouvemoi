@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
+const pagesRoutes = require('./routes/pages');
 
 const METIERS_LOCAL_FIXE = [
   "Restaurant", "Maquis / Bar", "Fast-food / Snack", 
