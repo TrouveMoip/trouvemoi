@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge) {
+module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName) {
   const router = express.Router();
 
   // Fonction pour la pagination
