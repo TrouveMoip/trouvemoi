@@ -41,7 +41,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       if (sAll.rows.length) { statsAll = { views: Number(sAll.rows[0].v || 0), phone: Number(sAll.rows[0].p || 0), wa: Number(sAll.rows[0].w || 0) }; }
     } catch (error) { return res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", proConnected)); }
 
-    const isOnLeave = proConnected.pro.unavailable_until && new Date(proConnected.pro.unavailable_until) > new Date();
+    const pendingDeletion = gdprRequests.some(r => r.request_type === "deletion" && r.status === "pending");
     
     res.send(page("Espace pro", `
       <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
@@ -127,6 +127,19 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           </article>
         `).join("") : `<p class="muted">Aucune offre.</p>`}
       </section>
+
+      <!-- SECTION RGPD -->
+      <section class="card" style="margin-top:20px;">
+        <h2 style="font-size:20px; margin-bottom:16px;">RGPD & Confidentialité</h2>
+        ${pendingDeletion ? `<div class="alert alert-warning"><strong>Suppression de compte en cours.</strong> Votre demande est en attente de traitement. Vous pouvez encore l'annuler.<form action="/mon-espace-pro/annuler-suppression" method="POST" style="margin-top:10px;"><button class="secondary" type="submit" style="margin:0;">Annuler la demande de suppression</button></form></div>` : ""}
+        <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Télécharger mes données</a>
+          ${pendingDeletion ? "" : `<form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
+            <button class="danger" type="submit" onclick="return confirm('⚠️ ATTENTION : Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')">🗑️ Supprimer mon compte</button>
+          </form>`}
+        </div>
+        ${gdprRequests.map(req => `<article class="card" style="padding:16px; margin-bottom:10px;"><p><span class="badge badge-${req.status}">${req.status}</span> <strong>${req.request_type}</strong></p></article>`).join("")}
+      </section>
     `, proConnected));
   });
 
@@ -136,9 +149,82 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     res.redirect(303, "/mon-espace-pro");
   });
 
+  // MODIFIER PROFIL
+  router.get("/modifier-profil", async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    res.send(page("Modifier Profil", `
+      <section class="card" style="max-width: 600px; margin: 40px auto;">
+        <h1 style="text-align:center; font-size:24px;">✏️ Modifier mon profil</h1>
+        <form action="/mon-espace-pro/modifier-profil" method="POST" style="margin-top:24px;">
+          <h3 style="margin-bottom:12px;">Identité et contact</h3>
+          <label>Nom complet (Vérifié KYC - Non modifiable)</label>
+          <input name="full_name" value="${escapeHtml(proConnected.pro.full_name)}" readonly style="background:#e5e7eb; cursor:not-allowed; color:#6b7280;">
+          <label>Nom de l'entreprise (Modifiable)</label>
+          <input name="company_name" maxlength="200" value="${escapeHtml(proConnected.pro.company_name || '')}">
+          <label>Téléphone *</label>
+          <input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div><label>Préférence de contact</label><select name="contact_preference"><option value="whatsapp" ${proConnected.pro.contact_preference === 'whatsapp' ? 'selected' : ''}>WhatsApp</option><option value="email" ${proConnected.pro.contact_preference === 'email' ? 'selected' : ''}>E-mail</option></select></div>
+            <div><label>Numéro WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.whatsapp_number || '')}"></div>
+          </div>
+          <label>E-mail</label>
+          <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || '')}">
+          
+          <div style="text-align:center; margin-top:30px;"><button type="submit" class="success" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button></div>
+        </form>
+        <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+      </section>
+    `, proConnected));
+  });
+
+  router.post("/modifier-profil", async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    const { company_name, phone, contact_email, contact_preference, whatsapp_number } = req.body;
+    const cleanPhone = cleanBeninPhone(phone);
+    if (!cleanPhone) return res.status(400).send(page("Erreur", "<h2>Téléphone invalide.</h2>", proConnected));
+    const cleanWhatsapp = whatsapp_number ? cleanBeninPhone(whatsapp_number) : null;
+    const email = String(contact_email || "").trim().slice(0, 254);
+    const preference = ["whatsapp", "email"].includes(contact_preference) ? contact_preference : "whatsapp";
+    
+    await pool.query(`UPDATE professional_applications SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4, whatsapp_number = $5, updated_at = NOW() WHERE id = $6`, [company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, proConnected.pro.id]);
+    res.redirect(303, "/mon-espace-pro");
+  });
+
+  // MES DONNÉES (RGPD)
+  router.get("/mes-donnees", async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    try {
+      const offersResult = await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1`, [proConnected.pro.id]);
+      const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
+      const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
+      const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1`, [proConnected.pro.id]);
+      const exportData = { utilisateur: proConnected.pro, offres: offersResult.rows, demandes: gdprResult.rows, avis: reviewsResult.rows, agences: agenciesResult.rows };
+      res.setHeader("Content-Type", "application/json"); res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`); res.send(JSON.stringify(exportData, null, 2));
+    } catch (e) { res.status(500).send("Erreur."); }
+  });
+
+  // DEMANDE SUPPRESSION
+  router.post("/demande-suppression", async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    const existing = await pool.query(`SELECT id FROM gdpr_requests WHERE pro_id = $1 AND request_type = 'deletion' AND status = 'pending' LIMIT 1`, [proConnected.pro.id]);
+    if (existing.rows.length) return res.send(page("Déjà demandé", "<h1>Déjà en cours</h1>", proConnected));
+    await pool.query(`INSERT INTO gdpr_requests (pro_id, request_type, status, message) VALUES ($1, 'deletion', 'pending', $2)`, [proConnected.pro.id, "Demande pro"]);
+    await logAdminAction("gdpr_deletion_requested", "pro", proConnected.pro.id, "Demande de suppression de compte");
+    res.redirect(303, "/mon-espace-pro");
+  });
+
+  // ANNULER SUPPRESSION
+  router.post("/annuler-suppression", async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    await pool.query(`UPDATE gdpr_requests SET status = 'rejected', processed_at = NOW() WHERE pro_id = $1 AND request_type = 'deletion' AND status = 'pending'`, [proConnected.pro.id]);
+    res.redirect(303, "/mon-espace-pro");
+  });
+
+  // MODIFIER PHOTO
   router.get("/modifier-photo", async (req, res) => {
     const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-    res.send(page("Photo", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">📷 Photo d'activité</h1><form action="/mon-espace-pro/modifier-photo" method="POST" enctype="multipart/form-data"><input name="photo_activite" type="file" accept="image/*" required><button type="submit" style="width:100%; margin-top:10px;">📤 Enregistrer</button></form></section>`, proConnected));
+    res.send(page("Photo", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align:center;">📷 Photo d'activité</h1><form action="/mon-espace-pro/modifier-photo" method="POST" enctype="multipart/form-data"><input name="photo_activite" type="file" accept="image/*" required><button type="submit" style="width:100%; margin-top:10px;">📤 Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
   });
 
   router.post("/modifier-photo", upload.single("photo_activite"), async (req, res) => {
@@ -153,9 +239,17 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     } catch (e) { await clearRateLimit(photoKey); res.redirect(303, "/mon-espace-pro/modifier-photo"); }
   });
 
+  // MODIFIER GALERIE
   router.get("/modifier-galerie", async (req, res) => {
     const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-    res.send(page("Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1>📸 Galerie</h1><form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data"><input type="file" name="photo1"><input type="text" name="desc1" placeholder="Description"><input type="file" name="photo2"><input type="text" name="desc2" placeholder="Description"><button type="submit" style="width:100%;">Enregistrer</button></form></section>`, proConnected));
+    res.send(page("Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1>📸 Galerie</h1><form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data"><input type="file" name="photo1"><input type="text" name="desc1" placeholder="Description"><input type="file" name="photo2"><input type="text" name="desc2" placeholder="Description"><button type="submit" style="width:100%;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
+  });
+
+  router.post("/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }]), async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    const galleryKey = `gallery_limit:${proConnected.pro.id}`;
+    if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
+    res.redirect(303, "/mon-espace-pro");
   });
 
   return router;
