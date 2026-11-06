@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro) {
+module.exports = function(pool, page, getConnectedPro, escapeHtml) {
   const router = express.Router();
 
   router.get("/a-propos", async (req, res) => {
