@@ -1,11 +1,9 @@
 const express = require('express');
 
-// On exporte une fonction qui prend "pool", "page", etc., en paramètres
-module.exports = function(pool, page, getConnectedPro, takeRateLimit) {
+module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml) {
   const router = express.Router();
 
-  // La route GET /contact
-  router.get('/', async (req, res) => {
+  router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const proId = req.query.pro ? Number(req.query.pro) : null;
     const reportId = req.query.report ? Number(req.query.report) : null;
@@ -15,7 +13,7 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit) {
     if (proId) {
       const proResult = await pool.query(`SELECT full_name, company_name FROM professional_applications WHERE id = $1`, [proId]);
       if (proResult.rows.length) {
-        contextHtml = `<div class="alert alert-info">Vous contactez : <strong>${proResult.rows[0].company_name || proResult.rows[0].full_name}</strong></div>`;
+        contextHtml = `<div class="alert alert-info">Vous contactez : <strong>${escapeHtml(proResult.rows[0].company_name || proResult.rows[0].full_name)}</strong></div>`;
       }
     } else if (reportId) {
       contextHtml = `<div class="alert alert-danger">⚠️ Vous signalez le professionnel #${reportId}.</div>`;
@@ -43,8 +41,7 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit) {
     `, proConnected));
   });
 
-  // La route POST /contact
-  router.post('/', async (req, res) => {
+  router.post("/", async (req, res) => {
     const ip = req.ip || "unknown";
     if (!(await takeRateLimit(`contact:${ip}`, 5, 60 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p></section>", null));
 
@@ -63,7 +60,10 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit) {
         [name, email, phone || null, message, proId || null, reportId || null]
       );
       res.redirect(303, "/contact?success=1");
-    } catch (e) { res.redirect(303, "/contact"); }
+    } catch (e) { 
+      console.error("ERREUR CONTACT:", e.message);
+      res.redirect(303, "/contact"); 
+    }
   });
 
   return router;
