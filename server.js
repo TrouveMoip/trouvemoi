@@ -1268,6 +1268,7 @@ if (agencesSearch.rows.length > 0) {
       
       ${isSearching ? `
         <h2 style="text-align: center; margin-bottom: 20px;">Résultats (${totalPros})</h2>
+        ${agencesSearchHtml}
         ${prosSection} ${paginationHtml}
       ` : `
         <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 20px; border: 1px dashed #cbd5e0;">
