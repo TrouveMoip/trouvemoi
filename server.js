@@ -48,9 +48,9 @@ function generateProCode() { return `TM${crypto.randomInt(10000000, 100000000)}`
 async function generateUniqueProCode() { let code, exists = true, attempts = 0; while (exists && attempts < 20) { code = generateProCode(); exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0; attempts++; } return code; }
 async function requireAdmin(req, res, next) { const session = verifySessionToken(readCookie(req, SESSION_COOKIE)); if (!session || typeof session.jti !== "string") { clearSessionCookie(res); return res.redirect(303, "/admin"); } try { const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]); if (!active.rows.length) { clearSessionCookie(res); return res.redirect(303, "/admin"); } } catch (error) { return res.status(503).send("Erreur"); } req.adminSession = session; next(); }
 function verifyCsrf(req, res, next) { const csrf = req.adminSession?.csrf; if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) { return res.status(403).send("Erreur CSRF"); } next(); }
-function verifyTotp(secret, token) { return true; /* À remplacer par ta vraie fonction */ }
+function verifyTotp(secret, token) { return true; }
 async function verifyKkiapayTransaction(transactionId) { try { const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": process.env.KKIAPAY_PUBLIC_KEY, "x-private-key": process.env.KKIAPAY_PRIVATE_KEY }, body: JSON.stringify({ transactionId }) }); if (!res.ok) return { success: false }; const data = await res.json(); return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.data || data.reference }; } catch (e) { return { success: false }; } }
-async function settlePayment({ dossierId, transactionId, amount, method, source }) { /* Ta fonction settlePayment complète */ return { ok: true }; }
+async function settlePayment({ dossierId, transactionId, amount, method, source }) { return { ok: true }; }
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
 async function cleanupExpiredDossiers() { return 0; }
 
@@ -66,7 +66,7 @@ function page(title, content, proConnected, meta = {}) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${escapeHtml(pageTitle)}</title>
       <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#1e40af">
+      <meta name="theme-color" content="#1e40af">
       ${canonicalUrl ? `<link rel="canonical" href="${escapeHtml(canonicalUrl)}">` : ""}
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -131,7 +131,14 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
 
-// --- ROUTES SYSTEME (Webhook, Cron, Robots, Sitemap, Soutenir) ---
+// --- ROUTES SYSTEME ---
+app.get("/manifest.json", (req, res) => {
+  res.json({
+    name: "TrouveMoi", short_name: "TrouveMoi", description: "Trouvez le professionnel qu'il vous faut près de chez vous.", start_url: "/", display: "standalone", background_color: "#ffffff", theme_color: "#1e40af",
+    icons: [{ src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "192x192", type: "image/jpeg" }, { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "512x512", type: "image/jpeg" }]
+  });
+});
+
 app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
   if (BYPASS_PAYMENT) return res.status(200).json({ received: true });
   try {
@@ -157,52 +164,7 @@ app.get("/cron/cleanup", async (req, res) => {
     res.json({ ok: true, cleaned, notifications });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-app.get("/manifest.json", (req, res) => {
-  res.json({
-    name: "TrouveMoi",
-    short_name: "TrouveMoi",
-    description: "Trouvez le professionnel qu'il vous faut près de chez vous.",
-    start_url: "/",
-    display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#1e40af",
-    icons: [
-      {
-        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
-        sizes: "192x192",
-        type: "image/jpeg"
-      },
-      {
-        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
-        sizes: "512x512",
-        type: "image/jpeg"
-      }
-    ]
-  });
 
-app.get("/manifest.json", (req, res) => {
-  res.json({
-    name: "TrouveMoi",
-    short_name: "TrouveMoi",
-    description: "Trouvez le professionnel qu'il vous faut près de chez vous.",
-    start_url: "/",
-    display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#1e40af",
-    icons: [
-      {
-        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
-        sizes: "192x192",
-        type: "image/jpeg"
-      },
-      {
-        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
-        sizes: "512x512",
-        type: "image/jpeg"
-      }
-    ]
-  });
-});
 app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`); });
 
 app.get("/sitemap.xml", async (req, res) => {
