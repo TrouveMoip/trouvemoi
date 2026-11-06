@@ -81,6 +81,75 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
 
+// --- FONCTION DE RENDU HTML ---
+function page(title, content, proConnected, meta = {}) {
+  const pageTitle = `${meta.title || title} - TrouveMoi`;
+  return `
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${escapeHtml(pageTitle)}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f4f7f6; color: #1a202c; line-height: 1.6; display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; }
+        .header-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        nav a { color: white; text-decoration: none; padding: 8px 14px; font-weight: 600; }
+        main { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
+        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+        h1 { font-size: 28px; margin-bottom: 16px; color: #1e3a8a; }
+        input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; }
+        button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; text-decoration: none; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+        .button.secondary { background: white; color: #4b5563; border: 1px solid #d1d5db; }
+        .button.danger { background: #ef4444; }
+        .button.success { background: #10b981; }
+        .button.whatsapp { background: #25d366; }
+        .pros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .pro-card { background: white; border-radius: 16px; padding: 16px; border: 1px solid #f3f4f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .pro-name { font-size: 16px; font-weight: 800; color: #111827; }
+        .pro-meta { font-size: 12px; color: #6b7280; }
+        .pro-actions { display: flex; gap: 6px; margin-top: 12px; }
+        .pro-actions a { padding: 8px; font-size: 12px; border-radius: 6px; text-align: center; flex: 1; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+        .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+        .alert-info { background: #eff6ff; color: #1e40af; }
+        .alert-success { background: #ecfdf5; color: #065f46; }
+        .alert-danger { background: #fef2f2; color: #991b1b; }
+        footer { background: #111827; color: #9ca3af; padding: 40px 20px; text-align: center; margin-top: 40px; }
+      </style>
+    </head>
+    <body>
+      <header>
+        <div class="header-content">
+          <a href="/" style="color:white; text-decoration:none; font-size:24px; font-weight:900;">TrouveMoi</a>
+          <nav>
+            <a href="/">Pros</a>
+            <a href="/emplois">Emploi</a>
+            <a href="/mon-espace-pro">Espace pro</a>
+            <a href="/contact">Contact</a>
+          </nav>
+        </div>
+      </header>
+      <main>${content}</main>
+      <footer>
+        <p>&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits réservés.</p>
+      </footer>
+      <script>
+        async function toggleFav(e, id) {
+          e.preventDefault();
+          const btn = e.currentTarget;
+          const res = await fetch('/api/favorite/' + id, { method: 'POST' });
+          const data = await res.json();
+          if (data.ok) { btn.style.opacity = data.isFav ? "1" : "0.5"; }
+        }
+      </script>
+    </body>
+    </html>
+  `;
+}
+
 // --- IMPORTATION DES FICHIERS DE ROUTES ---
 const pagesRoutes = require('./route/pages');
 const contactRoutes = require('./route/contact');
