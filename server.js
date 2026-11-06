@@ -167,27 +167,29 @@ function page(title, content, proConnected, meta = {}) {
             </a>
             <div class="tagline">Site web de mise en relation client et professionnel</div>
           </div>
-          <nav>
-            <div class="desktop-menu">
-              <a href="/">Professionnels</a>
-              <a href="/emplois">Emploi</a>
-              ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier une offre</a>`}
-              <a href="/mes-favoris">❤️ Favoris</a>
-              <a href="/mon-espace-pro">Espace pro</a>
-              <a href="/contact">Contact</a>
-            </div>
-            <div class="mobile-menu">
-              <div class="main-links">
-                <a href="/">Professionnels</a>
-                <a href="/emplois">Emploi</a>
-                <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
-              </div>
-              <div id="mobile-dropdown" class="mobile-dropdown">
-                <a href="/mon-espace-pro">Espace pro</a>
-                <a href="/contact">Contact</a>
-              </div>
-            </div>
-          </nav>
+         <nav>
+  <div class="desktop-menu">
+    <a href="/">Professionnels</a>
+    <a href="/emplois">Emploi</a>
+    ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier une offre</a>`}
+    <a href="/mes-favoris">❤️ Favoris</a>
+    <a href="/mon-espace-pro">Espace pro</a>
+    <a href="/contact">Contact</a>
+  </div>
+  <div class="mobile-menu">
+    <div class="main-links">
+      <a href="/">Professionnels</a>
+      <a href="/emplois">Emploi</a>
+      ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier</a>`}
+      <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
+    </div>
+    <div id="mobile-dropdown" class="mobile-dropdown">
+      <a href="/mes-favoris">❤️ Favoris</a>
+      <a href="/mon-espace-pro">Espace pro</a>
+      <a href="/contact">Contact</a>
+    </div>
+  </div>
+</nav>
         </div>
       </header>
       <main>${content}</main>
