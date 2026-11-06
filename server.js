@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
-const pagesRoutes = require('./routes/pages');
 
 const METIERS_LOCAL_FIXE = [
   "Restaurant", "Maquis / Bar", "Fast-food / Snack", 
@@ -107,7 +106,6 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression()); 
-app.use('/', pagesRoutes(pool, page, getConnectedPro));
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
