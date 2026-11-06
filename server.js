@@ -107,7 +107,7 @@ pool.on("error", (error) => console.error("Erreur DB :", error.message));
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression()); 
-app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit));
+app.use('/contact', contactRoute(pool, page, getConnectedPro, takeRateLimit));
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
