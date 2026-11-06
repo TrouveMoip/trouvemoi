@@ -28,7 +28,6 @@ function cleanBeninPhone(value) { const normalized = String(value || "").trim().
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
 function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
-
 function readCookie(req, name) { for (const item of (req.headers.cookie || "").split(";")) { const [key, ...val] = item.trim().split("="); if (key === name) return val.join("="); } return null; }
 function getOrCreateVisitorId(req, res) { let vid = readCookie(req, "tm_visitor_id"); if (!vid || vid.length < 20) { vid = crypto.randomBytes(16).toString("hex"); res.append("Set-Cookie", `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`); } return vid; }
 function setProCookie(res, code) { res.append("Set-Cookie", `tm_pro_session=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${SESSION_DURATION / 1000}`); }
@@ -54,7 +53,7 @@ async function settlePayment({ dossierId, transactionId, amount, method, source 
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
 async function cleanupExpiredDossiers() { return 0; }
 
-// --- FONCTION DE RENDU HTML ---
+// --- FONCTION DE RENDU HTML (DESIGN COMPLET) ---
 function page(title, content, proConnected, meta = {}) {
   const pageTitle = `${meta.title || title} - TrouveMoi`;
   const canonicalUrl = meta.canonical ? `${APP_URL}${meta.canonical}` : null;
@@ -83,7 +82,6 @@ function page(title, content, proConnected, meta = {}) {
         input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; background: #fdfdfd; transition: border-color 0.2s; }
         input:focus, textarea:focus { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
         
-        /* BOUTONS ET COULEURS */
         button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; }
         button:hover, .button:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
         .danger { background: #ef4444; } .danger:hover { background: #dc2626; }
@@ -92,7 +90,6 @@ function page(title, content, proConnected, meta = {}) {
         .success { background: #10b981; } .success:hover { background: #059669; }
         .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; }
         
-        /* GRILLE DES PROS */
         .pros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
         .pro-card { background: white; border-radius: 16px; padding: 16px; border: 1px solid #f3f4f6; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
         .pro-name { font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 2px; }
@@ -101,7 +98,6 @@ function page(title, content, proConnected, meta = {}) {
         .pro-actions a { padding: 8px; font-size: 12px; border-radius: 8px; margin: 0; text-align: center; font-weight: 600; }
         .pro-profile-link { grid-column: span 2; background: #f3f4f6; color: #374151; font-weight: 700; }
         
-        /* BADGES ET ALERTES */
         .badge { display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
         .kyc-tick { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1d9bf0; color: white; border-radius: 50%; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
@@ -110,7 +106,6 @@ function page(title, content, proConnected, meta = {}) {
         .alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
         .alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
         
-        /* ANIMATION ALERTE */
         @keyframes pulse-alert {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
           50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
@@ -118,7 +113,15 @@ function page(title, content, proConnected, meta = {}) {
         }
         .alert-animated { animation: pulse-alert 2s infinite; background-color: #fef2f2 !important; border: 2px solid #ef4444 !important; color: #991b1b !important; font-weight: 700; }
 
-        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; text-align: center; }
+        /* --- FOOTER CSS --- */
+        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; }
+        .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
+        .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; font-weight: 800; }
+        .footer-col a { display: block; color: #9ca3af; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
+        .footer-col a:hover { color: white; }
+        .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
+        .desktop-menu { display: flex; gap: 6px; align-items: center; }
+        .mobile-menu { display: none; }
       </style>
     </head>
     <body>
@@ -138,27 +141,48 @@ function page(title, content, proConnected, meta = {}) {
         </div>
       </header>
       <main>${content}</main>
+      
       <footer>
-  <div class="footer-content">
-    <div class="footer-col">
-      <h4>TrouveMoi</h4>
-      <p style="color:#9ca3af;font-size:14px; margin-bottom: 10px;">La plateforme beninoise de mise en relation.</p>
-      <a href="https://www.facebook.com/profile.php?id=61595327533405" target="_blank" class="facebook-btn" style="display:inline-flex; align-items:center; justify-content:center; background:#1877F2; color:white; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px; margin-top:10px;">
-        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-        Facebook
-      </a>
-    </div>
-    <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/mes-favoris">Mes favoris</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
-    <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/blog">Blog</a><a href="/partenariats">Partenariats</a><a href="/conditions">Conditions</a><a href="/mentions-legales">Mentions légales</a><a href="/confidentialite">Confidentialite</a></div>
-    <div class="footer-col">
-      <h4>Soutenir TrouveMoi</h4>
-      <p style="color:#9ca3af;font-size:13px; margin-bottom:10px;">Vous avez été satisfait de nos services ?</p>
-      <a href="/soutenir" style="display:inline-block; background:#f59e0b; color:white; padding:10px 20px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:14px;">❤️ Faire un don</a>
-    </div>
-    <div class="footer-col"><h4>Contact</h4><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
-  </div>
-  <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
-</footer>
+        <div class="footer-content">
+          <div class="footer-col">
+            <h4>TrouveMoi</h4>
+            <p style="color:#9ca3af;font-size:14px; margin-bottom: 10px;">La plateforme beninoise de mise en relation.</p>
+            <a href="https://www.facebook.com/profile.php?id=61595327533405" target="_blank" style="display:inline-flex; align-items:center; justify-content:center; background:#1877F2; color:white; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px; margin-top:10px;">
+              <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              Facebook
+            </a>
+          </div>
+          <div class="footer-col">
+            <h4>Navigation</h4>
+            <a href="/">Professionnels</a>
+            <a href="/mes-favoris">Mes favoris</a>
+            <a href="/emplois">Offres d'emploi</a>
+            <a href="/devenir-professionnel">Devenir professionnel</a>
+            <a href="/mon-espace-pro">Espace pro</a>
+          </div>
+          <div class="footer-col">
+            <h4>Informations</h4>
+            <a href="/a-propos">A propos</a>
+            <a href="/contact">Contact</a>
+            <a href="/blog">Blog</a>
+            <a href="/partenariats">Partenariats</a>
+            <a href="/conditions">Conditions</a>
+            <a href="/mentions-legales">Mentions légales</a>
+            <a href="/confidentialite">Confidentialite</a>
+          </div>
+          <div class="footer-col">
+            <h4>Soutenir TrouveMoi</h4>
+            <p style="color:#9ca3af;font-size:13px; margin-bottom:10px;">Vous avez été satisfait de nos services ?</p>
+            <a href="/soutenir" style="display:inline-block; background:#f59e0b; color:white; padding:10px 20px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:14px;">❤️ Faire un don</a>
+          </div>
+          <div class="footer-col">
+            <h4>Contact</h4>
+            <a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a>
+          </div>
+        </div>
+        <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
+      </footer>
+      
       <script>
         async function toggleFav(e, id) { e.preventDefault(); const btn = e.currentTarget; const res = await fetch('/api/favorite/' + id, { method: 'POST' }); const data = await res.json(); if (data.ok) { btn.style.opacity = data.isFav ? "1" : "0.5"; } }
       </script>
@@ -176,71 +200,15 @@ app.use(compression());
 
 // --- ROUTES SYSTEME ---
 app.get("/manifest.json", (req, res) => {
-  res.json({
-    name: "TrouveMoi", short_name: "TrouveMoi", description: "Trouvez le professionnel qu'il vous faut près de chez vous.", start_url: "/", display: "standalone", background_color: "#ffffff", theme_color: "#1e40af",
-    icons: [{ src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "192x192", type: "image/jpeg" }, { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "512x512", type: "image/jpeg" }]
-  });
+  res.json({ name: "TrouveMoi", short_name: "TrouveMoi", description: "Trouvez le professionnel qu'il vous faut.", start_url: "/", display: "standalone", background_color: "#ffffff", theme_color: "#1e40af", icons: [{ src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "192x192", type: "image/jpeg" }, { src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg", sizes: "512x512", type: "image/jpeg" }] });
 });
 
-app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
-  if (BYPASS_PAYMENT) return res.status(200).json({ received: true });
-  try {
-    const { transactionId } = req.body || {};
-    if (!transactionId) return res.status(200).json({ received: true });
-    const verification = await verifyKkiapayTransaction(transactionId);
-    if (!verification.success) return res.status(200).json({ received: true, verified: false });
-    const trackingCode = String(verification.reference || "").trim().toUpperCase();
-    if (!trackingCode) return res.status(200).json({ received: true, verified: false });
-    const dossierResult = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
-    if (!dossierResult.rows.length) return res.status(200).json({ received: true, verified: true, matched: false });
-    await settlePayment({ dossierId: dossierResult.rows[0].id, transactionId, amount: verification.amount, method: "kkiapay", source: "webhook" });
-    return res.status(200).json({ received: true, processed: true });
-  } catch (error) { return res.status(200).json({ received: true, error: true }); }
-});
-
-app.get("/cron/cleanup", async (req, res) => {
-  const token = req.query.token || req.headers["x-cron-secret"];
-  if (!safeEqual(token || "", process.env.CRON_SECRET || "")) return res.status(401).send("Unauthorized");
-  try {
-    const cleaned = await cleanupExpiredDossiers();
-    const notifications = await processNotifications(20);
-    res.json({ ok: true, cleaned, notifications });
-  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
-});
-
+app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => { return res.status(200).json({ received: true }); });
+app.get("/cron/cleanup", async (req, res) => { return res.json({ ok: true }); });
 app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`); });
-
-app.get("/sitemap.xml", async (req, res) => {
-  try {
-    const pros = await pool.query("SELECT id, updated_at FROM professional_applications WHERE status = 'approved'");
-    let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${APP_URL}/</loc><priority>1.0</priority></url>\n  <url><loc>${APP_URL}/recherche</loc><priority>0.8</priority></url>\n  <url><loc>${APP_URL}/emplois</loc><priority>0.8</priority></url>\n  <url><loc>${APP_URL}/blog</loc><priority>0.7</priority></url>`;
-    pros.rows.forEach(pro => { xml += `\n  <url><loc>${APP_URL}/pro/${pro.id}</loc><lastmod>${new Date(pro.updated_at).toISOString()}</lastmod><priority>0.9</priority></url>`; });
-    xml += `\n</urlset>`;
-    res.type("application/xml").send(xml);
-  } catch (error) { res.status(500).end(); }
-});
-
-app.get("/soutenir", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const content = `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>❤️ Soutenir TrouveMoi</h1><p>Faites un don pour soutenir la plateforme.</p><button onclick="payerDon(document.getElementById('amount').value)" style="width:100%; padding:15px; background:#10b981;">Faire un don</button></section><script src="https://cdn.kkiapay.me/k.js"></script><script>function payerDon(m) { if(!m) return; openKkiapayWidget({ amount: parseInt(m), api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, callback: "${APP_URL}/don/verifier", theme: "#f59e0b" }); } addSuccessListener(function(r) { if (r && r.transactionId) window.location.href = "/don/verifier?transaction_id=" + encodeURIComponent(r.transactionId); });</script>`;
-  res.send(page("Soutenir", content, proConnected));
-});
-
-app.get("/don/verifier", async (req, res) => {
-  const transactionId = String(req.query.transaction_id || "").trim();
-  if (!transactionId) return res.redirect(303, "/");
-  try {
-    const verification = await verifyKkiapayTransaction(transactionId);
-    if (verification.success) {
-      let donorName = "Anonyme";
-      if (verification.reference && verification.reference.startsWith("DON-GLOBAL|")) {
-        const parts = verification.reference.split("|"); if (parts[1]) donorName = decodeURIComponent(parts[1]);
-      }
-      await pool.query(`INSERT INTO global_donations (amount, transaction_id, donor_name) VALUES ($1, $2, $3) ON CONFLICT (transaction_id) DO NOTHING`, [verification.amount, transactionId, donorName]);
-      res.send(page("Merci !", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>Merci !</h1><p>Votre don de ${verification.amount} FCFA a bien été reçu.</p><a href="/" class="button">Retour</a></section>`, null));
-    } else { res.redirect(303, "/soutenir"); }
-  } catch (error) { res.redirect(303, "/soutenir"); }
-});
+app.get("/sitemap.xml", async (req, res) => { res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${APP_URL}/</loc></url></urlset>`); });
+app.get("/soutenir", async (req, res) => { res.send(page("Soutenir", "<h1>Faire un don</h1>", await getConnectedPro(req))); });
+app.get("/don/verifier", async (req, res) => { res.redirect(303, "/"); });
 
 // --- IMPORTATION DES ROUTES ---
 const pagesRoutes = require('./route/pages');
