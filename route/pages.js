@@ -251,11 +251,25 @@ router.get("/recherche", async (req, res) => {
 
     res.send(page("Recherche", `
       <div class="card" style="background: #f8fafc; max-width: 900px; margin: 0 auto 30px auto;">
-        <form action="/recherche" method="GET" style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <input name="profession" value="${escapeHtml(profession)}" placeholder="Métier, nom..." style="flex: 1 1 200px; margin: 0;">
-          <input name="city" value="${escapeHtml(city)}" placeholder="Ville..." style="flex: 1 1 200px; margin: 0;">
-          <button type="submit" style="margin: 0;">🔍 Filtrer</button>
-        </form>
+       <form action="/recherche" method="GET" style="display: flex; flex-wrap: wrap; gap: 12px;">
+  <input id="profession" name="profession" list="professions-list" value="${escapeHtml(profession)}" placeholder="Métiers ou nom (ex: Maçon, nom de société...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  <input id="city" name="city" list="cities-list" value="${escapeHtml(city)}" placeholder="Villes (ex: Cotonou...)" autocomplete="off" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  <input name="neighborhood" value="${escapeHtml(req.query.neighborhood || "")}" placeholder="Quartier (ex: Akpakpa)" style="flex: 1 1 200px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 16px; border-radius: 12px; font-weight: 500;">
+  
+  <select id="sort-select" name="sort" style="flex: 0 0 150px; border: 1px solid #cbd5e0; margin: 0; padding: 16px; font-size: 14px; border-radius: 12px; background: white;">
+    <option value="pertinence" ${sort === 'pertinence' ? 'selected' : ''}>Plus récents</option>
+    <option value="rating" ${sort === 'rating' ? 'selected' : ''}>Mieux notés</option>
+    <option value="distance" ${sort === 'distance' ? 'selected' : ''}>Plus proches</option>
+  </select>
+
+  <button type="button" onclick="useMyPosition()" class="button secondary" style="flex: 0 0 170px; margin: 0; padding: 16px; border-radius: 12px; font-size: 14px;">📍 Autour de moi</button>
+  <button type="submit" style="flex: 0 0 120px; border-radius: 12px; padding: 16px; margin: 0; background: #f59e0b; font-size: 16px; font-weight: 800; color: white; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">🔍 Filtrer</button>
+
+  <input type="hidden" name="lat" id="lat-input" value="${hasCoords ? lat : ""}">
+  <input type="hidden" name="lng" id="lng-input" value="${hasCoords ? lng : ""}">
+  
+  ${category ? `<input type="hidden" name="category" value="${escapeHtml(category)}"><div style="width: 100%; font-size: 14px; color: #1e40af; margin-top: 8px;">Filtre actif : Catégorie <strong>${escapeHtml(category)}</strong> <a href="/recherche" style="color: #ef4444; margin-left: 10px;">(Effacer)</a></div>` : ""}
+</form>
       </div>
       ${isSearching ? `<h2 style="text-align: center;">Résultats (${totalPros})</h2>${prosSection}` : `<p style="text-align:center;">Entrez un métier ou une ville pour commencer.</p>`}
     `, proConnected));
