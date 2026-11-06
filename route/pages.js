@@ -271,7 +271,18 @@ router.get("/recherche", async (req, res) => {
   ${category ? `<input type="hidden" name="category" value="${escapeHtml(category)}"><div style="width: 100%; font-size: 14px; color: #1e40af; margin-top: 8px;">Filtre actif : Catégorie <strong>${escapeHtml(category)}</strong> <a href="/recherche" style="color: #ef4444; margin-left: 10px;">(Effacer)</a></div>` : ""}
 </form>
       </div>
-      ${isSearching ? `<h2 style="text-align: center;">Résultats (${totalPros})</h2>${prosSection}` : `<p style="text-align:center;">Entrez un métier ou une ville pour commencer.</p>`}
+     ${isSearching ? `<h2 style="text-align: center;">Résultats (${totalPros})</h2>${prosSection}` : `<p style="text-align:center;">Entrez un métier ou une ville pour commencer.</p>`}
+     <script>
+  function useMyPosition() {
+    if (!navigator.geolocation) { alert("La géolocalisation n'est pas disponible."); return; }
+    navigator.geolocation.getCurrentPosition(function (position) {
+      document.getElementById('lat-input').value = position.coords.latitude;
+      document.getElementById('lng-input').value = position.coords.longitude;
+      document.getElementById('sort-select').value = 'distance';
+      document.querySelector('form[action="/recherche"]').submit();
+    }, function () { alert("Impossible de vous localiser."); });
+  }
+</script>
     `, proConnected));
   } catch (error) { res.status(500).send(page("Erreur", "Erreur serveur", null)); }
 });
