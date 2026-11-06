@@ -109,6 +109,7 @@ app.use(express.json({ limit: "20kb" }));
 app.use(compression()); 
 app.use('/contact', contactRoute(pool, page, getConnectedPro, takeRateLimit));
 app.disable("x-powered-by");
+app.use('/contact', contactRoute(pool, page, getConnectedPro, takeRateLimit));
 app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
