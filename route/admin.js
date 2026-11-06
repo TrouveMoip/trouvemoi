@@ -211,5 +211,91 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     clearSessionCookie(res); res.redirect(303, "/admin");
   });
 
+// SIGNALEMENTS D'AVIS
+router.get("/signalisations", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`SELECT r.*, v.comment AS review_comment, v.author_name, p.full_name AS pro_name FROM review_reports r JOIN reviews v ON v.id = r.review_id JOIN professional_applications p ON p.id = v.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
+  const reports = result.rows.map(r => `<article class="card"><h2>Signalement de ${escapeHtml(r.pro_name)}</h2><p><strong>Motif :</strong> ${escapeHtml(r.reason)}</p><p><strong>Avis concerné :</strong> "${escapeHtml(r.review_comment)}" par ${escapeHtml(r.author_name)}</p>${r.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/signalisations/${r.id}/supprimer-avis" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Supprimer l'avis</button></form><form action="/admin/signalisations/${r.id}/rejeter" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="secondary">Rejeter le signalement</button></form></div>` : `<span class="badge">${r.status}</span>`}</article>`).join("");
+  res.send(page("Signalements", `<h1>Signalements</h1>${await customAdminMenu("/admin/signalisations", csrf)}${reports || "<p>Aucun signalement.</p>"}`, null));
+});
+
+router.post("/signalisations/:id/supprimer-avis", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const report = await pool.query(`SELECT review_id FROM review_reports WHERE id = $1`, [id]);
+  if (report.rows.length) {
+    await pool.query(`DELETE FROM reviews WHERE id = $1`, [report.rows[0].review_id]);
+    await pool.query(`UPDATE review_reports SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+  }
+  res.redirect(303, "/admin/signalisations");
+});
+
+router.post("/signalisations/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+  await pool.query(`UPDATE review_reports SET status = 'rejected', processed_at = NOW() WHERE id = $1`, [Number(req.params.id)]);
+  res.redirect(303, "/admin/signalisations");
+});
+
+// OFFRES D'EMPLOI (Admin)
+router.get("/emplois", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
+  const offers = result.rows.map(j => `<article class="card"><h2>${escapeHtml(j.job_title)}</h2><p>Par : ${escapeHtml(j.pro_name || "Inconnu")}</p><p>${escapeHtml(j.description)}</p>${j.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Rejeter</button></form></div>` : `<span class="badge">${j.status}</span>`}</article>`).join("");
+  res.send(page("Offres d'emploi", `<h1>Offres d'emploi</h1>${await customAdminMenu("/admin/emplois", csrf)}${offers || "<p>Aucune offre.</p>"}`, null));
+});
+
+router.post("/emplois/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
+  await pool.query(`UPDATE job_offers SET status = $1 WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+  res.redirect(303, "/admin/emplois");
+});
+
+// DONS & BLOG & LOGS & QR CODE & NOTIFICATIONS
+router.get("/dons", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
+  const rows = result.rows.map(d => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:12px;">${new Date(d.created_at).toLocaleString("fr-FR")}</td><td style="padding:12px; font-weight:bold; color:#10b981;">${d.amount} FCFA</td><td style="padding:12px;">${escapeHtml(d.donor_name)}</td></tr>`).join("");
+  res.send(page("Dons", `<h1>Dons reçus</h1>${await customAdminMenu("/admin/dons", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Montant</th><th>Donateur</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+});
+
+router.get("/blog", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const articles = (await pool.query(`SELECT * FROM blog_posts ORDER BY created_at DESC`)).rows;
+  const list = articles.map(a => `<article class="card"><h2>${escapeHtml(a.title)}</h2><p>${a.published ? 'En ligne' : 'Brouillon'}</p><form action="/admin/blog/${a.id}/supprimer" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Supprimer</button></form></article>`).join("");
+  res.send(page("Blog", `<h1>Blog</h1>${await customAdminMenu("/admin/blog", csrf)}<a href="/admin/blog/nouveau" class="button" style="margin-bottom:20px;">➕ Nouvel article</a>${list || "<p>Aucun article.</p>"}`, null));
+});
+
+router.get("/blog/nouveau", requireAdmin, (req, res) => {
+  const csrf = getCsrf(req);
+  res.send(page("Nouvel article", `<section class="card" style="max-width:700px; margin:0 auto;"><h1>Nouvel article</h1><form action="/admin/blog/nouveau" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><label>Titre</label><input name="title" required><label>Contenu</label><textarea name="content" required rows="10"></textarea><button type="submit">Publier</button></form></section>`, null));
+});
+
+router.post("/blog/nouveau", requireAdmin, verifyCsrf, async (req, res) => {
+  const slug = req.body.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + crypto.randomInt(1000, 9999);
+  await pool.query(`INSERT INTO blog_posts (title, slug, content, published) VALUES ($1, $2, $3, true)`, [req.body.title, slug, req.body.content]);
+  res.redirect(303, "/admin/blog");
+});
+
+router.post("/blog/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
+  await pool.query(`DELETE FROM blog_posts WHERE id = $1`, [Number(req.params.id)]);
+  res.redirect(303, "/admin/blog");
+});
+
+router.get("/logs", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const logs = (await pool.query(`SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 100`)).rows;
+  const rows = logs.map(l => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`).join("");
+  res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+});
+
+router.get("/qrcode", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(process.env.APP_URL || "https://trouvemoi.bj")}`;
+  res.send(page("QR Code", `<h1>QR Code Officiel</h1>${await customAdminMenu("/admin/qrcode", csrf)}<section class="card" style="text-align:center;"><img src="${qrUrl}" style="width:250px; border-radius:8px;"><p>Scannez pour visiter le site.</p></section>`, null));
+});
+
+router.get("/notifications", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const notifs = (await pool.query(`SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100`)).rows;
+  const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${n.status}</span></td></tr>`).join("");
+  res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+});
   return router;
 };
