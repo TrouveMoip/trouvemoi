@@ -177,7 +177,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       res.send(page("Accueil", content, proConnected));
     } catch (error) { 
       console.error(error);
-      res.status(500).send(page("Erreur", "<h2>Une erreur technique est survenue.</h2>", null)); 
+      res.status(500).send(page("Erreur", `<h2>Erreur technique</h2><pre style="background:#f4f4f4; padding:10px; border-radius:8px; white-space:pre-wrap;">${error.message}</pre>`, null));
     }
   });
 
