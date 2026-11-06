@@ -192,14 +192,26 @@ function page(title, content, proConnected, meta = {}) {
       </header>
       <main>${content}</main>
       <footer>
-        <div class="footer-content">
-          <div class="footer-col"><h4>TrouveMoi</h4><p>La plateforme beninoise de mise en relation.</p></div>
-          <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/mes-favoris">Mes favoris</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a></div>
-          <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/conditions">Conditions</a><a href="/mentions-legales">Mentions légales</a><a href="/confidentialite">Confidentialité</a></div>
-          <div class="footer-col"><h4>Contact</h4><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
-        </div>
-        <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
-      </footer>
+  <div class="footer-content">
+    <div class="footer-col">
+      <h4>TrouveMoi</h4>
+      <p style="color:#9ca3af;font-size:14px; margin-bottom: 10px;">La plateforme beninoise de mise en relation.</p>
+      <a href="https://www.facebook.com/profile.php?id=61595327533405" target="_blank" class="facebook-btn" style="display:inline-flex; align-items:center; justify-content:center; background:#1877F2; color:white; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px; margin-top:10px;">
+        <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Facebook
+      </a>
+    </div>
+    <div class="footer-col"><h4>Navigation</h4><a href="/">Professionnels</a><a href="/mes-favoris">Mes favoris</a><a href="/emplois">Offres d'emploi</a><a href="/devenir-professionnel">Devenir professionnel</a><a href="/mon-espace-pro">Espace pro</a></div>
+    <div class="footer-col"><h4>Informations</h4><a href="/a-propos">A propos</a><a href="/contact">Contact</a><a href="/blog">Blog</a><a href="/partenariats">Partenariats</a><a href="/conditions">Conditions</a><a href="/mentions-legales">Mentions légales</a><a href="/confidentialite">Confidentialite</a></div>
+    <div class="footer-col">
+      <h4>Soutenir TrouveMoi</h4>
+      <p style="color:#9ca3af;font-size:13px; margin-bottom:10px;">Vous avez été satisfait de nos services ?</p>
+      <a href="/soutenir" style="display:inline-block; background:#f59e0b; color:white; padding:10px 20px; border-radius:20px; text-decoration:none; font-weight:bold; font-size:14px;">❤️ Faire un don</a>
+    </div>
+    <div class="footer-col"><h4>Contact</h4><a href="mailto:contact@trouvemoi.bj">contact@trouvemoi.bj</a></div>
+  </div>
+  <div class="footer-bottom">&copy; ${new Date().getFullYear()} TrouveMoi. Tous droits reserves.</div>
+</footer>
     </body>
     </html>
   `;
