@@ -3203,6 +3203,26 @@ app.post("/mon-espace-pro/modifier-telephone", async (req, res) => {
   res.redirect(303, "/mon-espace-pro");
 });
 
+app.post("/api/track-agency/:id/:type", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const type = req.params.type;
+    const visitorId = getOrCreateVisitorId(req, res);
+    if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
+
+    let col = "";
+    if (type === "phone") col = "phone_clicks";
+    else if (type === "wa") col = "wa_clicks";
+    else return res.json({ ok: false });
+
+    await pool.query(`
+      INSERT INTO agency_stats (agency_id, date, ${col}) VALUES ($1, CURRENT_DATE, 1) 
+      ON CONFLICT (agency_id, date) DO UPDATE SET ${col} = agency_stats.${col} + 1
+    `, [id]);
+
+    res.json({ ok: true });
+  } catch (e) { res.json({ ok: false }); }
+});
 app.get("/agence/:id", async (req, res) => {
   try {
     const proConnected = await getConnectedPro(req);
@@ -3211,7 +3231,7 @@ app.get("/agence/:id", async (req, res) => {
 
     // On récupère l'agence ET les infos de contact du parent
     const result = await pool.query(`
-      SELECT a.*, p.full_name, p.company_name, p.phone, p.whatsapp_number, p.phone_public, p.kyc_verified, p.profession 
+    SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession
       FROM agencies a 
       JOIN professional_applications p ON a.parent_pro_id = p.id 
       WHERE a.id = $1 AND a.status = 'approved'
@@ -3224,17 +3244,23 @@ app.get("/agence/:id", async (req, res) => {
     
     // Boutons de contact (on utilise le numéro du parent)
     let contactButtons = "";
-    if (agency.phone_public && agency.phone) {
-      const cleanPhone = agency.phone.replace(/\D/g, "").replace(/^(?:00229|229)/, "");
-      const waNumber = /^\d{8,10}$/.test(cleanPhone) ? "229" + cleanPhone : null;
-      
-      contactButtons = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-          <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track/${agency.parent_pro_id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
-          ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre agence " + agency.name + ". Merci.")}" onclick="fetch('/api/track/${agency.parent_pro_id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : ""}
-        </div>
-      `;
-    }
+    // On choisit le numéro de l'agence, sinon celui du parent
+const displayPhone = agency.phone || agency.parent_phone;
+const displayWa = agency.whatsapp_number || agency.parent_wa;
+
+let contactButtons = "";
+if (agency.phone_public && displayPhone) {
+  const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, "");
+  const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
+  const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
+  
+  contactButtons = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+      <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
+      ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre agence " + agency.name + ". Merci.")}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : ""}
+    </div>
+  `;
+}
 
     // Préparation de la galerie
     const galerieData = [
@@ -3299,6 +3325,9 @@ app.get("/agence/:id", async (req, res) => {
         </div>
       </div>
     `, proConnected, { title: `${agency.name} - ${parentName}`, description: `Agence de ${parentName} située à ${agency.address}` }));
+    
+// Compter la vue de l'agence (en arrière-plan)
+pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
 
   } catch (e) {
     console.error("Erreur page agence publique :", e);
