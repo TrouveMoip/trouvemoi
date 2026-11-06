@@ -3242,9 +3242,6 @@ app.get("/agence/:id", async (req, res) => {
 
     const parentName = getDisplayName(agency);
     
-    // Boutons de contact (on utilise le numéro du parent)
-    let contactButtons = "";
-    // On choisit le numéro de l'agence, sinon celui du parent
 const displayPhone = agency.phone || agency.parent_phone;
 const displayWa = agency.whatsapp_number || agency.parent_wa;
 
