@@ -188,5 +188,120 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
   router.get("/mentions-legales", async (req, res) => res.send(page("Mentions Légales", "<h1>Mentions Légales</h1>", await getConnectedPro(req))));
   router.get("/confidentialite", async (req, res) => res.send(page("Confidentialité", "<h1>Confidentialité</h1>", await getConnectedPro(req))));
 
+// PAGE DE RECHERCHE
+router.get("/recherche", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const visitorId = getOrCreateVisitorId(req, res);
+    const profession = String(req.query.profession || "").trim().slice(0, 150);
+    const city = String(req.query.city || "").trim().slice(0, 100);
+    const category = String(req.query.category || "").trim().slice(0, 100);
+    const neighborhood = String(req.query.neighborhood || "").trim().slice(0, 150);
+    const sort = String(req.query.sort || "pertinence").trim();
+    const hasLat = req.query.lat !== "" && req.query.lat != null;
+    const hasLng = req.query.lng !== "" && req.query.lng != null;
+    const lat = hasLat ? Number(req.query.lat) : NaN;
+    const lng = hasLng ? Number(req.query.lng) : NaN;
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    
+    const isSearching = profession !== "" || city !== "" || category !== "" || neighborhood !== "";
+    
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 12; const offset = (currentPage - 1) * limit;
+
+    let result = { rows: [] }; let totalPros = 0; let totalPages = 0;
+    let prosSection = ""; let paginationHtml = ""; let agencesSearchHtml = "";
+
+    if (isSearching) {
+      let whereClause = ` WHERE p.status = 'approved'`; const values = [];
+      if (profession) { values.push(`%${profession}%`); whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length})`; }
+      if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
+      if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
+      if (category) { values.push(category); whereClause += ` AND (p.profession_category = $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category = $${values.length}))`; }
+
+      const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications p ${whereClause}`, values);
+      totalPros = parseInt(countResult.rows[0].count);
+      totalPages = Math.ceil(totalPros / limit);
+
+      let orderBy = "p.created_at DESC";
+      if (sort === "rating") orderBy = "avg_rating DESC, reviews_count DESC, p.created_at DESC";
+      else if (sort === "distance" && hasCoords) orderBy = `(6371 * acos(LEAST(1, cos(radians(${lat})) * cos(radians(p.latitude)) * cos(radians(p.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(p.latitude))))) ASC NULLS LAST`;
+
+      const queryValues = [...values, visitorId, limit, offset];
+      const query = `
+        SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, 
+        (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+        (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
+        EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $${queryValues.length - 2}) AS is_favorite
+        FROM professional_applications p ${whereClause} ORDER BY ${orderBy} LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+      result = await pool.query(query, queryValues);
+
+      const cards = result.rows.map(p => `
+        <article class="pro-card">
+          <div class="pro-name">${escapeHtml(p.company_name || p.full_name)} ${renderKycBadge(p)}</div>
+          <div class="pro-meta" style="color: #2563eb; font-weight: bold;">${escapeHtml(p.profession)}</div>
+          <div class="pro-meta">📍 ${escapeHtml(p.city)}</div>
+          <div class="pro-actions" style="margin-top:10px;">
+            <a href="/pro/${p.id}" class="button" style="grid-column: span 2; background: #f3f4f6; color: #374151;">Voir le profil</a>
+          </div>
+        </article>`).join("");
+      
+      prosSection = `<div class="pros-grid">${cards || "<p>Aucun professionnel trouvé.</p>"}</div>`;
+    }
+
+    res.send(page("Recherche", `
+      <div class="card" style="background: #f8fafc; max-width: 900px; margin: 0 auto 30px auto;">
+        <form action="/recherche" method="GET" style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <input name="profession" value="${escapeHtml(profession)}" placeholder="Métier, nom..." style="flex: 1 1 200px; margin: 0;">
+          <input name="city" value="${escapeHtml(city)}" placeholder="Ville..." style="flex: 1 1 200px; margin: 0;">
+          <button type="submit" style="margin: 0;">🔍 Filtrer</button>
+        </form>
+      </div>
+      ${isSearching ? `<h2 style="text-align: center;">Résultats (${totalPros})</h2>${prosSection}` : `<p style="text-align:center;">Entrez un métier ou une ville pour commencer.</p>`}
+    `, proConnected));
+  } catch (error) { res.status(500).send(page("Erreur", "Erreur serveur", null)); }
+});
+
+  // ==========================================
+// PAGE PROFIL PUBLIC
+// ==========================================
+router.get("/pro/:id", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+
+    const visitorId = getOrCreateVisitorId(req, res);
+    const result = await pool.query(`
+      SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
+      EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite
+      FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id, visitorId]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const person = result.rows[0];
+
+    const displayName = person.company_name?.trim() || person.full_name || "";
+    const phoneClean = (person.phone || "").replace(/\D/g, "");
+    
+    res.send(page(displayName, `
+      <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <h1 style="color: #111827;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
+        <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
+        <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}</div>
+        <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size: 15px; color: #6b7280;">(${person.reviews_count} avis)</span></div>
+        
+        <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+          <p>${escapeHtml(person.service_description || "")}</p>
+        </div>
+
+        <div style="margin-top: 24px;">
+           <a class="button" href="tel:+229${escapeHtml(phoneClean)}" style="width: 100%; font-size: 18px; padding: 16px;">📞 Appeler</a>
+        </div>
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="/" style="color: #6b7280;">← Retour à l'accueil</a>
+        </div>
+      </div>
+    `, proConnected));
+  } catch (error) { res.status(500).send(page("Erreur", "Erreur serveur", null)); }
+});
   return router;
 };
