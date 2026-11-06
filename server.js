@@ -5667,13 +5667,25 @@ async function startServer() {
   photo_1_desc VARCHAR(150),
 photo_2_desc VARCHAR(150),
 photo_3_desc VARCHAR(150),
+phone VARCHAR(30),
+whatsapp_number VARCHAR(30),
   status VARCHAR(50) NOT NULL DEFAULT 'pending_payment',
   payment_reference VARCHAR(100) UNIQUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
     `);
-
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS agency_stats (
+    agency_id INTEGER NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    views INTEGER NOT NULL DEFAULT 0,
+    phone_clicks INTEGER NOT NULL DEFAULT 0,
+    wa_clicks INTEGER NOT NULL DEFAULT 0,
+    last_visitor_id VARCHAR(64),
+    PRIMARY KEY (agency_id, date)
+  );
+`);
     const migrations = [
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until TIMESTAMP`,
       `ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS referral_code VARCHAR(10) UNIQUE`,
@@ -5723,6 +5735,20 @@ await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS
     await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_1_desc VARCHAR(150)`);
 await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_2_desc VARCHAR(150)`);
 await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS photo_3_desc VARCHAR(150)`);
+    await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS phone VARCHAR(30)`);
+await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(30)`);
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS agency_stats (
+    agency_id INTEGER NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    views INTEGER NOT NULL DEFAULT 0,
+    phone_clicks INTEGER NOT NULL DEFAULT 0,
+    wa_clicks INTEGER NOT NULL DEFAULT 0,
+    last_visitor_id VARCHAR(64),
+    PRIMARY KEY (agency_id, date)
+  );
+`);
     // Création manuelle de la table de sécurité
 await pool.query(`
   CREATE TABLE IF NOT EXISTS rate_limits_v2 (
