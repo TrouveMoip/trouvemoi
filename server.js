@@ -70,30 +70,55 @@ function page(title, content, proConnected, meta = {}) {
       ${canonicalUrl ? `<link rel="canonical" href="${escapeHtml(canonicalUrl)}">` : ""}
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
-        header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; }
-        .header-content { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 0; background: #f4f7f6; color: #1a202c; line-height: 1.6; min-height: 100vh; display: flex; flex-direction: column; }
+        header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
+        .header-content { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-        nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; background: transparent; border: none; cursor: pointer; }
+        nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; background: transparent; border: none; cursor: pointer; transition: background 0.2s; }
+        nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); }
         main { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
-        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid #eef2f5; }
-        h1 { font-size: 28px; margin-bottom: 16px; color: #1e3a8a; }
-        input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; }
-        button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; text-decoration: none; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
-        .button.secondary { background: white; color: #4b5563; border: 1px solid #d1d5db; }
-        .button.danger { background: #ef4444; }
-        .button.success { background: #10b981; }
-        .button.whatsapp { background: #25d366; }
-        .pros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-        .pro-card { background: white; border-radius: 16px; padding: 16px; border: 1px solid #f3f4f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; }
-        .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; }
-        .alert-info { background: #eff6ff; color: #1e40af; }
-        .alert-success { background: #ecfdf5; color: #065f46; }
-        .alert-danger { background: #fef2f2; color: #991b1b; }
-        footer { background: #111827; color: #9ca3af; padding: 40px 20px; text-align: center; margin-top: 40px; }
-        .desktop-menu { display: flex; gap: 6px; align-items: center; }
-        .mobile-menu { display: none; }
+        .card { background: white; padding: 24px; margin-bottom: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); border: 1px solid #eef2f5; transition: box-shadow 0.2s; }
+        h1 { font-size: 28px; margin-bottom: 16px; color: #1e3a8a; font-weight: 800; }
+        h2 { font-size: 22px; margin-bottom: 14px; color: #1e40af; font-weight: 700; }
+        input, textarea, select { width: 100%; padding: 14px 18px; margin-bottom: 14px; border: 1px solid #cbd5e0; border-radius: 12px; font-size: 15px; background: #fdfdfd; transition: border-color 0.2s; }
+        input:focus, textarea:focus { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+        
+        /* BOUTONS ET COULEURS */
+        button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; }
+        button:hover, .button:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .danger { background: #ef4444; } .danger:hover { background: #dc2626; }
+        .secondary { background: white; color: #4b5563; border: 1px solid #d1d5db; } .secondary:hover { background: #f3f4f6; color: #111827; }
+        .warning { background: #f59e0b; } .warning:hover { background: #d97706; }
+        .success { background: #10b981; } .success:hover { background: #059669; }
+        .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; }
+        
+        /* GRILLE DES PROS */
+        .pros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
+        .pro-card { background: white; border-radius: 16px; padding: 16px; border: 1px solid #f3f4f6; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden; }
+        .pro-name { font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 2px; }
+        .pro-meta { font-size: 12px; color: #6b7280; font-weight: 500; }
+        .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .pro-actions a { padding: 8px; font-size: 12px; border-radius: 8px; margin: 0; text-align: center; font-weight: 600; }
+        .pro-profile-link { grid-column: span 2; background: #f3f4f6; color: #374151; font-weight: 700; }
+        
+        /* BADGES ET ALERTES */
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+        .kyc-tick { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #1d9bf0; color: white; border-radius: 50%; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
+        .alert { padding: 16px; border-radius: 12px; margin-bottom: 16px; font-weight: 500; border: 1px solid transparent; }
+        .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+        .alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+        .alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+        
+        /* ANIMATION ALERTE */
+        @keyframes pulse-alert {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .alert-animated { animation: pulse-alert 2s infinite; background-color: #fef2f2 !important; border: 2px solid #ef4444 !important; color: #991b1b !important; font-weight: 700; }
+
+        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; text-align: center; }
       </style>
     </head>
     <body>
