@@ -179,6 +179,29 @@ app.get("/manifest.json", (req, res) => {
       }
     ]
   });
+
+app.get("/manifest.json", (req, res) => {
+  res.json({
+    name: "TrouveMoi",
+    short_name: "TrouveMoi",
+    description: "Trouvez le professionnel qu'il vous faut près de chez vous.",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#1e40af",
+    icons: [
+      {
+        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
+        sizes: "192x192",
+        type: "image/jpeg"
+      },
+      {
+        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1792957201/IMG-20261025-WA0002.jpg",
+        sizes: "512x512",
+        type: "image/jpeg"
+      }
+    ]
+  });
 });
 app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`); });
 
