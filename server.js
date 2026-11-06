@@ -139,7 +139,7 @@ function page(title, content, proConnected, meta = {}) {
         .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
         .pro-actions a { padding: 8px; font-size: 12px; border-radius: 6px; margin: 0; text-align: center; font-weight: 600; }
         .pro-profile-link { grid-column: span 2; background: #f3f4f6; color: #374151; font-weight: 700; }
-        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; }
+        footer { background: #111827; color: #9ca3af; padding: 40px 20px 20px; margin-top: 60px; } 
         .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
         .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; font-weight: 800; }
         .footer-col a { display: block; color: #9ca3af; text-decoration: none; padding: 6px 0; font-size: 14px; transition: color 0.2s; }
