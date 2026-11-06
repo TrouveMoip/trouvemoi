@@ -290,13 +290,18 @@ router.get("/recherche", async (req, res) => {
   // ==========================================
 // PAGE PROFIL PUBLIC
 // ==========================================
-router.get("/pro/:id", async (req, res) => {
+// ==========================================
+// PAGE PROFIL PUBLIC
+// ==========================================
+router.get("/pro/:id", async (req, res) => { 
   try {
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
 
     const visitorId = getOrCreateVisitorId(req, res);
+    pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
+
     const result = await pool.query(`
       SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating,
       EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite
@@ -304,29 +309,135 @@ router.get("/pro/:id", async (req, res) => {
     if (!result.rows.length) return res.redirect(303, "/");
     const person = result.rows[0];
 
-    const displayName = person.company_name?.trim() || person.full_name || "";
-    const phoneClean = (person.phone || "").replace(/\D/g, "");
+    const similarResult = await pool.query(`
+      SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating
+      FROM professional_applications p
+      WHERE p.status = 'approved' AND p.id != $1 AND (p.city = $2 OR p.profession = $3)
+      ORDER BY RANDOM() LIMIT 3
+    `, [id, person.city, person.profession]);
+    const similarHtml = similarResult.rows.map(sim => `
+      <a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;">
+        <div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div>
+        <div style="font-size:13px; color:#6b7280; margin-top:4px;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div>
+      </a>
+    `).join("");
+
+    const displayName = getDisplayName(person);
+    let rawPhone = (person.phone || "").replace(/\D/g, "");
+    if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5);
+    if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
+    const phoneClean = rawPhone;
+    const whatsappNumber = /^\d{8,10}$/.test(rawPhone) ? "229" + rawPhone : null;
+
+    const reviewsCount = Number(person.reviews_count || 0);
+    const avgRating = Number(person.avg_rating || 0);
+    const isTopPro = avgRating >= 4.5 && reviewsCount >= 10;
+
+    const reviewsResult = await pool.query(`SELECT id, author_name, rating, comment, pro_response, created_at FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 5`, [id]);
+    const reviews = reviewsResult.rows;
+
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const shareText = encodeURIComponent("Decouvrez " + displayName + " (" + person.profession + ") sur TrouveMoi");
+    const shareUrl = encodeURIComponent(`${baseUrl}/pro/${person.id}`);
+
+    let contactButtons = "";
+    if (person.phone_public && phoneClean) {
+      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+        <a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>
+        ${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${escapeHtml(whatsappNumber)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi.")}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin: 0; font-size: 16px;">📩 Contacter</a>`}
+      </div>
+      <div style="margin-top: 12px;"><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; width: 100%; font-size: 14px;">📤 Partager ce profil</a></div>`;
+    } else {
+      contactButtons = `<div class="alert alert-info" style="font-size: 14px;">📩 Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;"><a class="button" href="/contact?pro=${person.id}" style="margin: 0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📩 Contacter</a><a class="button secondary" href="https://wa.me/?text=${shareText}%20-%20${shareUrl}" target="_blank" style="margin: 0; font-size: 16px;">📤 Partager</a></div>`;
+    }
+
+    let ratingSummary = reviewsCount > 0 ? `<div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; margin-bottom: 20px; border: 1px solid #fde68a;"><div style="font-size: 36px; font-weight: 800; color: #b45309;">${avgRating.toFixed(1)}</div><div><div style="font-size: 20px; color: #f59e0b;">${renderStars(avgRating)}</div><div style="font-size: 13px; color: #92400e;">Sur ${reviewsCount} avis clients</div></div></div>` : "";
     
-    res.send(page(displayName, `
-      <div class="card" style="max-width: 800px; margin: 0 auto;">
-        <h1 style="color: #111827;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
-        <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
-        <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}</div>
-        <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size: 15px; color: #6b7280;">(${person.reviews_count} avis)</span></div>
+    const reviewsHtml = reviews.map((rev) => `
+      <div style="background: white; border: 1px solid #e5e7eb; padding: 16px; border-radius: 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 700; color: #111827;">${escapeHtml(rev.author_name)}</div>
+          <div style="color: #f59e0b; font-size: 14px;">${renderStars(rev.rating)}</div>
+        </div>
+        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">${new Date(rev.created_at).toLocaleDateString("fr-FR")}</div>
+        ${rev.comment ? `<div style="color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(rev.comment).replace(/\n/g, "<br>")}</div>` : ""}
+        ${rev.pro_response ? `<div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border-left: 3px solid #10b981; border-radius: 4px; font-size: 13px; color: #065f46;"><strong>Réponse du professionnel :</strong><br>${escapeHtml(rev.pro_response).replace(/\n/g, "<br>")}</div>` : ""}
+      </div>
+    `).join("");
+
+    const galerieData = [{ url: person.photo_galerie_1, desc: person.photo_galerie_1_desc }, { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc }, { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }].filter(item => item.url);
+    let galerieHtml = "";
+    if (galerieData.length > 0) {
+      galerieHtml = `<div class="card" style="padding: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">📸 Galerie Photos</h2><div class="gallery-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" style="width:100%; height:140px; object-fit:cover; border-radius:12px; cursor:pointer;">${item.desc ? `<p style="font-size:13px; color:#4b5563; margin-top:8px; font-weight:500;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>`;
+    }
+
+    const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
+    const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
+    const leaveBadge = isOnLeave ? `<div class="alert alert-warning" style="margin-bottom:16px; text-align:center; font-size:14px;">🌴 Ce professionnel est actuellement indisponible jusqu'au ${new Date(person.unavailable_until).toLocaleDateString("fr-FR")}.</div>` : "";
+
+    let horairesHtml = "";
+    if (person.horaires_json) {
+      let h = {}; try { h = JSON.parse(person.horaires_json); } catch (parseError) { h = {}; }
+      const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+      let rows = "";
+      jours.forEach(j => {
+        if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
+        else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
+      });
+      horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
+    }
+
+    const jsonLd = { "@context": "https://schema.org", "@type": "LocalBusiness", name: displayName, description: person.service_description || undefined, url: `${APP_URL}/pro/${person.id}`, telephone: person.phone_public ? person.phone : undefined, address: { "@type": "PostalAddress", addressLocality: person.city, streetAddress: person.adresse_exacte || undefined, addressCountry: "BJ" }, aggregateRating: reviewsCount > 0 ? { "@type": "AggregateRating", ratingValue: avgRating.toFixed(1), reviewCount: reviewsCount } : undefined };
+    const jsonLdHtml = `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, "\\u003c")}</script>`;
+
+    const content = `
+      <div style="max-width: 800px; margin: 0 auto;">
+        ${jsonLdHtml}
+        ${leaveBadge}
+        <div class="card" style="padding: 32px 24px; position:relative;">
+          <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" style="top:16px; right:16px; z-index: 10;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 30px; align-items: center; justify-content: center;">
+            ${person.photo_activite_url ? `<div style="flex: 1 1 250px; max-width: 320px; text-align: center;"><img src="${escapeHtml(person.photo_activite_url)}" style="width: 100%; height: 300px; object-fit: cover; border-radius: 16px;"></div>` : ""}
+            <div style="flex: 2 1 350px; text-align: center;">
+              ${isTopPro ? `<div style="margin-bottom:12px;"><span class="top-pro-badge" style="font-size:14px; padding:8px 16px;">⭐ Top Pro</span></div>` : ""}
+              ${openStatusBadge}
+              <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
+              <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
+              <div style="color: #6b7280; font-size: 15px; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+              <div style="font-size: 22px; color: #f59e0b; margin-top: 12px; font-weight: 700;">${reviewsCount > 0 ? `${renderStars(avgRating)} <span style="font-size: 15px; color: #6b7280; font-weight: 400;">(${reviewsCount} avis)</span>` : `<span style="font-size: 15px; color: #9ca3af; font-weight: 400;">Pas encore d'avis</span>`}</div>
+            </div>
+          </div>
+        </div>
         
-        <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
-          <p>${escapeHtml(person.service_description || "")}</p>
+        <div class="card">
+          <h2 style="font-size: 18px; border-bottom: 2px solid #f3f4f6; padding-bottom: 12px; margin-bottom: 16px;">À propos</h2>
+          <p style="font-size: 15px; line-height: 1.7; color: #374151; white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+          ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire sur Google Maps</a>` : ""}</div>` : ""}
+          <div style="margin-top: 24px;">${contactButtons}</div>
         </div>
 
-        <div style="margin-top: 24px;">
-           <a class="button" href="tel:+229${escapeHtml(phoneClean)}" style="width: 100%; font-size: 18px; padding: 16px;">📞 Appeler</a>
+        ${galerieHtml}
+
+        <div class="card" style="background: #f9fafb;">
+          <h2 style="font-size: 18px; margin-bottom: 16px;">Avis des clients (${reviewsCount})</h2>
+          ${ratingSummary}${reviewsHtml || `<p style="color: #6b7280; font-style: italic; font-size: 14px;">Aucun avis pour le moment.</p>`}
+          ${reviewsCount > 5 ? `<div style="text-align:center; margin-top:12px;"><a href="/pro/${person.id}/avis/tous" style="color:#2563eb; font-size:14px; font-weight:600;">Voir tous les avis →</a></div>` : ""}
+          <div style="text-align: center; margin-top: 24px;"><a class="button warning" href="/pro/${person.id}/avis" style="width: 100%; font-size: 15px; margin: 0;">⭐ Laisser un avis</a></div>
         </div>
-        <div style="text-align: center; margin-top: 24px;">
-          <a href="/" style="color: #6b7280;">← Retour à l'accueil</a>
+
+        ${similarHtml ? `<div style="margin-top: 24px;"><h2 style="font-size: 18px; margin-bottom: 16px;">Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
+
+        <div style="text-align: center; margin-top: 24px; margin-bottom: 40px;">
+          <a href="/recherche" style="color: #6b7280; font-size: 14px; text-decoration: underline; display: block; margin-bottom: 16px;">← Retour à la recherche</a>
+          <a href="/contact?report=${person.id}" style="color: #ef4444; font-size: 13px; text-decoration: none; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 20px; background: #fef2f2;">⚠️ Signaler ce professionnel</a>
         </div>
       </div>
-    `, proConnected));
-  } catch (error) { res.status(500).send(page("Erreur", "Erreur serveur", null)); }
+    `;
+    res.send(page(displayName, content, proConnected, { title: `${displayName} - ${person.profession}`, description: (person.service_description || "").slice(0, 160) || undefined, canonical: `/pro/${person.id}` }));
+  } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
+
   return router;
 };
