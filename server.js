@@ -3455,7 +3455,12 @@ app.get("/mon-espace-pro/agences/:id", async (req, res) => {
   if (!result.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
   
   const agency = result.rows[0];
-
+const statsRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM agency_stats WHERE agency_id = $1`, [id]);
+const stats = { 
+  views: Number(statsRes.rows[0]?.v || 0), 
+  phone: Number(statsRes.rows[0]?.p || 0), 
+  wa: Number(statsRes.rows[0]?.w || 0) 
+};
   let badge = "";
   if (agency.status === "pending_payment") badge = `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ Attente paiement</span>`;
   else if (agency.status === "pending_validation") badge = `<span class="badge" style="background:#dbeafe;color:#1e40af;">⏳ Attente validation</span>`;
@@ -3483,6 +3488,13 @@ app.get("/mon-espace-pro/agences/:id", async (req, res) => {
           <a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; padding:8px 16px; font-size:13px;">📍 Voir sur Google Maps</a>
         ` : `<p style="margin-bottom:8px; color:#ef4444;"><strong>Position GPS :</strong> Non renseignée</p>`}
       </div>
+      
+<div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+  <h3 style="font-size:16px; color:#1e40af; margin-bottom:12px;">📊 Statistiques de cette agence</h3>
+  <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:6px;"><span>Vues de la page :</span> <strong>${stats.views}</strong></div>
+  <div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:6px;"><span>Clics "Appeler" :</span> <strong>${stats.phone}</strong></div>
+  <div style="display:flex; justify-content:space-between; font-size:14px;"><span>Clics "WhatsApp" :</span> <strong>${stats.wa}</strong></div>
+</div>
 
       <h3 style="font-size:16px; margin-bottom:10px;">Photos de l'agence</h3>
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
