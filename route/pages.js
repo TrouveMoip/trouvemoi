@@ -3,16 +3,61 @@ const express = require('express');
 module.exports = function(pool, page, getConnectedPro) {
   const router = express.Router();
 
-  // Route pour À propos
-  router.get('/a-propos', async (req, res) => {
+  router.get("/a-propos", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     res.send(page("À propos", `<section class="card" style="max-width: 800px; margin: 40px auto;"><h1>À propos de TrouveMoi</h1><p>TrouveMoi est la première plateforme béninoise qui met en relation directe les clients avec des professionnels vérifiés de leur quartier.</p><p>Notre mission est de valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p></section>`, proConnected));
   });
 
-  // Route pour Partenariats
-  router.get('/partenariats', async (req, res) => {
+  router.get("/partenariats", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à contact@trouvemoi.bj.</p></section>`, proConnected));
+  });
+
+  router.get("/conditions", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
+        <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
+        <p><em>Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</em></p>
+        <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme TrouveMoi.</p>
+        <div style="margin-top: 40px; text-align: center;">
+          <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+          <br><a href="/" class="button secondary">← Retour à l'accueil</a>
+        </div>
+      </section>
+    `;
+    res.send(page("Conditions Générales", content, proConnected));
+  });
+
+  router.get("/mentions-legales", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px;">
+        <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold;">Mentions légales</h1>
+        <p>Conformément à la loi 2017-20 portant code du numérique en République du Bénin, le site a fait l'objet d'une déclaration auprès de l'APDP.</p>
+        <div style="margin-top: 40px; text-align: center;" class="no-print">
+          <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+          <br><a href="/" class="button secondary">← Retour à l'accueil</a>
+        </div>
+      </section>
+    `;
+    res.send(page("Mentions Légales", content, proConnected));
+  });
+
+  router.get("/confidentialite", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px;">
+        <h1 style="font-size: 26px; color: #111827; margin-bottom: 10px; font-weight: bold;">Politique de Confidentialité</h1>
+        <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px;">Dernière mise à jour : ${new Date().toLocaleDateString("fr-FR")}</p>
+        <p>Comment nous collectons, utilisons et protégeons vos données sur TrouveMoi.</p>
+        <div style="margin-top: 40px; text-align: center;" class="no-print">
+          <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+          <br><a href="/" class="button secondary">← Retour à l'accueil</a>
+        </div>
+      </section>
+    `;
+    res.send(page("Politique de Confidentialité", content, proConnected));
   });
 
   return router;
