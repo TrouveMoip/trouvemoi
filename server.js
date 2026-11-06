@@ -3813,9 +3813,19 @@ app.get("/mon-espace-pro/mes-donnees", async (req, res) => {
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
   try {
     const offersResult = await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1`, [proConnected.pro.id]);
-    const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
-    const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
-    const exportData = { utilisateur: proConnected.pro, offres: offersResult.rows, demandes: gdprResult.rows, avis: reviewsResult.rows };
+const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
+const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
+
+// 👇 NOUVEAU : On récupère les agences du patron
+const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1`, [proConnected.pro.id]);
+
+const exportData = { 
+  utilisateur: proConnected.pro, 
+  offres: offersResult.rows, 
+  demandes: gdprResult.rows, 
+  avis: reviewsResult.rows,
+  agences: agenciesResult.rows // 👈 On les ajoute au fichier téléchargé
+};
     res.setHeader("Content-Type", "application/json"); res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`); res.send(JSON.stringify(exportData, null, 2));
   } catch (e) { res.status(500).send("Erreur."); }
 });
