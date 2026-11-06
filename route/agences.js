@@ -113,32 +113,44 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
 
   // --- 4. DETAILS D'UNE AGENCE (PRIVÉ) ---
   router.get("/mon-espace-pro/agences/:id", async (req, res) => {
-    const proConnected = await getConnectedPro(req);
-    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-    const id = Number(req.params.id);
-    const result = await pool.query(`SELECT * FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
-    if (!result.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
-    const agency = result.rows[0];
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  const result = await pool.query(`SELECT * FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+  if (!result.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
+  const agency = result.rows[0];
 
-    const statsRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM agency_stats WHERE agency_id = $1`, [id]);
-    const stats = { views: Number(statsRes.rows[0]?.v || 0), phone: Number(statsRes.rows[0]?.p || 0), wa: Number(statsRes.rows[0]?.w || 0) };
+  const statsRes = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM agency_stats WHERE agency_id = $1`, [id]);
+  const stats = { views: Number(statsRes.rows[0]?.v || 0), phone: Number(statsRes.rows[0]?.p || 0), wa: Number(statsRes.rows[0]?.w || 0) };
 
-    res.send(page("Détails de l'agence", `
-      <section class="card" style="max-width: 700px; margin: 40px auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-          <h1 style="margin:0;">🏢 ${escapeHtml(agency.name)}</h1>
-          <div style="display:flex; gap:10px;"><a href="/mon-espace-pro/agences/${agency.id}/modifier" class="button" style="background:#f59e0b; margin:0;">✏️ Modifier</a><a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour</a></div>
-        </div>
-        <div style="background:#f8fafc; padding:16px; border-radius:12px; margin-bottom:20px;">
-          <p><strong>Adresse :</strong> ${escapeHtml(agency.address)}</p>
-          <p><strong>Statut :</strong> ${agency.status}</p>
-        </div>
-        <div style="background:#f8fafc; padding:16px; border-radius:12px;">
-          <h3 style="font-size:16px; margin-bottom:10px;">📊 Statistiques</h3>
-          <p>Vues : ${stats.views} | Appels : ${stats.phone} | WhatsApp : ${stats.wa}</p>
-        </div>
-      </section>`, proConnected));
-  });
+  let badge = agency.status === 'approved' ? `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ En ligne</span>` : `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ En attente</span>`;
+
+  res.send(page("Détails de l'agence", `
+    <section class="card" style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">🏢 ${escapeHtml(agency.name)}</h1>
+        <div style="display:flex; gap:10px;"><a href="/mon-espace-pro/agences/${agency.id}/modifier" class="button" style="background:#f59e0b; margin:0;">✏️ Modifier</a><a href="/mon-espace-pro/agences" class="button secondary" style="margin:0;">← Retour</a></div>
+      </div>
+      <div style="margin-bottom:20px;">${badge}</div>
+      <div style="background:#f9fafb; padding:20px; border-radius:12px; margin-bottom:20px;">
+        <p><strong>Adresse :</strong> ${escapeHtml(agency.address)}</p>
+        <p><strong>Téléphone :</strong> ${escapeHtml(agency.phone || "Numéro du compte principal")}</p>
+        <p><strong>WhatsApp :</strong> ${escapeHtml(agency.whatsapp_number || "Numéro du compte principal")}</p>
+      </div>
+      <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+        <h3 style="font-size:16px; color:#1e40af; margin-bottom:12px;">📊 Statistiques de cette agence</h3>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>Vues de la page :</span> <strong>${stats.views}</strong></div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span>Clics "Appeler" :</span> <strong>${stats.phone}</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Clics "WhatsApp" :</span> <strong>${stats.wa}</strong></div>
+      </div>
+      <h3 style="font-size:16px; margin-bottom:10px;">Photos de l'agence</h3>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        ${agency.photo_1 ? `<img src="${escapeHtml(agency.photo_1)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">` : ""}
+        ${agency.photo_2 ? `<img src="${escapeHtml(agency.photo_2)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">` : ""}
+        ${agency.photo_3 ? `<img src="${escapeHtml(agency.photo_3)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">` : ""}
+      </div>
+    </section>`, proConnected));
+});
 
   // --- 5. MODIFIER UNE AGENCE (GET + POST) ---
   router.get("/mon-espace-pro/agences/:id/modifier", async (req, res) => {
