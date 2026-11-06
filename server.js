@@ -3492,6 +3492,11 @@ app.get("/mon-espace-pro/agences/:id/modifier", async (req, res) => {
         <input type="hidden" name="latitude" id="agency-lat-edit" value="${agency.latitude || ''}">
 <input type="hidden" name="longitude" id="agency-lng-edit" value="${agency.longitude || ''}">
 
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+  <div><label>Téléphone (optionnel)</label><input name="agency_phone" type="tel" maxlength="30" value="${escapeHtml(agency.phone || '')}" placeholder="Ex: 0194010345"></div>
+  <div><label>WhatsApp (optionnel)</label><input name="agency_whatsapp" type="tel" maxlength="30" value="${escapeHtml(agency.whatsapp_number || '')}" placeholder="Ex: 0194010345"></div>
+</div>
+
 <button type="button" onclick="getLocationEdit()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Mettre à jour ma position GPS</button>
 <p id="gps-status-edit" style="text-align:center; color:#2563eb; font-weight:bold; margin-bottom:10px;">
   ${agency.latitude ? 'Position GPS déjà enregistrée.' : ''}
