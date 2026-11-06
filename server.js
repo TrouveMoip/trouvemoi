@@ -813,7 +813,7 @@ app.get("/", async (req, res) => {
     }
 
     const currentPage = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = 12; const offset = (currentPage - 1) * limit;
+    const limit = 6; const offset = (currentPage - 1) * limit;
 
     const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
     const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
