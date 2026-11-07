@@ -137,6 +137,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
             <div><label>WhatsApp</label><input name="contact_whatsapp" type="tel" maxlength="30" value="${escapeHtml(proConnected.pro.whatsapp_number || proConnected.pro.phone || "")}" placeholder="0194010345"></div>
           </div>
           <label>E-mail (optionnel)</label>
+<input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
+          <label>E-mail (optionnel)</label>
           <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
           
           <p style="font-size:12px; color:#6b7280;">Au moins un moyen de contact est requis.</p>
