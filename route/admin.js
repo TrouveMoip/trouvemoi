@@ -150,6 +150,23 @@ async function customAdminMenu(current, csrf) {
       </div>`;
 
     // Boutons d'action professionnels
+    // --- NOUVEAU BLOC : CODE DE CONNEXION ---
+let codeBlock = "";
+if (c.status === 'approved' && c.pro_code) {
+  const waNumber = c.whatsapp_number || c.phone;
+  const cleanWa = String(waNumber).replace(/[()\s.-]/g, "").replace(/^\+/, "");
+  const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a été approuvée ✅\n\nVotre code de connexion est : ${c.pro_code}\n\nConnectez-vous ici : ${APP_URL}/mon-espace-pro`);
+  
+  codeBlock = `
+    <div style="background:#eff6ff; padding:16px; border-radius:12px; border:1px solid #bfdbfe; margin-bottom:16px;">
+      <div style="font-size:12px; color:#1e40af; text-transform:uppercase; font-weight:700; margin-bottom:5px;">Code de connexion généré</div>
+      <div style="font-size:28px; font-weight:800; font-family:monospace; color:#1e3a8a; letter-spacing:2px; margin-bottom:12px;">${escapeHtml(c.pro_code)}</div>
+      <div style="display:flex; gap:10px;">
+        <a href="https://wa.me/${cleanWa}?text=${waMessage}" target="_blank" class="button whatsapp" style="font-size:13px; padding:8px 16px; margin:0; flex:1; text-align:center;">📱 Envoyer par WhatsApp</a>
+      </div>
+    </div>
+  `;
+}
     let actionButtons = "";
     if (c.status === 'pending' || c.status === 'under_review') {
       actionButtons = `
@@ -169,7 +186,8 @@ async function customAdminMenu(current, csrf) {
           </form>
         </div>`;
     } else {
-      actionButtons = `<div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}</div>`;
+      actionButtons = `<div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}</div>${codeBlock
+      `;
     }
 
     return `
