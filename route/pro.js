@@ -267,6 +267,28 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
     res.redirect(303, "/mon-espace-pro");
   });
+router.get("/modifier-telephone", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  res.send(page("Visibilité", `
+    <section class="card" style="max-width: 500px; margin: 40px auto;">
+      <h1 style="text-align:center;">👁️ Visibilité du numéro</h1>
+      <form action="/mon-espace-pro/modifier-telephone" method="POST">
+        <div style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+          <label><input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}> <span>Rendre mon numéro public sur mon profil</span></label>
+        </div>
+        <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
+      </form>
+      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+    </section>
+  `, proConnected));
+});
 
+router.post("/modifier-telephone", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  await pool.query(`UPDATE professional_applications SET phone_public = $1 WHERE id = $2`, [req.body.phone_public === "yes", proConnected.pro.id]);
+  res.redirect(303, "/mon-espace-pro");
+});
   return router;
 };
