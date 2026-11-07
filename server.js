@@ -122,6 +122,32 @@ function page(title, content, proConnected, meta = {}) {
         .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #374151; text-align: center; font-size: 13px; color: #6b7280; }
         .desktop-menu { display: flex; gap: 6px; align-items: center; }
         .mobile-menu { display: none; }
+        /* --- RESPONSIVE DESIGN (MOBILE) --- */
+@media (max-width: 768px) {
+  header { padding: 14px 16px; }
+  .header-content { flex-direction: column; text-align: center; }
+  
+  /* Menu Mobile */
+  .desktop-menu { display: none; }
+  .mobile-menu { display: flex; flex-direction: column; width: 100%; position: relative; margin-top: 10px; }
+  .main-links { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+  .burger-btn { background: transparent; border: none; color: white; font-size: 28px; cursor: pointer; }
+  .mobile-dropdown { display: none; flex-direction: column; background: #1e3a8a; position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; padding: 10px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); margin-top: 5px; }
+  .mobile-dropdown.show { display: flex; }
+  .mobile-dropdown a { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); width: 100%; display: block; }
+
+  /* Grille des pros : 1 seule colonne */
+  .pros-grid { grid-template-columns: 1fr; }
+  
+  /* Cartes des pros plus propres */
+  .pro-card { padding: 20px; }
+  .pro-actions { display: flex; flex-direction: column; } /* Boutons empilés au lieu de collés */
+  .pro-actions a { padding: 12px; font-size: 14px; }
+  
+  /* Footer : les colonnes s'empilent */
+  .footer-content { grid-template-columns: 1fr; text-align: center; }
+  .footer-col a { display: inline-block; margin: 0 10px; }
+}
       </style>
     </head>
     <body>
