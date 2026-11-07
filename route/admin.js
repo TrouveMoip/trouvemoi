@@ -155,8 +155,7 @@ let codeBlock = "";
 if (c.status === 'approved' && c.pro_code) {
   const waNumber = c.whatsapp_number || c.phone;
   const cleanWa = String(waNumber).replace(/[()\s.-]/g, "").replace(/^\+/, "");
-  const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a été approuvée ✅\n\nVotre code de connexion est : ${c.pro_code}\n\nConnectez-vous ici : ${APP_URL}/mon-espace-pro`);
-  
+const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a été approuvée ✅\n\nVotre code de connexion est : ${c.pro_code}\n\nConnectez-vous ici : https://trouvemoi.bj/mon-espace-pro`);  
   codeBlock = `
     <div style="background:#eff6ff; padding:16px; border-radius:12px; border:1px solid #bfdbfe; margin-bottom:16px;">
       <div style="font-size:12px; color:#1e40af; text-transform:uppercase; font-weight:700; margin-bottom:5px;">Code de connexion généré</div>
