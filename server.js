@@ -235,6 +235,10 @@ app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, esc
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+    // --- MISE À JOUR DE LA TABLE CONTACT ---
+await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER`);
+await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS report_id INTEGER`);
+// ---------------------------------------
     console.log("✅ Base de données connectée");
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
