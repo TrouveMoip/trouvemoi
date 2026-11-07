@@ -135,15 +135,88 @@ async function customAdminMenu(current, csrf) {
     } catch (error) { res.status(502).send("Bad gateway"); }
   });
 
-  // ==========================================
   // CANDIDATURES
-  // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY CASE WHEN p.status = 'payment_pending' THEN 0 WHEN p.status = 'pending' THEN 1 ELSE 2 END, p.created_at DESC LIMIT 20`);
-    const apps = result.rows.map(c => `<details class="admin-details"><summary class="admin-summary"><div class="admin-summary-info"><div><strong style="font-size:16px;">${escapeHtml(c.full_name)}</strong> <span style="color:#6b7280;">— ${escapeHtml(c.profession)}</span></div><div><span class="badge badge-${c.status}">${c.status === 'payment_pending' ? '⏳ Attente paie' : c.status}</span></div></div></summary><div class="admin-content"><p>Téléphone: ${escapeHtml(c.phone)} | NPI: ${escapeHtml(c.npi)}</p><div style="display:flex; gap:10px;">${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">` : ""}${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" style="width:80px;height:80px;object-fit:cover;border-radius:8px;">` : ""}</div><form action="/admin/candidatures/${c.id}/status" method="POST" style="margin-top:16px;"><input type="hidden" name="csrfToken" value="${csrf}"><select name="status"><option value="approved">Approuver</option><option value="rejected">Rejeter</option></select><input name="rejection_reason" placeholder="Motif"><button type="submit">Valider</button></form></div></details>`).join("");
-    res.send(page("Candidatures", `<h1>Candidatures</h1>${await customAdminMenu("/admin/candidatures", csrf)}${apps}`, null));
-  });
+  const csrf = getCsrf(req);
+  const result = await pool.query(`SELECT p.* FROM professional_applications p ORDER BY CASE WHEN p.status = 'payment_pending' THEN 0 WHEN p.status = 'pending' THEN 1 ELSE 2 END, p.created_at DESC LIMIT 50`);
+  
+  const apps = result.rows.map(c => {
+    // On affiche les 3 photos
+    const photos = `
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
+        ${c.photo_profil_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_profil_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #3b82f6; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Visage</div></div>` : ""}
+        ${c.photo_identite_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_identite_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #ef4444; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Pièce d'identité</div></div>` : ""}
+        ${c.photo_kyc_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_kyc_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #f59e0b; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600; color:#b45309;">KYC (Visage + Pièce)</div></div>` : ""}
+      </div>`;
+
+    // Boutons d'action professionnels
+    let actionButtons = "";
+    if (c.status === 'pending' || c.status === 'under_review') {
+      actionButtons = `
+        <div style="display:flex; gap:10px; margin-top:20px; border-top:1px solid #e5e7eb; padding-top:15px;">
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="approved">
+            <button class="success" style="width:100%; padding:12px; font-size:14px;">✅ Approuver le dossier</button>
+          </form>
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="rejected">
+            <div style="display:flex; gap:8px;">
+              <input name="rejection_reason" placeholder="Motif du refus..." style="margin:0; padding:10px; font-size:13px; flex:1;">
+              <button class="danger" style="padding:12px; font-size:14px; margin:0;">❌ Rejeter</button>
+            </div>
+          </form>
+        </div>`;
+    } else {
+      actionButtons = `<div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}</div>`;
+    }
+
+    return `
+      <details class="admin-details">
+        <summary class="admin-summary">
+          <div class="admin-summary-info">
+            <div style="display:flex; align-items:center; gap:15px;">
+              ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:40px; height:40px; object-fit:cover; border-radius:50%; border:2px solid #3b82f6;">` : ""}
+              <div>
+                <strong style="font-size:16px; color:#111827;">${escapeHtml(c.full_name)}</strong> 
+                <span style="color:#6b7280; font-size:14px; margin-left:5px;">— ${escapeHtml(c.profession)}</span>
+              </div>
+            </div>
+            <div>
+              <span class="badge" style="background:${c.status === 'approved' ? '#d1fae5' : c.status === 'rejected' ? '#fee2e2' : '#fef3c7'}; color:${c.status === 'approved' ? '#065f46' : c.status === 'rejected' ? '#991b1b' : '#92400e'};">
+                ${c.status === 'approved' ? 'Approuvé' : c.status === 'rejected' ? 'Refusé' : c.status === 'payment_pending' ? 'Attente Paiement' : 'En attente'}
+              </span>
+            </div>
+          </div>
+          <div style="margin-left:15px; color:#9ca3af; font-size:20px;">▼</div>
+        </summary>
+        <div class="admin-content">
+          ${photos}
+          
+          <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e5e7eb; font-size:14px; margin-bottom:15px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <p><strong>Téléphone :</strong> ${escapeHtml(c.phone)}</p>
+              <p><strong>NPI :</strong> ${escapeHtml(c.npi)}</p>
+              <p><strong>Ville :</strong> ${escapeHtml(c.city)}</p>
+              <p><strong>Quartier :</strong> ${escapeHtml(c.neighborhood || "-")}</p>
+              <p><strong>Email :</strong> ${escapeHtml(c.contact_email || "-")}</p>
+              <p><strong>Code suivi :</strong> <code>${escapeHtml(c.tracking_code)}</code></p>
+            </div>
+          </div>
+          
+          ${actionButtons}
+        </div>
+      </details>
+    `;
+  }).join("");
+
+  res.send(page("Candidatures", `
+    <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
+    ${await customAdminMenu("/admin/candidatures", csrf)}
+    <div style="margin-top:20px;">${apps || "<p>Aucune candidature.</p>"}</div>
+  `, null));
+});
 
   router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id); const status = req.body.status; const reason = req.body.rejection_reason || null;
