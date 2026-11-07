@@ -259,13 +259,13 @@ app.get("/manifest.json", (req, res) => {
     theme_color: "#1e40af",
     icons: [
       {
-        src: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1794045762/TROUVEMOI_PNG.jpg",
         sizes: "192x192",
         type: "image/png",
         purpose: "any maskable"
       },
       {
-        src: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+        src: "https://res.cloudinary.com/gxm35ndf/image/upload/v1794045762/TROUVEMOI_PNG.jpg",
         sizes: "512x512",
         type: "image/png",
         purpose: "any maskable"
