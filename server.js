@@ -49,7 +49,34 @@ async function requireAdmin(req, res, next) { const session = verifySessionToken
 function verifyCsrf(req, res, next) { const csrf = req.adminSession?.csrf; if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) { return res.status(403).send("Erreur CSRF"); } next(); }
 function verifyTotp(secret, token) { return true; }
 async function verifyKkiapayTransaction(transactionId) { try { const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": process.env.KKIAPAY_PUBLIC_KEY, "x-private-key": process.env.KKIAPAY_PRIVATE_KEY }, body: JSON.stringify({ transactionId }) }); if (!res.ok) return { success: false }; const data = await res.json(); return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.data || data.reference }; } catch (e) { return { success: false }; } }
-async function settlePayment({ dossierId, transactionId, amount, method, source }) { return { ok: true }; }
+async function settlePayment({ dossierId, transactionId, amount, method, source }) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
+    const reused = await client.query(`SELECT id FROM professional_applications WHERE payment_ref = $1 AND id <> $2 LIMIT 1`, [transactionId, dossierId]);
+    if (reused.rows.length) { await client.query("ROLLBACK"); return { ok: false, reason: "transaction_already_used" }; }
+    const updated = await client.query(`
+      UPDATE professional_applications SET payment_status = 'paid', payment_ref = $1, payment_amount = $2, payment_date = NOW(), payment_method = $3,
+      status = CASE WHEN status = 'payment_pending' THEN 'pending' ELSE status END, updated_at = NOW()
+      WHERE id = $4 AND payment_status <> 'paid' RETURNING id, referred_by, tracking_code, phone, contact_email
+    `, [transactionId, amount, method, dossierId]);
+    if (!updated.rowCount) { await client.query("ROLLBACK"); return { ok: true, alreadyPaid: true }; }
+    const dossier = updated.rows[0];
+    if (dossier.referred_by) {
+      const parrain = await client.query(`SELECT id FROM professional_applications WHERE referral_code = $1`, [dossier.referred_by]);
+      if (parrain.rows.length) { await client.query(`UPDATE professional_applications SET referral_balance = referral_balance + $1, updated_at = NOW() WHERE id = $2`, [REFERRAL_BONUS, parrain.rows[0].id]); }
+    }
+    await client.query("COMMIT");
+    await logAdminAction("payment_received", "pro", dossierId, `${source} | Montant: ${amount} FCFA | Ref: ${transactionId}`);
+    return { ok: true, alreadyPaid: false };
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
 async function cleanupExpiredDossiers() { return 0; }
 
