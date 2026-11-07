@@ -482,5 +482,32 @@ router.get("/blog/:slug", async (req, res) => {
   if (!article) return res.redirect(303, "/blog");
   res.send(page(article.title, `<article class="card" style="max-width:800px; margin:40px auto;"><h1 style="font-size:28px;">${escapeHtml(article.title)}</h1><p class="muted" style="font-size:13px; margin-bottom:20px;">Publié le ${new Date(article.created_at).toLocaleDateString("fr-FR")}</p><div style="line-height:1.8; color:#374151;">${escapeHtml(article.content).replace(/\n/g, "<br>")}</div><p style="margin-top:30px;"><a href="/blog" style="color:#2563eb;">← Retour au blog</a></p></article>`, proConnected));
 });
+app.get("/soutenir", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const content = `
+    <section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;">
+      <h1 style="color:#f59e0b;">❤️ Soutenir TrouveMoi</h1>
+      <p style="color:#4b5563; margin-bottom:30px;">Votre expérience sur TrouveMoi a été satisfaisante ? Faites-nous un don pour soutenir la plateforme.</p>
+      <div style="background:#f8fafc; padding:24px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:20px;">
+        <label style="font-size:16px; margin-bottom:10px; display:block;">Entrez le montant de votre don (FCFA) :</label>
+        <input type="number" id="custom-amount" placeholder="Ex: 500" min="100" style="text-align:center; font-size:24px; font-weight:bold; max-width:250px; margin:0 auto 15px auto; padding:15px;">
+        <button onclick="payerDon(document.getElementById('custom-amount').value)" style="width:100%; padding:15px; font-size:18px; background:#10b981; color:white; border:none; border-radius:12px; font-weight:bold;">Faire un don</button>
+      </div>
+      <p><a href="/" style="color:#6b7280; font-size:14px;">← Retour à l'accueil</a></p>
+    </section>
+    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <script>
+      function payerDon(montant) {
+        const amount = parseInt(montant);
+        if (!amount || amount < 100) { alert("Le montant minimum est de 100 FCFA."); return; }
+        openKkiapayWidget({ amount: amount, api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, callback: "${APP_URL}/don/verifier", theme: "#f59e0b" });
+      }
+      addSuccessListener(function(response) {
+        if (response && response.transactionId) { window.location.href = "/don/verifier?transaction_id=" + encodeURIComponent(response.transactionId); }
+      });
+    </script>
+  `;
+  res.send(page("Soutenir TrouveMoi", content, proConnected));
+});
   return router;
 };
