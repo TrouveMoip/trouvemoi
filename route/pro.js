@@ -29,8 +29,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       offers = (await pool.query(`SELECT * FROM job_offers WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id])).rows;
       gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
       myReviews = (await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
-      withdrawals = (await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
-      
+      // REMPLACE TEMPORAIREMENT CE QUE TU AS PAR CECI :
+withdrawals = [{ amount: 1000, status: 'pending', created_at: new Date() }];
       const s30 = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proConnected.pro.id]);
       if (s30.rows.length) { stats30 = { views: Number(s30.rows[0].v || 0), phone: Number(s30.rows[0].p || 0), wa: Number(s30.rows[0].w || 0) }; }
       
