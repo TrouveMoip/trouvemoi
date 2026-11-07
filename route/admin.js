@@ -168,31 +168,32 @@ if (c.status === 'approved' && c.pro_code) {
   `;
 }
     let actionButtons = "";
-    if (c.status === 'pending' || c.status === 'under_review') {
-      actionButtons = `
-        <div style="display:flex; gap:10px; margin-top:20px; border-top:1px solid #e5e7eb; padding-top:15px;">
-          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-            <input type="hidden" name="csrfToken" value="${csrf}">
-            <input type="hidden" name="status" value="approved">
-            <button class="success" style="width:100%; padding:12px; font-size:14px;">✅ Approuver le dossier</button>
-          </form>
-          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-            <input type="hidden" name="csrfToken" value="${csrf}">
-            <input type="hidden" name="status" value="rejected">
-            <div style="display:flex; gap:8px;">
-              <input name="rejection_reason" placeholder="Motif du refus..." style="margin:0; padding:10px; font-size:13px; flex:1;">
-              <button class="danger" style="padding:12px; font-size:14px; margin:0;">❌ Rejeter</button>
-            </div>
-          </form>
-        </div>`;
-    } else {
-      actionButtons = `
-  <div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">
-    Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}
-  </div>
-  ${codeBlock}
-`;
-    }
+if (c.status === 'pending' || c.status === 'under_review') {
+  actionButtons = `
+    <div style="display:flex; gap:10px; margin-top:20px; border-top:1px solid #e5e7eb; padding-top:15px;">
+      <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+        <input type="hidden" name="csrfToken" value="${csrf}">
+        <input type="hidden" name="status" value="approved">
+        <button class="success" style="width:100%; padding:12px; font-size:14px;">✅ Approuver le dossier</button>
+      </form>
+      <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+        <input type="hidden" name="csrfToken" value="${csrf}">
+        <input type="hidden" name="status" value="rejected">
+        <div style="display:flex; gap:8px;">
+          <input name="rejection_reason" placeholder="Motif du refus..." style="margin:0; padding:10px; font-size:13px; flex:1;">
+          <button class="danger" style="padding:12px; font-size:14px; margin:0;">❌ Rejeter</button>
+        </div>
+      </form>
+    </div>`;
+} else {
+  const statusLabel = c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status;
+  actionButtons = `
+    <div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">
+      Statut actuel : ${statusLabel}
+    </div>
+    ${codeBlock}
+  `;
+}
 
     return `
       <details class="admin-details">
