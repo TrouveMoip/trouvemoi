@@ -46,8 +46,52 @@ async function customAdminMenu(current, csrf) {
       if (active.rows.length) return res.redirect(303, "/admin/dashboard");
     }
     clearSessionCookie(res);
-    res.send(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required style="text-align:center; font-size:20px;"><label>Code de validation (6 chiffres)</label><input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px;"><button style="width:100%; margin-top:10px;">Connexion</button></form></section>`, null));
-  });
+    res.send(page("Admin", `
+  <section class="card" style="max-width: 400px; margin: 60px auto;">
+    <h1 style="text-align:center;">Admin</h1>
+    <form action="/admin/login" method="POST">
+      
+      <label>Mot de passe</label>
+      <div style="position:relative;">
+        <input type="password" name="password" id="password-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
+        <span onclick="togglePassword('password-input', 'eye-1')" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-1">👁️</span>
+      </div>
+      
+      <label style="margin-top:15px;">Code de validation (6 chiffres)</label>
+      <div style="position:relative;">
+        <input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px;">
+        <span onclick="togglePassword('totp-input', 'eye-2')" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-2">👁️</span>
+      </div>
+      
+      <button style="width:100%; margin-top:20px;">Connexion</button>
+    </form>
+  </section>
+  
+  <script>
+    function togglePassword(inputId, eyeId) {
+      const input = document.getElementById(inputId);
+      const eye = document.getElementById(eyeId);
+      if (input.type === "password" || input.type === "text") {
+        if (input.type === "password") {
+          input.type = "text";
+          eye.innerHTML = "🙈";
+        } else {
+          input.type = "password";
+          eye.innerHTML = "👁️";
+        }
+      } else {
+        // Pour le code TOTP qui est de type "text" par défaut, on le masque
+        if (input.style.webkitTextSecurity === 'disc') {
+          input.style.webkitTextSecurity = 'none';
+          eye.innerHTML = "👁️";
+        } else {
+          input.style.webkitTextSecurity = 'disc';
+          eye.innerHTML = "🙈";
+        }
+      }
+    }
+  </script>
+`, null));
 
   router.post("/login", async (req, res) => {
     if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
