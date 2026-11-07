@@ -137,7 +137,7 @@ function page(title, content, proConnected, meta = {}) {
   .mobile-dropdown a { padding: 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); width: 100%; display: block; }
 
   /* Grille des pros : 1 seule colonne */
-  .pros-grid { grid-template-columns: 1fr; }
+  .pros-grid { grid-template-columns: 1fr; } 
   
   /* Cartes des pros plus propres */
   .pro-card { padding: 20px; }
