@@ -313,8 +313,55 @@ app.get("/manifest.json", (req, res) => {
     ]
   });
 });
-app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => { return res.status(200).json({ received: true }); });
-app.get("/cron/cleanup", async (req, res) => { return res.json({ ok: true }); });
+app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
+  if (BYPASS_PAYMENT) return res.status(200).json({ received: true });
+  try {
+    if (process.env.KKIAPAY_WEBHOOK_SECRET) {
+      const provided = String(req.query.token || req.get("x-webhook-secret") || "");
+      if (!safeEqual(provided, process.env.KKIAPAY_WEBHOOK_SECRET)) {
+        return res.status(401).json({ received: false });
+      }
+    }
+
+    const { transactionId } = req.body || {};
+    if (!transactionId) return res.status(200).json({ received: true });
+
+    const verification = await verifyKkiapayTransaction(transactionId);
+    if (!verification.success) return res.status(200).json({ received: true, verified: false });
+
+    let trackingCode = String(verification.reference || "").trim().toUpperCase();
+    if (!trackingCode && !IS_PRODUCTION) {
+      trackingCode = String(req.body.data || "").trim().toUpperCase();
+    }
+    if (!trackingCode) return res.status(200).json({ received: true, verified: false, reason: "reference absente" });
+
+    const dossierResult = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+    if (!dossierResult.rows.length) return res.status(200).json({ received: true, verified: true, matched: false });
+    const dossier = dossierResult.rows[0];
+
+    const settlement = await settlePayment({
+      dossierId: dossier.id,
+      transactionId,
+      amount: verification.amount,
+      method: verification.method,
+      source: "webhook"
+    });
+
+    return res.status(200).json({ received: true, processed: settlement.ok });
+  } catch (error) {
+    console.error("Erreur webhook Kkiapay :", error.message);
+    return res.status(200).json({ received: true, error: true });
+  }
+});
+app.get("/cron/cleanup", async (req, res) => {
+  const token = req.query.token || req.headers["x-cron-secret"];
+  if (!safeEqual(token || "", process.env.CRON_SECRET || "")) return res.status(401).send("Unauthorized");
+  try {
+    const cleaned = await cleanupExpiredDossiers();
+    const notifications = await processNotifications(20);
+    res.json({ ok: true, cleaned, notifications });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`); });
 app.get("/sitemap.xml", async (req, res) => { res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${APP_URL}/</loc></url></urlset>`); });
 app.get("/soutenir", async (req, res) => {
