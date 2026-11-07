@@ -345,5 +345,119 @@ router.get("/conditions", async (req, res) => {
   `;
   res.send(page("Conditions Générales", content, proConnected));
 });
+  router.get("/confidentialite", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
+      
+      <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold; text-align: center;">Politique de Confidentialité des Données Personnelles</h1>
+
+      <p style="margin-bottom: 16px; color: #374151;">
+        La présente politique de confidentialité est fondée sur l'article 415 figurant au livre cinquième du code du numérique relatif à la Protection des Données à caractère personnelle.
+      </p>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Elle mentionne la preuve de l'accomplissement des formalités préalables auprès de l'Autorité de Protection des Données Personnelles (APDP) et vous aide à comprendre quelles informations nous collectons et traitons dans notre structure <strong>ADK SERVICES</strong>, les données personnelles, les finalités visées ainsi que la politique de management mise en place aux fins de respecter la législation en vigueur en matière de protection des données personnelles et de la vie privée en République du Bénin.
+      </p>
+      <p style="margin-bottom: 24px; color: #374151; font-weight: 500;">
+        Veuillez lire attentivement cette Politique de confidentialité qui nous engage.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">1. Responsable du traitement</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Le responsable du traitement de vos Données Personnelles est la structure <strong>ADK SERVICES</strong>, éditrice de la plateforme TrouveMoi.<br>
+        Adresse email : <strong>contact@trouvemoi.bj</strong>
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">2. Formalités préalables</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Le traitement est poursuivi conformément au Récépissé n° <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[Numéro en cours d'attribution]</span> délivré par l'Autorité de Protection des données Personnelles (APDP).
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">3. Les données personnelles objet du traitement</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Les données traitées sont : Nom, prénom, numéro de téléphone, adresse mail, NPI, photo d'identité, carte d'identité, photo d'identité KYC et adresse géographique (ville et quartier).
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">4. Les opérations effectuées</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        ADK SERVICES ne collecte des informations personnelles relatives des clients et des professionnels de métiers que pour le besoin exclusif de services proposés par elle-même. Les informations recueillies font l'objet des opérations suivantes (traitement électronique) destiné à l'atteinte des finalités ci-dessous mentionnées. Les données sont conservées dans des infrastructures sécurisées.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">5. La/les finalité(s) du/des traitement(s)</h2>
+      <p style="margin-bottom: 8px; color: #374151;">Les informations sont collectées pour :</p>
+      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;">
+        <li>La mise en relation entre les clients et les professionnels</li>
+        <li>La vérification d'identité des professionnels (KYC) pour éviter les arnaques</li>
+        <li>La gestion des paiements et des abonnements</li>
+        <li>L'envoi de notifications par SMS</li>
+      </ol>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Il convient de rappeler que chaque traitement correspond à une finalité précise et unique. Dans l'hypothèse où un seul et même traitement pourrait servir plusieurs finalités, votre consentement sera recueilli distinctement pour chacune d'elles.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">6. Destinataires des Données personnelles communication et transfert</h2>
+      <p style="margin-bottom: 8px; color: #374151;">Les destinataires de ces données sont les services internes suivants :</p>
+      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;">
+        <li>Direction des traitements de données : ADK SERVICES</li>
+        <li>Secrétariat Administratif : Support Client TrouveMoi</li>
+        <li>Service Informatique : Administrateur Technique</li>
+      </ol>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">7. Durée du traitement, conservation et stockage</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Les Données Personnelles sont traitées par nos soins pendant (toute la durée de vie du compte de l'utilisateur, et supprimées immédiatement en cas de demande de suppression par l'utilisateur).<br>
+        Pour plus d'informations concernant les durées de conservation, vous pouvez nous contacter à l'adresse mail suivante : <strong>contact@trouvemoi.bj</strong>.<br>
+        Après la durée ci-dessus mentionnée, vos données sont supprimées.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">8. Les droits des personnes concernées à propos des traitements</h2>
+      <p style="margin-bottom: 8px; color: #374151;">La loi vous donne sur vos données personnelles les droits suivants :</p>
+      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;">
+        <li>Droit d'accès aux informations collectées ;</li>
+        <li>Droit d'interrogation ;</li>
+        <li>Droit de modification ;</li>
+        <li>Droit de rectification ;</li>
+        <li>Droit à la portabilité ;</li>
+        <li>Droit d'opposition au traitement ;</li>
+        <li>Droit de suppression de données ;</li>
+        <li>Droit à l'oubli ;</li>
+        <li>Droit à réparation.</li>
+      </ol>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Vous pouvez consulter la définition de ces droits à l'adresse de l'APDP. Vous pouvez exercer vos droits en écrivant à ADK SERVICES par e-mail à l'adresse suivante :<br>
+        - email : <strong>contact@trouvemoi.bj</strong>
+      </p>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Nous garantissons une réponse à vos demandes dans un délai de 30 jours à compter de la date de réception de la demande.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">9. Plaintes</h2>
+      <p style="margin-bottom: 8px; color: #374151;">Vous avez le droit de déposer une plainte auprès de l'Autorité de Protection des Données Personnelles :</p>
+      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;">
+        <li>La plainte est déposée au siège de l'institution Rue 6.076 Aïdjèdo Cotonou</li>
+        <li>Adressée (mail uniquement) à l'adresse : contact@apdp.bj</li>
+      </ol>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Ceci est sans préjudice d'un recours devant un tribunal compétent.
+      </p>
+
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">10. Pour en savoir plus</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Si vous avez d'autres questions ou commentaires concernant le traitement de vos données personnelles, n'hésitez pas à contacter le Délégué à la Protection des Données Personnelles par e-mail à : <strong>contact@trouvemoi.bj</strong>
+      </p>
+
+      <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">
+        Date de dernière mise à jour : 31/10/2026
+      </p>
+
+      <div style="margin-top: 40px; text-align: center;" class="no-print">
+        <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+        <br>
+        <a href="/" class="button secondary">← Retour à l'accueil</a>
+      </div>
+    </section>
+  `;
+  res.send(page("Politique de Confidentialité", content, proConnected));
+});
   return router;
 };
