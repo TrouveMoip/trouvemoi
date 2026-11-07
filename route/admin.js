@@ -34,7 +34,6 @@ async function customAdminMenu(current, csrf) {
       { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
       { href: "/admin/qrcode", label: "📱 QR Code", badge: 0 },
       { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed },
-      { href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 },
     ];
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
@@ -439,52 +438,5 @@ router.get("/notifications", requireAdmin, async (req, res) => {
   res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
 });
   
-// PARAMÈTRES ADMIN (Sécurité)
-  router.get("/parametres", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const menu = await customAdminMenu("/admin/parametres", csrf);
-    
-    res.send(page("Paramètres", `
-      <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
-      ${menu}
-      
-      <section class="card" style="max-width: 500px; margin: 40px auto;">
-        <h2 style="font-size: 18px; margin-bottom: 16px;">🔒 Changer le mot de passe</h2>
-        <form action="/admin/parametres/mot-de-passe" method="POST">
-          <input type="hidden" name="csrfToken" value="${csrf}">
-          <label>Ancien mot de passe</label>
-          <input type="password" name="old_password" required>
-          <label>Nouveau mot de passe (min. 12 caractères)</label>
-          <input type="password" name="new_password" required minlength="12">
-          <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer</button>
-        </form>
-      </section>
-
-      <section class="card" style="max-width: 500px; margin: 40px auto;">
-        <h2 style="font-size: 18px; margin-bottom: 16px;">📊 Informations système</h2>
-        <p style="font-size:14px; color:#4b5563;"><strong>Mode :</strong> ${process.env.NODE_ENV || "development"}</p>
-        <p style="font-size:14px; color:#4b5563;"><strong>Base de données :</strong> Connectée</p>
-        <p style="font-size:14px; color:#4b5563;"><strong>Version Node :</strong> ${process.version}</p>
-      </section>
-    `, null));
-  });
-
-  router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, res) => {
-    if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
-      return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
-    }
-    
-    res.send(page("Succès", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Vérification réussie</h1>
-        <p style="margin-bottom:20px;">Votre ancien mot de passe est correct.</p>
-        <div class="alert alert-warning" style="text-align:left;">
-          <strong>⚠️ Important :</strong> Pour des raisons de sécurité, le mot de passe administrateur ne peut pas être modifié directement depuis cette page. Vous devez le changer dans les variables d'environnement sur Render (Variable <code>ADMIN_PASSWORD</code>).
-        </div>
-        <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
-      </section>
-    `, null));
-  });
-
   return router;
 };
