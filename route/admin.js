@@ -438,9 +438,8 @@ router.get("/notifications", requireAdmin, async (req, res) => {
   const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${n.status}</span></td></tr>`).join("");
   res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
 });
-  // ==========================================
+  
 // PARAMÈTRES ADMIN (Sécurité)
-// ==========================================
 router.get("/parametres", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
   res.send(page("Paramètres", `
@@ -472,10 +471,6 @@ router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, re
   if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
     return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
   }
-  
-  // ATTENTION : Pour des raisons de sécurité sur Render, 
-  // le changement de mot de passe doit être fait dans les variables d'environnement.
-  // On affiche donc un message explicatif.
   res.send(page("Succès", `
     <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
       <h1>✅ Vérification réussie</h1>
