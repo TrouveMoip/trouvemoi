@@ -5,7 +5,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   const router = express.Router();
 
   // LA FONCTION adminMenu COMPLETE AVEC TOUS LES BOUTONS
-  async function customAdminMenu(current, csrf) {
+  let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0;
     try {
       gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
@@ -15,6 +15,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       withdrawalsCount = Number((await pool.query("SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'")).rows[0].count);
       reportsCount = Number((await pool.query("SELECT COUNT(*) FROM review_reports WHERE status = 'pending'")).rows[0].count);
       notificationsFailed = Number((await pool.query("SELECT COUNT(*) FROM notifications WHERE status = 'failed'")).rows[0].count);
+      jobsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'")).rows[0].count);
     } catch (e) {}
 
     const links = [
@@ -24,7 +25,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       { href: "/admin/agences", label: "🏢 Agences", badge: 0 },
       { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
       { href: "/admin/signalisations", label: "🚩 Signalements", badge: reportsCount }, 
-      { href: "/admin/emplois", label: "💼 Offres", badge: 0 }, 
+      { href: "/admin/emplois", label: "💼 Offres", badge: jobsPendingCount }, 
       { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
       { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount },
       { href: "/admin/retraits", label: "💸 Retraits", badge: withdrawalsCount },
