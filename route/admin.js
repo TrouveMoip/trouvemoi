@@ -488,5 +488,3 @@ router.get("/notifications", requireAdmin, async (req, res) => {
 
   return router;
 };
-  return router;
-};
