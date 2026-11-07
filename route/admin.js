@@ -440,47 +440,53 @@ router.get("/notifications", requireAdmin, async (req, res) => {
 });
   
 // PARAMÈTRES ADMIN (Sécurité)
-router.get("/parametres", requireAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  res.send(page("Paramètres", `
-    <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
-    ${await customAdminMenu("/admin/parametres", csrf)}
+  router.get("/parametres", requireAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
+    const menu = await customAdminMenu("/admin/parametres", csrf);
     
-    <section class="card" style="max-width: 500px; margin: 40px auto;">
-      <h2 style="font-size: 18px; margin-bottom: 16px;">🔒 Changer le mot de passe</h2>
-      <form action="/admin/parametres/mot-de-passe" method="POST">
-        <input type="hidden" name="csrfToken" value="${csrf}">
-        <label>Ancien mot de passe</label>
-        <input type="password" name="old_password" required>
-        <label>Nouveau mot de passe (min. 12 caractères)</label>
-        <input type="password" name="new_password" required minlength="12">
-        <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer le nouveau mot de passe</button>
-      </form>
-    </section>
+    res.send(page("Paramètres", `
+      <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
+      ${menu}
+      
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <h2 style="font-size: 18px; margin-bottom: 16px;">🔒 Changer le mot de passe</h2>
+        <form action="/admin/parametres/mot-de-passe" method="POST">
+          <input type="hidden" name="csrfToken" value="${csrf}">
+          <label>Ancien mot de passe</label>
+          <input type="password" name="old_password" required>
+          <label>Nouveau mot de passe (min. 12 caractères)</label>
+          <input type="password" name="new_password" required minlength="12">
+          <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer</button>
+        </form>
+      </section>
 
-    <section class="card" style="max-width: 500px; margin: 40px auto;">
-      <h2 style="font-size: 18px; margin-bottom: 16px;">📊 Informations système</h2>
-      <p style="font-size:14px; color:#4b5563;"><strong>Mode :</strong> ${process.env.NODE_ENV || "development"}</p>
-      <p style="font-size:14px; color:#4b5563;"><strong>Base de données :</strong> Connectée</p>
-      <p style="font-size:14px; color:#4b5563;"><strong>Version Node :</strong> ${process.version}</p>
-    </section>
-  `, null));
-});
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <h2 style="font-size: 18px; margin-bottom: 16px;">📊 Informations système</h2>
+        <p style="font-size:14px; color:#4b5563;"><strong>Mode :</strong> ${process.env.NODE_ENV || "development"}</p>
+        <p style="font-size:14px; color:#4b5563;"><strong>Base de données :</strong> Connectée</p>
+        <p style="font-size:14px; color:#4b5563;"><strong>Version Node :</strong> ${process.version}</p>
+      </section>
+    `, null));
+  });
 
-router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, res) => {
-  if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
-    return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
-  }
-  res.send(page("Succès", `
-    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-      <h1>✅ Vérification réussie</h1>
-      <p style="margin-bottom:20px;">Votre ancien mot de passe est correct.</p>
-      <div class="alert alert-warning" style="text-align:left;">
-        <strong>⚠️ Important :</strong> Pour des raisons de sécurité, le mot de passe administrateur ne peut pas être modifié directement depuis cette page. Vous devez le changer dans les variables d'environnement sur Render (Variable <code>ADMIN_PASSWORD</code>).
-      </div>
-      <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
-    </section>
-  `, null));
-});
+  router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, res) => {
+    if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
+      return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
+    }
+    
+    res.send(page("Succès", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>✅ Vérification réussie</h1>
+        <p style="margin-bottom:20px;">Votre ancien mot de passe est correct.</p>
+        <div class="alert alert-warning" style="text-align:left;">
+          <strong>⚠️ Important :</strong> Pour des raisons de sécurité, le mot de passe administrateur ne peut pas être modifié directement depuis cette page. Vous devez le changer dans les variables d'environnement sur Render (Variable <code>ADMIN_PASSWORD</code>).
+        </div>
+        <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
+      </section>
+    `, null));
+  });
+
+  return router;
+};
   return router;
 };
