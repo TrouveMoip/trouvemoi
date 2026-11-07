@@ -43,105 +43,127 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
     const pendingDeletion = gdprRequests.some(r => r.request_type === "deletion" && r.status === "pending");
     
-    res.send(page("Espace pro", `
-      <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
-        <div><h2 style="color:white; margin:0;">Bonjour ${escapeHtml(proConnected.pro.company_name || proConnected.pro.full_name)} 👋</h2></div>
-        <div style="background:rgba(255,255,255,0.15); padding:12px 24px; border-radius:12px; text-align:center;"><div style="font-size:11px; text-transform:uppercase;">Votre code pro</div><div style="font-size:28px; font-weight:800; font-family:monospace;">${escapeHtml(proConnected.code)}</div></div>
+    const isOnLeave = proConnected.pro.unavailable_until && new Date(proConnected.pro.unavailable_until) > new Date();
+const leaveStatus = isOnLeave ? `<span class="badge" style="background:#fee2e2;color:#991b1b;">En congés jusqu'au ${new Date(proConnected.pro.unavailable_until).toLocaleDateString("fr-FR")}</span>` : `<span class="badge" style="background:#d1fae5;color:#065f46;">Actif</span>`;
+
+res.send(page("Espace pro", `
+  <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+    <div><h2 style="color:white; margin:0;">Bonjour ${escapeHtml(proConnected.pro.company_name || proConnected.pro.full_name)} 👋</h2></div>
+    <div style="background:rgba(255,255,255,0.15); padding:12px 24px; border-radius:12px; text-align:center;">
+      <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px;">Votre code pro</div>
+      <div style="font-size:28px; font-weight:800; font-family:monospace; letter-spacing:2px;">${escapeHtml(proConnected.code)}</div>
+    </div>
+  </div>
+  
+  <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+    <a class="button" href="/publier-emploi">📢 Publier une offre</a>
+    <a class="button" href="/mon-espace-pro/agences" style="background: #dbeafe; color: #1e40af;">📋 Mes agences</a>
+    <a class="button" href="/mon-espace-pro/agences/nouvelle" style="background: #8b5cf6;">🏢 Ajouter une agence</a>
+    <form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Déconnexion</button></form>
+  </div>
+  
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
+    <section class="card">
+      <h2 style="font-size:20px; margin-bottom:16px;">Mes infos</h2>
+      <p><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p>
+      <p><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p>
+      <p><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p>
+      <p><span class="label">Statut :</span> ${leaveStatus}</p>
+
+      <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+        <p style="font-weight: bold; margin-bottom: 12px; font-size:14px; color:#1e40af;">📊 Statistiques (30 derniers jours)</p>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>Vues du profil :</span> <strong>${stats30.views}</strong></div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>Clics "Appeler" :</span> <strong>${stats30.phone}</strong></div>
+        <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Clics "WhatsApp" :</span> <strong>${stats30.wa}</strong></div>
       </div>
-      
-      <div style="display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
-        <a class="button" href="/publier-emploi">📢 Publier une offre</a>
-        <a class="button" href="/mon-espace-pro/agences" style="background: #dbeafe; color: #1e40af;">📋 Mes agences</a>
-        <a class="button" href="/mon-espace-pro/agences/nouvelle" style="background: #8b5cf6;">🏢 Ajouter une agence</a>
-        <form action="/mon-espace-pro/logout" method="POST" style="display:inline; margin-left:auto;"><button class="danger" type="submit">Deconnexion</button></form>
+
+      <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
+        <form action="/mon-espace-pro/conges" method="POST" style="margin:0;">
+          <label style="margin-top:0; font-size:12px;">M'absent jusqu'au :</label>
+          <input type="date" name="unavailable_until" value="${proConnected.pro.unavailable_until ? new Date(proConnected.pro.unavailable_until).toISOString().split('T')[0] : ''}" style="padding:8px; margin-bottom:8px;">
+          <button type="submit" class="warning" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Enregistrer congés</button>
+        </form>
       </div>
-      
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px;">
-        <section class="card">
-          <h2 style="font-size:20px; margin-bottom:16px;">Mes infos</h2>
-          <p><span class="label">Nom :</span> ${escapeHtml(proConnected.pro.full_name)}</p>
-          <p><span class="label">Profession :</span> ${escapeHtml(proConnected.pro.profession)}</p>
-          <p><span class="label">Ville :</span> ${escapeHtml(proConnected.pro.city)}</p>
 
-          <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-            <p style="font-weight: bold; margin-bottom: 12px; font-size:14px; color:#1e40af;">📊 30 derniers jours</p>
-            <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Vues :</span> <strong>${stats30.views}</strong></div>
-            <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Appels :</span> <strong>${stats30.phone}</strong></div>
-            <div style="display:flex; justify-content:space-between; font-size:13px;"><span>WhatsApp :</span> <strong>${stats30.wa}</strong></div>
-            <div style="border-top:1px solid #e2e8f0; margin-top:12px; padding-top:10px;">
-              <p style="font-weight:bold; font-size:13px; color:#1e40af;">📊 90 derniers jours</p>
-              <div style="display:flex; justify-content:space-between; font-size:12px;"><span>Vues :</span> <strong>${stats90.views}</strong></div>
-            </div>
-            <div style="border-top:1px solid #e2e8f0; margin-top:12px; padding-top:10px;">
-              <p style="font-weight:bold; font-size:13px; color:#1e40af;">📊 Total</p>
-              <div style="display:flex; justify-content:space-between; font-size:12px;"><span>Vues :</span> <strong>${statsAll.views}</strong></div>
-            </div>
-          </div>
-
-          <div style="margin-top: 16px; padding: 16px; background: #fffbeb; border-radius: 12px; border: 1px solid #fde68a;">
-            <form action="/mon-espace-pro/conges" method="POST" style="margin:0;">
-              <label style="margin-top:0; font-size:12px;">M'absent jusqu'au :</label>
-              <input type="date" name="unavailable_until" value="${proConnected.pro.unavailable_until ? new Date(proConnected.pro.unavailable_until).toISOString().split('T')[0] : ''}" style="padding:8px; margin-bottom:8px;">
-              <button type="submit" class="warning" style="width: 100%; padding:8px; font-size:13px;">Enregistrer congés</button>
-            </form>
-          </div>
-
-          <div class="actions" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-            <a class="button secondary" href="/mon-espace-pro/modifier-profil">✏️ Modifier profil</a>
-            <a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a>
-            <a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a>
-          </div>
-        </section>
-        
-        <section class="card">
-          <h2 style="font-size:20px; margin-bottom:16px;">🎁 Parrainage</h2>
-          <div style="background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb; margin-bottom:12px;">
-            <p style="font-size: 12px; color: #6b7280;">Votre code : <strong>${proConnected.pro.referral_code || 'En attente'}</strong></p>
-          </div>
-          <div style="background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb; text-align: center; margin-bottom: 12px;">
-            <div style="font-size: 12px; color: #6b7280;">Solde disponible</div>
-            <div style="font-size: 28px; font-weight: 800; color: #059669;">${proConnected.pro.referral_balance || 0} FCFA</div>
-          </div>
-          <form action="/mon-espace-pro/demander-retrait" method="POST" style="margin:0; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
-            <label style="font-size:12px;">Numéro Mobile Money</label>
-            <input name="phone_number" required pattern="01[0-9]{8}" style="padding:8px; margin-bottom:8px;">
-            <label style="font-size:12px;">Montant (min. 1000 F)</label>
-            <input name="amount" type="number" min="1000" max="${proConnected.pro.referral_balance || 0}" required style="padding:8px; margin-bottom:8px;">
-            <button type="submit" class="success" style="width: 100%; padding:8px; font-size:13px;">Demander le retrait</button>
-          </form>
-        </section>
+      <div class="actions" style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+        <a class="button secondary" href="/mon-espace-pro/modifier-profil">✏️ Modifier profil</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-telephone">👁️ Visibilité</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a>
+        <a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a>
       </div>
+    </section>
+    
+    <section class="card">
+      <h2 style="font-size:20px; margin-bottom:16px;">🎁 Parrainage</h2>
+      <p style="font-size: 14px; margin-bottom: 12px;">Invitez un pro et gagnez <strong>100 FCFA</strong> dès qu'il paie son inscription.</p>
       
-      <section class="card" style="margin-top:20px;">
-        <h2 style="font-size:20px; margin-bottom:16px;">Mes offres (${offers.length})</h2>
-        ${offers.length > 0 ? offers.map(offer => `
-          <article class="card" style="box-shadow:none; border:1px solid #e5e7eb; margin-bottom:16px;">
-            <h2 style="font-size:18px;">${escapeHtml(offer.job_title)}</h2>
-            <p><span class="badge badge-${offer.status}">${offer.status}</span></p>
-            <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-              ${offer.status === "approved" ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="margin:0;"><button class="warning" type="submit" style="padding:6px 12px; font-size:12px;">🔒 Cloturer</button></form>` : ""}
-              ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="margin:0;"><button class="success" type="submit" style="padding:6px 12px; font-size:12px;">🔓 Rouvrir</button></form>` : ""}
-              <a class="button secondary" href="/mon-espace-pro/offre/${offer.id}/modifier" style="padding:6px 12px; font-size:12px; margin:0;">✏️ Modifier</a>
-              <form action="/mon-espace-pro/offre/${offer.id}/supprimer" method="POST" style="margin:0;"><button class="danger" type="submit" style="padding:6px 12px; font-size:12px;">🗑️ Supprimer</button></form>
-            </div>
-          </article>
-        `).join("") : `<p class="muted">Aucune offre.</p>`}
-      </section>
+      <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; border:1px solid #e5e7eb;">
+        <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Votre code de parrainage :</p>
+        <div style="font-size: 24px; font-weight: 800; font-family: monospace; color: #059669;">${proConnected.pro.referral_code || 'En attente...'}</div>
+      </div>
 
-      <!-- SECTION RGPD -->
-      <section class="card" style="margin-top:20px;">
-        <h2 style="font-size:20px; margin-bottom:16px;">RGPD & Confidentialité</h2>
-        ${pendingDeletion ? `<div class="alert alert-warning"><strong>Suppression de compte en cours.</strong> Votre demande est en attente de traitement. Vous pouvez encore l'annuler.<form action="/mon-espace-pro/annuler-suppression" method="POST" style="margin-top:10px;"><button class="secondary" type="submit" style="margin:0;">Annuler la demande de suppression</button></form></div>` : ""}
-        <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Télécharger mes données</a>
-          ${pendingDeletion ? "" : `<form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
-            <button class="danger" type="submit" onclick="return confirm('⚠️ ATTENTION : Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')">🗑️ Supprimer mon compte</button>
-          </form>`}
+      <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; border:1px solid #e5e7eb;">
+        <p style="font-size: 12px; color: #6b7280; margin-bottom: 4px;">Votre lien de parrainage :</p>
+        <div style="display: flex; gap: 8px;">
+          <input id="referral-link" readonly value="${APP_URL}/devenir-professionnel?ref=${proConnected.pro.referral_code || ''}" style="width:100%; padding:8px; font-size:12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px;">
+          <button type="button" onclick="copyRefLink()" style="margin:0; padding:8px 12px; font-size:12px; border-radius:6px; background:#10b981; color:white; white-space:nowrap;">📋 Copier</button>
         </div>
-        ${gdprRequests.map(req => `<article class="card" style="padding:16px; margin-bottom:10px;"><p><span class="badge badge-${req.status}">${req.status}</span> <strong>${req.request_type}</strong></p></article>`).join("")}
-      </section>
-    `, proConnected));
-  });
+      </div>
+
+      <div style="background: white; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 12px; border:1px solid #e5e7eb;">
+        <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Solde disponible</div>
+        <div style="font-size: 28px; font-weight: 800; color: #059669;">${proConnected.pro.referral_balance || 0} FCFA</div>
+      </div>
+
+      <form action="/mon-espace-pro/demander-retrait" method="POST" style="margin:0; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
+        <label style="margin-top:0; font-size:12px;">Numéro Mobile Money</label>
+        <input name="phone_number" required maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" style="padding:8px; margin-bottom:8px;">
+        <label style="margin-top:0; font-size:12px;">Montant à retirer (min. 1000 F)</label>
+        <input name="amount" type="number" min="1000" max="${proConnected.pro.referral_balance || 0}" required style="padding:8px; margin-bottom:8px;">
+        <button type="submit" class="success" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Demander le retrait</button>
+      </form>
+    </section>
+  </div>
+  
+  <section class="card" style="margin-top:20px;">
+    <h2 style="font-size:20px; margin-bottom:16px;">Mes offres (${offers.length})</h2>
+    ${offers.length > 0 ? offers.map(offer => `
+      <article class="card" style="box-shadow:none; border:1px solid #e5e7eb; margin-bottom:16px;">
+        <h2 style="font-size:18px;">${escapeHtml(offer.job_title)}</h2>
+        <p><span class="badge badge-${offer.status}">${offer.status}</span></p>
+        <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+          ${offer.status === "approved" ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="margin:0;"><button class="warning" type="submit" style="padding:6px 12px; font-size:12px;">🔒 Cloturer</button></form>` : ""}
+          ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="margin:0;"><button class="success" type="submit" style="padding:6px 12px; font-size:12px;">🔓 Rouvrir</button></form>` : ""}
+          <a class="button secondary" href="/mon-espace-pro/offre/${offer.id}/modifier" style="padding:6px 12px; font-size:12px; margin:0;">✏️ Modifier</a>
+          <form action="/mon-espace-pro/offre/${offer.id}/supprimer" method="POST" style="margin:0;"><button class="danger" type="submit" style="padding:6px 12px; font-size:12px;">🗑️ Supprimer</button></form>
+        </div>
+      </article>
+    `).join("") : `<p class="muted">Aucune offre.</p>`}
+  </section>
+
+  <section class="card" style="margin-top:20px;">
+    <h2 style="font-size:20px; margin-bottom:16px;">RGPD & Confidentialité</h2>
+    <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Télécharger mes données</a>
+      <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
+        <button class="danger" type="submit" onclick="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')">🗑️ Supprimer mon compte</button>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    function copyRefLink() {
+      const copyText = document.getElementById("referral-link");
+      copyText.select();
+      copyText.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(copyText.value).then(function() {
+        alert("✅ Lien copié ! Vous pouvez le coller sur WhatsApp.");
+      }).catch(function() {
+        alert("❌ Impossible de copier. Veuillez le faire manuellement.");
+      });
+    }
+  </script>
+`, proConnected));
 
   router.post("/conges", async (req, res) => {
     const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
