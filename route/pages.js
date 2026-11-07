@@ -265,5 +265,85 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
   `;
   res.send(page("Conditions Générales", content, proConnected));
 });
+  
+// PAGES LÉGALES
+router.get("/mentions-legales", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
+      <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold;">Mentions légales</h1>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Déclaration à l'APDP</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Conformément à la loi 2017-20 portant code du numérique en République du Bénin (Livre 5ième relatif à la protection des données personnelles et de la vie privée), le site a fait l'objet d'une déclaration auprès de l'Autorité de Protection des Données Personnelles (<a href="https://www.apdp.bj" target="_blank" style="color: #2563eb; text-decoration: underline;">www.apdp.bj</a>) sous le numéro 
+        <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[ Numéro de récépissé en cours d'attribution ]</span>.
+      </p>
+      <p style="margin-bottom: 16px; color: #374151;">
+        En tout état de cause <strong>ADK SERVICES</strong> collecte des informations personnelles relatives à l'utilisateur que pour le besoin de certains services proposés par le site <strong>trouvemoi.bj</strong>. L'utilisateur fournit ces informations en toute connaissance de cause, notamment lorsqu'il procède par lui-même à leur saisie. Conformément aux dispositions de la loi 2017-20 portant code du numérique en République du Bénin, tout utilisateur dispose d'un droit d'accès, de rectification et d'opposition aux données personnelles le concernant, en effectuant sa demande écrite et signée, accompagnée d'une copie du titre d'identité avec signature du titulaire de la pièce, en précisant l'adresse à laquelle la réponse doit être envoyée. Aucune information personnelle de l'utilisateur du site <strong>trouvemoi.bj</strong> n'est publiée à l'insu de l'utilisateur, échangée, transférée, cédée ou vendue sur un support quelconque à des tiers.
+      </p>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Droit d'accès</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        En application de cette loi, les internautes disposent d'un droit d'accès, de rectification, de modification et de suppression concernant les données qui les concernent personnellement. Ce droit peut être exercé par voie postale auprès de <strong>ADK SERVICES</strong> ou par voie électronique à l'adresse email suivante : <strong>contact@trouvemoi.bj</strong>. Les informations personnelles collectées ne sont en aucun cas confiées à des tiers.
+      </p>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Confidentialité</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Vos données personnelles sont confidentielles et ne seront en aucun cas communiquées à des tiers.
+      </p>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Propriété intellectuelle</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Tout le contenu du présent site, incluant, de façon non limitative, les graphismes, images, textes, vidéos, animations, sons, logos, gifs et icônes ainsi que leur mise en forme sont la propriété exclusive de <strong>ADK SERVICES</strong> à l'exception des marques, logos ou contenus appartenant à d'autres sociétés partenaires ou auteurs.
+      </p>
+      <p style="margin-bottom: 16px; color: #374151;">
+        Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de <strong>ADK SERVICES</strong>.
+      </p>
+      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Conditions de service</h2>
+      <p style="margin-bottom: 16px; color: #374151;">
+        L'utilisation de la plateforme <strong>TrouveMoi</strong> implique l'acceptation pleine et entière des présentes conditions. Les professionnels s'engagent à fournir des informations exactes notamment lors de la vérification d'identité (KYC) et à traiter les clients avec respect. Les clients s'engagent à ne pas utiliser la plateforme à des fins frauduleuses. <strong>TrouveMoi</strong> se réserve le droit de suspendre ou supprimer tout compte ne respectant pas ces règles, ou dont le dossier KYC s'avérerait falsifié. <strong>TrouveMoi</strong> agit en tant qu'intermédiaire technique de mise en relation et ne peut être tenu responsable des litiges commerciaux entre clients et professionnels.
+      </p>
+      <div style="margin-top: 40px; text-align: center;" class="no-print">
+        <button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button>
+        <br>
+        <a href="/" class="button secondary">← Retour à l'accueil</a>
+      </div>
+    </section>
+  `;
+  res.send(page("Mentions Légales", content, proConnected));
+});
+
+router.get("/conditions", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const content = `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
+      <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
+      <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Site web : www.trouvemoi.bj<br>Structure : ADK Services<br>Dernière mise à jour : 26/10/2026</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 1 : Objet</h2>
+      <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme TrouveMoi. TrouveMoi est une plateforme numérique de mise en relation entre des clients et des professionnels (artisans, prestataires de services, etc.) au Bénin. TrouveMoi agit en tant qu'intermédiaire technique et ne fournit pas directement les services proposés par les professionnels.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 2 : Accès au service</h2>
+      <p>L'accès à la plateforme est gratuit pour les clients qui souhaitent consulter les profils des professionnels. Pour les professionnels, l'inscription est soumise au paiement de frais d'inscription et à la validation de leur dossier (KYC) par l'équipe d'ADK Services. L'inscription ne devient effective qu'après validation du profil par l'administrateur.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 3 : Obligations des Utilisateurs (Clients)</h2>
+      <p>En utilisant le site, le client s'engage à :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Ne pas utiliser la plateforme à des fins frauduleuses ou illégales.</li><li>Ne pas usurper l'identité d'un tiers.</li><li>Faire preuve de prudence : TrouveMoi rappelle qu'il est fortement déconseillé de payer un professionnel avant de l'avoir rencontré physiquement et d'avoir évalué le travail.</li><li>Respecter les professionnels contactés.</li></ul>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 4 : Obligations des Professionnels</h2>
+      <p>En s'inscrivant, le professionnel s'engage à :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Fournir des informations exactes et véridiques lors de son inscription (nom légal, NPI, téléphone, adresse).</li><li>Fournir des documents d'identité authentiques pour la vérification KYC. Toute tentative de fraude ou d'usurpation d'identité entraînera le rejet définitif du dossier sans remboursement.</li><li>Ne pas créer de faux profils ou de faux avis.</li><li>Réaliser les prestations promises auprès des clients avec professionnalisme et dans le respect des lois béninoises.</li></ul>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 5 : Responsabilité de la plateforme</h2>
+      <p>ADK Services met tout en œuvre pour vérifier l'identité des professionnels via le processus KYC. Cependant, TrouveMoi ne peut être tenu responsable :</p>
+      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>De la qualité, de la sécurité ou de la légalité des services fournis par les professionnels.</li><li>Des litiges financiers ou commerciaux pouvant survenir entre un client et un professionnel.</li><li>Des dommages directs ou indirects résultant de l'utilisation des coordonnées fournies sur la plateforme.</li></ul>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 6 : Avis des clients</h2>
+      <p>Les clients ayant contacté un professionnel via la plateforme peuvent laisser un avis. ADK Services se réserve le droit de modérer, de masquer ou de supprimer tout avis contenant des propos injurieux, diffamatoires, ou ne respectant pas la charte de la plateforme.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 7 : Propriété Intellectuelle</h2>
+      <p>Le code source, la structure, les logos, les textes et les graphismes de la plateforme TrouveMoi sont la propriété exclusive d'ADK Services. Toute reproduction ou utilisation non autorisée est strictement interdite.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 8 : Protection des Données Personnelles</h2>
+      <p>Dans le cadre de l'utilisation de la plateforme, des données personnelles sont collectées (Nom, Téléphone, NPI, Photos). Le traitement de ces données est détaillé dans notre Politique de Confidentialité, accessible sur le site, et est conforme au Code du Numérique en République du Bénin et aux directives de l'APDP.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 9 : Suspension et Résiliation</h2>
+      <p>ADK Services se réserve le droit de suspendre ou de supprimer définitivement le compte d'un utilisateur (client ou professionnel) en cas de non-respect des présentes CGU, de comportement frauduleux, de fausses déclarations, ou de non-paiement des frais d'abonnement ou d'inscription.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 10 : Modification des CGU</h2>
+      <p>ADK Services se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés de toute modification majeure par une notification sur le site.</p>
+      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 11 : Droit applicable et Juridiction</h2>
+      <p>Les présentes CGU sont soumises au droit béninois. En cas de litige, et à défaut de résolution amiable, les tribunaux de Cotonou (Bénin) seront seuls compétents.</p>
+      <div style="margin-top: 40px; text-align: center;"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
+    </section>
+  `;
+  res.send(page("Conditions Générales", content, proConnected));
+});
   return router;
 };
