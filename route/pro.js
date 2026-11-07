@@ -121,6 +121,18 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
             <input name="amount" type="number" min="1000" max="${proConnected.pro.referral_balance || 0}" required style="padding:8px; margin-bottom:8px;">
             <button type="submit" class="success" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Demander le retrait</button>
           </form>
+          ${withdrawals.length > 0 ? `
+<div style="margin-top: 16px; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
+  <p style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color:#374151;">Historique des retraits</p>
+  ${withdrawals.map(w => `
+    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+      <span>${new Date(w.created_at).toLocaleDateString("fr-FR")} - <strong>${w.amount} FCFA</strong></span>
+      <span class="badge" style="background:${w.status === 'pending' ? '#fef3c7' : w.status === 'rejected' ? '#fee2e2' : '#d1fae5'}; color:${w.status === 'pending' ? '#92400e' : w.status === 'rejected' ? '#991b1b' : '#065f46'}; font-size:10px;">
+        ${w.status === 'pending' ? 'En attente' : w.status === 'rejected' ? 'Refusé (recrédité)' : 'Payé'}
+      </span>
+    </div>
+  `).join("")}
+</div>` : ""}
         </section>
       </div>
       
