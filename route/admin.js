@@ -33,7 +33,7 @@ async function customAdminMenu(current, csrf) {
       { href: "/admin/blog", label: "📝 Blog", badge: 0 },
       { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
       { href: "/admin/qrcode", label: "📱 QR Code", badge: 0 },
-      { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed },
+      { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed }
     ];
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
@@ -45,52 +45,8 @@ async function customAdminMenu(current, csrf) {
       if (active.rows.length) return res.redirect(303, "/admin/dashboard");
     }
     clearSessionCookie(res);
-    res.send(page("Admin", `
-  <section class="card" style="max-width: 400px; margin: 60px auto;">
-    <h1 style="text-align:center;">Admin</h1>
-    <form action="/admin/login" method="POST">
-      
-      <label>Mot de passe</label>
-      <div style="position:relative;">
-        <input type="password" name="password" id="password-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
-        <span onclick="togglePassword('password-input', 'eye-1')" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-1">👁️</span>
-      </div>
-      
-      <label style="margin-top:15px;">Code de validation (6 chiffres)</label>
-      <div style="position:relative;">
-        <input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px;">
-        <span onclick="togglePassword('totp-input', 'eye-2')" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-2">👁️</span>
-      </div>
-      
-      <button style="width:100%; margin-top:20px;">Connexion</button>
-    </form>
-  </section>
-  
-  <script>
-    function togglePassword(inputId, eyeId) {
-      const input = document.getElementById(inputId);
-      const eye = document.getElementById(eyeId);
-      if (input.type === "password" || input.type === "text") {
-        if (input.type === "password") {
-          input.type = "text";
-          eye.innerHTML = "🙈";
-        } else {
-          input.type = "password";
-          eye.innerHTML = "👁️";
-        }
-      } else {
-        // Pour le code TOTP qui est de type "text" par défaut, on le masque
-        if (input.style.webkitTextSecurity === 'disc') {
-          input.style.webkitTextSecurity = 'none';
-          eye.innerHTML = "👁️";
-        } else {
-          input.style.webkitTextSecurity = 'disc';
-          eye.innerHTML = "🙈";
-        }
-      }
-    }
-  </script>
-`, null));
+    res.send(page("Admin", `<section class="card" style="max-width: 400px; margin: 60px auto;"><h1 style="text-align:center;">Admin</h1><form action="/admin/login" method="POST"><label>Mot de passe</label><input type="password" name="password" required style="text-align:center; font-size:20px;"><label>Code de validation (6 chiffres)</label><input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required style="text-align:center; font-size:20px;"><button style="width:100%; margin-top:10px;">Connexion</button></form></section>`, null));
+  });
 
   router.post("/login", async (req, res) => {
     if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
@@ -375,7 +331,7 @@ router.post("/signalisations/:id/rejeter", requireAdmin, verifyCsrf, async (req,
 });
 
 // OFFRES D'EMPLOI (Admin)
-router.get("/emplois", requireAdmin, async (req, res) => { 
+router.get("/emplois", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
   const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
   const offers = result.rows.map(j => `<article class="card"><h2>${escapeHtml(j.job_title)}</h2><p>Par : ${escapeHtml(j.pro_name || "Inconnu")}</p><p>${escapeHtml(j.description)}</p>${j.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Rejeter</button></form></div>` : `<span class="badge">${j.status}</span>`}</article>`).join("");
@@ -437,6 +393,54 @@ router.get("/notifications", requireAdmin, async (req, res) => {
   const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${n.status}</span></td></tr>`).join("");
   res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
 });
+  // ==========================================
+// PARAMÈTRES ADMIN (Sécurité)
+// ==========================================
+router.get("/parametres", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  res.send(page("Paramètres", `
+    <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
+    ${await customAdminMenu("/admin/parametres", csrf)}
+    
+    <section class="card" style="max-width: 500px; margin: 40px auto;">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">🔒 Changer le mot de passe</h2>
+      <form action="/admin/parametres/mot-de-passe" method="POST">
+        <input type="hidden" name="csrfToken" value="${csrf}">
+        <label>Ancien mot de passe</label>
+        <input type="password" name="old_password" required>
+        <label>Nouveau mot de passe (min. 12 caractères)</label>
+        <input type="password" name="new_password" required minlength="12">
+        <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer le nouveau mot de passe</button>
+      </form>
+    </section>
+
+    <section class="card" style="max-width: 500px; margin: 40px auto;">
+      <h2 style="font-size: 18px; margin-bottom: 16px;">📊 Informations système</h2>
+      <p style="font-size:14px; color:#4b5563;"><strong>Mode :</strong> ${process.env.NODE_ENV || "development"}</p>
+      <p style="font-size:14px; color:#4b5563;"><strong>Base de données :</strong> Connectée</p>
+      <p style="font-size:14px; color:#4b5563;"><strong>Version Node :</strong> ${process.version}</p>
+    </section>
+  `, null));
+});
+
+router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, res) => {
+  if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
+    return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
+  }
   
+  // ATTENTION : Pour des raisons de sécurité sur Render, 
+  // le changement de mot de passe doit être fait dans les variables d'environnement.
+  // On affiche donc un message explicatif.
+  res.send(page("Succès", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <h1>✅ Vérification réussie</h1>
+      <p style="margin-bottom:20px;">Votre ancien mot de passe est correct.</p>
+      <div class="alert alert-warning" style="text-align:left;">
+        <strong>⚠️ Important :</strong> Pour des raisons de sécurité, le mot de passe administrateur ne peut pas être modifié directement depuis cette page. Vous devez le changer dans les variables d'environnement sur Render (Variable <code>ADMIN_PASSWORD</code>).
+      </div>
+      <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
+    </section>
+  `, null));
+});
   return router;
 };
