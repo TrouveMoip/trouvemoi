@@ -186,8 +186,12 @@ if (c.status === 'approved' && c.pro_code) {
           </form>
         </div>`;
     } else {
-      actionButtons = `<div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}</div>${codeBlock
-      `;
+      actionButtons = `
+  <div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">
+    Statut actuel : ${c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status}
+  </div>
+  ${codeBlock}
+`;
     }
 
     return `
