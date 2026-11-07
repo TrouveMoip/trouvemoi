@@ -116,7 +116,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
           <form action="/mon-espace-pro/demander-retrait" method="POST" style="margin:0; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
             <label style="margin-top:0; font-size:12px;">Numéro Mobile Money</label>
-            <input name="phone_number" required maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" style="padding:8px; margin-bottom:8px;">
+            <input name="phone_number" required maxlength="30" placeholder="01XXXXXXXX" pattern="01[0-9]{8}" style="padding:8px; margin-bottom:8px;">
             <label style="margin-top:0; font-size:12px;">Montant à retirer (min. 1000 F)</label>
             <input name="amount" type="number" min="1000" max="${proConnected.pro.referral_balance || 0}" required style="padding:8px; margin-bottom:8px;">
             <button type="submit" class="success" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Demander le retrait</button>
