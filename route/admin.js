@@ -34,7 +34,7 @@ async function customAdminMenu(current, csrf) {
       { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
       { href: "/admin/qrcode", label: "📱 QR Code", badge: 0 },
       { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed }
-      { href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 }
+      { href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 },
     ];
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
