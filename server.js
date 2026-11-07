@@ -163,6 +163,19 @@ function page(title, content, proConnected, meta = {}) {
               <a href="/mon-espace-pro">Espace pro</a>
               <a href="/contact">Contact</a>
             </div>
+            <div class="mobile-menu">
+  <div class="main-links">
+    <a href="/">Professionnels</a>
+    <a href="/emplois">Emploi</a>
+    <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
+  </div>
+  <div id="mobile-dropdown" class="mobile-dropdown">
+    <a href="/devenir-professionnel">Devenir pro</a>
+    <a href="/mes-favoris">❤️ Favoris</a>
+    <a href="/mon-espace-pro">Espace pro</a>
+    <a href="/contact">Contact</a>
+  </div>
+</div>
           </nav>
         </div>
       </header>
