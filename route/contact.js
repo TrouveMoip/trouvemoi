@@ -55,7 +55,7 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
     if (!name || !email || !message) return res.redirect(303, "/contact");
 
     try {
-      await pool.query(
+      await pool.query( 
         `INSERT INTO contact_messages (name, email, phone, message, pro_id, report_id) VALUES ($1, $2, $3, $4, $5, $6)`,
         [name, email, phone || null, message, proId || null, reportId || null]
       );
