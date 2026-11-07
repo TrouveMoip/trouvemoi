@@ -191,10 +191,15 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
   });
 
-  router.get("/a-propos", async (req, res) => res.send(page("À propos", "<h1>À propos</h1>", await getConnectedPro(req))));
-  router.get("/partenariats", async (req, res) => res.send(page("Partenariats", "<h1>Partenariats</h1>", await getConnectedPro(req))));
-  router.get("/conditions", async (req, res) => {
+  router.get("/a-propos", async (req, res) => {
   const proConnected = await getConnectedPro(req);
+  res.send(page("À propos", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>À propos de TrouveMoi</h1><p>TrouveMoi est la première plateforme béninoise qui met en relation directe les clients avec des professionnels vérifiés de leur quartier.</p><p>Notre mission est de valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p></section>`, proConnected));
+});
+
+router.get("/partenariats", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à <strong>contact@trouvemoi.bj</strong>.</p></section>`, proConnected));
+});
   const content = `
     <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
       <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
@@ -458,6 +463,24 @@ router.get("/conditions", async (req, res) => {
     </section>
   `;
   res.send(page("Politique de Confidentialité", content, proConnected));
+});
+router.get("/blog", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req);
+    const articles = (await pool.query(`SELECT * FROM blog_posts WHERE published = true ORDER BY created_at DESC`)).rows;
+    const list = articles.map(a => `<article class="card" style="margin-bottom:20px;"><h2 style="font-size:20px;"><a href="/blog/${a.slug}" style="text-decoration:none; color:#1e40af;">${escapeHtml(a.title)}</a></h2><p class="muted" style="font-size:13px;">Publié le ${new Date(a.created_at).toLocaleDateString("fr-FR")}</p><p style="margin-top:10px; color:#4b5563;">${escapeHtml(a.content).slice(0, 200)}...</p></article>`).join("");
+    res.send(page("Blog", `<h1 style="text-align:center; margin-bottom:30px;">Le Blog de TrouveMoi</h1><div style="max-width:800px; margin:0 auto;">${list || '<p style="text-align:center; color:#6b7280; font-style:italic;">Aucun article pour le moment. Revenez bientôt !</p>'}</div>`, proConnected));
+  } catch (error) {
+    console.error("Erreur blog:", error.message);
+    res.status(500).send(page("Erreur", "<h2>Le blog est temporairement indisponible.</h2>", null));
+  }
+});
+
+router.get("/blog/:slug", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const article = (await pool.query(`SELECT * FROM blog_posts WHERE slug = $1 AND published = true`, [req.params.slug])).rows[0];
+  if (!article) return res.redirect(303, "/blog");
+  res.send(page(article.title, `<article class="card" style="max-width:800px; margin:40px auto;"><h1 style="font-size:28px;">${escapeHtml(article.title)}</h1><p class="muted" style="font-size:13px; margin-bottom:20px;">Publié le ${new Date(article.created_at).toLocaleDateString("fr-FR")}</p><div style="line-height:1.8; color:#374151;">${escapeHtml(article.content).replace(/\n/g, "<br>")}</div><p style="margin-top:30px;"><a href="/blog" style="color:#2563eb;">← Retour au blog</a></p></article>`, proConnected));
 });
   return router;
 };
