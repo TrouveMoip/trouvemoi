@@ -209,6 +209,9 @@ app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-ag
 app.get("/sitemap.xml", async (req, res) => { res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${APP_URL}/</loc></url></urlset>`); });
 app.get("/soutenir", async (req, res) => { res.send(page("Soutenir", "<h1>Faire un don</h1>", await getConnectedPro(req))); });
 app.get("/don/verifier", async (req, res) => { res.redirect(303, "/"); });
+app.use(express.urlencoded({ extended: true, limit: "20kb" }));
+app.use(express.json({ limit: "20kb" }));
+app.use(compression());
 
 // --- IMPORTATION DES ROUTES ---
 const pagesRoutes = require('./route/pages');
