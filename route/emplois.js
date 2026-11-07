@@ -60,15 +60,28 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const result = await pool.query(query, queryValues);
 
       const jobs = result.rows.map((job) => `
-        <article class="card">
-          <h2 style="color:#2563eb;">${escapeHtml(job.job_title)}</h2>
-          <p><span class="label">Entreprise :</span> ${escapeHtml(job.company_name)}</p>
-          <p><span class="label">Ville :</span> ${escapeHtml(job.city)}</p>
-          <p><span class="label">Contrat :</span> <span class="badge badge-processed">${escapeHtml(job.contract_type)}</span></p>
-          <p style="margin-top:16px;">${escapeHtml(job.description).replace(/\n/g, "<br>")}</p>
-          ${jobContactButtons(job)}
-        </article>
-      `).join("");
+  <article class="card" style="border-left: 4px solid #10b981; padding: 20px; margin-bottom: 16px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h2 style="font-size: 20px; color: #1e3a8a; margin-bottom: 4px;">${escapeHtml(job.job_title)}</h2>
+        <div style="font-size: 14px; font-weight: 600; color: #4b5563;">🏢 ${escapeHtml(job.company_name)}</div>
+      </div>
+      <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 12px; padding: 6px 12px;">${escapeHtml(job.contract_type)}</span>
+    </div>
+    
+    <div style="display:flex; gap:16px; font-size:13px; color:#6b7280; margin-top:12px;">
+      <span>📍 ${escapeHtml(job.city)}</span>
+    </div>
+    
+    <p style="margin-top: 12px; font-size: 14px; color: #374151; line-height: 1.6;">${escapeHtml(job.description).replace(/\n/g, "<br>").slice(0, 300)}...</p>
+    
+    <div style="display:flex; gap:10px; margin-top:16px; border-top:1px solid #e5e7eb; padding-top:16px;">
+      ${job.contact_phone ? `<a href="tel:+229${escapeHtml(cleanBeninPhone(job.contact_phone))}" class="button" style="background:#e0e7ff; color:#1e3a8a; font-size:13px; padding:8px 16px; margin:0;">📞 Appeler</a>` : ""}
+      ${job.contact_whatsapp ? `<a href="https://wa.me/229${escapeHtml(cleanBeninPhone(job.contact_whatsapp))}" target="_blank" class="button whatsapp" style="font-size:13px; padding:8px 16px; margin:0;">💬 WhatsApp</a>` : ""}
+      ${job.contact_email ? `<a href="mailto:${escapeHtml(job.contact_email)}" class="button secondary" style="font-size:13px; padding:8px 16px; margin:0;">✉️ E-mail</a>` : ""}
+    </div>
+  </article>
+`).join("");
 
       const paginationHtml = renderPagination(currentPage, totalPages, "/emplois", { keyword, city });
 
