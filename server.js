@@ -225,6 +225,16 @@ function page(title, content, proConnected, meta = {}) {
       <script>
         async function toggleFav(e, id) { e.preventDefault(); const btn = e.currentTarget; const res = await fetch('/api/favorite/' + id, { method: 'POST' }); const data = await res.json(); if (data.ok) { btn.style.opacity = data.isFav ? "1" : "0.5"; } }
       </script>
+      
+      <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => console.log('ServiceWorker enregistré avec succès'))
+        .catch(err => console.log('Erreur ServiceWorker:', err));
+    });
+  }
+</script>
     </body>
     </html>
   `;
