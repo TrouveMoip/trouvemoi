@@ -65,6 +65,46 @@ function page(title, content, proConnected, meta = {}) {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${escapeHtml(pageTitle)}</title>
       <link rel="manifest" href="/manifest.json">
+      <script>
+      
+  (function () {
+    var GA_ID = "G-6YQ5R6M4ET";
+    function loadAnalytics() {
+      if (window.__tmGaLoaded) return;
+      window.__tmGaLoaded = true;
+      var tag = document.createElement("script");
+      tag.async = true;
+      tag.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+      document.head.appendChild(tag);
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { window.dataLayer.push(arguments); }
+      window.gtag = gtag;
+      gtag("js", new Date());
+      gtag("config", GA_ID);
+    }
+    var consent = localStorage.getItem("tm_analytics_consent");
+    if (consent === "yes") { loadAnalytics(); return; }
+    if (consent === "no") return;
+    document.addEventListener("DOMContentLoaded", function () {
+      var bar = document.createElement("div");
+      bar.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#111827;color:#fff;padding:14px 20px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:14px;";
+      var text = document.createElement("span");
+      text.textContent = "Nous utilisons des cookies de mesure d'audience pour améliorer le site.";
+      var accept = document.createElement("button");
+      accept.textContent = "Accepter";
+      accept.style.cssText = "background:#10b981;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;";
+      var refuse = document.createElement("button");
+      refuse.textContent = "Refuser";
+      refuse.style.cssText = "background:#374151;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;";
+      accept.onclick = function () { localStorage.setItem("tm_analytics_consent", "yes"); bar.remove(); loadAnalytics(); };
+      refuse.onclick = function () { localStorage.setItem("tm_analytics_consent", "no"); bar.remove(); };
+      bar.appendChild(text);
+      bar.appendChild(accept);
+      bar.appendChild(refuse);
+      document.body.appendChild(bar);
+    });
+  })();
+</script>
       <meta name="theme-color" content="#1e40af">
       ${canonicalUrl ? `<link rel="canonical" href="${escapeHtml(canonicalUrl)}">` : ""}
       <style>
