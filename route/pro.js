@@ -301,5 +301,30 @@ router.post("/modifier-telephone", async (req, res) => {
   await pool.query(`UPDATE professional_applications SET phone_public = $1 WHERE id = $2`, [req.body.phone_public === "yes", proConnected.pro.id]);
   res.redirect(303, "/mon-espace-pro");
 });
+  router.get("/pro/:id/avis", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const id = Number(req.params.id);
+  const result = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+  if (!result.rows.length) return res.redirect(303, "/");
+  const person = result.rows[0];
+  res.send(page("Avis", `
+    <section class="card" style="max-width: 600px; margin: 40px auto;">
+      <h1 style="text-align:center;">Laisser un avis</h1>
+      <form action="/pro/${person.id}/avis" method="POST">
+        <label>Votre nom *</label><input name="author_name" required maxlength="100">
+        <label>Note *</label>
+        <div class="star-rating-input">
+          <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
+          <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
+          <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
+          <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
+          <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
+        </div>
+        <label>Commentaire</label><textarea name="comment" rows="4" maxlength="3000"></textarea>
+        <button type="submit">Envoyer</button>
+      </form>
+    </section>
+  `, proConnected));
+});
   return router;
 };
