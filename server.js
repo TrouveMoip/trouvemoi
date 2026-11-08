@@ -56,7 +56,49 @@ function generateProCode() { return `TM${crypto.randomInt(10000000, 100000000)}`
 async function generateUniqueProCode() { let code, exists = true, attempts = 0; while (exists && attempts < 20) { code = generateProCode(); exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0; attempts++; } return code; }
 async function requireAdmin(req, res, next) { const session = verifySessionToken(readCookie(req, SESSION_COOKIE)); if (!session || typeof session.jti !== "string") { clearSessionCookie(res); return res.redirect(303, "/admin"); } try { const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]); if (!active.rows.length) { clearSessionCookie(res); return res.redirect(303, "/admin"); } } catch (error) { return res.status(503).send("Erreur"); } req.adminSession = session; next(); }
 function verifyCsrf(req, res, next) { const csrf = req.adminSession?.csrf; if (!csrf || !req.body.csrfToken || !safeEqual(req.body.csrfToken, csrf)) { return res.status(403).send("Erreur CSRF"); } next(); }
-function verifyTotp(secret, token) { return true; }
+function verifyTotp(secret, token) {
+  if (!secret || !token) return false;
+  try {
+    // Décodage Base32 du secret
+    const base32chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    let bits = "";
+    const cleanSecret = secret.toUpperCase().replace(/=+$/, "");
+    for (let i = 0; i < cleanSecret.length; i++) {
+      const val = base32chars.indexOf(cleanSecret.charAt(i));
+      if (val === -1) throw new Error("Secret invalide");
+      bits += val.toString(2).padStart(5, "0");
+    }
+    const secretBuffer = Buffer.alloc(Math.floor(bits.length / 8));
+    for (let i = 0; i < secretBuffer.length; i++) {
+      secretBuffer[i] = parseInt(bits.slice(i * 8, i * 8 + 8), 2);
+    }
+
+    // Vérification du code TOTP (fenêtre de 30 secondes)
+    const epoch = Math.floor(Date.now() / 1000);
+    const counter = Math.floor(epoch / 30);
+    
+    const buffer = Buffer.alloc(8);
+    buffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+    buffer.writeUInt32BE(counter % 0x100000000, 4);
+
+    const hmac = crypto.createHmac("sha1", secretBuffer);
+    hmac.update(buffer);
+    const hmacResult = hmac.digest();
+
+    const offset = hmacResult[hmacResult.length - 1] & 0xf;
+    const code = (
+      ((hmacResult[offset] & 0x7f) << 24) |
+      ((hmacResult[offset + 1] & 0xff) << 16) |
+      ((hmacResult[offset + 2] & 0xff) << 8) |
+      (hmacResult[offset + 3] & 0xff)
+    ) % 1000000;
+
+    const validCode = code.toString().padStart(6, "0");
+    return safeEqual(validCode, token);
+  } catch (e) {
+    return false;
+  }
+}
 async function verifyKkiapayTransaction(transactionId) { try { const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": process.env.KKIAPAY_PUBLIC_KEY, "x-private-key": process.env.KKIAPAY_PRIVATE_KEY }, body: JSON.stringify({ transactionId }) }); if (!res.ok) return { success: false }; const data = await res.json(); return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.data || data.reference }; } catch (e) { return { success: false }; } }
 async function settlePayment({ dossierId, transactionId, amount, method, source }) {
   const client = await pool.connect();
