@@ -533,5 +533,19 @@ router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, re
     </section>
   `, null));
 });
+  router.get("/retraits", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`SELECT w.*, p.full_name, p.pro_code FROM withdrawal_requests w JOIN professional_applications p ON p.id = w.pro_id ORDER BY CASE WHEN w.status = 'pending' THEN 0 ELSE 1 END, w.created_at DESC`);
+  const rows = result.rows.map(w => `
+    <article class="card" style="margin-bottom:20px;">
+      <h2>${escapeHtml(w.full_name)} (${escapeHtml(w.pro_code)})</h2>
+      <p><strong>Montant :</strong> ${w.amount} FCFA</p>
+      <p><strong>Numéro :</strong> ${escapeHtml(w.phone_number)}</p>
+      <p><strong>Statut :</strong> ${w.status}</p>
+      ${w.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/retraits/${w.id}/approuver" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Approuver</button></form><form action="/admin/retraits/${w.id}/rejeter" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Rejeter</button></form></div>` : ""}
+    </article>
+  `).join("");
+  res.send(page("Retraits", `<h1>Retraits</h1>${await customAdminMenu("/admin/retraits", csrf)}${rows || "<p>Aucune demande.</p>"}`, null));
+});
   return router;
 };
