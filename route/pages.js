@@ -738,5 +738,63 @@ router.post("/api/track/:id/:type", async (req, res) => {
     res.json({ ok: false }); 
   }
 });
+  // ==========================================
+// ROUTES AJOUTÉES POUR RÉPARER LES BUGS
+// ==========================================
+
+// 1. Déconnexion du compte client
+router.get("/mon-compte/deconnexion", (req, res) => {
+  res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+  res.redirect(303, "/mon-compte");
+});
+
+// 2. API pour remplir la liste des quartiers (formulaire pro)
+router.get("/api/neighborhoods", async (req, res) => {
+  try {
+    const city = String(req.query.city || "").trim();
+    if (!city) return res.json({ neighborhoods: [] });
+    
+    // On cherche les quartiers existants en base pour cette ville
+    const result = await pool.query(
+      `SELECT DISTINCT neighborhood FROM professional_applications WHERE city = $1 AND neighborhood IS NOT NULL AND neighborhood != '' ORDER BY neighborhood ASC LIMIT 50`, 
+      [city]
+    );
+    
+    const neighborhoods = result.rows.map(r => r.neighborhood);
+    res.json({ neighborhoods });
+  } catch (e) {
+    res.json({ neighborhoods: [] });
+  }
+});
+
+// 3. Formulaire de demande de retrait (Espace Pro)
+router.post("/mon-espace-pro/demander-retrait", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const amount = Number(req.body.amount);
+  const phoneNumber = cleanBeninPhone(req.body.phone_number);
+
+  // Sécurité : on vérifie que le montant est valide et qu'il y a assez d'argent
+  if (!phoneNumber || isNaN(amount) || amount < 1000) {
+    return res.status(400).send(page("Erreur", "<h2>Montant ou numéro invalide (minimum 1000 FCFA).</h2>", proConnected));
+  }
+
+  if (amount > Number(proConnected.pro.referral_balance)) {
+    return res.status(400).send(page("Erreur", "<h2>Solde insuffisant.</h2>", proConnected));
+  }
+
+  try {
+    // 1. On déduit l'argent du solde du pro (pour éviter qu'il ne le dépense deux fois)
+    await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance - $1 WHERE id = $2`, [amount, proConnected.pro.id]);
+    
+    // 2. On enregistre la demande pour que l'admin la valide
+    await pool.query(`INSERT INTO withdrawal_requests (pro_id, amount, phone_number, status) VALUES ($1, $2, $3, 'pending')`, [proConnected.pro.id, amount, phoneNumber]);
+    
+    res.redirect(303, "/mon-espace-pro");
+  } catch (e) {
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2>", proConnected));
+  }
+});
   return router;
 };
