@@ -653,5 +653,65 @@ router.get("/pro/:id/avis", async (req, res) => {
     </section>
   `, proConnected));
 });
+  // ==========================================
+// ENREGISTREMENT D'UN AVIS (POST)
+// ==========================================
+router.post("/pro/:id/avis", async (req, res) => {
+  const ip = req.ip || "unknown";
+  if (!(await takeRateLimit(`review:${ip}`, 5, 60 * 60 * 1000))) {
+    return res.status(429).send(page("Trop de tentatives", "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p><a class='button' href='/'>Accueil</a></section>", null));
+  }
+
+  try {
+    const proId = Number(req.params.id);
+    const visitorId = getOrCreateVisitorId(req, res);
+    if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
+    
+    const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
+    if (!check.rows.length) return res.redirect(303, "/");
+
+    // On vérifie que le client a bien contacté le pro (via Appel/WhatsApp) ces 30 derniers jours
+    const contactProof = await pool.query(`
+      SELECT 1 FROM contact_events
+       WHERE pro_id = $1 AND visitor_id = $2 AND created_at >= NOW() - INTERVAL '30 days'
+       UNION ALL
+      SELECT 1 FROM pro_stats
+       WHERE pro_id = $1 AND last_visitor_id = $2
+         AND (phone_clicks > 0 OR wa_clicks > 0)
+         AND date >= CURRENT_DATE - INTERVAL '30 days'
+       LIMIT 1
+    `, [proId, visitorId]);
+    
+    if (contactProof.rows.length === 0) {
+      return res.status(403).send(page("Preuve de contact requise", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444;">🔒 Preuve de contact requise</h1><p>Pour garantir l'authenticité des avis, seuls les clients ayant contacté ce professionnel via TrouveMoi (Appel ou WhatsApp) dans les 30 derniers jours peuvent laisser un avis.</p><a class="button" href="/pro/${proId}" style="margin-top:20px;">Retour au profil</a></section>`, null));
+    }
+
+    const ratingNum = Number(req.body.rating);
+    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).send(page("Erreur", "<h2>Note invalide (1 a 5).</h2>", null));
+    }
+    const author = String(req.body.author_name || "").trim().slice(0, 100);
+    if (!author) return res.status(400).send(page("Erreur", "<h2>Nom requis.</h2>", null));
+    const comment = String(req.body.comment || "").slice(0, 3000);
+
+    const alreadyReviewed = await pool.query(`SELECT id FROM reviews WHERE pro_id = $1 AND visitor_id = $2 LIMIT 1`, [proId, visitorId]);
+    if (alreadyReviewed.rows.length) {
+      return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><p>Vous avez deja laisse un avis sur ce professionnel. Merci !</p><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
+    }
+
+    try {
+      await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status, visitor_id) VALUES ($1, $2, $3, $4, 'pending', $5)`, [proId, author, ratingNum, comment, visitorId]);
+    } catch (insertError) {
+      if (insertError.code === "23505") {
+        return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
+      }
+      throw insertError;
+    }
+
+    res.send(page("Succes", `<section class='card' style='text-align:center; max-width: 500px; margin: 40px auto;'><h1>Merci !</h1><p>Votre avis sera examine par notre equipe avant publication.</p><a class='button' href='/pro/${proId}'>Retour au profil</a></section>`, null));
+  } catch (e) { 
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
+  }
+});
   return router;
 };
