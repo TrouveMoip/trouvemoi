@@ -20,8 +20,21 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
   router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
-    if (!proConnected) return res.send(page("Espace pro", `<section class="card" style="max-width: 500px; margin: 40px auto;"><h1 style="text-align: center;">Espace pro</h1><form action="/mon-espace-pro/login" method="POST"><label>Code pro</label><input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;"><button type="submit" style="width: 100%;">Se connecter</button></form></section>`, null));
-
+   if (!proConnected) return res.send(page("Espace pro", `
+  <section class="card" style="max-width: 500px; margin: 40px auto;">
+    <h1 style="text-align: center;">Espace pro</h1>
+    <form action="/mon-espace-pro/login" method="POST">
+      <label>Code pro</label>
+      <input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;">
+      <button type="submit" style="width: 100%;">Se connecter</button>
+    </form>
+    
+    <!-- 👇 LE LIEN "CODE PERDU" EST ICI 👇 -->
+    <div style="text-align:center; margin-top:20px;">
+      <a href="/mon-espace-pro/reinitialiser" style="color:#ef4444; font-size:14px; text-decoration:none;">🔐 Code perdu ?</a>
+    </div>
+  </section>
+`, null));
     let offers = [], gdprRequests = [], myReviews = [], withdrawals = [];
     let stats30 = { views: 0, phone: 0, wa: 0 }, stats90 = { views: 0, phone: 0, wa: 0 }, statsAll = { views: 0, phone: 0, wa: 0 };
     
