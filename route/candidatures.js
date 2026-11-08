@@ -276,62 +276,59 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
   router.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
     const files = req.files || {};
-const { 
-  full_name, company_name, phone, npi, city, profession, service_description,
-  contact_preference, contact_email, whatsapp_number, experience, service_area, availability,
-  referred_by, type_lieu, adresse_exacte, latitude, longitude, phone_public
-} = req.body;
+    
+    const { 
+      full_name, company_name, phone, npi, city, profession, service_description,
+      contact_preference, contact_email, whatsapp_number, experience, service_area, availability,
+      referred_by, type_lieu, adresse_exacte, latitude, longitude, phone_public
+    } = req.body;
 
-// Gestion du quartier "Autre"
-const neighborhood = req.body.neighborhood === '__AUTRE__' ? req.body.neighborhood_other : req.body.neighborhood;
+    const neighborhood = req.body.neighborhood === '__AUTRE__' ? req.body.neighborhood_other : req.body.neighborhood;
 
-// Gestion des horaires d'ouverture
-const horaires = {};
-['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
-  if (!req.body[`h_${j}_ferme`]) {
-    const o = req.body[`h_${j}_o`];
-    const f = req.body[`h_${j}_f`];
-    if (o && f) horaires[j] = { o, f };
-  }
-});
-const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+    const horaires = {};
+    ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
+      if (!req.body[`h_${j}_ferme`]) {
+        const o = req.body[`h_${j}_o`];
+        const f = req.body[`h_${j}_f`];
+        if (o && f) horaires[j] = { o, f };
+      }
+    });
+    const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+    const lat = Number(latitude) || null;
+    const lng = Number(longitude) || null;
 
-// Validation des coordonnées GPS
-const lat = Number(latitude) || null;
-const lng = Number(longitude) || null;
+    try {
+      const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_${Date.now()}`);
+      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${Date.now()}`);
+      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${Date.now()}`);
+      
+      const trackingCode = `SUIVI-${Math.floor(Math.random() * 90000000) + 10000000}`;
+      
+      await pool.query(
+        `INSERT INTO professional_applications (
+          full_name, company_name, phone, phone_public, npi, city, neighborhood, profession, 
+          service_description, experience, service_area, availability, contact_preference, contact_email, whatsapp_number, 
+          referred_by, type_lieu, adresse_exacte, latitude, longitude, horaires_json,
+          photo_profil_url, photo_identite_url, photo_kyc_url, tracking_code, status, payment_status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
+        [
+          full_name, company_name || null, phone, phone_public === 'yes', npi, city, neighborhood || null, profession,
+          service_description, experience || null, service_area || null, availability || null, contact_preference, contact_email || null, whatsapp_number || null,
+          referred_by || null, type_lieu || 'ambulant', adresse_exacte || null, lat, lng, horaires_json,
+          p1.secure_url, p2.secure_url, p3.secure_url, trackingCode, 
+          BYPASS_PAYMENT ? 'pending' : 'payment_pending', 
+          BYPASS_PAYMENT ? 'paid' : 'unpaid'
+        ]
+      );
 
-try {
-  // 1. Upload des 3 photos sur Cloudinary
-  const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_${Date.now()}`);
-  const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${Date.now()}`);
-  const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${Date.now()}`);
-  
-  const trackingCode = `SUIVI-${Math.floor(Math.random() * 90000000) + 10000000}`;
-  
-  // 2. Enregistrement de TOUTES les infos dans la base de données
-  await pool.query(
-    `INSERT INTO professional_applications (
-      full_name, company_name, phone, phone_public, npi, city, neighborhood, profession, 
-      service_description, experience, service_area, availability, contact_preference, contact_email, whatsapp_number, 
-      referred_by, type_lieu, adresse_exacte, latitude, longitude, horaires_json,
-      photo_profil_url, photo_identite_url, photo_kyc_url, tracking_code, status, payment_status
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)`,
-    [
-      full_name, company_name || null, phone, phone_public === 'yes', npi, city, neighborhood || null, profession,
-      service_description, experience || null, service_area || null, availability || null, contact_preference, contact_email || null, whatsapp_number || null,
-      referred_by || null, type_lieu || 'ambulant', adresse_exacte || null, lat, lng, horaires_json,
-      p1.secure_url, p2.secure_url, p3.secure_url, trackingCode, 
-      BYPASS_PAYMENT ? 'pending' : 'payment_pending', 
-      BYPASS_PAYMENT ? 'paid' : 'unpaid'
-    ]
-  );
+      if (BYPASS_PAYMENT) return res.send(page("Succès", `<h1>Inscription validée (Mode Test)</h1><p>Code de suivi : ${trackingCode}</p><a href="/">Accueil</a>`, null));
+      
+      res.redirect(303, `/paiement/${trackingCode}`);
+    } catch (e) { 
+      console.error("Erreur d'enregistrement du pro :", e.message);
+      res.status(500).send(page("Erreur", "<h2>Erreur lors de l'enregistrement. Vérifiez que tous les champs sont bien remplis.</h2>", null)); 
+    }
+  });
 
-  if (BYPASS_PAYMENT) return res.send(page("Succès", `<h1>Inscription validée (Mode Test)</h1><p>Code de suivi : ${trackingCode}</p><a href="/">Accueil</a>`, null));
-  
-  res.redirect(303, `/paiement/${trackingCode}`);
-} catch (e) { 
-  console.error("Erreur d'enregistrement du pro :", e.message);
-  res.status(500).send(page("Erreur", "<h2>Erreur lors de l'enregistrement. Vérifiez que tous les champs sont bien remplis.</h2>", null)); 
-}
   return router;
 };
