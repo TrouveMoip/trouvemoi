@@ -471,7 +471,39 @@ app.get("/soutenir", async (req, res) => {
   `;
   res.send(page("Soutenir TrouveMoi", content, proConnected));
 });
-app.get("/don/verifier", async (req, res) => { res.redirect(303, "/"); });
+app.get("/don/verifier", async (req, res) => {
+  const transactionId = String(req.query.transaction_id || req.query.transactionId || "").trim();
+  if (!transactionId) return res.redirect(303, "/");
+
+  try {
+    // On demande à Kkiapay si le paiement est bien réel
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success) {
+      // On enregistre le don dans la base de données
+      await pool.query(
+        `INSERT INTO global_donations (amount, donor_name, transaction_id) VALUES ($1, $2, $3) ON CONFLICT (transaction_id) DO NOTHING`,
+        [verification.amount, "Donateur TrouveMoi", transactionId]
+      );
+
+      // On affiche un beau message de remerciement
+      return res.send(page("Merci !", `
+        <section class="card" style="text-align:center; margin:60px auto; max-width:500px;">
+          <h1 style="color:#10b981;">❤️ Merci infiniment !</h1>
+          <p>Votre don de <strong>${verification.amount} FCFA</strong> a bien été reçu.</p>
+          <p>Il nous aidera à améliorer TrouveMoi chaque jour.</p>
+          <a href="/" class="button success" style="margin-top:20px; width:100%;">Retour à l'accueil</a>
+        </section>
+      `, null));
+    }
+    
+    // Si la vérification échoue, on redirige
+    res.redirect(303, "/");
+  } catch (e) {
+    console.error("Erreur don :", e.message);
+    res.redirect(303, "/");
+  }
+});
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
@@ -520,6 +552,14 @@ await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT false`);
+    // --- CRÉATION DE LA TABLE POUR LES DONS ---
+await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
+    id SERIAL PRIMARY KEY, 
+    amount INTEGER, 
+    donor_name VARCHAR(255), 
+    transaction_id VARCHAR(255) UNIQUE, 
+    created_at TIMESTAMP DEFAULT NOW()
+)`);
 
 // --- CRÉATION DES TABLES MANQUANTES ---
 await pool.query(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
