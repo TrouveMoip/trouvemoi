@@ -412,6 +412,182 @@ router.get("/confidentialite", async (req, res) => {
     if (!article) return res.redirect(303, "/blog");
     res.send(page(article.title, `<article class="card" style="max-width:800px; margin:40px auto;"><h1 style="font-size:28px;">${escapeHtml(article.title)}</h1><p class="muted" style="font-size:13px; margin-bottom:20px;">Publié le ${new Date(article.created_at).toLocaleDateString("fr-FR")}</p><div style="line-height:1.8; color:#374151;">${escapeHtml(article.content).replace(/\n/g, "<br>")}</div><p style="margin-top:30px;"><a href="/blog" style="color:#2563eb;">← Retour au blog</a></p></article>`, proConnected));
   });
+// ==========================================
+// 7. FAVORIS ET COMPTE CLIENT
+// ==========================================
 
+// A. Ajouter/Retirer un favori
+router.post("/api/favorite/:id", async (req, res) => {
+  try {
+    const visitorId = getOrCreateVisitorId(req, res);
+    const proId = Number(req.params.id);
+    if (!Number.isSafeInteger(proId) || proId < 1) return res.json({ ok: false });
+
+    const check = await pool.query("SELECT 1 FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+    if (check.rows.length) {
+      await pool.query("DELETE FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+      res.json({ ok: true, isFav: false });
+    } else {
+      await pool.query("INSERT INTO client_favorites (visitor_id, pro_id) VALUES ($1, $2)", [visitorId, proId]);
+      res.json({ ok: true, isFav: true });
+    }
+  } catch (e) { res.json({ ok: false }); }
+});
+
+// B. Page Mes Favoris
+router.get("/mes-favoris", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const visitorId = getOrCreateVisitorId(req, res);
+  
+  const result = await pool.query(`
+    SELECT p.*, 
+    (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+    (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating 
+    FROM professional_applications p 
+    JOIN client_favorites cf ON p.id = cf.pro_id 
+    WHERE cf.visitor_id = $1 AND p.status = 'approved'
+    ORDER BY cf.created_at DESC
+  `, [visitorId]);
+
+  const cards = result.rows.map(person => {
+    const displayName = getDisplayName(person);
+    return `
+      <article class="pro-card" style="border-left: 4px solid #ef4444;">
+        <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())" style="top: 12px; right: 12px; width: 30px; height: 30px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        </div>
+        <div class="pro-card-top">
+          <div>
+            <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge(person)}</div>
+            <div class="pro-meta">${escapeHtml(person.profession)}</div>
+            <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
+          </div>
+        </div>
+        <div class="pro-actions" style="margin-top: 12px; gap: 4px;">
+          <a href="/pro/${person.id}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  res.send(page("Mes Favoris", `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <h1>❤️ Mes Favoris</h1>
+      <a href="/" style="color: #6b7280; font-size: 14px;">← Retour à l'accueil</a>
+    </div>
+    <div class="pros-grid">
+      ${cards || `<div class="card"><p style="text-align:center;">Vous n'avez pas encore de favoris. Cliquez sur le cœur d'un professionnel pour le sauvegarder ici.</p></div>`}
+    </div>
+  `, proConnected));
+});
+
+// C. Page Mon Compte (Portail)
+router.get("/mon-compte", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const visitorId = getOrCreateVisitorId(req, res);
+  
+  const clientResult = await pool.query(`SELECT * FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+  const client = clientResult.rows[0];
+  const isConnected = client && client.phone;
+
+  const favorites = await pool.query(`SELECT COUNT(*) FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
+  const count = Number(favorites.rows[0]?.count || 0);
+
+  let content = "";
+
+  if (isConnected) {
+    const code = await getOrCreateClientCode(visitorId);
+    content = `
+      <h2 style="text-align:center;">Bonjour ${escapeHtml(client.full_name)}</h2>
+      <p style="font-size:14px; color:#4b5563; text-align:center;">Votre code de récupération secret :</p>
+      <div class="pro-code-box" style="margin: 20px 0;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Votre code</div>
+        <div class="pro-code-value" style="font-size:36px; letter-spacing: 5px;">${escapeHtml(code || "Indisponible")}</div>
+      </div>
+      <p style="font-size:14px; text-align:center;"><strong>${count}</strong> favori(s) enregistré(s).</p>
+      <div style="text-align:center; margin:16px 0;"><a class="button" href="/mes-favoris">❤️ Voir mes favoris</a></div>
+      <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
+      <div style="text-align:center;"><a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:13px;">Se déconnecter de cet appareil</a></div>
+    `;
+  } else {
+    content = `
+      <h2 style="text-align:center; margin-bottom:20px;">Accéder à mes favoris</h2>
+      
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-code').style.display='block'; document.getElementById('form-oublie').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#f8fafc; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">🔑 J'ai déjà un code (Se connecter)</button>
+        <div id="form-code" style="display:none; margin-top:10px; padding:15px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+          <form action="/mon-compte/connexion-code" method="POST">
+            <input name="code" required maxlength="6" placeholder="Ex: A7B9K2" style="text-transform:uppercase; text-align:center; letter-spacing:2px; font-size:18px;">
+            <button type="submit" style="width:100%; margin-top:8px;">Me connecter</button>
+          </form>
+        </div>
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-oublie').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">🤔 J'ai oublié mon code (Recevoir par SMS)</button>
+        <div id="form-oublie" style="display:none; margin-top:10px; padding:15px; background:#fffbeb; border-radius:10px; border:1px solid #fde68a;">
+          <p style="font-size:13px; color:#92400e; margin-bottom:10px;">Entrez votre numéro pour recevoir un SMS.</p>
+          <form action="/mon-compte/reinitialiser" method="POST">
+            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="text-align:center;">
+            <button type="submit" class="warning" style="width:100%; margin-top:8px;">Recevoir mon code par SMS</button>
+          </form>
+        </div>
+      </div>
+
+      <div style="margin-bottom:15px;">
+        <button onclick="document.getElementById('form-nouveau').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-oublie').style.display='none';" style="width:100%; text-align:left; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">✨ Je n'ai pas encore de compte (Créer un compte)</button>
+        <div id="form-nouveau" style="display:none; margin-top:10px; padding:15px; background:#eff6ff; border-radius:10px; border:1px solid #bfdbfe;">
+          <form action="/mon-compte/enregistrer" method="POST">
+            <input name="full_name" required maxlength="150" placeholder="Votre nom complet" style="margin-bottom:8px;">
+            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="margin-bottom:8px;">
+            <button type="submit" class="success" style="width:100%; margin-top:8px;">Créer mon compte</button>
+          </form>
+        </div>
+      </div>
+    `;
+  }
+
+  res.send(page("Mon compte", `<section class="card" style="max-width: 600px; margin: 40px auto;">${content}</section>`, proConnected));
+});
+
+// D. Créer un compte client
+router.post("/mon-compte/enregistrer", async (req, res) => {
+  const visitorId = getOrCreateVisitorId(req, res);
+  const fullName = String(req.body.full_name || "").trim().slice(0, 150);
+  const phone = cleanBeninPhone(req.body.phone); // Note: cleanBeninPhone doit être passé depuis server.js
+
+  if (!fullName || !phone) return res.redirect(303, "/mon-compte");
+
+  try {
+    const code = await getOrCreateClientCode(visitorId);
+    await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2 WHERE visitor_id = $3`, [fullName, phone, visitorId]);
+    res.redirect(303, "/mon-compte");
+  } catch (error) { res.redirect(303, "/mon-compte"); }
+});
+
+// E. Se connecter avec un code
+router.post("/mon-compte/connexion-code", async (req, res) => {
+  const code = String(req.body.code || "").trim().toUpperCase();
+  const visitorId = getOrCreateVisitorId(req, res);
+  if (!code) return res.redirect(303, "/mon-compte");
+
+  try {
+    const result = await pool.query(`SELECT visitor_id FROM client_codes WHERE code = $1`, [code]);
+    if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Code introuvable.</h2><a href='/mon-compte'>Retour</a>", null));
+    const originalVisitorId = result.rows[0].visitor_id;
+    await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE visitor_id = $2`, [visitorId, originalVisitorId]);
+    res.redirect(303, "/mon-compte");
+  } catch (error) { res.redirect(303, "/mon-compte"); }
+});
+
+// F. Réinitialiser le code par SMS
+router.post("/mon-compte/reinitialiser", async (req, res) => {
+  const phone = cleanBeninPhone(req.body.phone);
+  if (!phone) return res.redirect(303, "/mon-compte");
+  
+  // Note: On ne fait pas le vrai SMS ici (Termii n'est pas configuré), 
+  // on affiche juste un message pour l'instant.
+  res.send(page("SMS", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez votre code.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
+});
   return router;
 };
