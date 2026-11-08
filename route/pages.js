@@ -1,5 +1,5 @@
 const express = require('express');
-
+const crypto = require('crypto');
 module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone) {
   const router = express.Router();
 
