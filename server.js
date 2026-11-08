@@ -488,6 +488,7 @@ app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, esc
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+    await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS password_hash TEXT`);
     // --- MISE À JOUR DE LA TABLE CONTACT ---
 await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER`);
 await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS report_id INTEGER`);
