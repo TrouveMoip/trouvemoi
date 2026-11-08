@@ -499,6 +499,39 @@ app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, esca
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+    // --- CRÉATION DES COLONNES MANQUANTES POUR LES PROS ---
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN DEFAULT false`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS neighborhood VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS experience VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS service_area VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS availability VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_preference VARCHAR(50)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS contact_email VARCHAR(255)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS referred_by VARCHAR(50)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS type_lieu VARCHAR(50)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS adresse_exacte TEXT`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS horaires_json TEXT`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS referral_code VARCHAR(50)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS referral_balance INTEGER DEFAULT 0`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT false`);
+
+// --- CRÉATION DES TABLES MANQUANTES ---
+await pool.query(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
+    id SERIAL PRIMARY KEY, pro_id INTEGER, amount INTEGER, phone_number VARCHAR(50), status VARCHAR(50) DEFAULT 'pending', created_at TIMESTAMP DEFAULT NOW()
+)`);
+await pool.query(`CREATE TABLE IF NOT EXISTS contact_events (
+    id SERIAL PRIMARY KEY, pro_id INTEGER, visitor_id VARCHAR(100), type VARCHAR(50), created_at TIMESTAMP DEFAULT NOW()
+)`);
+await pool.query(`CREATE TABLE IF NOT EXISTS client_codes (
+    visitor_id VARCHAR(100) PRIMARY KEY, code VARCHAR(50), full_name VARCHAR(255), phone VARCHAR(50), password_hash TEXT, created_at TIMESTAMP DEFAULT NOW()
+)`);
+// -----------------------------------------------------
     await pool.query(`ALTER TABLE client_codes ADD COLUMN IF NOT EXISTS password_hash TEXT`);
     // --- MISE À JOUR DE LA TABLE CONTACT ---
 await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER`);
