@@ -555,7 +555,7 @@ router.get("/mon-compte", async (req, res) => {
   res.send(page("Mon compte", `<section class="card" style="max-width: 800px; margin: 40px auto;">${content}</section>`, proConnected));
 });
 
-// D. Créer un compte client (avec mot de passe)
+// D. Créer un compte client (avec mot de passe sécurisé)
 router.post("/mon-compte/enregistrer", async (req, res) => {
   const visitorId = getOrCreateVisitorId(req, res);
   const fullName = String(req.body.full_name || "").trim().slice(0, 150);
@@ -563,14 +563,16 @@ router.post("/mon-compte/enregistrer", async (req, res) => {
   const password = String(req.body.password || "");
   const passwordConfirm = String(req.body.password_confirm || "");
 
-  if (!fullName || !phone || !password) return res.redirect(303, "/mon-compte");
+  if (!fullName || !phone || password.length < 6) return res.redirect(303, "/mon-compte");
   if (password !== passwordConfirm) return res.status(400).send(page("Erreur", "<h2>Les mots de passe ne correspondent pas.</h2><a href='/mon-compte'>Retour</a>", null));
 
   try {
-    // Hachage du mot de passe (sécurité)
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    const passwordHash = `${salt}:${hash}`;
+    // Sécurité maximale avec bcrypt (12 tours = très sécurisé)
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // On vérifie si le numéro existe déjà
+    const existing = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
+    if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Ce numéro a déjà un compte.</h2><a href='/mon-compte'>Se connecter</a>", null));
 
     const code = await getOrCreateClientCode(visitorId);
     await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2, password_hash = $3 WHERE visitor_id = $4`, [fullName, phone, passwordHash, visitorId]);
