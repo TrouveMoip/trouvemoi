@@ -228,7 +228,7 @@ function page(title, content, proConnected, meta = {}) {
               ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier une offre</a>`}
               <a href="/mes-favoris">❤️ Favoris</a>
               <a href="/mon-espace-pro">Espace pro</a>
-              a href="/mon-compte">Mon compte</a>
+             <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a>
             </div>
             <div class="mobile-menu">
