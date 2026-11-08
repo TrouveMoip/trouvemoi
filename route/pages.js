@@ -708,5 +708,32 @@ router.post("/pro/:id/avis", async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
   }
 });
+  // ==========================================
+// TRACKING DES CLICS (Appels & WhatsApp)
+// ==========================================
+router.post("/api/track/:id/:type", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const type = req.params.type;
+    const visitorId = getOrCreateVisitorId(req, res);
+    if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
+    
+    let col = "";
+    if (type === "phone") col = "phone_clicks";
+    else if (type === "wa") col = "wa_clicks";
+    else return res.json({ ok: false });
+
+    // 1. Mise à jour des stats
+    await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1, last_visitor_id = $2`, [id, visitorId]);
+
+    // 2. Enregistrement de la preuve de contact (pour les avis)
+    await pool.query(`INSERT INTO contact_events (pro_id, visitor_id, type) VALUES ($1, $2, $3)`, [id, visitorId, type]);
+
+    res.json({ ok: true });
+  } catch (e) { 
+    console.error("Erreur tracking :", e.message);
+    res.json({ ok: false }); 
+  }
+});
   return router;
 };
