@@ -657,11 +657,6 @@ router.get("/pro/:id/avis", async (req, res) => {
 // ENREGISTREMENT D'UN AVIS (POST)
 // ==========================================
 router.post("/pro/:id/avis", async (req, res) => {
-  const ip = req.ip || "unknown";
-  if (!(await takeRateLimit(`review:${ip}`, 5, 60 * 60 * 1000))) {
-    return res.status(429).send(page("Trop de tentatives", "<section class='card'><h1>⏳ Trop de tentatives</h1><p>Patientez 1 heure.</p><a class='button' href='/'>Accueil</a></section>", null));
-  }
-
   try {
     const proId = Number(req.params.id);
     const visitorId = getOrCreateVisitorId(req, res);
