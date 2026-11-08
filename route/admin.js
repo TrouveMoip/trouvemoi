@@ -156,8 +156,7 @@ router.get("/suivi", requireAdmin, async (req, res) => {
   }).join("");
 
   const menu = await customAdminMenu("/admin/suivi", csrf);
-  const paginationHtml = renderPagination(currentPage, totalPages, "/admin/suivi");
-
+  
   res.send(page("Suivi des Pros", `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
       <h1 style="margin: 0;">Tableau de suivi</h1>
@@ -182,7 +181,6 @@ router.get("/suivi", requireAdmin, async (req, res) => {
         </tbody>
       </table>
     </section>
-    ${paginationHtml}
   `, null));
 });
 
