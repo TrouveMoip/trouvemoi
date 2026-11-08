@@ -138,9 +138,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
           </div>
           <label>E-mail (optionnel)</label>
 <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
-          <label>E-mail (optionnel)</label>
-          <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
-          
+  
           <p style="font-size:12px; color:#6b7280;">Au moins un moyen de contact est requis.</p>
           <div style="text-align:center; margin-top:20px;">
             <button type="submit" style="padding:14px 40px;">Soumettre</button>
