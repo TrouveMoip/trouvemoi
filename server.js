@@ -72,7 +72,7 @@ async function settlePayment({ dossierId, transactionId, amount, method, source 
     return { ok: true, alreadyPaid: false };
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
-    throw error;
+    throw error; 
   } finally {
     client.release();
   }
