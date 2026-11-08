@@ -291,7 +291,16 @@ function page(title, content, proConnected, meta = {}) {
       </footer>
       
       <script>
-        async function toggleFav(e, id) { e.preventDefault(); const btn = e.currentTarget; const res = await fetch('/api/favorite/' + id, { method: 'POST' }); const data = await res.json(); if (data.ok) { btn.style.opacity = data.isFav ? "1" : "0.5"; } }
+      async function toggleFav(e, id) { 
+    e.preventDefault(); 
+    const btn = e.currentTarget; 
+    const res = await fetch('/api/favorite/' + id, { method: 'POST' }); 
+    const data = await res.json(); 
+    if (data.ok) { 
+        btn.style.opacity = data.isFav ? "1" : "0.5"; 
+    } 
+    return data; 
+}
       </script>
       
       <script>
