@@ -473,6 +473,10 @@ router.get("/mes-favoris", async (req, res) => {
   res.send(page("Mes Favoris", `
     <div style="text-align: center; margin-bottom: 30px;">
       <h1>❤️ Mes Favoris</h1>
+      <div class="alert alert-info" style="text-align:center; margin-bottom:20px;">
+  💡 <strong>Astuce :</strong> Créez un compte gratuit pour retrouver vos favoris sur tous vos appareils. 
+  <a href="/mon-compte" style="font-weight:bold; text-decoration:underline;">Créer un compte</a>
+</div>
       <a href="/" style="color: #6b7280; font-size: 14px;">← Retour à l'accueil</a>
     </div>
     <div class="pros-grid">
