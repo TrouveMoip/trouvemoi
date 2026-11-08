@@ -795,5 +795,85 @@ router.post("/mon-espace-pro/demander-retrait", async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2>", proConnected));
   }
 });
+  // ==========================================
+// 4. PAGE DE PAIEMENT (Kkiapay)
+// ==========================================
+router.get("/paiement/:trackingCode", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const trackingCode = String(req.params.trackingCode || "").trim();
+  
+  // On vérifie que le dossier existe bien
+  const result = await pool.query(`SELECT id, full_name, payment_status FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+  if (!result.rows.length) return res.redirect(303, "/");
+  
+  const dossier = result.rows[0];
+  if (dossier.payment_status === 'paid') {
+    return res.send(page("Déjà payé", `<section class="card" style="text-align:center;"><h1>✅ Déjà payé</h1><p>Votre dossier est déjà réglé.</p><a href="/" class="button">Retour à l'accueil</a></section>`, proConnected));
+  }
+
+  res.send(page("Paiement", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
+      <h1>💳 Finalisez votre inscription</h1>
+      <p>Bonjour <strong>${escapeHtml(dossier.full_name)}</strong>,</p>
+      <p style="margin-bottom: 20px;">Pour valider l'étude de votre dossier, veuillez régler les frais d'inscription de <strong>1500 FCFA</strong>.</p>
+      
+      <button onclick="payer()" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px;">
+        Payer 1500 FCFA
+      </button>
+      
+      <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">Paiement sécurisé via Mobile Money (MTN / Moov).</p>
+    </section>
+    
+    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <script>
+      function payer() {
+        openKkiapayWidget({ 
+          amount: 1500, 
+          api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
+          sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
+          callback: "${APP_URL}/paiement/verifier?tracking=${trackingCode}", 
+          data: "${trackingCode}" 
+        });
+      }
+      
+      addSuccessListener(function(response) {
+        if (response && response.transactionId) {
+          window.location.href = "/paiement/verifier?tracking=${trackingCode}&transaction_id=" + response.transactionId;
+        }
+      });
+    </script>
+  `, proConnected));
+});
+
+// Vérification du paiement après retour de Kkiapay
+router.get("/paiement/verifier", async (req, res) => {
+  const trackingCode = String(req.query.tracking || "").trim();
+  const transactionId = String(req.query.transaction_id || "").trim();
+  const proConnected = await getConnectedPro(req);
+
+  if (!trackingCode || !transactionId) return res.redirect(303, "/");
+
+  try {
+    // On appelle la fonction de vérification de ton serveur.js
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success) {
+      const dossier = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+      if (dossier.rows.length) {
+         await settlePayment({
+           dossierId: dossier.rows[0].id,
+           transactionId: transactionId,
+           amount: verification.amount,
+           method: 'kkiapay',
+           source: 'redirect'
+         });
+         return res.send(page("Succès", `<section class="card" style="text-align:center;"><h1>🎉 Paiement réussi !</h1><p>Votre dossier est maintenant en cours d'examen par notre équipe.</p><a href="/" class="button">Retour à l'accueil</a></section>`, proConnected));
+      }
+    }
+    res.send(page("Erreur", `<section class="card" style="text-align:center;"><h1>❌ Paiement non confirmé</h1><p>Si vous avez été débité, contactez-nous.</p><a href="/contact" class="button">Contact</a></section>`, proConnected));
+  } catch (e) {
+    res.redirect(303, "/");
+  }
+});
   return router;
 };
