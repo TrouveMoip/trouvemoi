@@ -580,7 +580,7 @@ router.post("/mon-compte/enregistrer", async (req, res) => {
   } catch (error) { res.redirect(303, "/mon-compte"); }
 });
 
-// E. Se connecter avec téléphone + mot de passe
+// E. Se connecter avec téléphone + mot de passe (Sécurisé)
 router.post("/mon-compte/connexion-code", async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
   const password = String(req.body.password || "");
@@ -589,23 +589,27 @@ router.post("/mon-compte/connexion-code", async (req, res) => {
   if (!phone || !password) return res.redirect(303, "/mon-compte");
 
   try {
-    const result = await pool.query(`SELECT visitor_id, password_hash FROM client_codes WHERE phone = $1`, [phone]);
+    const result = await pool.query(`SELECT id, visitor_id, password_hash FROM client_codes WHERE phone = $1`, [phone]);
     if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
     
     const client = result.rows[0];
     if (!client.password_hash) return res.status(400).send(page("Erreur", "<h2>Ce compte n'a pas encore de mot de passe.</h2><a href='/mon-compte'>Retour</a>", null));
 
-    const [salt, originalHash] = client.password_hash.split(":");
-    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+    const match = await bcrypt.compare(password, client.password_hash);
     
-    if (hash !== originalHash) return res.status(401).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
+    if (!match) return res.status(401).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
 
-    // On lie ce nouvel appareil au compte existant
-    await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE visitor_id = $2`, [visitorId, client.visitor_id]);
+    // On fusionne proprement : l'ancien visiteur prend le nouveau cookie
+    if (client.visitor_id !== visitorId) {
+        // On supprime l'ancien profil visiteur temporaire s'il existe
+        await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1 AND phone IS NULL`, [visitorId]);
+        // On lie le compte au nouvel appareil
+        await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE id = $2`, [visitorId, client.id]);
+    }
+    
     res.redirect(303, "/mon-compte");
   } catch (error) { res.redirect(303, "/mon-compte"); }
 });
-
 // F. Réinitialiser le code par SMS
 router.post("/mon-compte/reinitialiser", async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
