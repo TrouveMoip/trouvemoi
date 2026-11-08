@@ -354,9 +354,21 @@ if (c.status === 'pending' || c.status === 'under_review') {
   });
 
   router.post("/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
-    if (["pending", "approved", "rejected"].includes(req.body.status)) await pool.query(`UPDATE reviews SET status = $1 WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+  try {
+    const id = Number(req.params.id);
+    const status = String(req.body.status || "");
+
+    if (["pending", "approved", "rejected"].includes(status)) {
+      await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [status, id]);
+      await logAdminAction(`review_${status}`, "review", id, null);
+    }
+    
     res.redirect(303, "/admin/avis");
-  });
+  } catch (error) {
+    console.error("Erreur statut avis :", error.message);
+    res.redirect(303, "/admin/avis");
+  }
+});
 
   // MESSAGES
   router.get("/messages", requireAdmin, async (req, res) => {
