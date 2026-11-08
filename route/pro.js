@@ -368,7 +368,7 @@ router.get("/reinitialiser", (req, res) => {
 router.post("/reinitialiser", async (req, res) => {
   const ip = req.ip || "unknown";
   if (!(await takeRateLimit(`reset_pro:${ip}`, 2, 30 * 24 * 60 * 60 * 1000))) {
-    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 2 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
+    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite. Contactez l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
   }
 
   const phone = cleanBeninPhone(req.body.phone);
@@ -380,7 +380,7 @@ router.post("/reinitialiser", async (req, res) => {
   }
 
   try {
-    const result = await pool.query(`SELECT id, pro_code, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
+    const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
     if (!result.rows.length) {
       return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
     }
@@ -388,17 +388,17 @@ router.post("/reinitialiser", async (req, res) => {
     const pro = result.rows[0];
     const newCode = await generateUniqueProCode();
     
+    // On met à jour le code en base de données
     await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
     await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
 
-    res.send(page("Nouveau Code", `
+    // On n'affiche PAS le code. On demande au pro de contacter le support.
+    res.send(page("Demande envoyée", `
       <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Nouveau code généré</h1>
-        <p>Bonjour ${escapeHtml(pro.full_name)}, voici votre nouveau code de connexion :</p>
-        <div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:20px 0;">
-          <div style="font-size:32px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div>
-        </div>
-        <a href="/mon-espace-pro" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+        <h1>✅ Demande enregistrée</h1>
+        <p>Bonjour ${escapeHtml(pro.full_name)}, votre demande a bien été prise en compte.</p>
+        <p style="margin-top:20px; font-weight:bold; color:#1e40af;">Pour des raisons de sécurité, un administrateur va vous envoyer votre nouveau code par WhatsApp ou par téléphone très rapidement.</p>
+        <a href="/contact" class="button success" style="margin-top:20px; width:100%;">Contacter le support</a>
       </section>
     `, null));
 
