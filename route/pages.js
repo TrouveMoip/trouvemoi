@@ -485,7 +485,7 @@ router.get("/mes-favoris", async (req, res) => {
   `, proConnected));
 });
 
-// C. Page Mon Compte (Portail)
+// C. Page Mon Compte (Portail avec Connexion / Inscription)
 router.get("/mon-compte", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const visitorId = getOrCreateVisitorId(req, res);
@@ -515,71 +515,88 @@ router.get("/mon-compte", async (req, res) => {
     `;
   } else {
     content = `
-      <h2 style="text-align:center; margin-bottom:20px;">Accéder à mes favoris</h2>
-      
-      <div style="margin-bottom:15px;">
-        <button onclick="document.getElementById('form-code').style.display='block'; document.getElementById('form-oublie').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#f8fafc; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">🔑 J'ai déjà un code (Se connecter)</button>
-        <div id="form-code" style="display:none; margin-top:10px; padding:15px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        
+        <!-- CONNEXION -->
+        <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
+          <h2 style="font-size:18px; text-align:center; margin-bottom:15px;">🔑 Se connecter</h2>
           <form action="/mon-compte/connexion-code" method="POST">
-            <input name="code" required maxlength="6" placeholder="Ex: A7B9K2" style="text-transform:uppercase; text-align:center; letter-spacing:2px; font-size:18px;">
-            <button type="submit" style="width:100%; margin-top:8px;">Me connecter</button>
-          </form>
-        </div>
-      </div>
-
-      <div style="margin-bottom:15px;">
-        <button onclick="document.getElementById('form-oublie').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-nouveau').style.display='none';" style="width:100%; text-align:left; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">🤔 J'ai oublié mon code (Recevoir par SMS)</button>
-        <div id="form-oublie" style="display:none; margin-top:10px; padding:15px; background:#fffbeb; border-radius:10px; border:1px solid #fde68a;">
-          <p style="font-size:13px; color:#92400e; margin-bottom:10px;">Entrez votre numéro pour recevoir un SMS.</p>
-          <form action="/mon-compte/reinitialiser" method="POST">
+            <label>Téléphone</label>
             <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="text-align:center;">
-            <button type="submit" class="warning" style="width:100%; margin-top:8px;">Recevoir mon code par SMS</button>
+            <label>Mot de passe</label>
+            <input name="password" type="password" required placeholder="Votre mot de passe">
+            <button type="submit" style="width:100%; margin-top:10px;">Se connecter</button>
           </form>
         </div>
-      </div>
 
-      <div style="margin-bottom:15px;">
-        <button onclick="document.getElementById('form-nouveau').style.display='block'; document.getElementById('form-code').style.display='none'; document.getElementById('form-oublie').style.display='none';" style="width:100%; text-align:left; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:15px; border-radius:10px; font-weight:600; cursor:pointer;">✨ Je n'ai pas encore de compte (Créer un compte)</button>
-        <div id="form-nouveau" style="display:none; margin-top:10px; padding:15px; background:#eff6ff; border-radius:10px; border:1px solid #bfdbfe;">
+        <!-- INSCRIPTION -->
+        <div style="background:#eff6ff; padding:20px; border-radius:12px; border:1px solid #bfdbfe;">
+          <h2 style="font-size:18px; text-align:center; margin-bottom:15px;">✨ Créer un compte</h2>
           <form action="/mon-compte/enregistrer" method="POST">
-            <input name="full_name" required maxlength="150" placeholder="Votre nom complet" style="margin-bottom:8px;">
-            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000" style="margin-bottom:8px;">
-            <button type="submit" class="success" style="width:100%; margin-top:8px;">Créer mon compte</button>
+            <label>Nom complet</label>
+            <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont">
+            <label>Téléphone</label>
+            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000">
+            <label>Mot de passe</label>
+            <input name="password" type="password" required minlength="6" placeholder="Au moins 6 caractères">
+            <label>Confirmer le mot de passe</label>
+            <input name="password_confirm" type="password" required minlength="6" placeholder="Retapez le mot de passe">
+            <button type="submit" class="success" style="width:100%; margin-top:10px;">Créer mon compte</button>
           </form>
         </div>
+        
       </div>
     `;
   }
 
-  res.send(page("Mon compte", `<section class="card" style="max-width: 600px; margin: 40px auto;">${content}</section>`, proConnected));
+  res.send(page("Mon compte", `<section class="card" style="max-width: 800px; margin: 40px auto;">${content}</section>`, proConnected));
 });
 
-// D. Créer un compte client
+// D. Créer un compte client (avec mot de passe)
 router.post("/mon-compte/enregistrer", async (req, res) => {
   const visitorId = getOrCreateVisitorId(req, res);
   const fullName = String(req.body.full_name || "").trim().slice(0, 150);
-  const phone = cleanBeninPhone(req.body.phone); // Note: cleanBeninPhone doit être passé depuis server.js
+  const phone = cleanBeninPhone(req.body.phone);
+  const password = String(req.body.password || "");
+  const passwordConfirm = String(req.body.password_confirm || "");
 
-  if (!fullName || !phone) return res.redirect(303, "/mon-compte");
+  if (!fullName || !phone || !password) return res.redirect(303, "/mon-compte");
+  if (password !== passwordConfirm) return res.status(400).send(page("Erreur", "<h2>Les mots de passe ne correspondent pas.</h2><a href='/mon-compte'>Retour</a>", null));
 
   try {
+    // Hachage du mot de passe (sécurité)
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+    const passwordHash = `${salt}:${hash}`;
+
     const code = await getOrCreateClientCode(visitorId);
-    await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2 WHERE visitor_id = $3`, [fullName, phone, visitorId]);
+    await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2, password_hash = $3 WHERE visitor_id = $4`, [fullName, phone, passwordHash, visitorId]);
     res.redirect(303, "/mon-compte");
   } catch (error) { res.redirect(303, "/mon-compte"); }
 });
 
-// E. Se connecter avec un code
+// E. Se connecter avec téléphone + mot de passe
 router.post("/mon-compte/connexion-code", async (req, res) => {
-  const code = String(req.body.code || "").trim().toUpperCase();
+  const phone = cleanBeninPhone(req.body.phone);
+  const password = String(req.body.password || "");
   const visitorId = getOrCreateVisitorId(req, res);
-  if (!code) return res.redirect(303, "/mon-compte");
+
+  if (!phone || !password) return res.redirect(303, "/mon-compte");
 
   try {
-    const result = await pool.query(`SELECT visitor_id FROM client_codes WHERE code = $1`, [code]);
-    if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Code introuvable.</h2><a href='/mon-compte'>Retour</a>", null));
-    const originalVisitorId = result.rows[0].visitor_id;
-    await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE visitor_id = $2`, [visitorId, originalVisitorId]);
+    const result = await pool.query(`SELECT visitor_id, password_hash FROM client_codes WHERE phone = $1`, [phone]);
+    if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
+    
+    const client = result.rows[0];
+    if (!client.password_hash) return res.status(400).send(page("Erreur", "<h2>Ce compte n'a pas encore de mot de passe.</h2><a href='/mon-compte'>Retour</a>", null));
+
+    const [salt, originalHash] = client.password_hash.split(":");
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+    
+    if (hash !== originalHash) return res.status(401).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
+
+    // On lie ce nouvel appareil au compte existant
+    await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE visitor_id = $2`, [visitorId, client.visitor_id]);
     res.redirect(303, "/mon-compte");
   } catch (error) { res.redirect(303, "/mon-compte"); }
 });
