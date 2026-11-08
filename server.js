@@ -18,8 +18,17 @@ const SESSION_DURATION = 4 * 60 * 60 * 1000;
 
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET, secure: true });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false } });
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 5 } });
-
+const upload = multer({ 
+  storage: multer.memoryStorage(), 
+  limits: { fileSize: 5 * 1024 * 1024, files: 5 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true); // C'est une image, on accepte
+    } else {
+      cb(new Error("Format de fichier non supporté. Seules les images sont autorisées.")); // On rejette
+    }
+  }
+});
 // --- FONCTIONS UTILITAIRES ---
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function safeEqual(a, b) { const b1 = Buffer.from(String(a ?? "")); const b2 = Buffer.from(String(b ?? "")); if (b1.length === 0 || b1.length !== b2.length) return false; return crypto.timingSafeEqual(b1, b2); }
