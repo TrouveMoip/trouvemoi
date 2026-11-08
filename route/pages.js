@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit) {
+module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT) {
   const router = express.Router();
 
   function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
