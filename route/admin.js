@@ -118,24 +118,97 @@ async function customAdminMenu(current, csrf) {
   });
 
   // ==========================================
-  // SUIVI & EXPORT
-  // ==========================================
-  router.get("/suivi", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT id, full_name, phone, npi, city, profession, status, payment_status, created_at, pro_code FROM professional_applications ORDER BY created_at DESC LIMIT 50`);
-    const rows = result.rows.map(p => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:12px; font-size:13px;">${new Date(p.created_at).toLocaleDateString("fr-FR")}</td><td style="padding:12px;"><div style="font-weight:700;">${escapeHtml(p.full_name)}</div><div style="font-size:12px; color:#6b7280;">${escapeHtml(p.phone)}</div></td><td style="padding:12px;">${escapeHtml(p.profession)}<br><span style="color:#6b7280; font-size:11px;">${escapeHtml(p.city)}</span></td><td style="padding:12px;">${p.payment_status === 'paid' ? '💳 Payé' : '⏳ Impayé'}</td><td style="padding:12px;"><code>${escapeHtml(p.pro_code || "—")}</code></td></tr>`).join("");
-    res.send(page("Suivi", `<h1 style="text-align:center;">Tableau de suivi</h1>${await customAdminMenu("/admin/suivi", csrf)}<section class="card" style="margin-top:20px; overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Professionnel</th><th>Métier</th><th>Paiement</th><th>Code Pro</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
-  });
+// SUIVI DES PROS & EXPORT
+// ==========================================
+router.get("/suivi", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = 50;
+  const offset = (currentPage - 1) * limit;
 
-  router.get("/suivi/export", requireAdmin, async (req, res) => {
-    const result = await pool.query(`SELECT full_name, phone, npi, city, profession, status, payment_status, created_at, pro_code FROM professional_applications ORDER BY created_at DESC`);
-    let csv = "Date;Nom;Telephone;NPI;Ville;Metier;Statut;Paiement;Code Pro\n";
+  const countResult = await pool.query(`SELECT COUNT(*) FROM professional_applications`);
+  const total = parseInt(countResult.rows[0].count);
+  const totalPages = Math.ceil(total / limit);
+
+  const result = await pool.query(`
+    SELECT id, full_name, company_name, phone, npi, city, profession, status, payment_status, created_at, tracking_code, pro_code 
+    FROM professional_applications 
+    ORDER BY created_at DESC 
+    LIMIT $1 OFFSET $2
+  `, [limit, offset]);
+
+  const rowsHtml = result.rows.map(p => {
+    const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
+    const paymentBadge = p.payment_status === 'paid' ? '💳 Payé' : p.payment_status === 'refunded' ? '💸 Remboursé' : '⏳ Impayé';
+    return `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px; font-size: 13px;">${dateStr}</td>
+        <td style="padding: 12px;">
+          <div style="font-weight: 700; color: #111827;">${escapeHtml(p.full_name)}</div>
+          <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.phone)}</div>
+        </td>
+        <td style="padding: 12px; font-size: 13px;">${escapeHtml(p.profession)}<br><span style="color:#6b7280; font-size:11px;">${escapeHtml(p.city)}</span></td>
+        <td style="padding: 12px; font-size: 13px;"><code>${escapeHtml(p.npi)}</code></td>
+        <td style="padding: 12px; font-size: 13px;">${paymentBadge}</td>
+        <td style="padding: 12px; font-size: 13px;"><code>${escapeHtml(p.pro_code || "—")}</code></td>
+      </tr>
+    `;
+  }).join("");
+
+  const menu = await customAdminMenu("/admin/suivi", csrf);
+  const paginationHtml = renderPagination(currentPage, totalPages, "/admin/suivi");
+
+  res.send(page("Suivi des Pros", `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+      <h1 style="margin: 0;">Tableau de suivi</h1>
+      <a href="/admin/suivi/export" class="button success" style="margin: 0; padding: 12px 24px; font-size: 14px;">📥 Exporter pour Excel (CSV)</a>
+    </div>
+    ${menu}
+    
+    <section class="card" style="margin-top: 20px; overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Professionnel</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Métier / Ville</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">NPI</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Paiement</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Code Pro</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280;">Aucun professionnel enregistré.</td></tr>`}
+        </tbody>
+      </table>
+    </section>
+    ${paginationHtml}
+  `, null));
+});
+
+// ==========================================
+// EXPORT CSV
+router.get("/suivi/export", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT full_name, company_name, phone, npi, city, profession, status, payment_status, created_at, tracking_code, pro_code 
+      FROM professional_applications 
+      ORDER BY created_at DESC
+    `);
+
+    let csv = "Date;Nom;Entreprise;Telephone;NPI;Ville;Metier;Statut;Paiement;Code de suivi;Code Pro\n";
     for (const p of result.rows) {
+      const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
+      const payment = p.payment_status === 'paid' ? 'Payé' : p.payment_status === 'refunded' ? 'Remboursé' : 'Impayé';
       const clean = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
-      csv += `${new Date(p.created_at).toLocaleDateString("fr-FR")};${clean(p.full_name)};${clean(p.phone)};${clean(p.npi)};${clean(p.city)};${clean(p.profession)};${clean(p.status)};${clean(p.payment_status)};${clean(p.pro_code)}\n`;
+      csv += `${dateStr};${clean(p.full_name)};${clean(p.company_name)};${clean(p.phone)};${clean(p.npi)};${clean(p.city)};${clean(p.profession)};${clean(p.status)};${payment};${clean(p.tracking_code)};${clean(p.pro_code)}\n`;
     }
-    res.setHeader("Content-Type", "text/csv; charset=utf-8"); res.setHeader("Content-Disposition", `attachment; filename="suivi_${new Date().toISOString().slice(0,10)}.csv"`); res.send("\uFEFF" + csv);
-  });
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="suivi_professionnels_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send("\uFEFF" + csv);
+  } catch (error) { res.status(500).send("Erreur lors de l'export."); }
+});
 
   // ==========================================
   // PROXY KYC
