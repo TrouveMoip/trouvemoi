@@ -1,10 +1,9 @@
-const CACHE_NAME = 'trouvemoi-v1';
+const CACHE_NAME = 'trouvemoi-v2'; // On change la version pour effacer l'ancien cache
 const ASSETS_TO_CACHE = [
-  '/',
   '/manifest.json'
 ];
 
-// 1. Installation : on met en cache les pages de base
+// 1. Installation
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
@@ -30,20 +29,36 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 3. Interception : on sert le cache si pas de réseau
+// 3. Interception
 self.addEventListener('fetch', (event) => {
-  // On ne met en cache que les requêtes GET (pages web, images)
+  // On ignore tout ce qui n'est pas du GET (ex: les formulaires POST)
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // SÉCURITÉ : On ne met JAMAIS en cache les pages privées ou dynamiques
+  const NEVER_CACHE = [
+    '/mon-espace-pro', '/admin', '/paiement', '/api', '/webhooks', '/cron',
+    '/pro/', '/contact', '/devenir-professionnel', '/candidatures',
+    '/soutenir', '/don', '/emplois', '/mes-favoris', '/mon-compte'
+  ];
+  
+  if (NEVER_CACHE.some(p => url.pathname === p || url.pathname.startsWith(p + '/'))) {
+    return; // Laisse le réseau gérer ces pages normalement
+  }
+
+  // On ne met en cache QUE les fichiers statiques (images, css, js)
+  const CACHEABLE_EXT = /\.(css|js|png|jpg|jpeg|webp|svg|woff2?|ico)$/i;
+  if (!CACHEABLE_EXT.test(url.pathname)) {
+    return; // Si c'est une page HTML normale, on ne la cache pas
+  }
+
+  // Stratégie : Cache d'abord pour les images, sinon réseau
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Si on a la page en cache, on l'affiche
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      // Sinon, on va sur internet
+      if (cachedResponse) return cachedResponse;
+      
       return fetch(event.request).then((response) => {
-        // Si la réponse est bonne, on la met en cache pour la prochaine fois
         if (response && response.status === 200) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -52,10 +67,8 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // Si pas de réseau et pas en cache, on affiche une page d'erreur basique
-        return new Response("<h1>Vous êtes hors ligne</h1><p>Veuillez vérifier votre connexion internet.</p>", {
-          headers: { 'Content-Type': 'text/html' }
-        });
+        // Si erreur et pas en cache, on affiche une erreur simple
+        return new Response("Hors ligne", { status: 503, statusText: "Hors ligne" });
       });
     })
   );
