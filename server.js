@@ -335,6 +335,7 @@ app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
+app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit));
 
 // --- ROUTES SYSTEME ---
 app.get("/manifest.json", (req, res) => {
