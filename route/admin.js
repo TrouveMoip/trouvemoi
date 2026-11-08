@@ -53,57 +53,21 @@ async function customAdminMenu(current, csrf) {
         
         <label>Mot de passe</label>
         <div style="position:relative; margin-bottom:15px;">
-          <input type="password" name="password" id="pass-hidden" required style="text-align:center; font-size:20px; padding-right: 40px;">
-          <input type="text" name="password" id="pass-visible" required style="text-align:center; font-size:20px; padding-right: 40px; display:none;">
-          <span onclick="togglePass()" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-pass">👁️</span>
+          <input type="password" name="password" id="pass-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
+          <span onclick="document.getElementById('pass-input').type = document.getElementById('pass-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
         </div>
         
         <label>Code de validation (6 chiffres)</label>
         <div style="position:relative; margin-bottom:20px;">
-          <input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-hidden" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px; -webkit-text-security: disc;">
-          <input name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-visible" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px; display:none;">
-          <span onclick="toggleTotp()" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;" id="eye-totp">👁️</span>
+          <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px;">
+          <span onclick="document.getElementById('totp-input').type = document.getElementById('totp-input').type === 'text' ? 'password' : 'text'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
         </div>
         
         <button style="width:100%; margin-top:10px;">Connexion</button>
       </form>
     </section>
-    
-    <script>
-      function togglePass() {
-        const hidden = document.getElementById('pass-hidden');
-        const visible = document.getElementById('pass-visible');
-        const eye = document.getElementById('eye-pass');
-        if (hidden.style.display === 'none') {
-          hidden.style.display = 'block';
-          visible.style.display = 'none';
-          eye.innerHTML = '👁️';
-        } else {
-          hidden.style.display = 'none';
-          visible.style.display = 'block';
-          visible.value = hidden.value;
-          eye.innerHTML = '🙈';
-        }
-      }
-      function toggleTotp() {
-        const hidden = document.getElementById('totp-hidden');
-        const visible = document.getElementById('totp-visible');
-        const eye = document.getElementById('eye-totp');
-        if (hidden.style.display === 'none') {
-          hidden.style.display = 'block';
-          visible.style.display = 'none';
-          eye.innerHTML = '👁️';
-        } else {
-          hidden.style.display = 'none';
-          visible.style.display = 'block';
-          visible.value = hidden.value;
-          eye.innerHTML = '🙈';
-        }
-      }
-    </script>
   `, null));
 });
-
   router.post("/login", async (req, res) => {
     if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
     if (!verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
