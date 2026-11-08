@@ -609,18 +609,15 @@ router.post("/mon-compte/connexion-code", async (req, res) => {
     res.redirect(303, "/mon-compte");
   } catch (error) { res.redirect(303, "/mon-compte"); }
 });
-// F. Réinitialiser le code par SMS
+// F. Réinitialiser le mot de passe
 router.post("/mon-compte/reinitialiser", async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
   if (!phone) return res.redirect(303, "/mon-compte");
   
-  // Note: On ne fait pas le vrai SMS ici (Termii n'est pas configuré), 
-  // on affiche juste un message pour l'instant.
-  res.send(page("SMS", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez votre code.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
+  res.send(page("Information", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 Information</h1><p>La récupération automatique par SMS est en cours de configuration. Veuillez contacter notre support pour récupérer votre compte.</p><a href="/contact" class="button">Contacter le support</a></section>`, null));
 });
-  // ==========================================
+  
 // PAGE POUR LAISSER UN AVIS
-// ==========================================
 router.get("/pro/:id/avis", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   const id = Number(req.params.id);
