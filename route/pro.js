@@ -326,5 +326,73 @@ router.post("/modifier-telephone", async (req, res) => {
     </section>
   `, proConnected));
 });
+  // ==========================================
+// RÉINITIALISATION DU CODE PRO
+// ==========================================
+router.get("/reinitialiser", (req, res) => {
+  const randomSuffix = crypto.randomInt(10, 99);
+  
+  res.send(page("Réinitialiser", `
+    <section class="card" style="max-width: 500px; margin: 40px auto;">
+      <h1 style="text-align:center;">🔐 Récupérer mon code</h1>
+      <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
+        Entrez le numéro de téléphone utilisé lors de votre inscription.
+      </p>
+      <div class="alert alert-info" style="text-align:center;">
+        <strong>Vérification :</strong> Votre numéro doit se terminer par <strong style="font-size:20px; color:#1e40af;">${randomSuffix}</strong>.
+      </div>
+      <form action="/mon-espace-pro/reinitialiser" method="POST">
+        <input type="hidden" name="expected_suffix" value="${randomSuffix}">
+        <label>Votre numéro de téléphone complet *</label>
+        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="Ex: 0194010345" style="text-align:center;">
+        <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir mon nouveau code</button>
+      </form>
+      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+    </section>
+  `, null));
+});
+
+router.post("/reinitialiser", async (req, res) => {
+  const ip = req.ip || "unknown";
+  if (!(await takeRateLimit(`reset_pro:${ip}`, 2, 30 * 24 * 60 * 60 * 1000))) {
+    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 2 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
+  }
+
+  const phone = cleanBeninPhone(req.body.phone);
+  const expectedSuffix = String(req.body.expected_suffix || "");
+  
+  if (!phone) return res.redirect(303, "/mon-espace-pro/reinitialiser");
+  if (phone.slice(-2) !== expectedSuffix) {
+    return res.status(400).send(page("Erreur", "<h2>Le numéro ne se termine pas par les 2 chiffres attendus.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
+  }
+
+  try {
+    const result = await pool.query(`SELECT id, pro_code, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
+    }
+
+    const pro = result.rows[0];
+    const newCode = await generateUniqueProCode();
+    
+    await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
+    await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
+
+    res.send(page("Nouveau Code", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>✅ Nouveau code généré</h1>
+        <p>Bonjour ${escapeHtml(pro.full_name)}, voici votre nouveau code de connexion :</p>
+        <div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:20px 0;">
+          <div style="font-size:32px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div>
+        </div>
+        <a href="/mon-espace-pro" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+      </section>
+    `, null));
+
+  } catch (error) {
+    console.error("Erreur réinit pro :", error.message);
+    res.redirect(303, "/mon-espace-pro/reinitialiser");
+  }
+});
   return router;
 };
