@@ -223,7 +223,7 @@ let contactButtons = person.phone_public && phoneClean ? `<div style="display:gr
       const content = `
         <div style="max-width: 800px; margin: 0 auto;">
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
-            <div style="margin-bottom:12px;"><a href="#" onclick="toggleFav(event, ${person.id})" class="button secondary" style="padding:8px 16px;">${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}</a></div>
+            <div style="margin-bottom:12px;"><a href="#" onclick="toggleFav(event, ${person.id}).then(() => location.reload())" class="button secondary" style="padding:8px 16px;">${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}</a></div>
             ${openStatusBadge}
             <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
             <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
