@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+bcrypt = require('bcrypt');
 module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT) {
   const router = express.Router();
 
@@ -875,5 +876,16 @@ router.get("/paiement/verifier", async (req, res) => {
     res.redirect(303, "/");
   }
 });
+  // Fonction pour créer ou récupérer le code d'un client
+async function getOrCreateClientCode(visitorId) {
+  if (!visitorId) return null;
+  let result = await pool.query(`SELECT code FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+  if (result.rows.length) return result.rows[0].code;
+  
+  // Si le visiteur n'a pas de code, on lui en crée un
+  const newCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+  await pool.query(`INSERT INTO client_codes (visitor_id, code) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [visitorId, newCode]);
+  return newCode;
+}
   return router;
 };
