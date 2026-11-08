@@ -610,5 +610,48 @@ router.post("/mon-compte/reinitialiser", async (req, res) => {
   // on affiche juste un message pour l'instant.
   res.send(page("SMS", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 SMS envoyé</h1><p>Si un compte est associé à ce numéro, vous recevrez votre code.</p><a href="/mon-compte" class="button">Retour</a></section>`, null));
 });
+  // ==========================================
+// PAGE POUR LAISSER UN AVIS
+// ==========================================
+router.get("/pro/:id/avis", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const id = Number(req.params.id);
+  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+
+  const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+  if (!result.rows.length) return res.redirect(303, "/");
+  const person = result.rows[0];
+  const displayName = person.company_name?.trim() || person.full_name || "";
+
+  res.send(page("Laisser un avis", `
+    <section class="card" style="max-width: 600px; margin: 40px auto;">
+      <h1 style="text-align:center;">Laisser un avis</h1>
+      <div class="alert alert-info" style="text-align:center;">
+        ⭐ Avis sur <strong>${escapeHtml(displayName)}</strong> (${escapeHtml(person.profession)}).
+      </div>
+      <form action="/pro/${person.id}/avis" method="POST">
+        <label>Votre nom *</label>
+        <input name="author_name" required maxlength="100">
+        
+        <label>Note *</label>
+        <div class="star-rating-input">
+          <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
+          <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
+          <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
+          <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
+          <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
+        </div>
+        
+        <label>Commentaire</label>
+        <textarea name="comment" rows="4" maxlength="3000"></textarea>
+        
+        <div style="text-align:center; margin-top:20px;">
+          <button type="submit">Envoyer</button>
+          <a class="button secondary" href="/pro/${person.id}">Annuler</a>
+        </div>
+      </form>
+    </section>
+  `, proConnected));
+});
   return router;
 };
