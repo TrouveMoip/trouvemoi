@@ -391,6 +391,30 @@ if (c.status === 'pending' || c.status === 'under_review') {
     await pool.query(`UPDATE withdrawal_requests SET status = 'processed' WHERE id = $1 AND status = 'pending'`, [Number(req.params.id)]);
     res.redirect(303, "/admin/retraits");
   });
+  router.post("/retraits/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    // 1. On récupère les infos du retrait en attente
+    const result = await pool.query(`SELECT pro_id, amount FROM withdrawal_requests WHERE id = $1 AND status = 'pending'`, [id]);
+    
+    if (result.rows.length) {
+      const withdrawal = result.rows[0];
+      
+      // 2. On re-crédite le solde du pro (l'argent retourne dans son compte)
+      await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance + $1 WHERE id = $2`, [withdrawal.amount, withdrawal.pro_id]);
+      
+      // 3. On marque le retrait comme rejeté
+      await pool.query(`UPDATE withdrawal_requests SET status = 'rejected', processed_at = NOW() WHERE id = $1`, [id]);
+      
+      // 4. On enregistre l'action dans le journal admin
+      await logAdminAction("withdrawal_rejected", "pro", withdrawal.pro_id, `Retrait de ${withdrawal.amount} FCFA rejeté. Solde recrédité.`);
+    }
+    res.redirect(303, "/admin/retraits");
+  } catch (error) {
+    console.error("Erreur rejet retrait:", error);
+    res.redirect(303, "/admin/retraits");
+  }
+});
 
   router.get("/rgpd", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
