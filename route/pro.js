@@ -101,6 +101,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
             <a class="button secondary" href="/mon-espace-pro/modifier-telephone">👁️ Visibilité</a>
             <a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a>
             <a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a>
+            <a class="button secondary" href="/mon-espace-pro/mes-avis">⭐ Mes Avis</a>
           </div>
         </section>
         
