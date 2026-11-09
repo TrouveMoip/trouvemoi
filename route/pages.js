@@ -805,24 +805,15 @@ router.get("/mon-compte/deconnexion", (req, res) => {
 });
 
 // 2. API pour remplir la liste des quartiers (formulaire pro)
-router.get("/api/neighborhoods", async (req, res) => {
-  try {
-    const city = String(req.query.city || "").trim();
-    if (!city) return res.json({ neighborhoods: [] });
-    
-    // On cherche les quartiers existants en base pour cette ville
-    const result = await pool.query(
-      `SELECT DISTINCT neighborhood FROM professional_applications WHERE city = $1 AND neighborhood IS NOT NULL AND neighborhood != '' ORDER BY neighborhood ASC LIMIT 50`, 
-      [city]
-    );
-    
-    const neighborhoods = result.rows.map(r => r.neighborhood);
-    res.json({ neighborhoods });
-  } catch (e) {
-    res.json({ neighborhoods: [] });
-  }
-});
+router.get("/api/neighborhoods", (req, res) => {
+  const city = String(req.query.city || "").trim();
+  if (!city) return res.json({ neighborhoods: [] });
 
+  // On cherche la ville dans notre liste
+  const quartiers = QUARTIERS_BENIN[city] || []; 
+  
+  res.json({ neighborhoods: quartiers });
+});
 // 3. Formulaire de demande de retrait (Espace Pro)
 router.post("/mon-espace-pro/demander-retrait", async (req, res) => {
   const proConnected = await getConnectedPro(req);
