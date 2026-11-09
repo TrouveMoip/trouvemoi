@@ -3,7 +3,7 @@ const express = require('express');
 module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP) {
   const router = express.Router();
 
-  router.get("/devenir-professionnel", async (req, res) => {
+  router.get("/devenir-professionnel", async (req, res) => { 
   const proConnected = await getConnectedPro(req);
   const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
   const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
