@@ -252,11 +252,32 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
 
           ${galerieHtml}
 
-          <div class="card" style="background: #f9fafb;">
-            <h2>Avis des clients (${person.reviews_count})</h2>
-            ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
-            <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
+         <div class="card" style="background: #f9fafb;">
+  <h2>Avis des clients (${person.reviews_count})</h2>
+  ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
+  
+  <!-- AFFICHAGE DES AVIS ET RÉPONSES -->
+  <div style="margin-top: 20px;">
+    ${(await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [person.id])).rows.map(r => `
+      <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+          <strong>${escapeHtml(r.author_name)}</strong>
+          <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
+        </div>
+        <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
+        
+        ${r.pro_reply ? `
+          <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px; margin-top:12px; border-radius:4px;">
+            <strong style="color:#065f46; font-size:12px; text-transform:uppercase;">Réponse du professionnel :</strong>
+            <p style="font-size:14px; margin:4px 0 0 0; color:#374151;">${escapeHtml(r.pro_reply)}</p>
           </div>
+        ` : ""}
+      </div>
+    `).join("")}
+  </div>
+
+  <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
+</div>
 
           ${similarHtml ? `<div style="margin-top: 24px;"><h2>Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
         </div>`;
