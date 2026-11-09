@@ -539,12 +539,48 @@ router.get("/mon-compte", async (req, res) => {
             <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont">
             <label>Téléphone</label>
             <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="0100000000">
+            <div style="display:flex; gap:10px; margin-bottom:14px;">
+  <input name="otp_code" placeholder="Code reçu par SMS" required style="margin-bottom:0;">
+  <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6;">Recevoir</button>
+</div>
             <label>Mot de passe</label>
             <input name="password" type="password" required minlength="6" placeholder="Au moins 6 caractères">
             <label>Confirmer le mot de passe</label>
             <input name="password_confirm" type="password" required minlength="6" placeholder="Retapez le mot de passe">
             <button type="submit" class="success" style="width:100%; margin-top:10px;">Créer mon compte</button>
           </form>
+          <script>
+  async function demanderCode() {
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
+      alert("Veuillez entrer un numéro valide (ex: 0194010345)");
+      return;
+    }
+    const btn = event.target;
+    btn.innerText = "Envoi...";
+    btn.disabled = true;
+    
+    try {
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ phone: phoneInput.value })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Code envoyé ! Vérifiez vos SMS.");
+        btn.innerText = "Renvoyer";
+      } else {
+        alert(data.error || "Erreur d'envoi.");
+        btn.innerText = "Recevoir";
+      }
+    } catch(e) {
+      alert("Erreur réseau.");
+      btn.innerText = "Recevoir";
+    }
+    btn.disabled = false;
+  }
+</script>
         </div>
         
       </div>
