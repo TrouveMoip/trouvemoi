@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 bcrypt = require('bcrypt');
-module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT) {
+module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP) {
   const router = express.Router();
 
   function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
