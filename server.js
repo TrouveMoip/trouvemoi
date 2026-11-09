@@ -646,6 +646,12 @@ await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
     transaction_id VARCHAR(255) UNIQUE, 
     created_at TIMESTAMP DEFAULT NOW()
 )`);
+    // --- CRÉATION DE LA TABLE POUR LES CODES SMS (OTP) ---
+await pool.query(`CREATE TABLE IF NOT EXISTS otp_codes (
+    phone VARCHAR(50) PRIMARY KEY, 
+    code VARCHAR(10), 
+    expires_at TIMESTAMP
+)`);
 
 // --- CRÉATION DES TABLES MANQUANTES ---
 await pool.query(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
