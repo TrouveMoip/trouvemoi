@@ -14,6 +14,8 @@ const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 const REFERRAL_BONUS = 100;
+const METIERS_LOCAL_FIXE = ["Coiffeur", "Couturier", "Mécanicien", "Restaurateur"]; // Liste des métiers qui doivent avoir un local
+const METIERS_SENSIBLES = ["Médecin", "Avocat", "Notaire", "Pharmacien"]; // Liste des métiers réglementés
 const PAYMENT_AMOUNT = 1500;
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
