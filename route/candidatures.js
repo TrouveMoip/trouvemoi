@@ -321,6 +321,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       contact_preference, contact_email, whatsapp_number, experience, service_area, availability,
       referred_by, type_lieu, adresse_exacte, latitude, longitude, phone_public
     } = req.body;
+    const otpCode = String(req.body.otp_code || "").trim();
 
     const neighborhood = req.body.neighborhood === '__AUTRE__' ? req.body.neighborhood_other : req.body.neighborhood;
 
@@ -335,6 +336,11 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
     const lat = Number(latitude) || null;
     const lng = Number(longitude) || null;
+    // Vérification du code SMS
+const codeValide = await verifyOTP(phone, otpCode);
+if (!codeValide) {
+  return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/devenir-professionnel'>Retour au formulaire</a>", null));
+}
 
     try {
       const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_${Date.now()}`);
