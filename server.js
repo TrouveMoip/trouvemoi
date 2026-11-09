@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
+const fetch = require("node-fetch");
 
 // --- CONFIGURATION ---
 const app = express();
@@ -35,6 +36,37 @@ function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) 
 function safeEqual(a, b) { const b1 = Buffer.from(String(a ?? "")); const b2 = Buffer.from(String(b ?? "")); if (b1.length === 0 || b1.length !== b2.length) return false; return crypto.timingSafeEqual(b1, b2); }
 function safeCoord(value, max) { if (value === null || value === undefined || value === "") return null; const num = Number(value); return Number.isFinite(num) && Math.abs(num) <= max ? num : null; }
 function cleanBeninPhone(value) { const normalized = String(value || "").trim().replace(/[()\s.-]/g, "").replace(/^(?:\+?229|00229)/, ""); return /^01\d{8}$/.test(normalized) ? normalized : null; }
+// --- FONCTION D'ENVOI DE SMS (SMSPro Africa) ---
+async function sendSMS(telephone, message) {
+  if (!process.env.SMSPRO_API_KEY) return { error: "Pas de clé API" };
+  try {
+    const cleanPhone = String(telephone).replace(/\D/g, "").replace(/^(?:00229|229)/, "");
+    const finalPhone = "229" + cleanPhone; 
+
+    const params = new URLSearchParams();
+    params.append("recipient", finalPhone);
+    params.append("sender_id", "TrouveMoi");
+    params.append("type", "plain");
+    params.append("message", message);
+
+    const response = await fetch("https://app.smspro.africa/api/v3/sms/send", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.SMSPRO_API_KEY}`,
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: params
+    });
+    
+    const data = await response.json();
+    console.log("📱 Résultat envoi SMS :", data);
+    return data;
+  } catch (error) {
+    console.error("❌ Erreur d'envoi de SMS :", error.message);
+    return { error: true };
+  }
+}
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
 function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
@@ -571,8 +603,8 @@ const adminRoutes = require('./route/admin');
 
 // --- BRANCHEMENT ---
 app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone));
-app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml));
-app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT));
+app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS));
+app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS));
 app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone,crypto));
 app.use('/', emploisRoutes(pool, page, getConnectedPro, escapeHtml, cleanBeninPhone, ["CDI", "CDD"], logAdminAction, 15));
 app.use('/', agencesRoutes(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT));
