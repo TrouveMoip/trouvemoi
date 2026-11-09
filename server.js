@@ -38,34 +38,32 @@ function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (c) 
 function safeEqual(a, b) { const b1 = Buffer.from(String(a ?? "")); const b2 = Buffer.from(String(b ?? "")); if (b1.length === 0 || b1.length !== b2.length) return false; return crypto.timingSafeEqual(b1, b2); }
 function safeCoord(value, max) { if (value === null || value === undefined || value === "") return null; const num = Number(value); return Number.isFinite(num) && Math.abs(num) <= max ? num : null; }
 function cleanBeninPhone(value) { const normalized = String(value || "").trim().replace(/[()\s.-]/g, "").replace(/^(?:\+?229|00229)/, ""); return /^01\d{8}$/.test(normalized) ? normalized : null; }
-// --- FONCTION D'ENVOI DE SMS (SMSPro Africa) ---
+// --- FONCTION D'ENVOI DE SMS (eSMS Africa) ---
 async function sendSMS(telephone, message) {
   if (!process.env.SMSPRO_API_KEY) return { error: "Pas de clé API" };
   try {
     const cleanPhone = String(telephone).replace(/\D/g, "").replace(/^(?:00229|229)/, "");
-    const finalPhone = "229" + cleanPhone; 
+    const finalPhone = "+229" + cleanPhone; // eSMS demande le format international avec le +
 
-    const params = new URLSearchParams();
-    params.append("recipient", finalPhone);
-    params.append("sender_id", "TrouveMoi");
-    params.append("type", "plain");
-    params.append("message", message);
-
-    const response = await fetch("https://app.smspro.africa/api/v3/sms/send", {
+    const response = await fetch("https://sms.esmsafrica.io/api/v1/messages", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${process.env.SMSPRO_API_KEY}`,
-        "Accept": "application/json",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
-      body: params
+      body: JSON.stringify({
+        sender: "TrouveMoi", // Le nom de l'expéditeur
+        recipient: finalPhone,
+        message: message
+      })
     });
     
     const data = await response.json();
-    console.log("📱 Résultat envoi SMS :", data);
+    console.log("📱 Résultat envoi SMS eSMS :", data);
     return data;
   } catch (error) {
-    console.error("❌ Erreur d'envoi de SMS :", error.message);
+    console.error("❌ Erreur d'envoi de SMS eSMS :", error.message);
     return { error: true };
   }
 }
