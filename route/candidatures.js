@@ -111,15 +111,15 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           <h2 style="color:#1e40af; margin-bottom:20px; font-size:20px;">🛠️ Votre Métier</h2>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div>
-              <label class="fancy-label">Ville *</label>
-              <select id="city" name="city" required class="fancy-input"><option value="">Choisir</option>${cityOptions}</select>
-            </div>
-            <div>
-              <label class="fancy-label">Quartier</label>
-              <select id="neighborhood" name="neighborhood" class="fancy-input"><option value="">Choisir</option></select>
-            </div>
-          </div>
+  <div>
+    <label class="fancy-label">Ville *</label>
+    <select id="city" name="city" required class="fancy-input"><option value="">Choisir</option>${cityOptions}</select>
+  </div>
+  <div>
+    <label class="fancy-label">Quartier *</label>
+    <select id="neighborhood" name="neighborhood" required class="fancy-input"><option value="">Choisir</option></select>
+  </div>
+</div>
           <div id="neighborhood-other-block" class="hidden" style="margin-top:-10px; margin-bottom:18px;"><input name="neighborhood_other" maxlength="150" placeholder="Précisez votre quartier" class="fancy-input"></div>
 
           <label class="fancy-label">Profession *</label>
