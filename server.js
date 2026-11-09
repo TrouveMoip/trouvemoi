@@ -688,6 +688,8 @@ await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT false`);
+    await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply TEXT`);
+await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply_date TIMESTAMP`);
     // --- CRÉATION DE LA TABLE POUR LES DONS ---
 await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
     id SERIAL PRIMARY KEY, 
