@@ -513,8 +513,6 @@ router.get("/mon-compte", async (req, res) => {
 
   let content = "";
 
-  let content = "";
-
 if (isConnected) {
   const code = await getOrCreateClientCode(visitorId);
   content = `
