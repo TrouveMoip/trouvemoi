@@ -432,6 +432,46 @@ app.use(express.json({ limit: "20kb" }));
 app.use(compression());
 
 // --- ROUTES SYSTEME ---
+// 1. Route pour ENVOYER le code par SMS
+app.post("/api/send-otp", express.json(), async (req, res) => {
+  const phone = cleanBeninPhone(req.body.phone);
+  if (!phone) return res.status(400).json({ ok: false, error: "Numéro invalide (01XXXXXXXX)" });
+
+  // Anti-spam : 1 demande max par minute par numéro
+  if (!(await takeRateLimit(`otp:send:${phone}`, 1, 60 * 1000))) {
+    return res.status(429).json({ ok: false, error: "Patientez 1 minute avant de redemander." });
+  }
+
+  try {
+    // On génère un code à 6 chiffres
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Valable 10 minutes
+
+    // On l'enregistre dans la base
+    await pool.query(
+      `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
+       ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+      [phone, code, expiresAt]
+    );
+
+    // On envoie le SMS
+    const smsRes = await sendSMS(phone, `Votre code de vérification TrouveMoi est : ${code}. Il expire dans 10 minutes.`);
+    
+    if (smsRes.error) return res.status(500).json({ ok: false, error: "Erreur d'envoi du SMS." });
+    
+    res.json({ ok: true, message: "SMS envoyé !" });
+  } catch (e) {
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 2. Route pour VÉRIFIER le code (appelée par le formulaire au moment de valider)
+async function verifyOTP(phone, code) {
+  if (!phone || !code) return false;
+  const result = await pool.query(`SELECT code FROM otp_codes WHERE phone = $1 AND expires_at > NOW()`, [phone]);
+  if (!result.rows.length) return false;
+  return safeEqual(result.rows[0].code, code);
+}
 app.get("/manifest.json", (req, res) => {
   res.json({
     name: "TrouveMoi",
