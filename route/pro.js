@@ -207,7 +207,19 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <label>Nom de l'entreprise (Modifiable)</label>
           <input name="company_name" maxlength="200" value="${escapeHtml(proConnected.pro.company_name || '')}">
           <label>Téléphone *</label>
-          <input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
+<input name="phone" id="phone-input" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
+
+<!-- BLOC DE VÉRIFICATION DU NUMÉRO -->
+<div style="background:#eff6ff; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #bfdbfe;">
+  <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire pour changer)</label>
+  <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <input type="text" id="phone-verif" readonly placeholder="Numéro à vérifier" style="background:#e5e7eb; margin-bottom:0;">
+    <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">Recevoir</button>
+  </div>
+  <div id="otp-block" style="display:none;">
+    <input name="otp_code" id="otp-code" placeholder="Entrez le code SMS" required style="margin-bottom:0;">
+  </div>
+</div>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
             <div><label>Préférence de contact</label><select name="contact_preference"><option value="whatsapp" ${proConnected.pro.contact_preference === 'whatsapp' ? 'selected' : ''}>WhatsApp</option><option value="email" ${proConnected.pro.contact_preference === 'email' ? 'selected' : ''}>E-mail</option></select></div>
