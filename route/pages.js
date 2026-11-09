@@ -695,9 +695,9 @@ if (isConnected) {
 </script>
         </div>
         
-      </div>
-    `;
-  }
+    </div>
+      `;
+  } // Fin du if/else
 
   res.send(page("Mon compte", `<section class="card" style="max-width: 800px; margin: 40px auto;">${content}</section>`, proConnected));
 });
