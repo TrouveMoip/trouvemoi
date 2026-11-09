@@ -750,6 +750,29 @@ router.get("/pro/:id/avis", async (req, res) => {
   <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
   <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
 </div>
+<style>
+  .star-rating-wrapper {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    font-size: 40px;
+    margin-bottom: 20px;
+  }
+  .star-rating-wrapper input {
+    display: none;
+  }
+  .star-rating-wrapper label {
+    color: #d1d5db;
+    cursor: pointer;
+    transition: color 0.2s;
+    margin-right: 5px;
+  }
+  .star-rating-wrapper input:checked ~ label,
+  .star-rating-wrapper label:hover,
+  .star-rating-wrapper label:hover ~ label {
+    color: #f59e0b;
+  }
+</style>
         
         <label>Commentaire</label>
         <textarea name="comment" rows="4" maxlength="3000"></textarea>
