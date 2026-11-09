@@ -48,6 +48,13 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0100000000" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
+          <div style="margin-bottom:14px;">
+  <label>Vérification du numéro *</label>
+  <div style="display:flex; gap:10px;">
+    <input name="otp_code" placeholder="Code reçu par SMS" required style="margin-bottom:0;">
+    <button type="button" onclick="demanderCodePro()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">Recevoir</button>
+  </div>
+</div>
           <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
         </div>
         
