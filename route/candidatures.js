@@ -11,8 +11,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
   const professionsByCategory = {};
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
-  const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}" class="prof-group">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
-
+  const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
+  
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesHtml = "";
   jours.forEach(j => {
@@ -25,290 +25,229 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     </div>`;
   });
 
-  const allProfNames = professionsResult.rows.map(p => p.name);
   const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
   const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
-  const warningHtml = refCookie ? `<div class="alert alert-warning" style="margin-bottom: 20px; border-left: 4px solid #f59e0b;"><strong>⚠️ AVERTISSEMENT IMPORTANT :</strong><br><br>Vous accédez à ce formulaire via un lien de parrainage.<br><br><strong>Si vous n'êtes pas un professionnel qualifié ou si votre métier n'est pas inscrit sur la plateforme TrouveMoi, veuillez ne pas continuer cette inscription.</strong><br><br>L'inscription n'est validée qu'après vérification de votre dossier (KYC). En cas de refus (faux profil, métier non inscrit sur la plateforme), les frais d'inscription ne seront pas remboursés.</div>` : "";
+  
+  // Styles pour les étapes (espacés et propres)
+  const stepStyle = `background:white; padding:24px; border-radius:16px; box-shadow:0 4px 12px rgba(0,0,0,0.05); border:1px solid #e5e7eb; margin-bottom:20px; display:none;`;
+  const activeStepStyle = `display:block;`;
 
   const content = `
-    <section class="card" style="max-width: 800px; margin: 0 auto;">
-      <h1 style="text-align: center; margin-bottom: 24px;">Devenir professionnel</h1>
-      ${warningHtml}
-      <div class="alert alert-warning">
-        <h3 style="color: #92400e; margin-bottom: 8px;">💳 Frais d'inscription : ${PAYMENT_AMOUNT} FCFA</h3>
-        <p style="margin: 0; font-size: 14px;">Des frais d'inscription de <strong>${PAYMENT_AMOUNT} FCFA</strong> sont requis pour l'étude et la validation de votre dossier.</p>
-      </div>        
-      <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data" style="background: #f8fafc; padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0;">
-        <input type="hidden" name="recaptcha_token" id="recaptcha_token" value="">
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label>Nom complet *</label><input name="full_name" required maxlength="150" placeholder="momo"></div>
-          <div><label>Societe (facultatif)</label><input name="company_name" maxlength="200" placeholder="momo BTP"></div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label>Telephone *</label><input name="phone" type="tel" required maxlength="30" placeholder="0100000000" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div>
-          <div style="margin-bottom:14px;">
-  <label>Vérification du numéro *</label>
-  <div style="display:flex; gap:10px;">
-    <input name="otp_code" placeholder="Code reçu par SMS" required style="margin-bottom:0;">
-    <button type="button" onclick="demanderCodePro()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">Recevoir</button>
-  </div>
-</div>
-          <div><label>NPI *</label><input name="npi" required maxlength="15" placeholder="1234567890"></div>
-        </div>
-        
-        <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:16px;"><label><input type="checkbox" name="phone_public" value="yes" checked><span><strong>Numero visible publiquement</strong></span></label></div>
-        <h3 style="margin-top: 30px;">Reception code *</h3>
-        <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:12px;"><label><input type="radio" name="contact_preference" value="whatsapp" required> <span><strong>📱 WhatsApp</strong></span></label><div id="whatsapp-number-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Numero WhatsApp</label><input name="whatsapp_number" type="tel" maxlength="30" placeholder="0194010345" pattern="01[0-9]{8}" title="10 chiffres commençant par 01"></div></div>
-        <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:12px;"><label><input type="radio" name="contact_preference" value="email" required> <span><strong>✉️ Email</strong></span></label><div id="email-block" class="hidden" style="margin-top:12px;margin-left:30px"><label>Adresse email *</label><input name="contact_email" type="email" maxlength="254"></div></div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
-          <div><label>Ville *</label><select id="city" name="city" required><option value="">Choisir</option>${cityOptions}</select></div>
-          <div><label>Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Choisir</option></select><div id="neighborhood-other-block" class="hidden" style="margin-top:10px;"><input name="neighborhood_other" maxlength="150" placeholder="Precisez"></div></div>
-        </div>
+    <section style="max-width: 700px; margin: 0 auto;">
+      <h1 style="text-align: center; margin-bottom: 10px;">Devenir professionnel</h1>
+      
+      <!-- Barre de progression -->
+      <div style="display:flex; justify-content:space-between; margin-bottom:30px; background:#e5e7eb; height:8px; border-radius:4px;">
+        <div id="progress-bar" style="width:25%; background:#3b82f6; height:100%; border-radius:4px; transition:width 0.3s;"></div>
+      </div>
 
-        <div style="background: #eff6ff; padding: 16px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #bfdbfe; position: relative;">
-          <label style="color: #1e3a8a; margin-top: 0;">🔍 Rechercher votre métier</label>
-          <input type="text" id="search-profession" placeholder="Tapez pour filtrer (ex: maçon, coiffeur...)" oninput="filterProfessions()" autocomplete="off" style="border-radius: 8px; padding: 12px; margin: 0; border: 1px solid #93c5fd; width: 100%;">
-          <div id="custom-suggestions" style="background: white; border: 1px solid #cbd5e0; border-radius: 0 0 8px 8px; display: none; max-height: 200px; overflow-y: auto; position: absolute; left: 16px; right: 16px; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label>Profession *</label><select id="profession" name="profession" required><option value="">Choisir</option>${professionOptions}</select></div>
-          <div><label>Experience</label><select name="experience"><option value="">Selectionnez</option><option value="Debutant">Debutant</option><option value="Moins de 2 ans">Moins de 2 ans</option><option value="2 a 5 ans">2 a 5 ans</option><option value="Plus de 5 ans">Plus de 5 ans</option></select></div>
-        </div>
+      <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data">
         
-        <label>Description *</label><textarea name="service_description" rows="4" required maxlength="3000"></textarea>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label>Zones</label><input name="service_area" maxlength="300" placeholder="Cotonou et environs"></div>
-          <div><label>Disponibilite</label><select name="availability"><option value="">Selectionnez</option><option value="Disponible immediatement">Disponible immediatement</option><option value="Sur rendez-vous">Sur rendez-vous</option><option value="A temps partiel">A temps partiel</option></select></div>
-        </div>
-
-        <div style="margin-top:20px; background:#f0fdf4; padding:16px; border-radius:12px; border:1px solid #bbf7d0;">
-          <label style="color:#065f46;">🎁 Code de parrainage (optionnel)</label>
-          <input name="referred_by" maxlength="10" value="${escapeHtml(refCookie)}" placeholder="Ex: p543ht6" style="text-transform:lowercase;">
-          <p style="font-size:12px; color:#065f46; margin:0;">Si un ami vous a invité, entrez son code ici.</p>
-        </div>
-
-        <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
-        <h3>Localisation & Type d'activité</h3>
-        <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:16px;">
-          <label><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
-          <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
-        </div>
-
-        <div id="localisation-block" class="hidden">
-          <label>Adresse exacte / Point de repère</label>
-          <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total">
+        <!-- ÉTAPE 1 : IDENTITÉ (Ordre respecté) -->
+        <div id="step-1" style="${stepStyle} ${activeStepStyle}">
+          <h2 style="color:#1e40af; margin-bottom:20px;">1. Votre Identité</h2>
           
-          <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e5e7eb;">
-            <h4 style="font-size:14px; margin-bottom:12px; color:#374151;">Horaires d'ouverture</h4>
-            ${horairesHtml}
+          <label>Nom et prénoms *</label>
+          <input name="full_name" id="input_full_name" required maxlength="150" placeholder="Ex: Jean Dupont">
+          
+          <label>Société (facultatif)</label>
+          <input name="company_name" id="input_company_name" maxlength="200" placeholder="Ex: Momo BTP">
+          
+          <label>NPI (Numéro Personnel d'Identification) *</label>
+          <input name="npi" id="input_npi" required maxlength="15" placeholder="Ex: 1234567890">
+          
+          <label>N° Téléphone *</label>
+          <input name="phone" id="input_phone" type="tel" required maxlength="30" placeholder="01XXXXXXXX" pattern="01[0-9]{8}">
+          
+          <div style="background:#eff6ff; padding:16px; border-radius:12px; margin-top:15px; border:1px solid #bfdbfe;">
+            <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire)</label>
+            <div style="display:flex; gap:10px;">
+              <input name="phone_verif" id="phone_verif_input" type="tel" placeholder="Numéro à vérifier" style="margin-bottom:0;" readonly>
+              <button type="button" onclick="demanderCodePro()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">Recevoir</button>
+            </div>
+            <div id="otp-block" style="display:none; margin-top:10px;">
+              <input name="otp_code" id="otp_code_input" placeholder="Entrez le code SMS à 6 chiffres" required style="margin-bottom:0;">
+            </div>
           </div>
 
-          <input type="hidden" name="latitude" id="latitude">
-          <input type="hidden" name="longitude" id="longitude">
-          <button type="button" onclick="getLocation()" style="background:#3b82f6; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
-          <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
+          <button type="button" onclick="nextStep(1)" style="width:100%; margin-top:20px;">Suivant →</button>
         </div>
 
-        <hr style="margin:32px 0;border:none;border-top:1px solid #e2e8f0">
-        <h3>Photos obligatoires (KYC)</h3>
-        
-        <div style="display: flex; align-items: center; gap: 16px; background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #cbd5e0;">
-          <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" alt="Exemple KYC" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
-          <p style="margin: 0; font-size: 13px; color: #475569;"><strong>Exemple de photo KYC :</strong> Vous devez être de face, en tenant votre pièce d'identité à côté de votre visage, sans lunettes ni chapeau.</p>
+        <!-- ÉTAPE 2 : MÉTIER -->
+        <div id="step-2" style="${stepStyle}">
+          <h2 style="color:#1e40af; margin-bottom:20px;">2. Votre Métier</h2>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div><label>Ville *</label><select id="city" name="city" required><option value="">Choisir</option>${cityOptions}</select></div>
+            <div><label>Quartier</label><select id="neighborhood" name="neighborhood"><option value="">Choisir</option></select></div>
+          </div>
+          <div id="neighborhood-other-block" class="hidden" style="margin-bottom:14px;"><input name="neighborhood_other" maxlength="150" placeholder="Précisez votre quartier"></div>
+
+          <label>Profession *</label>
+          <select id="profession" name="profession" required><option value="">Choisir</option>${professionOptions}</select>
+          
+          <label>Description de vos services *</label>
+          <textarea name="service_description" rows="4" required maxlength="3000" placeholder="Décrivez ce que vous faites..."></textarea>
+
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button type="button" onclick="prevStep(2)" class="secondary" style="width:50%;">← Retour</button>
+            <button type="button" onclick="nextStep(2)" style="width:50%;">Suivant →</button>
+          </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label>1. Photo d'identité (visage) *</label><input id="photo_profil" name="photo_profil" type="file" accept="image/*" capture="user" required></div>
-          <div><label>2. Pièce d'identité (recto) *</label><input id="photo_identite" name="photo_identite" type="file" accept="image/*" capture="environment" required></div>
-        </div>
-        <label style="margin-top:16px;">3. Photo de vérification KYC (Vous + pièce) *</label>
-        <input id="photo_kyc" name="photo_kyc" type="file" accept="image/*" capture="user" required>
-        
-        <!-- CHECKBOX POLITIQUE DE CONFIDENTIALITE (juste avant le bouton) -->
-        <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;">
-          <label style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" name="gdpr_consent" value="yes" required> 
-            <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialite</a>.</span>
-          </label>
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-          <button type="submit" style="padding: 16px 40px; font-size: 16px; width: 100%;">Envoyer ma candidature</button>
+        <!-- ÉTAPE 3 : LOCALISATION -->
+        <div id="step-3" style="${stepStyle}">
+          <h2 style="color:#1e40af; margin-bottom:20px;">3. Localisation & Horaires</h2>
+          
+          <div class="checkbox-block" style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb; margin-bottom:16px;">
+            <label><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)"> <span><strong>🏠 J'ai un local fixe</strong></span></label>
+            <label style="margin-top:10px;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)"> <span><strong>🚗 Je me déplace chez le client</strong></span></label>
+          </div>
+
+          <div id="localisation-block" class="hidden">
+            <label>Adresse exacte / Point de repère</label>
+            <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita">
+            
+            <div style="background:#f9fafb; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #e5e7eb;">
+              <h4 style="font-size:14px; margin-bottom:12px; color:#374151;">Horaires d'ouverture</h4>
+              ${horairesHtml}
+            </div>
+
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+            <button type="button" onclick="getLocation()" style="background:#3b82f6; width:100%; border-radius:12px; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
+            <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:20px;">
+            <button type="button" onclick="prevStep(3)" class="secondary" style="width:50%;">← Retour</button>
+            <button type="button" onclick="nextStep(3)" style="width:50%;">Suivant →</button>
+          </div>
         </div>
 
-        <div id="alert-metier-sensible" class="alert alert-danger hidden" style="margin-bottom: 20px; border-left: 4px solid #ef4444;">
-          <strong>⚠️ ATTENTION - PROFESSION RÉGLEMENTÉE</strong><br><br>
-          Ce métier exige une autorisation d'État. Votre dossier fera l'objet d'une <strong>vérification approfondie</strong> (Appel téléphonique et demande de Carte Professionnelle).<br><br>
-          <strong>Si vous ne pouvez pas justifier de votre agrément légal, ne continuez pas et ne payez pas.</strong> Aucun remboursement ne sera effectué en cas de rejet.
+        <!-- ÉTAPE 4 : KYC & PHOTOS -->
+        <div id="step-4" style="${stepStyle}">
+          <h2 style="color:#1e40af; margin-bottom:20px;">4. Vérification (KYC)</h2>
+          
+          <div style="display: flex; align-items: center; gap: 16px; background: #fff; padding: 16px; border-radius: 12px; margin-bottom: 20px; border: 1px dashed #cbd5e0;">
+            <img src="https://res.cloudinary.com/gxm35ndf/image/upload/v1792403314/kyc.jpg" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;">
+            <p style="margin: 0; font-size: 13px; color: #475569;"><strong>Exemple :</strong> Vous devez être de face, en tenant votre pièce d'identité à côté de votre visage.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div><label>1. Photo visage *</label><input name="photo_profil" type="file" accept="image/*" required></div>
+            <div><label>2. Pièce d'identité *</label><input name="photo_identite" type="file" accept="image/*" required></div>
+          </div>
+          <label style="margin-top:16px;">3. Photo KYC (Visage + Pièce) *</label>
+          <input name="photo_kyc" type="file" accept="image/*" required>
+          
+          <div class="checkbox-block" style="background:#fff; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin-top:24px;">
+            <label><input type="checkbox" name="gdpr_consent" value="yes" required> <span>J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb;">Politique de confidentialité</a>.</span></label>
+          </div>
+          
+          <div style="margin-top:20px; background:#f0fdf4; padding:16px; border-radius:12px; border:1px solid #bbf7d0;">
+            <label style="color:#065f46;">🎁 Code de parrainage (optionnel)</label>
+            <input name="referred_by" maxlength="10" value="${escapeHtml(refCookie)}" placeholder="Ex: p543ht6" style="text-transform:lowercase;">
+          </div>
+
+          <button type="submit" id="submit-btn" style="width:100%; margin-top:20px; padding:16px; font-size:16px; background:#10b981;">Envoyer ma candidature</button>
         </div>
       </form>
     </section>
-    
+
     <script>
-      const citySelect = document.getElementById('city'); 
-      const neighborhoodSelect = document.getElementById('neighborhood'); 
-      const neighborhoodOtherBlock = document.getElementById('neighborhood-other-block'); 
-      const professionSelect = document.getElementById('profession'); 
-      const whatsappRadio = document.querySelector('input[name="contact_preference"][value="whatsapp"]'); 
-      const emailRadio = document.querySelector('input[name="contact_preference"][value="email"]');
-      
-      document.getElementById('form-inscription').addEventListener('submit', async function(e) {
-        if (!document.getElementById('recaptcha_token').value) {
-          e.preventDefault();
-          const token = await getRecaptchaToken();
-          document.getElementById('recaptcha_token').value = token;
-          this.submit();
-        }
-      });
-
-      const allProfessionsList = ${JSON.stringify(allProfNames)};
-
-      function filterProfessions() {
-        const search = document.getElementById('search-profession').value.toLowerCase();
-        const box = document.getElementById('custom-suggestions');
-        if (search.length < 2) { box.style.display = 'none'; return; }
-        let html = '';
-        allProfessionsList.forEach(function(profName) {
-          if (profName.toLowerCase().includes(search)) {
-            html += '<div onclick="selectProfession(this.innerText)" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 14px;">' + profName + '</div>';
-          }
-        });
-        if (html) { box.innerHTML = html; box.style.display = 'block'; } else { box.style.display = 'none'; }
+      // Logique des étapes
+      let currentStep = 1;
+      function showStep(step) {
+        document.querySelectorAll('[id^="step-"]').forEach(el => el.style.display = 'none');
+        document.getElementById('step-' + step).style.display = 'block';
+        document.getElementById('progress-bar').style.width = (step * 25) + '%';
+        currentStep = step;
       }
-
-      function selectProfession(val) {
-        document.getElementById('profession').value = val;
-        document.getElementById('search-profession').value = val;
-        document.getElementById('custom-suggestions').style.display = 'none';
-        document.getElementById('profession').dispatchEvent(new Event('change'));
+      function nextStep(step) {
+        if (step === 1) {
+          const phone = document.getElementById('input_phone').value;
+          const otp = document.getElementById('otp_code_input').value;
+          if(!phone || !otp) { alert("Veuillez remplir le téléphone et le code SMS."); return; }
+        }
+        if (step === 2) {
+          const city = document.getElementById('city').value;
+          const prof = document.getElementById('profession').value;
+          if(!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
+        }
+        showStep(step + 1);
       }
-
-      ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
-        const input = document.getElementById(id);
-        if(input) {
-          input.addEventListener('change', function() {
-            if (this.files && this.files.length > 0) {
-              this.style.border = "3px solid #10b981"; 
-              this.style.backgroundColor = "#ecfdf5"; 
-              if (!this.nextElementSibling || !this.nextElementSibling.classList.contains('photo-ok')) {
-                const msg = document.createElement('div');
-                msg.className = 'photo-ok';
-                msg.style.cssText = 'color: #10b981; font-size: 13px; font-weight: bold; margin-top: -10px; margin-bottom: 15px;';
-                msg.innerHTML = '✅ Photo sélectionnée';
-                this.parentNode.insertBefore(msg, this.nextSibling);
-              }
-            }
-          });
-        }
-      });
-
-      citySelect.addEventListener('change', async function() { 
-        const city = citySelect.value; 
-        neighborhoodSelect.innerHTML = ''; 
-        neighborhoodOtherBlock.classList.add('hidden'); 
-        if (!city) { neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; return; } 
-        neighborhoodSelect.innerHTML = '<option value="">Chargement...</option>'; 
-        try { 
-          const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
-          const data = await res.json(); 
-          neighborhoodSelect.innerHTML = '<option value="">Choisir</option>'; 
-          for (const n of data.neighborhoods) { 
-            const opt = document.createElement('option'); opt.value = n; opt.textContent = n; neighborhoodSelect.appendChild(opt); 
-          } 
-          const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; neighborhoodSelect.appendChild(otherOpt); 
-        } catch (e) { neighborhoodSelect.innerHTML = '<option value="">Erreur</option>'; } 
-      });
+      function prevStep(step) {
+        showStep(step - 1);
+      }
       
-      neighborhoodSelect.addEventListener('change', function() { 
-        if (neighborhoodSelect.value === '__AUTRE__') neighborhoodOtherBlock.classList.remove('hidden'); 
-        else neighborhoodOtherBlock.classList.add('hidden');
-      });
-
-      const METIERS_SENSIBLES = ${JSON.stringify(METIERS_SENSIBLES)};
-      const METIERS_LOCAL_FIXE = ${JSON.stringify(METIERS_LOCAL_FIXE)};
-      
-      professionSelect.addEventListener('change', function() {
-        const metierActuel = professionSelect.value;
-        const radioAmbulant = document.querySelector('input[name="type_lieu"][value="ambulant"]');
-        const radioFixe = document.querySelector('input[name="type_lieu"][value="fixe"]');
-        
-        if (METIERS_LOCAL_FIXE.includes(metierActuel)) {
-          radioFixe.checked = true; 
-          radioAmbulant.disabled = true; 
-          radioAmbulant.parentElement.style.opacity = '0.5'; 
-          toggleLocalisation(true); 
-        } else {
-          radioAmbulant.disabled = false; 
-          radioAmbulant.parentElement.style.opacity = '1';
-        }
-
-        const alertSensible = document.getElementById('alert-metier-sensible');
-        if (alertSensible) {
-          if (METIERS_SENSIBLES.includes(metierActuel)) alertSensible.classList.remove('hidden');
-          else alertSensible.classList.add('hidden');
-        }
-      });
-      
-      whatsappRadio.addEventListener('change', function() { if (whatsappRadio.checked) { document.getElementById('whatsapp-number-block').classList.remove('hidden'); document.getElementById('email-block').classList.add('hidden'); } });
-      emailRadio.addEventListener('change', function() { if (emailRadio.checked) { document.getElementById('email-block').classList.remove('hidden'); document.getElementById('whatsapp-number-block').classList.add('hidden'); } });
-      
+      // Logique GPS et SMS
       function toggleLocalisation(isFixe) {
-        const block = document.getElementById('localisation-block');
-        if (isFixe) block.classList.remove('hidden');
-        else block.classList.add('hidden');
+        document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
       }
-      
       function getLocation() {
         const status = document.getElementById('gps-status');
-        if (!navigator.geolocation) { status.innerText = "Non supporté."; return; }
-        status.innerText = "Récupération de la position...";
         navigator.geolocation.getCurrentPosition(
           (position) => {
             document.getElementById('latitude').value = position.coords.latitude;
             document.getElementById('longitude').value = position.coords.longitude;
             status.innerText = "✅ Position GPS enregistrée !";
           },
-          (error) => { status.innerText = "❌ Impossible de vous localiser."; }
+          () => { status.innerText = "❌ Impossible de vous localiser."; }
         );
       }
-    </script>
-    <script>
-  async function demanderCodePro() {
-    const phoneInput = document.querySelector('input[name="phone"]');
-    if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
-      alert("Veuillez entrer un numéro valide (ex: 0194010345)");
-      return;
-    }
-    const btn = event.target;
-    btn.innerText = "Envoi...";
-    btn.disabled = true;
-    
-    try {
-      const res = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ phone: phoneInput.value })
+
+      // Copier le numéro dans la case de vérification
+      document.getElementById('input_phone').addEventListener('input', function() {
+          document.getElementById('phone_verif_input').value = this.value;
       });
-      const data = await res.json();
-      if (data.ok) {
-        alert("✅ Code envoyé ! Vérifiez vos SMS.");
-        btn.innerText = "Renvoyer";
-      } else {
-        alert(data.error || "Erreur d'envoi.");
-        btn.innerText = "Recevoir";
+
+      // Demander le code SMS
+      async function demanderCodePro() {
+        const phone = document.getElementById('input_phone').value;
+        if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
+        
+        const btn = event.target;
+        btn.innerText = "Envoi..."; btn.disabled = true;
+        
+        try {
+          const res = await fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone: phone })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            alert("✅ Code envoyé ! Vérifiez vos SMS.");
+            document.getElementById('otp-block').style.display = 'block';
+            btn.innerText = "Renvoyer";
+          } else {
+            alert(data.error || "Erreur d'envoi.");
+            btn.innerText = "Recevoir";
+          }
+        } catch(e) {
+          alert("Erreur réseau.");
+          btn.innerText = "Recevoir";
+        }
+        btn.disabled = false;
       }
-    } catch(e) {
-      alert("Erreur réseau.");
-      btn.innerText = "Recevoir";
-    }
-    btn.disabled = false;
-  }
-</script>
+      
+      // Gestion du quartier "Autre"
+      document.getElementById('city').addEventListener('change', async function() { 
+          const city = this.value; const select = document.getElementById('neighborhood');
+          select.innerHTML = '<option value="">Chargement...</option>'; 
+          try { 
+            const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
+            const data = await res.json(); 
+            select.innerHTML = '<option value="">Choisir</option>'; 
+            for (const n of data.neighborhoods) { const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); }
+            const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
+          } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
+      });
+      document.getElementById('neighborhood').addEventListener('change', function() { 
+          document.getElementById('neighborhood-other-block').style.display = (this.value === '__AUTRE__') ? 'block' : 'none';
+      });
+    </script>
   `;
   res.send(page("Devenir professionnel", content, proConnected));
 });
