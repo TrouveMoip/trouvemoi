@@ -14,6 +14,18 @@ const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 const REFERRAL_BONUS = 100;
+const QUARTIERS_BENIN = {
+  "Cotonou": ["Akpakpa", "Cadjehoun", "Fidjrossè", "Ganhi", "Gbégamey", "Sainte-Rita", "Sikècodji", "Zogbo", "Agla", "Aïbatin", "Dantokpa", "Houéyiho", "Ladji", "Vèdoko"],
+  "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Tokpa", "Zongo", "Attakè", "Avrankou"],
+  "Parakou": ["Zongo", "Titirou", "Ganhi", "Ladji", "Tourou"],
+  "Abomey-Calavi": ["Calavi Centre", "Godomey", "Zogbadjè", "Akassato", "Togba", "Hèvié"],
+  "Bohicon": ["Bohicon Centre", "Saclo", "Passagon", "Sodohomè"],
+  "Natitingou": ["Natitingou Centre", "Kouandé", "Toucountouna"],
+  "Ouidah": ["Ouidah Centre", "Djègbadji", "Pahou", "Sèmè"],
+  "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
+  "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
+  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
+};
 const METIERS_LOCAL_FIXE = ["Coiffeur", "Couturier", "Mécanicien", "Restaurateur"]; // Liste des métiers qui doivent avoir un local
 const METIERS_SENSIBLES = ["Médecin", "Avocat", "Notaire", "Pharmacien"]; // Liste des métiers réglementés
 const PAYMENT_AMOUNT = 1500;
