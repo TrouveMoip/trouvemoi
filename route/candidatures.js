@@ -305,7 +305,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
       });
       document.getElementById('neighborhood').addEventListener('change', function() { 
-          document.getElementById('neighborhood-other-block').style.display = (this.value === '__AUTRE__') ? 'block' : 'none';
+          document.getElementById('neighborhood-other-block').style.display = (this.value === 'AUTRE') ? 'block' : 'none';
       });
     </script>
   `;
