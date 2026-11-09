@@ -320,6 +320,9 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           BYPASS_PAYMENT ? 'paid' : 'unpaid'
         ]
       );
+      if (process.env.ADMIN_PHONE) {
+  sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau Pro inscrit : ${full_name} (${profession}).`);
+}
 
       if (BYPASS_PAYMENT) return res.send(page("Succès", `<h1>Inscription validée (Mode Test)</h1><p>Code de suivi : ${trackingCode}</p><a href="/">Accueil</a>`, null));
       
