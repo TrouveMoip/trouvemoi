@@ -341,25 +341,22 @@ router.post("/modifier-telephone", async (req, res) => {
 });
   // ==========================================
 // RÉINITIALISATION DU CODE PRO
-// ==========================================
+// PAGE DE RÉCUPÉRATION DU CODE PRO
 router.get("/reinitialiser", (req, res) => {
-  const randomSuffix = crypto.randomInt(10, 99);
-  
-  res.send(page("Réinitialiser", `
+  res.send(page("Récupérer mon code", `
     <section class="card" style="max-width: 500px; margin: 40px auto;">
       <h1 style="text-align:center;">🔐 Récupérer mon code</h1>
       <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
         Entrez le numéro de téléphone utilisé lors de votre inscription.
       </p>
-      <div class="alert alert-info" style="text-align:center;">
-        <strong>Vérification :</strong> Votre numéro doit se terminer par <strong style="font-size:20px; color:#1e40af;">${randomSuffix}</strong>.
-      </div>
+      
       <form action="/mon-espace-pro/reinitialiser" method="POST">
-        <input type="hidden" name="expected_suffix" value="${randomSuffix}">
-        <label>Votre numéro de téléphone complet *</label>
-        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="Ex: 01XXXXXXXX" style="text-align:center;">
-        <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir mon nouveau code</button>
+        <label>Votre numéro de téléphone *</label>
+        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" style="text-align:center;">
+        
+        <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir un code par SMS</button>
       </form>
+      
       <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
     </section>
   `, null));
