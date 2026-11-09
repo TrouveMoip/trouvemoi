@@ -513,21 +513,123 @@ router.get("/mon-compte", async (req, res) => {
 
   let content = "";
 
-  if (isConnected) {
-    const code = await getOrCreateClientCode(visitorId);
-    content = `
-      <h2 style="text-align:center;">Bonjour ${escapeHtml(client.full_name)}</h2>
-      <p style="font-size:14px; color:#4b5563; text-align:center;">Votre code de récupération secret :</p>
+  let content = "";
+
+if (isConnected) {
+  const code = await getOrCreateClientCode(visitorId);
+  content = `
+    <div style="max-width: 450px; margin: 0 auto; text-align:center;">
+      <h2>Bonjour ${escapeHtml(client.full_name)} 👋</h2>
+      <p style="font-size:14px; color:#4b5563;">Votre code de récupération secret :</p>
       <div class="pro-code-box" style="margin: 20px 0;">
         <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Votre code</div>
         <div class="pro-code-value" style="font-size:36px; letter-spacing: 5px;">${escapeHtml(code || "Indisponible")}</div>
       </div>
-      <p style="font-size:14px; text-align:center;"><strong>${count}</strong> favori(s) enregistré(s).</p>
-      <div style="text-align:center; margin:16px 0;"><a class="button" href="/mes-favoris">❤️ Voir mes favoris</a></div>
+      <p style="font-size:14px;"><strong>${count}</strong> favori(s) enregistré(s).</p>
+      <div style="margin:24px 0;"><a class="button" href="/mes-favoris" style="width:100%;">❤️ Voir mes favoris</a></div>
       <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
-      <div style="text-align:center;"><a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:13px;">Se déconnecter de cet appareil</a></div>
-    `;
-  } else {
+      <a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:14px; text-decoration:none;">Se déconnecter de cet appareil</a>
+    </div>
+  `;
+} else {
+  content = `
+    <div style="max-width: 450px; margin: 0 auto;">
+      
+      <!-- FORMULAIRE DE CONNEXION -->
+      <div id="box-login">
+        <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">🔑 Se connecter</h2>
+        <form action="/mon-compte/connexion-code" method="POST">
+          <label class="fancy-label">Téléphone</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
+          
+          <label class="fancy-label">Mot de passe</label>
+          <input name="password" type="password" required placeholder="Votre mot de passe" class="fancy-input">
+          
+          <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Se connecter</button>
+        </form>
+        <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
+          Pas encore de compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">S'inscrire</a>
+        </p>
+      </div>
+
+      <!-- FORMULAIRE D'INSCRIPTION (Caché au début) -->
+      <div id="box-register" style="display:none;">
+        <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">✨ Créer un compte</h2>
+        <form action="/mon-compte/enregistrer" method="POST">
+          <label class="fancy-label">Nom complet</label>
+          <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont" class="fancy-input">
+          
+          <label class="fancy-label">Téléphone</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input">
+          
+          <label class="fancy-label">Vérification du numéro *</label>
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <input name="otp_code" placeholder="Code SMS" required class="fancy-input" style="margin-bottom:0;">
+            <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
+          </div>
+
+          <label class="fancy-label">Mot de passe</label>
+          <input name="password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
+          
+          <label class="fancy-label">Confirmer le mot de passe</label>
+          <input name="password_confirm" type="password" required minlength="6" placeholder="Retapez le mot de passe" class="fancy-input">
+          
+          <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; background:#10b981; margin-top:10px;">Créer mon compte</button>
+        </form>
+        <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
+          Déjà un compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">Se connecter</a>
+        </p>
+      </div>
+
+    </div>
+
+    <script>
+      function toggleAccountForm(e) {
+        e.preventDefault();
+        const login = document.getElementById('box-login');
+        const register = document.getElementById('box-register');
+        if (login.style.display === 'none') {
+          login.style.display = 'block';
+          register.style.display = 'none';
+        } else {
+          login.style.display = 'none';
+          register.style.display = 'block';
+        }
+      }
+
+      async function demanderCode() {
+        const phoneInput = document.querySelector('input[name="phone"]');
+        if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
+          alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
+          return;
+        }
+        const btn = event.target;
+        btn.innerText = "Envoi...";
+        btn.disabled = true;
+        
+        try {
+          const res = await fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone: phoneInput.value })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            alert("✅ Code envoyé ! Vérifiez vos SMS.");
+            btn.innerText = "Renvoyer";
+          } else {
+            alert(data.error || "Erreur d'envoi.");
+            btn.innerText = "Recevoir";
+          }
+        } catch(e) {
+          alert("Erreur réseau.");
+          btn.innerText = "Recevoir";
+        }
+        btn.disabled = false;
+      }
+    </script>
+  `;
+}
     content = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
         
