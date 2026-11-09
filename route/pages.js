@@ -838,9 +838,12 @@ router.get("/api/neighborhoods", (req, res) => {
   const city = String(req.query.city || "").trim();
   if (!city) return res.json({ neighborhoods: [] });
 
-  // On cherche la ville dans notre liste
+  // On récupère la liste de la ville
   const quartiers = QUARTIERS_BENIN[city] || []; 
   
+  // On ajoute l'option "Autre" à la fin de la liste
+  quartiers.push("Autre");
+
   res.json({ neighborhoods: quartiers });
 });
 // 3. Formulaire de demande de retrait (Espace Pro)
