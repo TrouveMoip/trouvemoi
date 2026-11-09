@@ -1,6 +1,18 @@
 const express = require('express');
 const crypto = require('crypto');
 bcrypt = require('bcrypt');
+const QUARTIERS_BENIN = {
+  "Cotonou": ["Akpakpa", "Cadjehoun", "Fidjrossè", "Ganhi", "Gbégamey", "Sainte-Rita", "Sikècodji", "Zogbo", "Agla", "Aïbatin", "Dantokpa", "Houéyiho", "Ladji", "Vèdoko"],
+  "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Tokpa", "Zongo", "Attakè", "Avrankou"],
+  "Parakou": ["Zongo", "Titirou", "Ganhi", "Ladji", "Tourou"],
+  "Abomey-Calavi": ["Calavi Centre", "Godomey", "Zogbadjè", "Akassato", "Togba", "Hèvié"],
+  "Bohicon": ["Bohicon Centre", "Saclo", "Passagon", "Sodohomè"],
+  "Natitingou": ["Natitingou Centre", "Kouandé", "Toucountouna"],
+  "Ouidah": ["Ouidah Centre", "Djègbadji", "Pahou", "Sèmè"],
+  "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
+  "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
+  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
+};
 module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP) {
   const router = express.Router();
 
