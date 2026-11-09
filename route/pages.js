@@ -262,8 +262,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
 
 <script>
   function partagerProfil(nom, metier, ville, lien) {
-    const texte = `Salut ! Regarde ce professionnel sur TrouveMoi : ${nom} (${metier}) à ${ville}. Voici son profil : ${lien}`;
-    
+const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' + metier + ') à ' + ville + '. Voici son profil : ' + lien;    
     // Si le téléphone supporte le partage natif (la plupart des mobiles)
     if (navigator.share) {
       navigator.share({
