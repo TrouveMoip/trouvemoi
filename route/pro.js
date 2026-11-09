@@ -520,5 +520,58 @@ router.post("/verifier-code-pro", async (req, res) => {
     res.redirect(303, "/mon-espace-pro/reinitialiser");
   }
 });
+  // PAGE POUR VOIR SES AVIS ET RÉPONDRE
+router.get("/mes-avis", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const result = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [proConnected.pro.id]);
+  
+  const avisHtml = result.rows.map(r => `
+    <article class="card" style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between;">
+        <strong>${escapeHtml(r.author_name)}</strong>
+        <span style="color:#f59e0b; font-size:18px;">${renderStars(r.rating)}</span>
+      </div>
+      <p style="margin-top:10px; font-style:italic; color:#4b5563;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
+      
+      ${r.pro_reply ? `
+        <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:12px; margin-top:12px; border-radius:4px;">
+          <strong style="color:#065f46; font-size:13px;">Votre réponse :</strong>
+          <p style="font-size:14px; margin:4px 0 0 0;">${escapeHtml(r.pro_reply)}</p>
+        </div>
+      ` : `
+        <form action="/mon-espace-pro/repondre-avis/${r.id}" method="POST" style="margin-top:12px;">
+          <input name="reply" required placeholder="Écrivez votre réponse ici..." style="padding:12px; font-size:14px; margin-bottom:8px; background:#f8fafc;">
+          <button type="submit" class="success" style="padding:8px 16px; font-size:13px; border-radius:8px;">Répondre</button>
+        </form>
+      `}
+    </article>
+  `).join("");
+
+  res.send(page("Mes Avis", `
+    <div style="max-width: 700px; margin: 0 auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1>⭐ Mes Avis</h1>
+        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+      </div>
+      ${avisHtml || "<p style='text-align:center; color:#6b7280;'>Vous n'avez pas encore d'avis approuvé.</p>"}
+    </div>
+  `, proConnected));
+});
+
+// ENREGISTREMENT DE LA RÉPONSE
+router.post("/repondre-avis/:id", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  
+  const id = Number(req.params.id);
+  const reply = String(req.body.reply || "").trim().slice(0, 1000);
+
+  if (reply) {
+    await pool.query(`UPDATE reviews SET pro_reply = $1, pro_reply_date = NOW() WHERE id = $2 AND pro_id = $3`, [reply, id, proConnected.pro.id]);
+  }
+  res.redirect(303, "/mon-espace-pro/mes-avis");
+});
   return router;
 };
