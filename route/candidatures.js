@@ -277,6 +277,38 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         );
       }
     </script>
+    <script>
+  async function demanderCodePro() {
+    const phoneInput = document.querySelector('input[name="phone"]');
+    if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
+      alert("Veuillez entrer un numéro valide (ex: 0194010345)");
+      return;
+    }
+    const btn = event.target;
+    btn.innerText = "Envoi...";
+    btn.disabled = true;
+    
+    try {
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ phone: phoneInput.value })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Code envoyé ! Vérifiez vos SMS.");
+        btn.innerText = "Renvoyer";
+      } else {
+        alert(data.error || "Erreur d'envoi.");
+        btn.innerText = "Recevoir";
+      }
+    } catch(e) {
+      alert("Erreur réseau.");
+      btn.innerText = "Recevoir";
+    }
+    btn.disabled = false;
+  }
+</script>
   `;
   res.send(page("Devenir professionnel", content, proConnected));
 });
