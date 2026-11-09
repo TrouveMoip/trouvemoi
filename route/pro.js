@@ -231,7 +231,42 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <div style="text-align:center; margin-top:30px;"><button type="submit" class="success" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button></div>
         </form>
         <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
-      </section>
+      </section
+      <script>
+  // Copier le numéro tapé dans la case de vérification
+  document.getElementById('phone-input').addEventListener('input', function() {
+      document.getElementById('phone-verif').value = this.value;
+  });
+
+  async function demanderCode() {
+    const phone = document.getElementById('phone-input').value;
+    if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 01XXXXXXXX)"); return; }
+    
+    const btn = event.target;
+    btn.innerText = "Envoi..."; btn.disabled = true;
+    
+    try {
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ phone: phone })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert("✅ Code envoyé ! Vérifiez vos SMS.");
+        document.getElementById('otp-block').style.display = 'block';
+        btn.innerText = "Renvoyer";
+      } else {
+        alert(data.error || "Erreur d'envoi.");
+        btn.innerText = "Recevoir";
+      }
+    } catch(e) {
+      alert("Erreur réseau.");
+      btn.innerText = "Recevoir";
+    }
+    btn.disabled = false;
+  }
+</script>
     `, proConnected));
   });
 
