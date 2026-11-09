@@ -592,6 +592,7 @@ router.get("/mon-compte", async (req, res) => {
 
 // D. Créer un compte client (avec mot de passe sécurisé)
 router.post("/mon-compte/enregistrer", async (req, res) => {
+  const otpCode = String(req.body.otp_code || "").trim();
   const visitorId = getOrCreateVisitorId(req, res);
   const fullName = String(req.body.full_name || "").trim().slice(0, 150);
   const phone = cleanBeninPhone(req.body.phone);
@@ -602,6 +603,11 @@ router.post("/mon-compte/enregistrer", async (req, res) => {
   if (password !== passwordConfirm) return res.status(400).send(page("Erreur", "<h2>Les mots de passe ne correspondent pas.</h2><a href='/mon-compte'>Retour</a>", null));
 
   try {
+    // Vérification du code SMS
+const codeValide = await verifyOTP(phone, otpCode);
+if (!codeValide) {
+  return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte'>Retour</a>", null));
+}
     // Sécurité maximale avec bcrypt (12 tours = très sécurisé)
     const passwordHash = await bcrypt.hash(password, 12);
 
