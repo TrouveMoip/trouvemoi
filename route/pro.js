@@ -357,7 +357,7 @@ router.get("/reinitialiser", (req, res) => {
       <form action="/mon-espace-pro/reinitialiser" method="POST">
         <input type="hidden" name="expected_suffix" value="${randomSuffix}">
         <label>Votre numéro de téléphone complet *</label>
-        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="Ex: 0194010345" style="text-align:center;">
+        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="Ex: 01XXXXXXXX" style="text-align:center;">
         <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir mon nouveau code</button>
       </form>
       <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
