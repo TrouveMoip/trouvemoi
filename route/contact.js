@@ -1,7 +1,7 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml) {
-  const router = express.Router();
+module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS) {
+const router = express.Router();
 
   router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
