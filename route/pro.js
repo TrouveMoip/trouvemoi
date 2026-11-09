@@ -274,6 +274,15 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
     const { company_name, phone, contact_email, contact_preference, whatsapp_number } = req.body;
     const cleanPhone = cleanBeninPhone(phone);
+    const otpCode = String(req.body.otp_code || "").trim();
+
+// Si le numéro a changé, on vérifie le code SMS
+if (cleanPhone !== proConnected.pro.phone) {
+  const codeValide = await verifyOTP(cleanPhone, otpCode);
+  if (!codeValide) {
+    return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Vous ne pouvez pas changer de numéro sans le vérifier.</h2><a href='/mon-espace-pro/modifier-profil'>Retour</a>", proConnected));
+  }
+}
     if (!cleanPhone) return res.status(400).send(page("Erreur", "<h2>Téléphone invalide.</h2>", proConnected));
     const cleanWhatsapp = whatsapp_number ? cleanBeninPhone(whatsapp_number) : null;
     const email = String(contact_email || "").trim().slice(0, 254);
