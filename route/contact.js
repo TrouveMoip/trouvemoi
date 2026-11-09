@@ -59,6 +59,10 @@ const router = express.Router();
         `INSERT INTO contact_messages (name, email, phone, message, pro_id, report_id) VALUES ($1, $2, $3, $4, $5, $6)`,
         [name, email, phone || null, message, proId || null, reportId || null]
       );
+      // Envoi du SMS à l'admin
+if (process.env.ADMIN_PHONE) {
+  sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
+}
       res.redirect(303, "/contact?success=1");
     } catch (e) { 
       console.error("ERREUR CONTACT:", e.message);
