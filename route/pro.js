@@ -362,45 +362,105 @@ router.get("/reinitialiser", (req, res) => {
   `, null));
 });
 
+// ENVOI DU SMS ET VÉRIFICATION
 router.post("/reinitialiser", async (req, res) => {
-  const ip = req.ip || "unknown";
-  if (!(await takeRateLimit(`reset_pro:${ip}`, 2, 30 * 24 * 60 * 60 * 1000))) {
-    return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite. Contactez l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
-  }
-
   const phone = cleanBeninPhone(req.body.phone);
-  const expectedSuffix = String(req.body.expected_suffix || "");
-  
   if (!phone) return res.redirect(303, "/mon-espace-pro/reinitialiser");
-  if (phone.slice(-2) !== expectedSuffix) {
-    return res.status(400).send(page("Erreur", "<h2>Le numéro ne se termine pas par les 2 chiffres attendus.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
-  }
 
   try {
+    // 1. On vérifie si le pro existe avec ce numéro
     const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
     if (!result.rows.length) {
       return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
     }
 
-    const pro = result.rows[0];
-    const newCode = await generateUniqueProCode();
+    // 2. VÉRIFICATION DE LA LIMITE (Max 5 par mois par téléphone)
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const limitKey = `reset_pro_limit:${phone}:${currentYear}-${currentMonth}`;
     
-    // On met à jour le code en base de données
-    await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
-    await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
+    // On regarde combien de fois ce numéro a demandé un code ce mois-ci
+    const attempts = await pool.query(`SELECT count FROM rate_limits_v2 WHERE limit_key = $1`, [limitKey]);
+    const count = attempts.rows.length ? Number(attempts.rows[0].count) : 0;
 
-    // On n'affiche PAS le code. On demande au pro de contacter le support.
-    res.send(page("Demande envoyée", `
+    if (count >= 5) {
+      return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 5 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
+    }
+
+    // 3. On génère un code à 6 chiffres pour le SMS
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Valable 10 minutes
+
+    // 4. On l'enregistre dans la table otp_codes (créée pour les clients)
+    await pool.query(
+      `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
+       ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+      [phone, code, expiresAt]
+    );
+
+    // 5. On envoie le SMS
+    await sendSMS(phone, `Votre code de récupération TrouveMoi est : ${code}. Il expire dans 10 minutes.`);
+
+    // 6. On incrémente le compteur de limite pour ce mois
+    await pool.query(
+      `INSERT INTO rate_limits_v2 (limit_key, count, window_start) VALUES ($1, 1, NOW()) 
+       ON CONFLICT (limit_key) DO UPDATE SET count = rate_limits_v2.count + 1`,
+      [limitKey]
+    );
+
+    // 7. On affiche la page pour entrer le code
+    res.send(page("Vérification", `
       <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Demande enregistrée</h1>
-        <p>Bonjour ${escapeHtml(pro.full_name)}, votre demande a bien été prise en compte.</p>
-        <p style="margin-top:20px; font-weight:bold; color:#1e40af;">Pour des raisons de sécurité, un administrateur va vous envoyer votre nouveau code par WhatsApp ou par téléphone très rapidement.</p>
-        <a href="/contact" class="button success" style="margin-top:20px; width:100%;">Contacter le support</a>
+        <h1>📩 SMS envoyé</h1>
+        <p>Entrez le code à 6 chiffres reçu au <strong>${escapeHtml(phone)}</strong>.</p>
+        
+        <form action="/mon-espace-pro/verifier-code-pro" method="POST">
+          <input type="hidden" name="phone" value="${escapeHtml(phone)}">
+          <input name="otp_code" type="text" required maxlength="6" placeholder="123456" style="text-align:center; font-size:24px; letter-spacing:5px;">
+          <button type="submit" class="success" style="width:100%;">Vérifier le code</button>
+        </form>
       </section>
     `, null));
 
   } catch (error) {
     console.error("Erreur réinit pro :", error.message);
+    res.redirect(303, "/mon-espace-pro/reinitialiser");
+  }
+});
+
+// VÉRIFICATION DU CODE ET GÉNÉRATION DU NOUVEAU CODE PRO
+router.post("/verifier-code-pro", async (req, res) => {
+  const phone = cleanBeninPhone(req.body.phone);
+  const otpCode = String(req.body.otp_code || "").trim();
+
+  try {
+    // On vérifie le code
+    const isCodeValid = await verifyOTP(phone, otpCode);
+    if (!isCodeValid) {
+      return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-espace-pro/reinitialiser'>Recommencer</a>", null));
+    }
+
+    // On génère le NOUVEAU code pro
+    const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1`, [phone]);
+    const pro = result.rows[0];
+    const newCode = await generateUniqueProCode();
+    
+    await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
+    await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
+
+    // On affiche le nouveau code au pro (car il a prouvé qu'il a le téléphone)
+    res.send(page("Nouveau Code", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>✅ Nouveau code généré</h1>
+        <p>Bonjour ${escapeHtml(pro.full_name)}, voici votre nouveau code de connexion :</p>
+        <div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:20px 0;">
+          <div style="font-size:32px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div>
+        </div>
+        <a href="/mon-espace-pro" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+      </section>
+    `, null));
+
+  } catch (error) {
     res.redirect(303, "/mon-espace-pro/reinitialiser");
   }
 });
