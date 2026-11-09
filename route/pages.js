@@ -743,13 +743,13 @@ router.get("/pro/:id/avis", async (req, res) => {
         <input name="author_name" required maxlength="100">
         
         <label>Note *</label>
-        <div class="star-rating-input">
-          <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
-          <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
-          <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
-          <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
-          <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
-        </div>
+<div class="star-rating-wrapper">
+  <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="Excellent">★</label>
+  <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Très bien">★</label>
+  <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Moyen">★</label>
+  <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
+  <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
+</div>
         
         <label>Commentaire</label>
         <textarea name="comment" rows="4" maxlength="3000"></textarea>
