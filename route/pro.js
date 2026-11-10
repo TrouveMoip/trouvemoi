@@ -206,20 +206,20 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <input name="full_name" value="${escapeHtml(proConnected.pro.full_name)}" readonly style="background:#e5e7eb; cursor:not-allowed; color:#6b7280;">
           <label>Nom de l'entreprise (Modifiable)</label>
           <input name="company_name" maxlength="200" value="${escapeHtml(proConnected.pro.company_name || '')}">
+          
           <label>Téléphone *</label>
-<input name="phone" id="phone-input" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
+          <input name="phone" id="phone-input" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
 
-<!-- BLOC DE VÉRIFICATION DU NUMÉRO -->
-<div style="background:#eff6ff; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #bfdbfe;">
-  <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire pour changer)</label>
-  <div style="display:flex; gap:10px; margin-bottom:10px;">
-    <input type="text" id="phone-verif" readonly placeholder="Numéro à vérifier" style="background:#e5e7eb; margin-bottom:0;">
-    <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer;">Recevoir</button>
-  </div>
-  <div id="otp-block" style="display:none;">
-    <input name="otp_code" id="otp-code" placeholder="Entrez le code SMS" required style="margin-bottom:0;">
-  </div>
-</div>
+          <!-- BLOC DE VÉRIFICATION DU NUMÉRO (Une seule case) -->
+          <div style="background:#eff6ff; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #bfdbfe;">
+            <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire pour changer)</label>
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+              <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px 20px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight:bold; width:100%;">📩 Recevoir le code par SMS</button>
+            </div>
+            <div id="otp-block" style="display:none;">
+              <input name="otp_code" id="otp-code" placeholder="Entrez le code SMS" required style="margin-bottom:0;">
+            </div>
+          </div>
           
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
             <div><label>Préférence de contact</label><select name="contact_preference"><option value="whatsapp" ${proConnected.pro.contact_preference === 'whatsapp' ? 'selected' : ''}>WhatsApp</option><option value="email" ${proConnected.pro.contact_preference === 'email' ? 'selected' : ''}>E-mail</option></select></div>
@@ -233,40 +233,36 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
       </section>
       <script>
-  // Copier le numéro tapé dans la case de vérification
-  document.getElementById('phone-input').addEventListener('input', function() {
-      document.getElementById('phone-verif').value = this.value;
-  });
-
-  async function demanderCode() {
-    const phone = document.getElementById('phone-input').value;
-    if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 01XXXXXXXX)"); return; }
-    
-    const btn = event.target;
-    btn.innerText = "Envoi..."; btn.disabled = true;
-    
-    try {
-      const res = await fetch('/api/send-otp', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ phone: phone })
-      });
-      const data = await res.json();
-      if (data.ok) {
-        alert("✅ Code envoyé ! Vérifiez vos SMS.");
-        document.getElementById('otp-block').style.display = 'block';
-        btn.innerText = "Renvoyer";
-      } else {
-        alert(data.error || "Erreur d'envoi.");
-        btn.innerText = "Recevoir";
-      }
-    } catch(e) {
-      alert("Erreur réseau.");
-      btn.innerText = "Recevoir";
-    }
-    btn.disabled = false;
-  }
-</script>
+        async function demanderCode() {
+          const phoneInput = document.getElementById('phone-input');
+          const phone = phoneInput.value;
+          if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 01XXXXXXXX)"); return; }
+          
+          const btn = event.target;
+          btn.innerText = "Envoi..."; btn.disabled = true;
+          
+          try {
+            const res = await fetch('/api/send-otp', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ phone: phone })
+            });
+            const data = await res.json();
+            if (data.ok) {
+              alert("✅ Code envoyé ! Vérifiez vos SMS.");
+              document.getElementById('otp-block').style.display = 'block';
+              btn.innerText = "Renvoyer";
+            } else {
+              alert(data.error || "Erreur d'envoi.");
+              btn.innerText = "Recevoir";
+            }
+          } catch(e) {
+            alert("Erreur réseau.");
+            btn.innerText = "Recevoir";
+          }
+          btn.disabled = false;
+        }
+      </script>
     `, proConnected));
   });
 
