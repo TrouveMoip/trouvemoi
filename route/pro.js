@@ -29,7 +29,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       <button type="submit" style="width: 100%;">Se connecter</button>
     </form>
     
-    <!-- 👇 LE LIEN "CODE PERDU" EST ICI 👇 -->
     <div style="text-align:center; margin-top:20px;">
       <a href="/mon-espace-pro/reinitialiser" style="color:#ef4444; font-size:14px; text-decoration:none;">🔐 Code perdu ?</a>
     </div>
@@ -232,7 +231,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <div style="text-align:center; margin-top:30px;"><button type="submit" class="success" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button></div>
         </form>
         <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
-      </section
+      </section>
       <script>
   // Copier le numéro tapé dans la case de vérification
   document.getElementById('phone-input').addEventListener('input', function() {
