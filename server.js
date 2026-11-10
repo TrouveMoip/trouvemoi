@@ -27,7 +27,7 @@ const QUARTIERS_BENIN = {
   "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
   "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
 };
-const METIERS_LOCAL_FIXE = ["Coiffeur", "Couturier", "Mécanicien", "Restaurateur"];
+const METIERS_LOCAL_FIXE = ["Restaurant", "Boutique", "Supérette", "Pharmacie", "Agence immobilière", "Garage", "Salon de beauté", "Hôtel", "Bureau"];
 const METIERS_SENSIBLES = ["Médecin", "Avocat", "Notaire", "Pharmacien"];
 const PAYMENT_AMOUNT = 1500;
 const SESSION_COOKIE = "tm_admin_session";
