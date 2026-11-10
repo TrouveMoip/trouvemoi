@@ -5,6 +5,7 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
 const fetch = require("node-fetch");
+const admin = require("firebase-admin");
 
 // --- CONFIGURATION ---
 const app = express(); 
