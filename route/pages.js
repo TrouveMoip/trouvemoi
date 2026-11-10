@@ -279,6 +279,30 @@ const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' +
       });
     }
   }
+  async function handleFavorite(e, id, isFav) {
+    e.preventDefault();
+    const btn = document.getElementById('fav-btn-' + id);
+    
+    // 1. Changement visuel immédiat (sans attendre le serveur)
+    if (isFav) {
+        btn.innerHTML = '🤍 Ajouter aux favoris';
+    } else {
+        btn.innerHTML = '❤️ Retirer des favoris';
+    }
+    
+    // 2. On envoie la requête au serveur en arrière-plan
+    try {
+        const res = await fetch('/api/favorite/' + id, { method: 'POST' });
+        const data = await res.json();
+        
+        if (!data.ok) {
+            // Si erreur, on remet l'ancien texte
+            btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris';
+        }
+    } catch(err) {
+        btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris';
+    }
+}
 </script>
           </div>
 
