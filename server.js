@@ -565,55 +565,51 @@ function page(title, content, proConnected, meta = {}) {
     .catch((err) => console.error("Erreur ServiceWorker:", err));
   }
 
-  window.demanderNotifications = async function() {
-    const btn = document.getElementById('btn-notif');
-    
-    if (!messaging) {
-      if(btn) btn.innerText = "⏳ Chargement...";
-      setTimeout(() => {
-        if(btn) btn.innerText = "🔔 Activer les alertes";
-        alert("Le service est prêt maintenant, cliquez à nouveau !");
-      }, 3000);
-      return;
-    }
+ window.demanderNotifications = async function() {
+  const btn = document.getElementById('btn-notif');
+  if(btn) btn.innerText = "⏳ Chargement...";
 
+  setTimeout(async () => {
     try {
-      // On attend 1.5 seconde avant de demander la permission
-      setTimeout(async () => {
-        const permission = await Notification.requestPermission();
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        if(btn) btn.innerText = "⏳ Récupération...";
         
-        if (permission === 'granted') {
-          if(btn) {
-            btn.innerText = "✅ Alertes activées";
-            btn.style.background = "#10b981"; 
-          }
-          
-          getToken(messaging, { 
-            serviceWorkerRegistration: window.swRegistration,
-            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
-          })
-          .then((currentToken) => {
-            if (currentToken) {
-              fetch('/api/save-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: currentToken })
-              }).then(() => console.log('Token sauvegardé !'));
+        getToken(messaging, { 
+          serviceWorkerRegistration: window.swRegistration,
+          vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+        })
+        .then((currentToken) => {
+          if (currentToken) {
+            if(btn) {
+              btn.innerText = "✅ Alertes OK";
+              btn.style.background = "#10b981"; 
             }
-          }).catch((err) => {
-            console.error('Erreur token :', err);
-            if(btn) btn.innerText = "❌ Erreur";
-          });
-        } else {
-          alert("Vous avez refusé les notifications.");
-          if(btn) btn.innerText = "🔔 Activer les alertes";
-        }
-      }, 1500); // Attend 1.5s avant de demander
+            fetch('/api/save-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: currentToken })
+            }).then(() => console.log('Token sauvegardé !'));
+          }
+        }).catch((err) => {
+          console.error('Erreur token :', err);
+          if(btn) {
+              btn.innerText = "❌ Erreur";
+              btn.style.background = "#ef4444";
+          }
+          alert("Détail de l'erreur Firebase : " + err.message);
+        });
+      } else {
+        alert("Vous avez refusé les notifications.");
+        if(btn) btn.innerText = "🔔 Activer les alertes";
+      }
     } catch (e) {
       console.error(e);
       if(btn) btn.innerText = "🔔 Activer les alertes";
     }
-  }
+  }, 1500);
+}
 </script>
     </body>
     </html>
