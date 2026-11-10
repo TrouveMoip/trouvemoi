@@ -548,7 +548,7 @@ function page(title, content, proConnected, meta = {}) {
 </script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+  import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
   const firebaseConfig = {
     apiKey: "${process.env.FIREBASE_API_KEY}",
@@ -560,19 +560,22 @@ function page(title, content, proConnected, meta = {}) {
   };
 
   const app = initializeApp(firebaseConfig);
-  
-  // On demande la permission SEULEMENT si on est sur un navigateur qui le supporte
+
   if ('serviceWorker' in navigator && 'Notification' in window) {
     navigator.serviceWorker.register('/firebase-messaging-sw.js')
     .then((registration) => {
       const messaging = getMessaging(app);
-      
+
       Notification.requestPermission().then((permission) => {
         if (permission === 'granted') {
-          getToken(messaging, { serviceWorkerRegistration: registration })
+          console.log('Permission accordée !');
+          
+          getToken(messaging, { 
+            serviceWorkerRegistration: registration,
+            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+          })
           .then((currentToken) => {
             if (currentToken) {
-              // On envoie le token au serveur pour le stocker en base
               fetch('/api/save-token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -580,8 +583,10 @@ function page(title, content, proConnected, meta = {}) {
               }).catch(err => console.log('Erreur token', err));
             }
           }).catch((err) => {
-            console.log('Erreur récupération token : ', err);
+            console.error('Erreur récupération token : ', err);
           });
+        } else {
+          console.log('Permission refusée par l\'utilisateur.');
         }
       });
     });
