@@ -919,6 +919,92 @@ const etablissements = [
 for (let e of etablissements) {
   await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [e.name, e.cat]);
 }
+    // --- MÉTIERS INSPIRÉS DES NOMENCLATURES OFFICIELLES DU BÉNIN ---
+const metiersOfficiels = [
+  // Bâtiment & Travaux Publics
+  { name: "Maçon", cat: "Bâtiment & TP" }, { name: "Coffreur", cat: "Bâtiment & TP" },
+  { name: "Ferrailleur", cat: "Bâtiment & TP" }, { name: "Charpentier", cat: "Bâtiment & TP" },
+  { name: "Couvreur", cat: "Bâtiment & TP" }, { name: "Plombier", cat: "Bâtiment & TP" },
+  { name: "Électricien Bâtiment", cat: "Bâtiment & TP" }, { name: "Peintre en bâtiment", cat: "Bâtiment & TP" },
+  { name: "Carreleur", cat: "Bâtiment & TP" }, { name: "Géomètre topographe", cat: "Bâtiment & TP" },
+  { name: "Technicien d'étude du bâtiment", cat: "Bâtiment & TP" }, { name: "Constructeur d'ouvrages en béton armé", cat: "Bâtiment & TP" },
+
+  // Menuiserie & Bois
+  { name: "Menuisier bois", cat: "Menuiserie & Bois" }, { name: "Ébéniste", cat: "Menuiserie & Bois" },
+  { name: "Menuisier aluminium", cat: "Menuiserie & Bois" }, { name: "Vitrier", cat: "Menuiserie & Bois" },
+  { name: "Technicien constructeur ouvrage bois", cat: "Menuiserie & Bois" },
+
+  // Métal & Métallurgie
+  { name: "Soudeur", cat: "Métal & Métallurgie" }, { name: "Métallier", cat: "Métal & Métallurgie" },
+  { name: "Ferronnier d'art", cat: "Métal & Métallurgie" }, { name: "Fondeur de bronze", cat: "Métal & Métallurgie" },
+  { name: "Bijoutier", cat: "Métal & Métallurgie" }, { name: "Orfèvre", cat: "Métal & Métallurgie" },
+
+  // Artisanat d'Art & Décoration
+  { name: "Sculpteur sur bois", cat: "Artisanat d'Art" }, { name: "Potier", cat: "Artisanat d'Art" },
+  { name: "Céramiste", cat: "Artisanat d'Art" }, { name: "Vannier", cat: "Artisanat d'Art" },
+  { name: "Maroquinier d'art", cat: "Artisanat d'Art" }, { name: "Tisserand", cat: "Artisanat d'Art" },
+  { name: "Brodeur", cat: "Artisanat d'Art" }, { name: "Teinturier", cat: "Artisanat d'Art" },
+  { name: "Décorateur floral", cat: "Artisanat d'Art" }, { name: "Créateur de parfums", cat: "Artisanat d'Art" },
+  { name: "Paysagiste", cat: "Artisanat d'Art" }, { name: "Créateur d'espaces verts", cat: "Artisanat d'Art" },
+
+  // Automobile & Mécanique
+  { name: "Mécanicien automobile", cat: "Automobile & Mécanique" }, { name: "Électricien automobile", cat: "Automobile & Mécanique" },
+  { name: "Tôlier", cat: "Automobile & Mécanique" }, { name: "Technicien diagnostic auto", cat: "Automobile & Mécanique" },
+  { name: "Contrôleur technique automobile", cat: "Automobile & Mécanique" }, { name: "Mécanicien moto", cat: "Automobile & Mécanique" },
+
+  // Énergie & Froid
+  { name: "Technicien en énergies renouvelables", cat: "Énergie & Froid" },
+  { name: "Installateur photovoltaïque", cat: "Énergie & Froid" },
+  { name: "Technicien froid et climatisation", cat: "Énergie & Froid" },
+  { name: "Ascensoriste", cat: "Énergie & Froid" },
+  { name: "Domoticien", cat: "Énergie & Froid" },
+
+  // Agriculture, Élevage & Pêche
+  { name: "Aviculteur", cat: "Agriculture & Élevage" }, { name: "Cuniculteur", cat: "Agriculture & Élevage" },
+  { name: "Éleveur de bovins", cat: "Agriculture & Élevage" }, { name: "Éleveur de porcins", cat: "Agriculture & Élevage" },
+  { name: "Pisciculteur", cat: "Agriculture & Élevage" }, { name: "Aquaculteur", cat: "Agriculture & Élevage" },
+  { name: "Horticulteur", cat: "Agriculture & Élevage" }, { name: "Maraîcher", cat: "Agriculture & Élevage" },
+  { name: "Pépiniériste", cat: "Agriculture & Élevage" }, { name: "Producteur céréalier", cat: "Agriculture & Élevage" },
+  { name: "Producteur de racines et tubercules", cat: "Agriculture & Élevage" },
+  { name: "Arboriculteur fruitier", cat: "Agriculture & Élevage" }, { name: "Exploitant palmier à huile", cat: "Agriculture & Élevage" },
+
+  // Numérique & Tech (avec Canal+ et réseaux)
+  { name: "Technicien Canal+ / Installateur parabole", cat: "Numérique & Tech" },
+  { name: "Technicien réseau / Câblage", cat: "Numérique & Tech" },
+  { name: "Développeur web", cat: "Numérique & Tech" }, { name: "Développeur mobile", cat: "Numérique & Tech" },
+  { name: "Cybersécurité", cat: "Numérique & Tech" }, { name: "Data Analyst", cat: "Numérique & Tech" },
+  { name: "Expert IA / Big Data", cat: "Numérique & Tech" }, { name: "Marketing digital", cat: "Numérique & Tech" },
+  { name: "Graphiste", cat: "Numérique & Tech" }, { name: "Community Manager", cat: "Numérique & Tech" },
+  { name: "Technicien maintenance informatique", cat: "Numérique & Tech" },
+
+  // Santé & Paramédical
+  { name: "Infirmier", cat: "Santé" }, { name: "Sage-femme", cat: "Santé" },
+  { name: "Technicien de laboratoire", cat: "Santé" }, { name: "Aide-soignant", cat: "Santé" },
+  { name: "Kinésithérapeute", cat: "Santé" }, { name: "Secrétaire médical", cat: "Santé" },
+  { name: "Dentiste", cat: "Santé" }, { name: "Pharmacien", cat: "Santé" },
+
+  // Hôtellerie & Restauration
+  { name: "Cuisinier", cat: "Hôtellerie & Restauration" }, { name: "Pâtissier", cat: "Hôtellerie & Restauration" },
+  { name: "Boulanger", cat: "Hôtellerie & Restauration" }, { name: "Serveur", cat: "Hôtellerie & Restauration" },
+  { name: "Réceptionniste d'hôtel", cat: "Hôtellerie & Restauration" }, { name: "Guide touristique", cat: "Hôtellerie & Restauration" },
+  { name: "Agent d'entretien hôtelier", cat: "Hôtellerie & Restauration" }, { name: "Traiteur", cat: "Hôtellerie & Restauration" },
+
+  // Services & Administration
+  { name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
+  { name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
+  { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Services & Administration" },
+  { name: "Femme de ménage", cat: "Services & Administration" }, { name: "Jardinier", cat: "Services & Administration" },
+  { name: "Chauffeur", cat: "Services & Administration" }, { name: "Livreur", cat: "Services & Administration" },
+
+  // Éducation & Formation
+  { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" },
+  { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" }
+];
+
+for (let m of metiersOfficiels) {
+  await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [m.name, m.cat]);
+}
+//
     // --- INITIALISATION DE FIREBASE ---
     if (process.env.FIREBASE_PROJECT_ID) {
       admin.initializeApp({
