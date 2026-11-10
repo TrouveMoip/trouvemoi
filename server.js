@@ -235,7 +235,7 @@ function page(title, content, proConnected, meta = {}) {
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
           padding: 0; 
-          background: #f8fafc; /* Gris bleuté très doux */
+          background: #f8fafc; 
           color: #1e293b; 
           line-height: 1.6; 
           min-height: 100vh; 
@@ -251,7 +251,7 @@ function page(title, content, proConnected, meta = {}) {
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); }
         main { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
         
-        /* CARTES FLOTTANTES (Effet Premium) */
+        /* CARTES FLOTTANTES */
         .card { 
           background: white; 
           padding: 28px; 
@@ -457,15 +457,40 @@ function page(title, content, proConnected, meta = {}) {
       
       <script>
       async function toggleFav(e, id) { 
-    e.preventDefault(); 
-    const btn = e.currentTarget; 
-    const res = await fetch('/api/favorite/' + id, { method: 'POST' }); 
-    const data = await res.json(); 
-    if (data.ok) { 
-        btn.style.opacity = data.isFav ? "1" : "0.5"; 
-    } 
-    return data; 
-}
+        e.preventDefault(); 
+        const btn = e.currentTarget; 
+        const svg = btn.querySelector('svg');
+        const path = svg ? svg.querySelector('path') : null;
+        
+        // On change la couleur immédiatement (Optimistic UI)
+        if (path) {
+            const isCurrentlyRed = svg.getAttribute('fill') === '#ef4444';
+            svg.setAttribute('fill', isCurrentlyRed ? 'none' : '#ef4444');
+            svg.setAttribute('stroke', isCurrentlyRed ? '#6b7280' : '#ef4444');
+        }
+
+        const res = await fetch('/api/favorite/' + id, { method: 'POST' }); 
+        const data = await res.json(); 
+        
+        if (data.ok) { 
+            // Si le serveur confirme, on s'assure que l'état est correct
+            if (path) {
+                svg.setAttribute('fill', data.isFav ? '#ef4444' : 'none');
+                svg.setAttribute('stroke', data.isFav ? '#ef4444' : '#6b7280');
+            }
+            if (btn.classList.contains('favorite-btn') && btn.classList.contains('active')) {
+                if (!data.isFav) btn.classList.remove('active');
+            }
+        } else {
+            // En cas d'erreur serveur, on remet l'état d'origine
+            if (path) {
+                const isCurrentlyRed = svg.getAttribute('fill') === '#ef4444';
+                svg.setAttribute('fill', isCurrentlyRed ? 'none' : '#ef4444');
+                svg.setAttribute('stroke', isCurrentlyRed ? '#6b7280' : '#ef4444');
+            }
+        }
+        return data; 
+      }
       </script>
       
       <script>
