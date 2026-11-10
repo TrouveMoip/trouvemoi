@@ -787,7 +787,21 @@ const candidaturesRoutes = require('./route/candidatures');
 const proRoutes = require('./route/pro');
 const emploisRoutes = require('./route/emplois');
 const adminRoutes = require('./route/admin');
-
+app.post("/api/save-token", express.json(), async (req, res) => {
+  try {
+    const token = String(req.body.token || "").trim();
+    if (!token) return res.json({ ok: false });
+    
+    // On crée une table pour stocker les tokens si elle n'existe pas
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, token TEXT UNIQUE, created_at TIMESTAMP DEFAULT NOW())`);
+    
+    // On insère le token
+    await pool.query(`INSERT INTO push_tokens (token) VALUES ($1) ON CONFLICT (token) DO NOTHING`, [token]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false });
+  }
+});
 // --- BRANCHEMENT ---
 app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP));
 app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS));
