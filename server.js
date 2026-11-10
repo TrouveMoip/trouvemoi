@@ -541,12 +541,12 @@ function page(title, content, proConnected, meta = {}) {
   import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
   const firebaseConfig = {
-    apiKey: "${process.env.FIREBASE_API_KEY}",
-    authDomain: "${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com",
-    projectId: "${process.env.FIREBASE_PROJECT_ID}",
-    storageBucket: "${process.env.FIREBASE_PROJECT_ID}.appspot.com",
-    messagingSenderId: "${process.env.FIREBASE_MSG_SENDER_ID}",
-    appId: "${process.env.FIREBASE_APP_ID}"
+    apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
+authDomain: "trouvemoi-c1b01.firebaseapp.com",
+projectId: "trouvemoi-c1b01",
+storageBucket: "trouvemoi-c1b01.appspot.com",
+messagingSenderId: "317041094178",
+appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -668,12 +668,12 @@ app.get("/firebase-messaging-sw.js", (req, res) => {
     importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
     firebase.initializeApp({
-      apiKey: "${process.env.FIREBASE_API_KEY}",
-      authDomain: "${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com",
-      projectId: "${process.env.FIREBASE_PROJECT_ID}",
-      storageBucket: "${process.env.FIREBASE_PROJECT_ID}.appspot.com",
-      messagingSenderId: "${process.env.FIREBASE_MSG_SENDER_ID}",
-      appId: "${process.env.FIREBASE_APP_ID}"
+     apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
+authDomain: "trouvemoi-c1b01.firebaseapp.com",
+projectId: "trouvemoi-c1b01",
+storageBucket: "trouvemoi-c1b01.appspot.com",
+messagingSenderId: "317041094178",
+appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
     });
 
     const messaging = firebase.messaging();
