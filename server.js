@@ -664,7 +664,35 @@ async function verifyOTP(phone, code) {
   if (!result.rows.length) return false;
   return safeEqual(result.rows[0].code, code);
 }
+// --- CRÉATION DU FICHIER POUR LES NOTIFICATIONS (FIREBASE) ---
+app.get("/firebase-messaging-sw.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+  res.send(`
+    importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+    importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
+    firebase.initializeApp({
+      apiKey: "${process.env.FIREBASE_API_KEY}",
+      authDomain: "${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com",
+      projectId: "${process.env.FIREBASE_PROJECT_ID}",
+      storageBucket: "${process.env.FIREBASE_PROJECT_ID}.appspot.com",
+      messagingSenderId: "${process.env.FIREBASE_MSG_SENDER_ID}",
+      appId: "${process.env.FIREBASE_APP_ID}"
+    });
+
+    const messaging = firebase.messaging();
+
+    messaging.onBackgroundMessage((payload) => {
+      console.log('[firebase-messaging-sw.js] Message reçu en arrière-plan : ', payload);
+      const notificationTitle = payload.notification.title;
+      const notificationOptions = {
+        body: payload.notification.body,
+        icon: 'https://res.cloudinary.com/gxm35ndf/image/upload/v1794045762/TROUVEMOI_PNG.jpg'
+      };
+      self.registration.showNotification(notificationTitle, notificationOptions);
+    });
+  `);
+});
 app.get("/manifest.json", (req, res) => {
   res.json({
     name: "TrouveMoi",
