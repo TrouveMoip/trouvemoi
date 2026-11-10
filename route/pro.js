@@ -601,5 +601,38 @@ router.post("/repondre-avis/:id", async (req, res) => {
   }
   res.redirect(303, "/mon-espace-pro/mes-avis");
 });
+  // ==========================================
+// DEMANDE DE RETRAIT (PARRAINAGE)
+// ==========================================
+router.post("/demander-retrait", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  const amount = Number(req.body.amount);
+  const phoneNumber = cleanBeninPhone(req.body.phone_number);
+
+  // Sécurité 1 : Vérifier le montant et le numéro
+  if (!phoneNumber || isNaN(amount) || amount < 1000) {
+    return res.status(400).send(page("Erreur", "<h2>Montant ou numéro invalide (minimum 1000 FCFA).</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+  }
+
+  // Sécurité 2 : Vérifier que le pro a assez d'argent
+  if (amount > Number(proConnected.pro.referral_balance)) {
+    return res.status(400).send(page("Erreur", "<h2>Solde insuffisant. Vous ne pouvez pas retirer plus que ce que vous avez.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+  }
+
+  try {
+    // 1. On déduit l'argent du solde du pro
+    await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance - $1 WHERE id = $2`, [amount, proConnected.pro.id]);
+    
+    // 2. On enregistre la demande pour que l'admin la valide
+    await pool.query(`INSERT INTO withdrawal_requests (pro_id, amount, phone_number, status) VALUES ($1, $2, $3, 'pending')`, [proConnected.pro.id, amount, phoneNumber]);
+    
+    res.redirect(303, "/mon-espace-pro");
+  } catch (e) {
+    console.error("Erreur retrait:", e);
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+  }
+});
   return router;
 };
