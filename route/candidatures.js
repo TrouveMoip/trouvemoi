@@ -8,7 +8,9 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
   const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
-  const cityOptions = citiesResult.rows.map((c) => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join("");
+    // On utilise notre nouvelle liste de villes
+const cityList = VILLES_BENIN; 
+const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
   const professionsByCategory = {};
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
   const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
