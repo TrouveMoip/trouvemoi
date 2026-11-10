@@ -426,11 +426,12 @@ function page(title, content, proConnected, meta = {}) {
     <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
   </div>
   <div id="mobile-dropdown" class="mobile-dropdown">
-    <a href="/devenir-professionnel">Devenir pro</a>
-    <a href="/mes-favoris">❤️ Favoris</a>
-    <a href="/mon-espace-pro">Espace pro</a>
-    <a href="/contact">Contact</a>
-  </div>
+  <a href="/devenir-professionnel">Devenir pro</a>
+  <a href="/mes-favoris">❤️ Favoris</a>
+  <a href="/mon-compte">Mon compte</a> <!-- 👈 LIGNE AJOUTÉE -->
+  <a href="/mon-espace-pro">Espace pro</a>
+  <a href="/contact">Contact</a>
+</div>
 </div>
           </nav>
         </div>
