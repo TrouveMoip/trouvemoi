@@ -82,29 +82,27 @@ async function sendSMS(telephone, message) {
     return { error: true };
   }
 }
+
 // --- FONCTION D'ENVOI DE NOTIFICATIONS PUSH ---
 async function sendPushNotification(title, body) {
   if (!process.env.FIREBASE_PROJECT_ID) return;
   try {
-    // 1. On récupère tous les tokens (téléphones abonnés)
     const result = await pool.query("SELECT token FROM push_tokens");
     const tokens = result.rows.map(r => r.token);
-    
-    if (tokens.length === 0) return; // Personne n'est abonné pour l'instant
+    if (tokens.length === 0) return;
 
-    // 2. On prépare le message
     const message = {
       notification: { title: title, body: body },
       tokens: tokens
     };
 
-    // 3. On envoie à tout le monde
     const response = await admin.messaging().sendEachForMulticast(message);
     console.log(`📡 Push envoyées : ${response.successCount} succès, ${response.failureCount} échecs`);
   } catch (error) {
     console.error("❌ Erreur envoi push:", error);
   }
 }
+
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
 function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
@@ -419,7 +417,7 @@ function page(title, content, proConnected, meta = {}) {
              <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a> 
               <!-- BOUTON NOTIFICATION -->
-<button id="btn-notif" onclick="demanderNotifications()" style="background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-left: 10px;">🔔 Activer les alertes</button>
+              <button id="btn-notif" onclick="demanderNotifications()" style="background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-left: 10px;">🔔 Activer les alertes</button>
             </div>
             <div class="mobile-menu">
   <div class="main-links">
@@ -487,7 +485,6 @@ function page(title, content, proConnected, meta = {}) {
         const svg = btn.querySelector('svg');
         const path = svg ? svg.querySelector('path') : null;
         
-        // On change la couleur immédiatement (Optimistic UI)
         if (path) {
             const isCurrentlyRed = svg.getAttribute('fill') === '#ef4444';
             svg.setAttribute('fill', isCurrentlyRed ? 'none' : '#ef4444');
@@ -498,7 +495,6 @@ function page(title, content, proConnected, meta = {}) {
         const data = await res.json(); 
         
         if (data.ok) { 
-            // Si le serveur confirme, on s'assure que l'état est correct
             if (path) {
                 svg.setAttribute('fill', data.isFav ? '#ef4444' : 'none');
                 svg.setAttribute('stroke', data.isFav ? '#ef4444' : '#6b7280');
@@ -507,7 +503,6 @@ function page(title, content, proConnected, meta = {}) {
                 if (!data.isFav) btn.classList.remove('active');
             }
         } else {
-            // En cas d'erreur serveur, on remet l'état d'origine
             if (path) {
                 const isCurrentlyRed = svg.getAttribute('fill') === '#ef4444';
                 svg.setAttribute('fill', isCurrentlyRed ? 'none' : '#ef4444');
@@ -517,16 +512,7 @@ function page(title, content, proConnected, meta = {}) {
         return data; 
       }
       </script>
-      
-      <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then(registration => console.log('ServiceWorker enregistré avec succès'))
-        .catch(err => console.log('Erreur ServiceWorker:', err));
-    });
-  }
-</script>
+
 <div id="image-modal" style="display:none; position:fixed; z-index:9999; padding-top:50px; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.9);" onclick="if(event.target.id === 'image-modal') this.style.display='none'">
   <span style="position:absolute; top:15px; right:35px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer; z-index:10000;" onclick="document.getElementById('image-modal').style.display='none'">&times;</span>
   <div style="position:absolute; top:15px; left:15px; z-index:10000; display:flex; gap:10px;" onclick="event.stopPropagation()">
@@ -535,6 +521,7 @@ function page(title, content, proConnected, meta = {}) {
   </div>
   <img id="modal-img" style="margin: auto; display: block; max-width: 90%; max-height: 90vh; border-radius: 12px; transition: transform 0.3s;">
 </div>
+
 <script>
   let currentRotation = 0;
   function zoomImage(src) { 
@@ -548,6 +535,7 @@ function page(title, content, proConnected, meta = {}) {
     document.getElementById('modal-img').style.transform = 'rotate(' + currentRotation + 'deg)';
   }
 </script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
@@ -562,36 +550,54 @@ function page(title, content, proConnected, meta = {}) {
   };
 
   const app = initializeApp(firebaseConfig);
+  let messaging = null;
 
   if ('serviceWorker' in navigator && 'Notification' in window) {
     navigator.serviceWorker.register('/firebase-messaging-sw.js')
     .then((registration) => {
-      const messaging = getMessaging(app);
+      messaging = getMessaging(app);
+      window.swRegistration = registration;
+    })
+    .catch((err) => console.error("Erreur ServiceWorker:", err));
+  }
 
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          console.log('Permission accordée !');
-          
-          getToken(messaging, { 
-            serviceWorkerRegistration: registration,
-            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
-          })
-          .then((currentToken) => {
-            if (currentToken) {
-              fetch('/api/save-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: currentToken })
-              }).catch(err => console.log('Erreur token', err));
-            }
-          }).catch((err) => {
-            console.error('Erreur récupération token : ', err);
-          });
-        } else {
-          console.log('Permission refusée par l\'utilisateur.');
+  window.demanderNotifications = async function() {
+    if (!messaging) {
+      alert("Le service de notification n'est pas encore prêt. Attendez 2 secondes et réessayez.");
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      
+      if (permission === 'granted') {
+        const btn = document.getElementById('btn-notif');
+        if(btn) {
+          btn.innerText = "✅ Alertes activées";
+          btn.style.background = "#10b981"; 
         }
-      });
-    });
+        
+        getToken(messaging, { 
+          serviceWorkerRegistration: window.swRegistration,
+          vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+        })
+        .then((currentToken) => {
+          if (currentToken) {
+            fetch('/api/save-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: currentToken })
+            }).then(() => console.log('Token sauvegardé !'));
+          }
+        }).catch((err) => {
+          console.error('Erreur token :', err);
+        });
+      } else {
+        alert("Vous avez refusé les notifications.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
   }
 </script>
     </body>
@@ -820,11 +826,7 @@ app.post("/api/save-token", express.json(), async (req, res) => {
   try {
     const token = String(req.body.token || "").trim();
     if (!token) return res.json({ ok: false });
-    
-    // On crée une table pour stocker les tokens si elle n'existe pas
     await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, token TEXT UNIQUE, created_at TIMESTAMP DEFAULT NOW())`);
-    
-    // On insère le token
     await pool.query(`INSERT INTO push_tokens (token) VALUES ($1) ON CONFLICT (token) DO NOTHING`, [token]);
     res.json({ ok: true });
   } catch (e) {
@@ -846,12 +848,12 @@ async function startServer() {
   try {
     await pool.query("SELECT 1");
     // --- INITIALISATION DE FIREBASE ---
-if (process.env.FIREBASE_PROJECT_ID) {
-  admin.initializeApp({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-  });
-  console.log("🔥 Firebase connecté");
-}
+    if (process.env.FIREBASE_PROJECT_ID) {
+      admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+      });
+      console.log("🔥 Firebase connecté");
+    }
     // --- CRÉATION DES COLONNES MANQUANTES POUR LES PROS ---
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN DEFAULT false`);
