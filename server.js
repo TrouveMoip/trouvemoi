@@ -7,7 +7,7 @@ const compression = require("compression");
 const fetch = require("node-fetch");
 
 // --- CONFIGURATION ---
-const app = express();
+const app = express(); 
 const PORT = process.env.PORT || 3000;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
