@@ -114,7 +114,10 @@ const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${esca
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
   <div>
     <label class="fancy-label">Ville *</label>
-    <select id="city" name="city" required class="fancy-input"><option value="">Choisir</option>${cityOptions}</select>
+    <div style="margin-bottom:10px;">
+  <input type="text" id="search-city" placeholder="🔍 Rechercher votre ville..." style="padding:12px; border-radius:12px; border:1px solid #e2e8f0; width:100%;" oninput="filterCities()">
+</div>
+<select id="city" name="city" required class="fancy-input" size="1"><option value="">Choisir</option>${cityOptions}</select>
   </div>
   <div>
     <label class="fancy-label">Quartier *</label>
