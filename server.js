@@ -417,7 +417,7 @@ function page(title, content, proConnected, meta = {}) {
               <a href="/mes-favoris">❤️ Favoris</a>
               <a href="/mon-espace-pro">Espace pro</a>
              <a href="/mon-compte">Mon compte</a>
-              <a href="/contact">Contact</a>
+              <a href="/contact">Contact</a> 
               <!-- BOUTON NOTIFICATION -->
 <button id="btn-notif" onclick="demanderNotifications()" style="background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-left: 10px;">🔔 Activer les alertes</button>
             </div>
