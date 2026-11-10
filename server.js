@@ -887,6 +887,21 @@ app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, esca
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+    // --- INSERTION DES MÉTIERS D'ÉTABLISSEMENTS ---
+const etablissements = [
+  { name: "Restaurant", cat: "Établissements" },
+  { name: "Boutique", cat: "Établissements" },
+  { name: "Supérette", cat: "Établissements" },
+  { name: "Pharmacie", cat: "Établissements" },
+  { name: "Agence immobilière", cat: "Établissements" },
+  { name: "Garage", cat: "Établissements" },
+  { name: "Salon de beauté", cat: "Établissements" },
+  { name: "Hôtel", cat: "Établissements" }
+];
+
+for (let e of etablissements) {
+  await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [e.name, e.cat]);
+}
     // --- INITIALISATION DE FIREBASE ---
     if (process.env.FIREBASE_PROJECT_ID) {
       admin.initializeApp({
