@@ -373,5 +373,4 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
   return router;
 };
-  return router;
-};
+ 
