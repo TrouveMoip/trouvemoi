@@ -536,7 +536,7 @@ function page(title, content, proConnected, meta = {}) {
   }
 </script>
 
-<script type="module">
+<script type="module" style="display:none;">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
 
