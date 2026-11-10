@@ -25,8 +25,24 @@ const QUARTIERS_BENIN = {
   "Ouidah": ["Ouidah Centre", "Djègbadji", "Pahou", "Sèmè"],
   "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
   "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
-  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
-};
+  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"],
+  const VILLES_BENIN = [
+  "Abomey", "Abomey-Calavi", "Adjohoun", "Adja-Ouèrè", "Agbangnizoun", "Athiémé", "Avrankou",
+  "Banikoara", "Bantè", "Bassila", "Bembèrèkè", "Bohicon", "Bonou", "Boukoumbé",
+  "Comè", "Copargo", "Cotonou",
+  "Dangbo", "Dassa-Zoumè", "Djakotomey", "Djidja", "Dogbo", "Dassa-Zoumé",
+  "Glazoué", "Gogounou", "Grand-Popo", "Guilmaro",
+  "Ifangni", "Igolo",
+  "Kalalé", "Kandi", "Karimama", "Kérou", "Kétou", "Klouékanmè", "Kouandé",
+  "Lalo", "Lokossa",
+  "Malanville", "Matéri",
+  "Natitingou", "N'Dali", "Nikki",
+  "Ouaké", "Ouidah", "Ouinhi",
+  "Parakou", "Pèrèrè", "Pobè", "Porto-Novo",
+  "Sakété", "Savalou", "Savè", "Sèmè-Podji", "Sinendé", "Ségbana", "So-Ava",
+  "Tanguiéta", "Tchaourou", "Toffo", "Tori-Bossito", "Toucountouna",
+  "Zagnanado", "Za-Kpota", "Zè", "Zogbodomey"
+];
 const METIERS_LOCAL_FIXE = ["Restaurant", "Boutique", "Supérette", "Pharmacie", "Agence immobilière", "Garage", "Salon de beauté", "Hôtel", "Bureau"];
 const METIERS_SENSIBLES = ["Médecin", "Avocat", "Notaire", "Pharmacien"];
 const PAYMENT_AMOUNT = 1500;
