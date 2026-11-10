@@ -82,7 +82,29 @@ async function sendSMS(telephone, message) {
     return { error: true };
   }
 }
+// --- FONCTION D'ENVOI DE NOTIFICATIONS PUSH ---
+async function sendPushNotification(title, body) {
+  if (!process.env.FIREBASE_PROJECT_ID) return;
+  try {
+    // 1. On récupère tous les tokens (téléphones abonnés)
+    const result = await pool.query("SELECT token FROM push_tokens");
+    const tokens = result.rows.map(r => r.token);
+    
+    if (tokens.length === 0) return; // Personne n'est abonné pour l'instant
 
+    // 2. On prépare le message
+    const message = {
+      notification: { title: title, body: body },
+      tokens: tokens
+    };
+
+    // 3. On envoie à tout le monde
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`📡 Push envoyées : ${response.successCount} succès, ${response.failureCount} échecs`);
+  } catch (error) {
+    console.error("❌ Erreur envoi push:", error);
+  }
+}
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
 function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
