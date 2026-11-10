@@ -25,7 +25,8 @@ const QUARTIERS_BENIN = {
   "Ouidah": ["Ouidah Centre", "Djègbadji", "Pahou", "Sèmè"],
   "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
   "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
-  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"],
+  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
+  ];
   const VILLES_BENIN = [
   "Abomey", "Abomey-Calavi", "Adjohoun", "Adja-Ouèrè", "Agbangnizoun", "Athiémé", "Avrankou",
   "Banikoara", "Bantè", "Bassila", "Bembèrèkè", "Bohicon", "Bonou", "Boukoumbé",
