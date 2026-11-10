@@ -260,7 +260,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       }
 
       document.getElementById('input_phone').addEventListener('input', function() {
-          document.getElementById('phone_verif_input').value = this.value;
       });
 
       async function demanderCodePro() {
