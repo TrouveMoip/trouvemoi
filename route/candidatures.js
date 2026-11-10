@@ -219,6 +219,22 @@ const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${esca
     </section>
 
     <script>
+    function filterCities() {
+  const search = document.getElementById('search-city').value.toLowerCase();
+  const select = document.getElementById('city');
+  const options = select.options;
+  
+  for (let i = 1; i < options.length; i++) { // On commence à 1 pour ignorer "Choisir"
+    const txt = options[i].text.toLowerCase();
+    options[i].style.display = txt.includes(search) ? "block" : "none";
+  }
+  // Si une seule ville correspond, on la sélectionne automatiquement
+  let visibleCount = 0; let lastVisible = null;
+  for (let i = 1; i < options.length; i++) {
+    if (options[i].style.display !== "none") { visibleCount++; lastVisible = options[i]; }
+  }
+  if (visibleCount === 1) select.value = lastVisible.value;
+}
       function showStep(step) {
         // Cacher toutes les pages
         document.querySelectorAll('.form-page').forEach(el => el.classList.remove('active'));
