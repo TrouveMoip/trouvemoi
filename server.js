@@ -578,34 +578,40 @@ function page(title, content, proConnected, meta = {}) {
     }
 
     try {
-      const permission = await Notification.requestPermission();
-      
-      if (permission === 'granted') {
-        if(btn) {
-          btn.innerText = "✅ Alertes activées";
-          btn.style.background = "#10b981"; 
-        }
+      // On attend 1.5 seconde avant de demander la permission
+      setTimeout(async () => {
+        const permission = await Notification.requestPermission();
         
-        getToken(messaging, { 
-          serviceWorkerRegistration: window.swRegistration,
-          vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
-        })
-        .then((currentToken) => {
-          if (currentToken) {
-            fetch('/api/save-token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: currentToken })
-            }).then(() => console.log('Token sauvegardé !'));
+        if (permission === 'granted') {
+          if(btn) {
+            btn.innerText = "✅ Alertes activées";
+            btn.style.background = "#10b981"; 
           }
-        }).catch((err) => {
-          console.error('Erreur token :', err);
-        });
-      } else {
-        alert("Vous avez refusé les notifications.");
-      }
+          
+          getToken(messaging, { 
+            serviceWorkerRegistration: window.swRegistration,
+            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+          })
+          .then((currentToken) => {
+            if (currentToken) {
+              fetch('/api/save-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentToken })
+              }).then(() => console.log('Token sauvegardé !'));
+            }
+          }).catch((err) => {
+            console.error('Erreur token :', err);
+            if(btn) btn.innerText = "❌ Erreur";
+          });
+        } else {
+          alert("Vous avez refusé les notifications.");
+          if(btn) btn.innerText = "🔔 Activer les alertes";
+        }
+      }, 1500); // Attend 1.5s avant de demander
     } catch (e) {
       console.error(e);
+      if(btn) btn.innerText = "🔔 Activer les alertes";
     }
   }
 </script>
