@@ -604,6 +604,11 @@ router.get("/mon-compte", async (req, res) => {
         <div style="margin:24px 0;"><a class="button" href="/mes-favoris" style="width:100%;">❤️ Voir mes favoris</a></div>
         <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
         <a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:14px; text-decoration:none;">Se déconnecter de cet appareil</a>
+        <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+  <form action="/mon-compte/supprimer" method="POST" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Toutes vos données et favoris seront perdus.')">
+    <button type="submit" class="danger" style="width:100%;">🗑️ Supprimer définitivement mon compte</button>
+  </form>
+</div>
       </div>
     `;
   } else {
