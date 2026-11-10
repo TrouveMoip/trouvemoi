@@ -45,7 +45,16 @@ const QUARTIERS_BENIN = {
   "Zagnanado", "Za-Kpota", "Zè", "Zogbodomey"
 ];
 const METIERS_LOCAL_FIXE = ["Restaurant", "Boutique", "Supérette", "Pharmacie", "Agence immobilière", "Garage", "Salon de beauté", "Hôtel", "Bureau"];
-const METIERS_SENSIBLES = ["Médecin", "Avocat", "Notaire", "Pharmacien"];
+const METIERS_SENSIBLES = [
+  // Santé
+  "Médecin", "Pharmacien", "Dentiste", "Infirmier", "Sage-femme", "Kinésithérapeute", "Technicien de laboratoire",
+  // Juridique
+  "Avocat", "Notaire",
+  // Bâtiment
+  "Architecte", "Géomètre topographe",
+  // Sécurité (Uniquement l'agent, pas le gardien)
+  "Agent de sécurité"
+];
 const PAYMENT_AMOUNT = 1500;
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
@@ -999,6 +1008,13 @@ const metiersOfficiels = [
   // Éducation & Formation
   { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" },
   { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" }
+  // Services & Administration
+{ name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
+{ name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
+{ name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" },
+{ name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" },
+{ name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" },
+{ name: "Livreur", cat: "Services & Administration" },
 ];
 
 for (let m of metiersOfficiels) {
