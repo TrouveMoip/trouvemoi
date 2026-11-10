@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP) {
+module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord) {
   const router = express.Router();
 
   router.post("/login", async (req, res) => {
@@ -228,6 +228,18 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <label>E-mail</label>
           <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || '')}">
           
+          <!-- SECTION LOCALISATION -->
+          <h3 style="margin-top:24px; margin-bottom:12px; border-top:1px solid #e5e7eb; padding-top:20px;">📍 Localisation (si vous avez un local)</h3>
+          
+          <label>Adresse exacte / Point de repère</label>
+          <input name="adresse_exacte" maxlength="200" value="${escapeHtml(proConnected.pro.adresse_exacte || '')}" placeholder="Ex: Carrefour Ste Rita">
+          
+          <input type="hidden" name="latitude" id="latitude" value="${proConnected.pro.latitude || ''}">
+          <input type="hidden" name="longitude" id="longitude" value="${proConnected.pro.longitude || ''}">
+          
+          <button type="button" onclick="getLocation()" style="background:#3b82f6; width:100%; border-radius:12px; margin-bottom:10px; color:white; border:none; padding:10px; cursor:pointer;">📍 Mettre à jour ma position GPS</button>
+          <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold; font-size:13px;"></p>
+          
           <div style="text-align:center; margin-top:30px;"><button type="submit" class="success" style="width:100%; padding:16px;">💾 Enregistrer les modifications</button></div>
         </form>
         <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
@@ -262,6 +274,19 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           }
           btn.disabled = false;
         }
+
+        function getLocation() {
+          const status = document.getElementById('gps-status');
+          status.innerText = "Récupération...";
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              document.getElementById('latitude').value = position.coords.latitude;
+              document.getElementById('longitude').value = position.coords.longitude;
+              status.innerText = "✅ Position GPS mise à jour !";
+            },
+            () => { status.innerText = "❌ Impossible de vous localiser."; }
+          );
+        }
       </script>
     `, proConnected));
   });
@@ -272,19 +297,20 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     const cleanPhone = cleanBeninPhone(phone);
     const otpCode = String(req.body.otp_code || "").trim();
 
-// Si le numéro a changé, on vérifie le code SMS
-if (cleanPhone !== proConnected.pro.phone) {
-  const codeValide = await verifyOTP(cleanPhone, otpCode);
-  if (!codeValide) {
-    return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Vous ne pouvez pas changer de numéro sans le vérifier.</h2><a href='/mon-espace-pro/modifier-profil'>Retour</a>", proConnected));
-  }
-}
+    // Si le numéro a changé, on vérifie le code SMS
+    if (cleanPhone !== proConnected.pro.phone) {
+      const codeValide = await verifyOTP(cleanPhone, otpCode);
+      if (!codeValide) {
+        return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Vous ne pouvez pas changer de numéro sans le vérifier.</h2><a href='/mon-espace-pro/modifier-profil'>Retour</a>", proConnected));
+      }
+    }
     if (!cleanPhone) return res.status(400).send(page("Erreur", "<h2>Téléphone invalide.</h2>", proConnected));
     const cleanWhatsapp = whatsapp_number ? cleanBeninPhone(whatsapp_number) : null;
     const email = String(contact_email || "").trim().slice(0, 254);
     const preference = ["whatsapp", "email"].includes(contact_preference) ? contact_preference : "whatsapp";
     
-    await pool.query(`UPDATE professional_applications SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4, whatsapp_number = $5, updated_at = NOW() WHERE id = $6`, [company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, proConnected.pro.id]);
+    await pool.query(`UPDATE professional_applications SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4, whatsapp_number = $5, adresse_exacte = $6, latitude = $7, longitude = $8, updated_at = NOW() WHERE id = $9`, 
+    [company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, req.body.adresse_exacte || null, safeCoord(req.body.latitude, 90), safeCoord(req.body.longitude, 180), proConnected.pro.id]);
     res.redirect(303, "/mon-espace-pro");
   });
 
@@ -378,13 +404,19 @@ router.post("/modifier-telephone", async (req, res) => {
       <form action="/pro/${person.id}/avis" method="POST">
         <label>Votre nom *</label><input name="author_name" required maxlength="100">
         <label>Note *</label>
-        <div class="star-rating-input">
-          <input type="radio" id="s5" name="rating" value="5" required><label for="s5">★</label>
-          <input type="radio" id="s4" name="rating" value="4"><label for="s4">★</label>
-          <input type="radio" id="s3" name="rating" value="3"><label for="s3">★</label>
-          <input type="radio" id="s2" name="rating" value="2"><label for="s2">★</label>
-          <input type="radio" id="s1" name="rating" value="1"><label for="s1">★</label>
+        <div class="star-rating-wrapper">
+          <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="Excellent">★</label>
+          <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Très bien">★</label>
+          <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Moyen">★</label>
+          <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
+          <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
         </div>
+        <style>
+          .star-rating-wrapper { display: flex; flex-direction: row-reverse; justify-content: flex-end; font-size: 40px; margin-bottom: 20px; }
+          .star-rating-wrapper input { display: none; }
+          .star-rating-wrapper label { color: #d1d5db; cursor: pointer; transition: color 0.2s; margin-right: 5px; }
+          .star-rating-wrapper input:checked ~ label, .star-rating-wrapper label:hover, .star-rating-wrapper label:hover ~ label { color: #f59e0b; }
+        </style>
         <label>Commentaire</label><textarea name="comment" rows="4" maxlength="3000"></textarea>
         <button type="submit">Envoyer</button>
       </form>
