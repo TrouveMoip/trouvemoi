@@ -621,6 +621,9 @@ router.get("/mon-compte", async (req, res) => {
             <input name="password" type="password" required placeholder="Votre mot de passe" class="fancy-input">
             
             <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Se connecter</button>
+            <div style="text-align:center; margin-top:15px;">
+  <a href="/mon-compte/reinitialiser" style="color:#ef4444; font-size:13px; text-decoration:none;">Mot de passe oublié ?</a>
+</div>
           </form>
           <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
             Pas encore de compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">S'inscrire</a>
@@ -1066,5 +1069,106 @@ async function getOrCreateClientCode(visitorId) {
   await pool.query(`INSERT INTO client_codes (visitor_id, code) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [visitorId, newCode]);
   return newCode;
 }
+  // PAGE POUR RÉCUPÉRER SON MOT DE PASSE (CLIENT)
+router.get("/mon-compte/reinitialiser", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  res.send(page("Mot de passe oublié", `
+    <section class="card" style="max-width: 450px; margin: 40px auto;">
+      <h1 style="text-align:center; font-size:22px;">🔐 Mot de passe oublié</h1>
+      <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
+        Entrez votre numéro de téléphone pour recevoir un code de vérification.
+      </p>
+      
+      <form action="/mon-compte/reinitialiser" method="POST">
+        <label class="fancy-label">Votre téléphone *</label>
+        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
+        
+        <div style="display:flex; gap:10px; margin-bottom:14px;">
+          <input name="otp_code" placeholder="Code reçu par SMS" required class="fancy-input" style="margin-bottom:0;">
+          <button type="button" onclick="demanderCodeReset()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
+        </div>
+
+        <label class="fancy-label">Nouveau mot de passe *</label>
+        <input name="new_password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
+        
+        <button type="submit" class="success" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Changer mon mot de passe</button>
+      </form>
+      
+      <p style="text-align:center; margin-top:20px;"><a href="/mon-compte" style="color:#6b7280; font-size:14px;">← Retour à la connexion</a></p>
+    </section>
+
+    <script>
+      async function demanderCodeReset() {
+        const phoneInput = document.querySelector('input[name="phone"]');
+        if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
+          alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
+          return;
+        }
+        const btn = event.target;
+        btn.innerText = "Envoi..."; btn.disabled = true;
+        
+        try {
+          const res = await fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone: phoneInput.value })
+          });
+          const data = await res.json();
+          if (data.ok) {
+            alert("✅ Code envoyé ! Vérifiez vos SMS.");
+            btn.innerText = "Renvoyer";
+          } else {
+            alert(data.error || "Erreur d'envoi.");
+            btn.innerText = "Recevoir";
+          }
+        } catch(e) {
+          alert("Erreur réseau.");
+          btn.innerText = "Recevoir";
+        }
+        btn.disabled = false;
+      }
+    </script>
+  `, proConnected));
+});
+
+// TRAITEMENT DU NOUVEAU MOT DE PASSE
+router.post("/mon-compte/reinitialiser", async (req, res) => {
+  const phone = cleanBeninPhone(req.body.phone);
+  const otpCode = String(req.body.otp_code || "").trim();
+  const newPassword = String(req.body.new_password || "");
+
+  if (!phone || !otpCode || newPassword.length < 6) return res.redirect(303, "/mon-compte/reinitialiser");
+
+  try {
+    // 1. Vérification du code SMS
+    const isCodeValid = await verifyOTP(phone, otpCode);
+    if (!isCodeValid) {
+      return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte/reinitialiser'>Réessayer</a>", null));
+    }
+
+    // 2. Vérification que le compte existe
+    const result = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-compte'>Retour</a>", null));
+    }
+
+    // 3. Hash du nouveau mot de passe et mise à jour
+    const bcrypt = require('bcrypt'); // On s'assure que bcrypt est disponible
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await pool.query(`UPDATE client_codes SET password_hash = $1 WHERE phone = $2`, [passwordHash, phone]);
+
+    // 4. Succès
+    res.send(page("Succès", `
+      <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+        <h1 style="color:#10b981;">✅ Mot de passe modifié</h1>
+        <p>Votre mot de passe a bien été réinitialisé.</p>
+        <a href="/mon-compte" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+      </section>
+    `, null));
+  } catch (e) {
+    console.error("Erreur réinit client :", e);
+    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
+  }
+});
   return router;
 };
