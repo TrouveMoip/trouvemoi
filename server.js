@@ -761,6 +761,13 @@ app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, esca
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+    // --- INITIALISATION DE FIREBASE ---
+if (process.env.FIREBASE_PROJECT_ID) {
+  admin.initializeApp({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  });
+  console.log("🔥 Firebase connecté");
+}
     // --- CRÉATION DES COLONNES MANQUANTES POUR LES PROS ---
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN DEFAULT false`);
