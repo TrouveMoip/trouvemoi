@@ -1170,5 +1170,20 @@ router.post("/mon-compte/reinitialiser", async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
   }
 });
+  // ROUTE POUR SUPPRIMER LE COMPTE CLIENT
+router.post("/mon-compte/supprimer", async (req, res) => {
+  const visitorId = getOrCreateVisitorId(req, res);
+  try {
+    // On supprime le compte client et ses favoris
+    await pool.query(`DELETE FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
+    await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+    
+    // On vide le cookie
+    res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    res.redirect(303, "/");
+  } catch (e) {
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la suppression.</h2>", null));
+  }
+});
   return router;
 };
