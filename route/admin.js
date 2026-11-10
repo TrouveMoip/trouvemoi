@@ -424,9 +424,52 @@ if (c.status === 'pending' || c.status === 'under_review') {
   });
 
   router.post("/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
-    await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [Number(req.params.id)]);
+  const id = Number(req.params.id);
+  try {
+    // 1. On récupère la demande et l'ID du pro
+    const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
+    
+    if (requestResult.rows.length && requestResult.rows[0].pro_id) {
+      const proId = requestResult.rows[0].pro_id;
+
+      // 2. On récupère les URLs des photos pour les supprimer de Cloudinary
+      const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [proId]);
+      
+      if (proResult.rows.length) {
+        const pro = proResult.rows[0];
+        const photos = [pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url];
+        
+        // On supprime les photos de Cloudinary
+        for (let p of photos) {
+          if (p) await deleteFromCloudinary(p); // Il faut passer deleteFromCloudinary à admin.js
+        }
+      }
+
+      // 3. On supprime toutes les données du pro en base
+      await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
+      
+      // 4. On marque la demande comme traitée
+      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+      
+      // 5. Log de l'action
+      await logAdminAction("gdpr_deleted_pro", "pro", proId, "Compte professionnel supprimé définitivement (DB + Cloudinary)");
+    } else {
+      // Si c'est une demande sans pro_id (cas rare)
+      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+    }
+    
     res.redirect(303, "/admin/rgpd");
-  });
+  } catch (error) {
+    console.error("Erreur suppression RGPD:", error);
+    res.status(500).send("Erreur lors de la suppression.");
+  }
+});
 
   // DÉCONNEXION
   router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
