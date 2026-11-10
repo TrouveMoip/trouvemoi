@@ -524,6 +524,47 @@ function page(title, content, proConnected, meta = {}) {
     document.getElementById('modal-img').style.transform = 'rotate(' + currentRotation + 'deg)';
   }
 </script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+
+  const firebaseConfig = {
+    apiKey: "${process.env.FIREBASE_API_KEY}",
+    authDomain: "${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com",
+    projectId: "${process.env.FIREBASE_PROJECT_ID}",
+    storageBucket: "${process.env.FIREBASE_PROJECT_ID}.appspot.com",
+    messagingSenderId: "${process.env.FIREBASE_MSG_SENDER_ID}",
+    appId: "${process.env.FIREBASE_APP_ID}"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  
+  // On demande la permission SEULEMENT si on est sur un navigateur qui le supporte
+  if ('serviceWorker' in navigator && 'Notification' in window) {
+    navigator.serviceWorker.register('/firebase-messaging-sw.js')
+    .then((registration) => {
+      const messaging = getMessaging(app);
+      
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          getToken(messaging, { serviceWorkerRegistration: registration })
+          .then((currentToken) => {
+            if (currentToken) {
+              // On envoie le token au serveur pour le stocker en base
+              fetch('/api/save-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentToken })
+              }).catch(err => console.log('Erreur token', err));
+            }
+          }).catch((err) => {
+            console.log('Erreur récupération token : ', err);
+          });
+        }
+      });
+    });
+  }
+</script>
     </body>
     </html>
   `;
