@@ -1007,7 +1007,7 @@ const metiersOfficiels = [
 
   // Éducation & Formation
   { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" },
-  { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" }
+  { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" },
   // Services & Administration
 { name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
 { name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
