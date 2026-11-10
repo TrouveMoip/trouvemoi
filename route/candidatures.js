@@ -95,9 +95,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             </label>
             <p style="font-size:12px; color:#3b82f6; margin-bottom:10px;">Nous vous enverrons un code par SMS pour confirmer.</p>
             <div style="display:flex; gap:10px;">
-              <input name="phone_verif" id="phone_verif_input" type="tel" placeholder="Numéro à vérifier" style="margin-bottom:0; background:#fff;" class="fancy-input" readonly>
-              <button type="button" onclick="demanderCodePro()" style="margin-bottom:0; padding: 12px 20px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
-            </div>
+  <button type="button" onclick="demanderCodePro()" style="width:100%; margin-bottom:0; padding: 14px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">📩 Recevoir mon code par SMS</button>
+</div>
             <div id="otp-block" style="display:none; margin-top:12px;">
               <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" required style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
             </div>
