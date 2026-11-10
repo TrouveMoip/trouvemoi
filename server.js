@@ -768,7 +768,7 @@ app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res)
     });
 
     return res.status(200).json({ received: true, processed: settlement.ok });
-  } catch (error) {
+  } catch (error) { 
     console.error("Erreur webhook Kkiapay :", error.message);
     return res.status(200).json({ received: true, error: true });
   }
