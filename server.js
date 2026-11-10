@@ -565,7 +565,7 @@ appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
     .catch((err) => console.error("Erreur ServiceWorker:", err));
   }
 
- window.demanderNotifications = async function() {
+ //window.demanderNotifications = async function() {
   const btn = document.getElementById('btn-notif');
   if(btn) btn.innerText = "⏳ Chargement...";
 
