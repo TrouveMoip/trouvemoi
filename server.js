@@ -417,7 +417,7 @@ function page(title, content, proConnected, meta = {}) {
              <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a> 
               <!-- BOUTON NOTIFICATION -->
-              <button id="btn-notif" onclick="demanderNotifications()" style="background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-left: 10px;">🔔 Activer les alertes</button>
+              <button id="btn-notif" onclick="demanderNotifications()" style="background: #f59e0b; color: white; border: none; padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; margin-left: 10px;">⏳ Chargement...</button>
             </div>
             <div class="mobile-menu">
   <div class="main-links">
@@ -557,13 +557,23 @@ function page(title, content, proConnected, meta = {}) {
     .then((registration) => {
       messaging = getMessaging(app);
       window.swRegistration = registration;
+      
+      // Le service est prêt, on active le bouton
+      const btn = document.getElementById('btn-notif');
+      if(btn) btn.innerText = "🔔 Activer les alertes";
     })
     .catch((err) => console.error("Erreur ServiceWorker:", err));
   }
 
   window.demanderNotifications = async function() {
+    const btn = document.getElementById('btn-notif');
+    
     if (!messaging) {
-      alert("Le service de notification n'est pas encore prêt. Attendez 2 secondes et réessayez.");
+      if(btn) btn.innerText = "⏳ Chargement...";
+      setTimeout(() => {
+        if(btn) btn.innerText = "🔔 Activer les alertes";
+        alert("Le service est prêt maintenant, cliquez à nouveau !");
+      }, 3000);
       return;
     }
 
@@ -571,7 +581,6 @@ function page(title, content, proConnected, meta = {}) {
       const permission = await Notification.requestPermission();
       
       if (permission === 'granted') {
-        const btn = document.getElementById('btn-notif');
         if(btn) {
           btn.innerText = "✅ Alertes activées";
           btn.style.background = "#10b981"; 
