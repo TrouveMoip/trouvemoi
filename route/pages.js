@@ -74,7 +74,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
             </div>
             <div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
   <span>${escapeHtml(displayName)} ${renderKycBadge(person)}</span>
-  ${person.agencies_count > 0 ? `<span style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0;"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Mes agences</span>` : ""}
+  ${person.agencies_count > 0 ? `<a href="#section-agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences disponibles</a>` : ""}
 </div>
             <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px;">${escapeHtml(person.profession)}</div>
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
@@ -262,9 +262,9 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
   </button>
 </div>
 <!-- SECTION MES AGENCES -->
-${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
-<div class="card" style="margin-top:20px;">
-  <h2 style="font-size:20px; margin-bottom:16px;">📍 Mes agences</h2>
+${(await pool.query(SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved', [person.id])).rows.length > 0 ? `
+<div class="card" id="section-agences" style="margin-top:20px;"> <!-- 👈 AJOUT DE L'ID ICI -->
+  <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
     ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
       <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
