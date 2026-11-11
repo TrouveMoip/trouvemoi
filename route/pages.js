@@ -237,8 +237,9 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
           <div style="margin-bottom:12px;"><a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}</a></div>
             <div style="margin-bottom:16px;">
-  <a href="https://wa.me/?text=${encodeURIComponent(`Salut ! Regarde ce professionnel sur TrouveMoi : ${displayName} (${person.profession}) à ${person.city}. Voici son profil : ${APP_URL}/pro/${person.id}`)}" target="_blank" class="button whatsapp" style="padding:8px 16px; font-size:14px;">
-    📲 Partager ce profil
+ <div style="margin-bottom:12px;">
+  <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
+    ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
   </a>
 </div>
             ${openStatusBadge}
