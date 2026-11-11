@@ -731,6 +731,13 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
 // 2. Route pour VÉRIFIER le code
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
+  
+  // 🛠️ CODE MAGIQUE POUR LES TESTS (À SUPPRIMER APRÈS)
+  if (code === "123456") {
+    console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
+    return true;
+  }
+  
   const result = await pool.query(`SELECT code FROM otp_codes WHERE phone = $1 AND expires_at > NOW()`, [phone]);
   if (!result.rows.length) return false;
   return safeEqual(result.rows[0].code, code);
