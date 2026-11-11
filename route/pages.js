@@ -255,7 +255,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
             <p style="white-space: pre-line;">${escapeHtml(person.service_description)}</p>
             ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire</a>` : ""}</div>` : ""}
             <div style="margin-top: 24px;">${contactButtons}</div>
-            <!-- BOUTON PARTAGER (Tous réseaux) -->
+            <!-- BOUTON PARTAGER (Tous réseaux) --> 
 <div style="text-align: center; margin-top: 16px;">
   <button onclick="partagerProfil('${escapeHtml(displayName)}', '${escapeHtml(person.profession)}', '${escapeHtml(person.city)}', '${APP_URL}/pro/${person.id}')" style="display:inline-flex; align-items:center; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding:10px 24px; border-radius:30px; text-decoration:none; font-weight:bold; font-size:14px; cursor:pointer; margin:0;">
     📤 Partager ce profil
