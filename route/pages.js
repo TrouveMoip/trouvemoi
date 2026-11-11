@@ -1206,5 +1206,44 @@ router.post("/mon-compte/supprimer", async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur lors de la suppression.</h2>", null));
   }
 });
+  // PAGE DÉDIÉE AUX AGENCES D'UN PRO
+router.get("/pro/:id/agences", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const id = Number(req.params.id);
+  
+  // 1. On récupère le pro
+  const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+  if (!proResult.rows.length) return res.redirect(303, "/");
+  const person = proResult.rows[0];
+  const displayName = person.company_name?.trim() || person.full_name;
+
+  // 2. On récupère ses agences
+  const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [id]);
+
+  const agencesHtml = agenciesResult.rows.map(ag => `
+    <a href="/agence/${ag.id}" style="display:block; background:white; padding:20px; border-radius:16px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s; margin-bottom:16px;" onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.1)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:700; color:#1e293b; font-size:18px; margin-bottom:4px;">🏢 ${escapeHtml(ag.name)}</div>
+          <div style="font-size:14px; color:#64748b;">📍 ${escapeHtml(ag.address)}</div>
+        </div>
+        <div style="color:#2563eb; font-weight:600; font-size:14px;">Voir →</div>
+      </div>
+    </a>
+  `).join("");
+
+  res.send(page(`Agences de ${displayName}`, `
+    <div style="max-width: 700px; margin: 40px auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0; font-size:24px;">🏢 Agences de ${escapeHtml(displayName)}</h1>
+        <a href="/pro/${person.id}" class="button secondary" style="margin:0;">← Retour au profil</a>
+      </div>
+      
+      <p style="color:#64748b; margin-bottom:24px;">Voici les adresses physiques de ce professionnel :</p>
+      
+      ${agencesHtml || "<p>Aucune agence disponible pour le moment.</p>"}
+    </div>
+  `, proConnected));
+});
   return router;
 };
