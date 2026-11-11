@@ -235,8 +235,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const content = `
         <div style="max-width: 800px; margin: 0 auto;">
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
-          <div style="margin-bottom:12px;"><a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}</a></div>
-            <div style="margin-bottom:16px;">
  <div style="margin-bottom:12px;">
   <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
     ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
