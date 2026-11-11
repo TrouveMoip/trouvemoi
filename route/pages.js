@@ -46,7 +46,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
       const totalPages = Math.ceil(totalAllPros / limit);
 
-      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
+      const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, (SELECT COUNT(*) FROM agencies a WHERE a.parent_pro_id = p.id AND a.status = 'approved') AS agencies_count, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
       const result = await pool.query(query, [limit, offset, visitorId]);
 
       const agenciesAccueil = await pool.query(`SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status = 'approved' ORDER BY a.created_at DESC LIMIT 3`);
@@ -72,7 +72,10 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
             <div class="favorite-btn ${person.is_favorite ? 'active' : ''}" onclick="toggleFav(event, ${person.id})" style="position:absolute; top:12px; right:12px; cursor:pointer;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             </div>
-            <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge(person)}</div>
+            <div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+  <span>${escapeHtml(displayName)} ${renderKycBadge(person)}</span>
+  ${person.agencies_count > 0 ? `<span style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0;"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Mes agences</span>` : ""}
+</div>
             <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px;">${escapeHtml(person.profession)}</div>
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
             <div style="margin: 8px 0;">${reviewsCount > 0 ? renderStars(avgRating) : "Pas d'avis"}</div>
