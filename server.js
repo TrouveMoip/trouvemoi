@@ -1014,7 +1014,29 @@ const metiersOfficiels = [
 { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" },
 { name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" },
 { name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" },
-{ name: "Livreur", cat: "Services & Administration" },
+{ name: "Livreur", cat: "Services & Administration" 
+// --- NOUVEAUX MÉTIERS AJOUTÉS ---
+// Commerce & Boutiques
+{ name: "Boutique de vente téléphones et accessoires", cat: "Commerce & Boutiques" },
+{ name: "Boutique Apple store", cat: "Commerce & Boutiques" },
+{ name: "Boutique de vente de mèches", cat: "Commerce & Boutiques" },
+{ name: "Boutique de vente appareils électroménager", cat: "Commerce & Boutiques" },
+{ name: "Boutique de vente de pièces détachées de moto", cat: "Commerce & Boutiques" },
+{ name: "Boutique de vente de pièces détachées automobiles", cat: "Commerce & Boutiques" },
+{ name: "Boutique de vente de produits chinois", cat: "Commerce & Boutiques" },
+{ name: "Cave à vin", cat: "Commerce & Boutiques" },
+
+// Services & Autres
+{ name: "Distributeur agréé Canal+", cat: "Services & Administration" },
+{ name: "Compagnie d'assurance", cat: "Services & Administration" },
+{ name: "Compagnie de transport", cat: "Services & Administration" },
+{ name: "Auto-école", cat: "Éducation & Formation" },
+
+// Automobile & Mécanique
+{ name: "Lavage moto", cat: "Automobile & Mécanique" },
+
+// Beauté & Bien-être
+{ name: "Barber shop", cat: "Beauté" }
 ];
 
 for (let m of metiersOfficiels) {
