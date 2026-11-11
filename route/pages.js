@@ -262,11 +262,11 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
   </button>
 </div>
 <!-- SECTION MES AGENCES -->
-${(await pool.query(SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved', [person.id])).rows.length > 0 ? `
+${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
 <div class="card" id="section-agences" style="margin-top:20px;"> <!-- 👈 AJOUT DE L'ID ICI -->
   <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
-    ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
+  ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
       <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
         <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
         <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
