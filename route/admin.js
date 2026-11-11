@@ -316,6 +316,7 @@ if (c.status === 'pending' || c.status === 'under_review') {
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
               <p><strong>Téléphone :</strong> ${escapeHtml(c.phone)}</p>
               <p><strong>NPI :</strong> ${escapeHtml(c.npi)}</p>
+              <p><strong>Catégorie :</strong> <span class="badge" style="background:#eff6ff; color:#1e40af;">${escapeHtml(c.profession_category || 'Non classée')}</span></p>
               <p><strong>Ville :</strong> ${escapeHtml(c.city)}</p>
               <p><strong>Quartier :</strong> ${escapeHtml(c.neighborhood || "-")}</p>
               <p><strong>Email :</strong> ${escapeHtml(c.contact_email || "-")}</p>
