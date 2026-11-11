@@ -680,6 +680,15 @@ app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
+// Limite globale : max 100 requêtes par minute par IP
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  message: "Trop de requêtes, veuillez patienter.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
 
 // --- ROUTES SYSTEME ---
 // 1. Route pour ENVOYER le code par SMS
