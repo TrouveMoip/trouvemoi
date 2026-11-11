@@ -718,22 +718,15 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
       [phone, code, expiresAt]
     );
 
-   const smsRes = await sendSMS(phone, `TrouveMoi : Votre code de verification est ${code}. Valable 10 minutes.`);
-
-// 🛠️ MODE TEST : On ignore l'erreur SMS si on est en développement
-if (smsRes.error && process.env.NODE_ENV === "production") {
-  return res.status(500).json({ ok: false, error: "Erreur d'envoi du SMS." });
-}
-
-// On affiche le code dans la console Render pour que tu puisses le voir
-console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
-
-res.json({ ok: true, message: "SMS envoyé !" });
+  // 🛠️ MODE TEST : On n'envoie pas de vrai SMS pour l'instant
+    console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
+    
+    res.json({ ok: true, message: "SMS simulé ! Regardez les logs Render." });
+    
   } catch (e) {
     res.status(500).json({ ok: false });
   }
 });
-
 // 2. Route pour VÉRIFIER le code
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
