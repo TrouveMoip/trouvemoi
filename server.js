@@ -44,7 +44,37 @@ const QUARTIERS_BENIN = {
   "Tanguiéta", "Tchaourou", "Toffo", "Tori-Bossito", "Toucountouna",
   "Zagnanado", "Za-Kpota", "Zè", "Zogbodomey"
 ];
-const METIERS_LOCAL_FIXE = ["Restaurant", "Boutique", "Supérette", "Pharmacie", "Agence immobilière", "Garage", "Salon de beauté", "Hôtel", "Bureau"];
+const METIERS_LOCAL_FIXE = [
+  // COMMERCES ET BOUTIQUES
+  "Restaurant", "Boutique", "Supérette", "Supermarché", "Alimentation générale", "Épicerie", "Pharmacie", "Parapharmacie", "Boulangerie", "Pâtisserie", "Boucherie", "Poissonnerie", "Vente de fruits et légumes", "Vente de produits surgelés", "Dépôt de boissons", "Dépôt de gaz domestique", "Quincaillerie", "Agence immobilière", "Boutique de vente de téléphones et accessoires", "Boutique Apple Store", "Distributeur agréé Canal+", "Boutique de vente de mèches", "Compagnie d'assurance", "Compagnie de transport", "Boutique de vente d'appareils électroménagers", "Boutique de vêtements", "Boutique de chaussures", "Boutique de sacs et accessoires de mode", "Boutique de tissus et pagnes", "Boutique de cosmétiques", "Boutique de parfumerie", "Boutique de jouets", "Boutique de vente de produits chinois", "Librairie", "Papeterie", "Bijouterie", "Cave à vin", "Magasin de meubles", "Magasin de décoration intérieure", "Magasin de matériaux de construction", "Magasin de peinture", "Magasin de fournitures scolaires", "Magasin de pièces électroniques", "Magasin de matériel informatique", "Barber shop", "Lavage moto",
+
+  // RESTAURATION, HÉBERGEMENT ET LOISIRS
+  "Fast-food", "Maquis", "Cafétéria", "Glacier", "Pizzeria", "Restaurant africain", "Restaurant gastronomique", "Bar", "Discothèque", "Hôtel", "Auberge", "Résidence meublée", "Maison d'hôtes", "Camping", "Espace événementiel", "Salle de réception", "Salle de jeux", "Salle de sport", "Salle de fitness", "Piscine", "Centre de loisirs",
+
+  // SANTÉ ET BIEN-ÊTRE
+  "Clinique", "Hôpital", "Cabinet médical", "Cabinet dentaire", "Cabinet ophtalmologique", "Laboratoire d'analyses médicales", "Centre de radiologie", "Centre de soins", "Centre de kinésithérapie", "Centre de vaccination", "Cabinet vétérinaire", "Opticien", "Centre de bien-être", "Institut de massage", "Centre dermatologique",
+
+  // ÉDUCATION ET FORMATION
+  "École maternelle", "École primaire", "Collège", "Lycée", "Université", "Établissement d'enseignement supérieur", "Centre de formation professionnelle", "Centre de formation informatique", "Auto-école", "Crèche", "Garderie", "Centre de soutien scolaire", "Centre de langues", "Bibliothèque",
+
+  // AUTOMOBILE, MOTO ET TRANSPORT
+  "Garage", "Garage automobile", "Garage moto", "Station-service", "Centre de lavage automobile", "Vente de véhicules", "Location de véhicules", "Agence de location de motos", "Vente de pneus", "Vente de batteries automobiles", "Vente de lubrifiants", "Centre de vidange", "Centre de diagnostic automobile", "Carrosserie automobile", "Auto-électricité", "Vulcanisateur", "Boutique de vente de pièces détachées de moto", "Boutique de vente de pièces détachées automobiles", "Agence de transport interurbain", "Agence de voyage", "Gare routière", "Compagnie de livraison", "Entreprise de déménagement", "Agence de fret et transit",
+
+  // SERVICES PROFESSIONNELS ET ADMINISTRATIFS
+  "Cabinet comptable", "Cabinet juridique", "Cabinet d'avocats", "Cabinet de conseil", "Agence de communication", "Agence de publicité", "Agence de marketing digital", "Agence web", "Agence de graphisme", "Agence de création audiovisuelle", "Cabinet d'architecture", "Cabinet de géomètre", "Agence de sécurité privée", "Agence de nettoyage", "Entreprise de gardiennage", "Agence de recrutement", "Cabinet de ressources humaines", "Cabinet d'expertise immobilière", "Agence de décoration événementielle", "Pompes funèbres",
+
+  // BANQUE, FINANCE ET TÉLÉCOMMUNICATIONS
+  "Banque", "Institution de microfinance", "Agence de transfert d'argent", "Agence Mobile Money", "Agence de change", "Agence d'assurance", "Agence de paiement électronique", "Agence de télécommunications", "Boutique de vente de cartes SIM", "Centre de services téléphoniques", "Agence de services financiers",
+
+  // ARTISANAT, RÉPARATION ET CONSTRUCTION
+  "Atelier de couture", "Atelier de broderie", "Atelier de menuiserie", "Atelier de soudure", "Atelier de mécanique", "Atelier de réparation de téléphones", "Atelier de réparation informatique", "Atelier de réparation électroménager", "Atelier de réparation électronique", "Atelier de réparation de réfrigérateurs", "Entreprise de plomberie", "Entreprise d'électricité", "Entreprise de construction", "Entreprise de BTP", "Entreprise de carrelage", "Entreprise de peinture bâtiment", "Entreprise de vitrerie", "Entreprise de climatisation", "Entreprise de forage", "Entreprise de forage et installation de pompes", "Entreprise de décoration intérieure", "Entreprise de menuiserie aluminium", "Entreprise de menuiserie bois", "Atelier de fabrication métallique", "Entreprise de paysagisme",
+
+  // BEAUTÉ, MODE ET SERVICES PERSONNELS
+  "Salon de beauté", "Salon de coiffure", "Salon de coiffure mixte", "Institut de beauté", "Salon de manucure", "Salon de pédicure", "Centre de soins capillaires", "Salon de tresses", "Atelier de confection", "Pressing", "Blanchisserie", "Teinturerie", "Photographe professionnel", "Studio photo", "Studio d'enregistrement", "Imprimerie", "Centre de photocopie", "Cybercafé",
+
+  // AUTRES SERVICES
+  "Service de secrétariat", "Service de traduction", "Service de rédaction", "Service informatique", "Service de dépannage", "Service de livraison à domicile", "Service de jardinage", "Service de décoration", "Service traiteur", "Service de location de matériel", "Service événementiel", "Service de maintenance", "Service de réparation", "Service de nettoyage à domicile", "Autres activités"
+];
 const METIERS_SENSIBLES = [
   // Santé
   "Médecin", "Pharmacien", "Dentiste", "Infirmier", "Sage-femme", "Kinésithérapeute", "Technicien de laboratoire",
@@ -977,7 +1007,7 @@ const metiersOfficiels = [
   { name: "Producteur de racines et tubercules", cat: "Agriculture & Élevage" },
   { name: "Arboriculteur fruitier", cat: "Agriculture & Élevage" }, { name: "Exploitant palmier à huile", cat: "Agriculture & Élevage" },
 
-  // Numérique & Tech (avec Canal+ et réseaux)
+  // Numérique & Tech
   { name: "Technicien Canal+ / Installateur parabole", cat: "Numérique & Tech" },
   { name: "Technicien réseau / Câblage", cat: "Numérique & Tech" },
   { name: "Développeur web", cat: "Numérique & Tech" }, { name: "Développeur mobile", cat: "Numérique & Tech" },
@@ -1001,42 +1031,44 @@ const metiersOfficiels = [
   // Services & Administration
   { name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
   { name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
-  { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Services & Administration" },
-  { name: "Femme de ménage", cat: "Services & Administration" }, { name: "Jardinier", cat: "Services & Administration" },
-  { name: "Chauffeur", cat: "Services & Administration" }, { name: "Livreur", cat: "Services & Administration" },
+  { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" },
+  { name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" },
+  { name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" },
+  { name: "Livreur", cat: "Services & Administration" },
 
   // Éducation & Formation
   { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" },
   { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" },
+
+  // NOUVEAUX MÉTIERS COMMERCE, LOISIRS, SANTÉ...
+  { name: "Restaurant", cat: "Commerce & Boutiques" }, { name: "Boutique", cat: "Commerce & Boutiques" }, { name: "Supérette", cat: "Commerce & Boutiques" }, { name: "Supermarché", cat: "Commerce & Boutiques" }, { name: "Alimentation générale", cat: "Commerce & Boutiques" }, { name: "Épicerie", cat: "Commerce & Boutiques" }, { name: "Pharmacie", cat: "Commerce & Boutiques" }, { name: "Parapharmacie", cat: "Commerce & Boutiques" }, { name: "Boulangerie", cat: "Commerce & Boutiques" }, { name: "Pâtisserie", cat: "Commerce & Boutiques" }, { name: "Boucherie", cat: "Commerce & Boutiques" }, { name: "Poissonnerie", cat: "Commerce & Boutiques" }, { name: "Vente de fruits et légumes", cat: "Commerce & Boutiques" }, { name: "Vente de produits surgelés", cat: "Commerce & Boutiques" }, { name: "Dépôt de boissons", cat: "Commerce & Boutiques" }, { name: "Dépôt de gaz domestique", cat: "Commerce & Boutiques" }, { name: "Quincaillerie", cat: "Commerce & Boutiques" }, { name: "Agence immobilière", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de téléphones et accessoires", cat: "Commerce & Boutiques" }, { name: "Boutique Apple Store", cat: "Commerce & Boutiques" }, { name: "Distributeur agréé Canal+", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de mèches", cat: "Commerce & Boutiques" }, { name: "Compagnie d'assurance", cat: "Commerce & Boutiques" }, { name: "Compagnie de transport", cat: "Commerce & Boutiques" }, { name: "Boutique de vente d'appareils électroménagers", cat: "Commerce & Boutiques" }, { name: "Boutique de vêtements", cat: "Commerce & Boutiques" }, { name: "Boutique de chaussures", cat: "Commerce & Boutiques" }, { name: "Boutique de sacs et accessoires de mode", cat: "Commerce & Boutiques" }, { name: "Boutique de tissus et pagnes", cat: "Commerce & Boutiques" }, { name: "Boutique de cosmétiques", cat: "Commerce & Boutiques" }, { name: "Boutique de parfumerie", cat: "Commerce & Boutiques" }, { name: "Boutique de jouets", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de produits chinois", cat: "Commerce & Boutiques" }, { name: "Librairie", cat: "Commerce & Boutiques" }, { name: "Papeterie", cat: "Commerce & Boutiques" }, { name: "Bijouterie", cat: "Commerce & Boutiques" }, { name: "Cave à vin", cat: "Commerce & Boutiques" }, { name: "Magasin de meubles", cat: "Commerce & Boutiques" }, { name: "Magasin de décoration intérieure", cat: "Commerce & Boutiques" }, { name: "Magasin de matériaux de construction", cat: "Commerce & Boutiques" }, { name: "Magasin de peinture", cat: "Commerce & Boutiques" }, { name: "Magasin de fournitures scolaires", cat: "Commerce & Boutiques" }, { name: "Magasin de pièces électroniques", cat: "Commerce & Boutiques" }, { name: "Magasin de matériel informatique", cat: "Commerce & Boutiques" }, { name: "Barber shop", cat: "Commerce & Boutiques" }, { name: "Lavage moto", cat: "Commerce & Boutiques" },
+
+  // Restauration & Loisirs
+  { name: "Fast-food", cat: "Restauration & Loisirs" }, { name: "Maquis", cat: "Restauration & Loisirs" }, { name: "Cafétéria", cat: "Restauration & Loisirs" }, { name: "Glacier", cat: "Restauration & Loisirs" }, { name: "Pizzeria", cat: "Restauration & Loisirs" }, { name: "Restaurant africain", cat: "Restauration & Loisirs" }, { name: "Restaurant gastronomique", cat: "Restauration & Loisirs" }, { name: "Bar", cat: "Restauration & Loisirs" }, { name: "Discothèque", cat: "Restauration & Loisirs" }, { name: "Hôtel", cat: "Restauration & Loisirs" }, { name: "Auberge", cat: "Restauration & Loisirs" }, { name: "Résidence meublée", cat: "Restauration & Loisirs" }, { name: "Maison d'hôtes", cat: "Restauration & Loisirs" }, { name: "Camping", cat: "Restauration & Loisirs" }, { name: "Espace événementiel", cat: "Restauration & Loisirs" }, { name: "Salle de réception", cat: "Restauration & Loisirs" }, { name: "Salle de jeux", cat: "Restauration & Loisirs" }, { name: "Salle de sport", cat: "Restauration & Loisirs" }, { name: "Salle de fitness", cat: "Restauration & Loisirs" }, { name: "Piscine", cat: "Restauration & Loisirs" }, { name: "Centre de loisirs", cat: "Restauration & Loisirs" },
+
+  // Santé & Bien-être
+  { name: "Clinique", cat: "Santé & Bien-être" }, { name: "Hôpital", cat: "Santé & Bien-être" }, { name: "Cabinet médical", cat: "Santé & Bien-être" }, { name: "Cabinet dentaire", cat: "Santé & Bien-être" }, { name: "Cabinet ophtalmologique", cat: "Santé & Bien-être" }, { name: "Laboratoire d'analyses médicales", cat: "Santé & Bien-être" }, { name: "Centre de radiologie", cat: "Santé & Bien-être" }, { name: "Centre de soins", cat: "Santé & Bien-être" }, { name: "Centre de kinésithérapie", cat: "Santé & Bien-être" }, { name: "Centre de vaccination", cat: "Santé & Bien-être" }, { name: "Cabinet vétérinaire", cat: "Santé & Bien-être" }, { name: "Opticien", cat: "Santé & Bien-être" }, { name: "Centre de bien-être", cat: "Santé & Bien-être" }, { name: "Institut de massage", cat: "Santé & Bien-être" }, { name: "Centre dermatologique", cat: "Santé & Bien-être" },
+
+  // Éducation & Formation
+  { name: "École maternelle", cat: "Éducation & Formation" }, { name: "École primaire", cat: "Éducation & Formation" }, { name: "Collège", cat: "Éducation & Formation" }, { name: "Lycée", cat: "Éducation & Formation" }, { name: "Université", cat: "Éducation & Formation" }, { name: "Établissement d'enseignement supérieur", cat: "Éducation & Formation" }, { name: "Centre de formation professionnelle", cat: "Éducation & Formation" }, { name: "Centre de formation informatique", cat: "Éducation & Formation" }, { name: "Auto-école", cat: "Éducation & Formation" }, { name: "Crèche", cat: "Éducation & Formation" }, { name: "Garderie", cat: "Éducation & Formation" }, { name: "Centre de soutien scolaire", cat: "Éducation & Formation" }, { name: "Centre de langues", cat: "Éducation & Formation" }, { name: "Bibliothèque", cat: "Éducation & Formation" },
+
+  // Automobile & Transport
+  { name: "Garage", cat: "Automobile & Transport" }, { name: "Garage automobile", cat: "Automobile & Transport" }, { name: "Garage moto", cat: "Automobile & Transport" }, { name: "Station-service", cat: "Automobile & Transport" }, { name: "Centre de lavage automobile", cat: "Automobile & Transport" }, { name: "Vente de véhicules", cat: "Automobile & Transport" }, { name: "Location de véhicules", cat: "Automobile & Transport" }, { name: "Agence de location de motos", cat: "Automobile & Transport" }, { name: "Vente de pneus", cat: "Automobile & Transport" }, { name: "Vente de batteries automobiles", cat: "Automobile & Transport" }, { name: "Vente de lubrifiants", cat: "Automobile & Transport" }, { name: "Centre de vidange", cat: "Automobile & Transport" }, { name: "Centre de diagnostic automobile", cat: "Automobile & Transport" }, { name: "Carrosserie automobile", cat: "Automobile & Transport" }, { name: "Auto-électricité", cat: "Automobile & Transport" }, { name: "Vulcanisateur", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées de moto", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées automobiles", cat: "Automobile & Transport" }, { name: "Agence de transport interurbain", cat: "Automobile & Transport" }, { name: "Agence de voyage", cat: "Automobile & Transport" }, { name: "Gare routière", cat: "Automobile & Transport" }, { name: "Compagnie de livraison", cat: "Automobile & Transport" }, { name: "Entreprise de déménagement", cat: "Automobile & Transport" }, { name: "Agence de fret et transit", cat: "Automobile & Transport" },
+
   // Services & Administration
-{ name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
-{ name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
-{ name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" },
-{ name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" },
-{ name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" },
-{ name: "Livreur", cat: "Services & Administration" 
-// --- NOUVEAUX MÉTIERS AJOUTÉS ---
-// Commerce & Boutiques
-{ name: "Boutique de vente téléphones et accessoires", cat: "Commerce & Boutiques" },
-{ name: "Boutique Apple store", cat: "Commerce & Boutiques" },
-{ name: "Boutique de vente de mèches", cat: "Commerce & Boutiques" },
-{ name: "Boutique de vente appareils électroménager", cat: "Commerce & Boutiques" },
-{ name: "Boutique de vente de pièces détachées de moto", cat: "Commerce & Boutiques" },
-{ name: "Boutique de vente de pièces détachées automobiles", cat: "Commerce & Boutiques" },
-{ name: "Boutique de vente de produits chinois", cat: "Commerce & Boutiques" },
-{ name: "Cave à vin", cat: "Commerce & Boutiques" },
+  { name: "Cabinet comptable", cat: "Services & Administration" }, { name: "Cabinet juridique", cat: "Services & Administration" }, { name: "Cabinet d'avocats", cat: "Services & Administration" }, { name: "Cabinet de conseil", cat: "Services & Administration" }, { name: "Agence de communication", cat: "Services & Administration" }, { name: "Agence de publicité", cat: "Services & Administration" }, { name: "Agence de marketing digital", cat: "Services & Administration" }, { name: "Agence web", cat: "Services & Administration" }, { name: "Agence de graphisme", cat: "Services & Administration" }, { name: "Agence de création audiovisuelle", cat: "Services & Administration" }, { name: "Cabinet d'architecture", cat: "Services & Administration" }, { name: "Cabinet de géomètre", cat: "Services & Administration" }, { name: "Agence de sécurité privée", cat: "Services & Administration" }, { name: "Agence de nettoyage", cat: "Services & Administration" }, { name: "Entreprise de gardiennage", cat: "Services & Administration" }, { name: "Agence de recrutement", cat: "Services & Administration" }, { name: "Cabinet de ressources humaines", cat: "Services & Administration" }, { name: "Cabinet d'expertise immobilière", cat: "Services & Administration" }, { name: "Agence de décoration événementielle", cat: "Services & Administration" }, { name: "Pompes funèbres", cat: "Services & Administration" },
 
-// Services & Autres
-{ name: "Distributeur agréé Canal+", cat: "Services & Administration" },
-{ name: "Compagnie d'assurance", cat: "Services & Administration" },
-{ name: "Compagnie de transport", cat: "Services & Administration" },
-{ name: "Auto-école", cat: "Éducation & Formation" },
+  // Finance & Télécoms
+  { name: "Banque", cat: "Finance & Télécoms" }, { name: "Institution de microfinance", cat: "Finance & Télécoms" }, { name: "Agence de transfert d'argent", cat: "Finance & Télécoms" }, { name: "Agence Mobile Money", cat: "Finance & Télécoms" }, { name: "Agence de change", cat: "Finance & Télécoms" }, { name: "Agence d'assurance", cat: "Finance & Télécoms" }, { name: "Agence de paiement électronique", cat: "Finance & Télécoms" }, { name: "Agence de télécommunications", cat: "Finance & Télécoms" }, { name: "Boutique de vente de cartes SIM", cat: "Finance & Télécoms" }, { name: "Centre de services téléphoniques", cat: "Finance & Télécoms" }, { name: "Agence de services financiers", cat: "Finance & Télécoms" },
 
-// Automobile & Mécanique
-{ name: "Lavage moto", cat: "Automobile & Mécanique" },
+  // Artisanat & Construction
+  { name: "Atelier de couture", cat: "Artisanat & Construction" }, { name: "Atelier de broderie", cat: "Artisanat & Construction" }, { name: "Atelier de menuiserie", cat: "Artisanat & Construction" }, { name: "Atelier de soudure", cat: "Artisanat & Construction" }, { name: "Atelier de mécanique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de téléphones", cat: "Artisanat & Construction" }, { name: "Atelier de réparation informatique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électroménager", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électronique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de réfrigérateurs", cat: "Artisanat & Construction" }, { name: "Entreprise de plomberie", cat: "Artisanat & Construction" }, { name: "Entreprise d'électricité", cat: "Artisanat & Construction" }, { name: "Entreprise de construction", cat: "Artisanat & Construction" }, { name: "Entreprise de BTP", cat: "Artisanat & Construction" }, { name: "Entreprise de carrelage", cat: "Artisanat & Construction" }, { name: "Entreprise de peinture bâtiment", cat: "Artisanat & Construction" }, { name: "Entreprise de vitrerie", cat: "Artisanat & Construction" }, { name: "Entreprise de climatisation", cat: "Artisanat & Construction" }, { name: "Entreprise de forage", cat: "Artisanat & Construction" }, { name: "Entreprise de forage et installation de pompes", cat: "Artisanat & Construction" }, { name: "Entreprise de décoration intérieure", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie aluminium", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie bois", cat: "Artisanat & Construction" }, { name: "Atelier de fabrication métallique", cat: "Artisanat & Construction" }, { name: "Entreprise de paysagisme", cat: "Artisanat & Construction" },
 
-// Beauté & Bien-être
-{ name: "Barber shop", cat: "Beauté" }
+  // Beauté & Mode
+  { name: "Salon de beauté", cat: "Beauté & Mode" }, { name: "Salon de coiffure", cat: "Beauté & Mode" }, { name: "Salon de coiffure mixte", cat: "Beauté & Mode" }, { name: "Institut de beauté", cat: "Beauté & Mode" }, { name: "Salon de manucure", cat: "Beauté & Mode" }, { name: "Salon de pédicure", cat: "Beauté & Mode" }, { name: "Centre de soins capillaires", cat: "Beauté & Mode" }, { name: "Salon de tresses", cat: "Beauté & Mode" }, { name: "Atelier de confection", cat: "Beauté & Mode" }, { name: "Pressing", cat: "Beauté & Mode" }, { name: "Blanchisserie", cat: "Beauté & Mode" }, { name: "Teinturerie", cat: "Beauté & Mode" }, { name: "Photographe professionnel", cat: "Beauté & Mode" }, { name: "Studio photo", cat: "Beauté & Mode" }, { name: "Studio d'enregistrement", cat: "Beauté & Mode" }, { name: "Imprimerie", cat: "Beauté & Mode" }, { name: "Centre de photocopie", cat: "Beauté & Mode" }, { name: "Cybercafé", cat: "Beauté & Mode" },
+
+  // Autres Services
+  { name: "Service de secrétariat", cat: "Autres Services" }, { name: "Service de traduction", cat: "Autres Services" }, { name: "Service de rédaction", cat: "Autres Services" }, { name: "Service informatique", cat: "Autres Services" }, { name: "Service de dépannage", cat: "Autres Services" }, { name: "Service de livraison à domicile", cat: "Autres Services" }, { name: "Service de jardinage", cat: "Autres Services" }, { name: "Service de décoration", cat: "Autres Services" }, { name: "Service traiteur", cat: "Autres Services" }, { name: "Service de location de matériel", cat: "Autres Services" }, { name: "Service événementiel", cat: "Autres Services" }, { name: "Service de maintenance", cat: "Autres Services" }, { name: "Service de réparation", cat: "Autres Services" }, { name: "Service de nettoyage à domicile", cat: "Autres Services" }, { name: "Autres activités", cat: "Autres Services" }
 ];
 
 for (let m of metiersOfficiels) {
