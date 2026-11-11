@@ -357,6 +357,7 @@ const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' +
       <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
         <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
           <strong>${escapeHtml(r.author_name)}</strong>
+          <a href="/contact?report=${r.id}" style="font-size:11px; color:#ef4444; text-decoration:none; margin-left:10px; font-weight:bold;">🚩 Signaler</a>
           <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
         </div>
         <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
