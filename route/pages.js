@@ -49,12 +49,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, (SELECT COUNT(*) FROM agencies a WHERE a.parent_pro_id = p.id AND a.status = 'approved') AS agencies_count, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite FROM professional_applications p WHERE p.status = 'approved' ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
       const result = await pool.query(query, [limit, offset, visitorId]);
 
-      const agenciesAccueil = await pool.query(`SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status = 'approved' ORDER BY a.created_at DESC LIMIT 3`);
-      let agenciesAccueilHtml = "";
-      if (agenciesAccueil.rows.length > 0) {
-        agenciesAccueilHtml = `<h2 style="text-align: center; margin: 40px 0 20px 0;">🏢 Nos nouvelles agences</h2><div class="pros-grid">${agenciesAccueil.rows.map(ag => `<article class="pro-card" style="border-left: 4px solid #8b5cf6;"><div class="pro-name">${escapeHtml(ag.name)}</div><div class="pro-meta" style="color: #8b5cf6; font-weight: 700; font-size: 11px;">Réseau : ${escapeHtml(ag.parent_name || "Indépendant")}</div><div class="pro-meta">📍 ${escapeHtml(ag.address)}</div><div class="pro-actions" style="margin-top: 12px;"><a href="/agence/${ag.id}" class="button pro-profile-link" style="padding: 8px; font-size: 13px; background:#8b5cf6; color:white;">Voir l'agence →</a></div></article>`).join("")}</div>`;
-      }
-
       const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
       const prosCards = result.rows.map((person) => {
         const displayName = getDisplayName(person);
@@ -102,7 +96,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
         </div>
 
         <div class="alert alert-animated" style="text-align: center;"><strong>⚠️ ATTENTION :</strong> Ne payez jamais un professionnel avant de l'avoir rencontré.</div>
-        ${agenciesAccueilHtml}
         <h2 style="text-align: center; margin: 40px 0 20px 0;">Derniers professionnels inscrits</h2>
         <div class="pros-grid">${prosCards}</div>
         ${renderPagination(currentPage, totalPages, "/")}
