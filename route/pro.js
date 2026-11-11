@@ -321,7 +321,18 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
       const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
       const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1`, [proConnected.pro.id]);
-      const exportData = { utilisateur: proConnected.pro, offres: offersResult.rows, demandes: gdprResult.rows, avis: reviewsResult.rows, agences: agenciesResult.rows };
+const withdrawalsResult = await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1`, [proConnected.pro.id]);
+const statsResult = await pool.query(`SELECT * FROM pro_stats WHERE pro_id = $1`, [proConnected.pro.id]);
+
+const exportData = { 
+  utilisateur: proConnected.pro, 
+  offres: offersResult.rows, 
+  demandes_rgpd: gdprResult.rows, 
+  avis: reviewsResult.rows, 
+  agences: agenciesResult.rows,
+  retraits: withdrawalsResult.rows,
+  statistiques_quotidiennes: statsResult.rows
+};
       res.setHeader("Content-Type", "application/json"); res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`); res.send(JSON.stringify(exportData, null, 2));
     } catch (e) { res.status(500).send("Erreur."); }
   });
