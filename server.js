@@ -460,6 +460,12 @@ function page(title, content, proConnected, meta = {}) {
           .footer-content { grid-template-columns: 1fr; text-align: center; }
           .footer-col a { display: inline-block; margin: 0 10px; }
         }
+        /* Optimisation des images */
+img {
+  max-width: 100%;
+  height: auto;
+  content-visibility: auto;
+}
       </style>
     </head>
     <body>
