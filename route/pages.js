@@ -74,7 +74,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
             </div>
             <div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
   <span>${escapeHtml(displayName)} ${renderKycBadge(person)}</span>
-  ${person.agencies_count > 0 ? `<a href="#section-agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences disponibles</a>` : ""}
+  ${person.agencies_count > 0 ? `<a href="/pro/${person.id}#section-agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences disponibles</a>` : ""}
 </div>
             <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px;">${escapeHtml(person.profession)}</div>
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
