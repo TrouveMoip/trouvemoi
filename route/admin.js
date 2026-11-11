@@ -229,7 +229,13 @@ router.get("/suivi/export", requireAdmin, async (req, res) => {
   // CANDIDATURES
   router.get("/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-const result = await pool.query(`SELECT p.* FROM professional_applications p WHERE p.status != 'payment_pending' ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC LIMIT 50`);  
+    const result = await pool.query(`
+  SELECT p.*, pr.category AS profession_category 
+  FROM professional_applications p
+  LEFT JOIN professions pr ON p.profession = pr.name
+  WHERE p.status != 'payment_pending' 
+  ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC LIMIT 50
+`);
   const apps = result.rows.map(c => {
     // On affiche les 3 photos
     const photos = `
