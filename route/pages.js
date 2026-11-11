@@ -141,6 +141,36 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
         const queryValues = [...values, visitorId, limit, offset];
         const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $${queryValues.length - 2}) AS is_favorite FROM professional_applications p ${whereClause} ORDER BY ${orderBy} LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
         result = await pool.query(query, queryValues);
+        // Recherche des agences correspondantes
+let agencesSearchHtml = "";
+try {
+  let agenceWhere = ` WHERE a.status = 'approved'`;
+  let agenceValues = [];
+  if (profession) {
+    agenceValues.push(`%${profession}%`);
+    agenceWhere += ` AND (a.name ILIKE $${agenceValues.length} OR p.profession ILIKE $${agenceValues.length})`;
+  }
+  if (city) {
+    agenceValues.push(`%${city}%`);
+    agenceWhere += ` AND a.address ILIKE $${agenceValues.length}`;
+  }
+  const agencesResult = await pool.query(`SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id ${agenceWhere} LIMIT 5`, agenceValues);
+  
+  if (agencesResult.rows.length > 0) {
+    agencesSearchHtml = `<h2 style="text-align: center; margin: 30px 0 20px 0;">🏢 Agences correspondantes</h2><div class="pros-grid">${agencesResult.rows.map(ag => `
+      <article class="pro-card" style="border-left: 4px solid #8b5cf6;">
+        <div class="pro-name">🏢 ${escapeHtml(ag.name)}</div>
+        <div class="pro-meta" style="color: #8b5cf6; font-weight: 700;">Réseau : ${escapeHtml(ag.parent_name)}</div>
+        <div class="pro-meta">📍 ${escapeHtml(ag.address)}</div>
+        <div class="pro-actions" style="margin-top: 12px;">
+          <a href="/agence/${ag.id}" class="button" style="grid-column: span 2; background:#8b5cf6; color:white;">Voir l'agence →</a>
+        </div>
+      </article>
+    `).join("")}</div>`;
+  }
+} catch (e) {
+  console.error("Erreur recherche agences:", e);
+}
 
         let agenceQuery = `SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status = 'approved'`;
         let agenceValues = [];
