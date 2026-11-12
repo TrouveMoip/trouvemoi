@@ -200,7 +200,7 @@ async function sendPushNotification(title, body) {
 }
 
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
-function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯪" : "☆"; return html; }
+function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "★" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
 function readCookie(req, name) { for (const item of (req.headers.cookie || "").split(";")) { const [key, ...val] = item.trim().split("="); if (key === name) return val.join("="); } return null; }
 function getOrCreateVisitorId(req, res) { let vid = readCookie(req, "tm_visitor_id"); if (!vid || vid.length < 20) { vid = crypto.randomBytes(16).toString("hex"); res.append("Set-Cookie", `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`); } return vid; }
