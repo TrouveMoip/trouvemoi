@@ -1165,6 +1165,9 @@ app.post("/suivi", async (req, res) => {
         <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo Pièce d'identité (optionnel)</label>
         <input type="file" name="photo_identite" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
 
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo KYC - Visage + Pièce (optionnel)</label>
+<input type="file" name="photo_kyc" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
+
         <button type="submit" class="warning" style="width:100%; padding:12px; font-weight:bold; border-radius:8px; border:none; color:white; background:#f59e0b; cursor:pointer;">Renvoyer mon dossier pour vérification</button>
       </form>
     </div>
