@@ -284,8 +284,7 @@ const quartiersParVilleJson = JSON.stringify(QUARTIERS_BENIN);
         }
 
         // ==========================================
-        // 4. CHARGEMENT DES QUARTIERS (Le point critique)
-        // ==========================================
+        // 4. CHARGEMENT DES QUARTIERS (Le point critique
         var citySelect = document.getElementById('city');
         if (citySelect) {
           citySelect.addEventListener('change', function() { 
