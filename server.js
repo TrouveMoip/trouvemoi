@@ -178,7 +178,31 @@ async function getConnectedPro(req) { const code = readCookie(req, "tm_pro_sessi
 async function logAdminAction(action, targetType, targetId, details) { try { await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]); } catch (e) {} }
 async function takeRateLimit(key, max, windowMs) { try { const seconds = Math.max(1, Math.ceil(windowMs / 1000)); const result = await pool.query(`INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW()) ON CONFLICT ("limit_key") DO UPDATE SET count = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN 1 ELSE rate_limits_v2.count + 1 END, window_start = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN NOW() ELSE rate_limits_v2.window_start END RETURNING count`, [key, seconds]); return Number(result.rows[0].count) <= max; } catch (error) { return true; } }
 async function clearRateLimit(key) { try { await pool.query("DELETE FROM rate_limits_v2 WHERE limit_key = $1", [key]); } catch (error) {} }
-async function uploadToCloudinary(buffer, folder, publicId) { return new Promise((resolve, reject) => { const stream = cloudinary.uploader.upload_stream({ folder, public_id: publicId, resource_type: "image", transformation: [{ width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" }] }, (error, result) => { if (error) return reject(error); resolve(result); }); stream.end(buffer); }); }
+async function uploadToCloudinary(buffer, folder, publicId) { 
+  return new Promise((resolve, reject) => { 
+    const stream = cloudinary.uploader.upload_stream({ 
+      folder, 
+      public_id: publicId, 
+      resource_type: "image",
+      // 👇 Compression AVANT le stockage
+      incoming_transformation: [
+        { width: 1000, height: 1000, crop: "limit" }, 
+        { quality: "auto:good" }, 
+        { fetch_format: "auto" }
+      ],
+      // 👇 Version d'affichage optimisée (optionnelle)
+      transformation: [
+        { width: 800, height: 800, crop: "limit" }, 
+        { quality: "auto" }, 
+        { fetch_format: "auto" }
+      ]
+    }, (error, result) => { 
+      if (error) return reject(error); 
+      resolve(result); 
+    }); 
+    stream.end(buffer); 
+  }); 
+}
 async function deleteFromCloudinary(publicId) { if (!publicId) return; try { const urlParts = publicId.split("/upload/"); if (urlParts.length < 2) return; let path = urlParts[1]; if (path.startsWith("v")) path = path.replace(/^v\d+\//, ""); const cleanId = path.replace(/\.[^.]+$/, ""); await cloudinary.uploader.destroy(cleanId, { invalidate: true }); } catch (error) {} }
 function generateProCode() { return `TM${crypto.randomInt(10000000, 100000000)}`; }
 async function generateUniqueProCode() { let code, exists = true, attempts = 0; while (exists && attempts < 20) { code = generateProCode(); exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0; attempts++; } return code; }
