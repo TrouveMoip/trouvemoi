@@ -1119,18 +1119,47 @@ app.post("/suivi", async (req, res) => {
     if (dossier.payment_status === 'unpaid') {
       statutMessage = "⏳ En attente de paiement";
       actionHtml = `<a href="/paiement/${dossier.tracking_code}" class="button success" style="margin-top:20px;">Payer mon inscription (1500 FCFA)</a>`;
-    } else if (dossier.status === 'payment_pending' || dossier.status === 'pending') {
+    } 
+    else if (dossier.status === 'payment_pending' || dossier.status === 'pending') {
       statutMessage = "⏳ En cours d'examen par l'équipe";
-    } else if (dossier.status === 'approved') {
-      statutMessage = "✅ Dossier approuvé ! Vous pouvez vous connecter à votre espace pro.";
-      actionHtml = `<a href="/mon-espace-pro" class="button" style="margin-top:20px;">Aller sur mon espace pro</a>`;
-    } else if (dossier.status === 'rejected') {
-      statutMessage = "❌ Dossier refusé";
-      if (dossier.rejection_reason) statutMessage += `<br><small>Motif : ${escapeHtml(dossier.rejection_reason)}</small>`;
+    } 
+    else if (dossier.status === 'approved') {
+      statutMessage = "✅ Dossier approuvé ! Voici votre code de connexion :";
+      // ✅ AFFICHAGE DU CODE PRO AVEC BOUTON COPIER
+      actionHtml = `
+        <div style="background:#f0fdf4; border:2px dashed #10b981; padding:24px; border-radius:12px; margin:20px 0;">
+          <p style="margin:0 0 10px 0; font-weight:bold; color:#065f46;">⚠️ Ce code est très important. Il vous permettra de vous connecter à votre Espace Pro chaque fois.</p>
+          <div style="font-size:32px; font-weight:900; font-family:monospace; color:#047857; letter-spacing:3px;" id="pro-code-value">${escapeHtml(dossier.pro_code || "Génération en cours...")}</div>
+          <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(dossier.pro_code || "")}').then(() => alert('✅ Code copié !'))" style="margin-top:15px; padding:10px 20px; font-size:16px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer;">📋 Copier le code</button>
+        </div>
+        <a href="/mon-espace-pro" class="button" style="margin-top:10px;">Aller sur mon espace pro</a>
+      `;
+    } 
+    else if (dossier.status === 'rejected') {
+      statutMessage = `❌ Dossier refusé : <span style="color:#ef4444;">${escapeHtml(dossier.rejection_reason || "Motif non précisé")}</span>`;
+      // ✅ FORMULAIRE DE CORRECTION (Re-upload photo KYC)
+      actionHtml = `
+        <div style="background:#fef2f2; border:1px solid #fecaca; padding:20px; border-radius:12px; margin-top:20px;">
+          <h3 style="color:#991b1b; font-size:16px; margin-bottom:10px;">Corriger mon dossier</h3>
+          <p style="font-size:13px; color:#7f1d1d; margin-bottom:15px;">Vous pouvez re-uploader vos photos KYC pour corriger le problème.</p>
+          <form action="/suivi/corriger" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="tracking_code" value="${escapeHtml(dossier.tracking_code)}">
+            <div style="text-align:left; margin-bottom:10px;">
+              <label style="font-size:12px; font-weight:bold;">Nouvelle photo visage</label>
+              <input type="file" name="photo_profil" accept="image/*" style="padding:8px; background:white;">
+            </div>
+            <div style="text-align:left; margin-bottom:15px;">
+              <label style="font-size:12px; font-weight:bold;">Nouvelle photo Pièce d'identité</label>
+              <input type="file" name="photo_identite" accept="image/*" style="padding:8px; background:white;">
+            </div>
+            <button type="submit" class="warning" style="width:100%;">Renvoyer pour vérification</button>
+          </form>
+        </div>
+      `;
     }
 
     res.send(page("Résultat du suivi", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <section class="card" style="max-width: 550px; margin: 40px auto; text-align:center;">
         <h1>Dossier de ${escapeHtml(dossier.full_name)}</h1>
         <div style="font-size:18px; font-weight:bold; margin:20px 0; padding:16px; background:#f1f5f9; border-radius:12px;">
           ${statutMessage}
