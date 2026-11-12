@@ -52,7 +52,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     <section style="max-width: 700px; margin: 0 auto;">
       <h1 style="text-align: center; margin-bottom: 24px; color: #1e3a8a;">Devenir professionnel</h1>
       
-      <!-- ✅ MESSAGE FRAIS D'INSCRIPTION (EN HAUT) -->
       <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; padding:16px; border-radius:8px; margin-bottom:24px; text-align:center;">
         <p style="margin:0; color:#92400e; font-size:15px; font-weight:600;">💳 Frais d'inscription : <span style="font-size:18px; font-weight:800;">1500 FCFA</span></p>
         <p style="margin:4px 0 0 0; color:#92400e; font-size:13px;">Ce montant devra être réglé à la fin du formulaire afin de procéder à l’activation de votre profil.</p>
@@ -81,6 +80,9 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           
           <label class="fancy-label">N° Téléphone *</label>
           <input name="phone" id="input_phone" type="tel" required maxlength="30" placeholder="01XXXXXXXX" pattern="01[0-9]{8}" class="fancy-input">
+
+          <label class="fancy-label">Adresse E-mail (facultatif)</label>
+          <input name="contact_email" type="email" maxlength="254" placeholder="Ex: jean@gmail.com" class="fancy-input">
           
           <div style="background:#eff6ff; padding:20px; border-radius:16px; margin-top:10px; border:1px dashed #93c5fd;">
             <label style="margin-top:0; color:#1e3a8a; font-weight:bold; display:flex; align-items:center; gap:8px;">
@@ -91,7 +93,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               <button type="button" onclick="demanderCodePro()" style="width:100%; margin-bottom:0; padding: 14px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">📩 Recevoir mon code par SMS</button>
             </div>
             <div id="otp-block" style="display:none; margin-top:12px;">
-              <!-- ✅ Retrait du required HTML5, la vérification se fait en JS -->
               <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
             </div>
           </div>
@@ -199,7 +200,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             <span style="font-size:14px; color:#475569;">J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb; font-weight:bold;">Politique de confidentialité</a> et je certifie sur l'honneur l'exactitude de ces informations.</span>
           </div>
 
-          <!-- ✅ RAPPEL FRAIS D'INSCRIPTION AVANT ENVOI -->
           <div style="margin-top:24px; padding:16px; background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px;">
             <p style="margin:0; color:#92400e; font-size:14px;">💳 <strong>Rappel :</strong> Après avoir cliqué sur "Envoyer", vous serez redirigé vers le paiement sécurisé des frais d'inscription de <strong>1500 FCFA</strong>. Votre profil ne sera activé qu'après ce paiement et la validation de notre équipe.</p>
           </div>
@@ -227,9 +227,13 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     
     function nextStep(step) {
       if (step === 1) {
-        const phone = document.getElementById('input_phone').value;
-        const otp = document.getElementById('otp_code_input').value;
-        if(!phone || !otp) { alert("Veuillez remplir le téléphone et le code SMS."); return; }
+        const name = document.getElementById('input_full_name').value.trim();
+        const npi = document.getElementById('input_npi').value.trim();
+        const phone = document.getElementById('input_phone').value.trim();
+        const otp = document.getElementById('otp_code_input').value.trim();
+
+        if(!name || !npi || !phone) { alert("Veuillez remplir le nom, le NPI et le téléphone."); return; }
+        if(!otp) { alert("Veuillez entrer le code SMS reçu."); return; }
       }
       if (step === 2) {
         const city = document.getElementById('city').value;
@@ -301,7 +305,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         for (const n of data.neighborhoods) { 
           const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
         }
-        const otherOpt = document.createElement('option'); otherOpt.value = 'Autre'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
+        // ❌ L'OPTION "AUTRE" A ÉTÉ RETIRÉE D'ICI POUR ÉVITER LE DOUBLON
       } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
     });
 
@@ -395,6 +399,12 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       const codeValide = await verifyOTP(phone, otpCode);
       if (!codeValide) {
         return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Veuillez recommencer.</h2><a href='/devenir-professionnel'>Retour</a>", null));
+      }
+
+      // ✅ VÉRIFICATION ANTI-DOUBLON : NPI ET TELEPHONE
+      const existingPro = await pool.query(`SELECT id FROM professional_applications WHERE npi = $1 OR phone = $2`, [npi, phone]);
+      if (existingPro.rows.length) {
+        return res.status(400).send(page("Erreur", "<h2>Un dossier existe déjà avec ce NPI ou ce numéro de téléphone.</h2><p>Si vous avez déjà un compte, veuillez vous connecter ou contacter le support.</p><a href='/devenir-professionnel'>Retour</a>", null));
       }
 
       if (!files.photo_profil || !files.photo_profil[0] || !files.photo_identite || !files.photo_identite[0] || !files.photo_kyc || !files.photo_kyc[0]) {
