@@ -17,15 +17,15 @@ const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${esca
   
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesHtml = "";
-  jours.forEach(j => {
-    horairesHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px; color:#475569;">${j}</div>
-      <input type="time" name="h_${j}_o" style="margin:0; width:110px; padding:8px; background:#f8fafc; border:1px solid #e2e8f0;">
-      <span style="color:#94a3b8;">à</span>
-      <input type="time" name="h_${j}_f" style="margin:0; width:110px; padding:8px; background:#f8fafc; border:1px solid #e2e8f0;">
-      <label style="margin:0; display:flex; align-items:center; gap:4px; font-size:12px; color:#64748b;"><input type="checkbox" name="h_${j}_ferme" value="yes" style="margin:0;"> Fermé</label>
-    </div>`;
-  });
+ jours.forEach(j => {
+  horairesHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; background:#fff; padding:10px; border-radius:12px; border:1px solid #e2e8f0;">
+    <div style="width:90px; font-weight:600; text-transform:capitalize; font-size:14px; color:#475569;">${j}</div>
+    <input type="time" name="h_${j}_o" style="margin:0; padding:8px; flex:1; border:1px solid #cbd5e1; border-radius:8px;">
+    <span style="color:#94a3b8;">à</span>
+    <input type="time" name="h_${j}_f" style="margin:0; padding:8px; flex:1; border:1px solid #cbd5e1; border-radius:8px;">
+    <label style="margin:0; display:flex; align-items:center; gap:4px; font-size:12px; color:#64748b; white-space:nowrap;"><input type="checkbox" name="h_${j}_ferme" value="yes" style="margin:0; width:16px; height:16px;"> Fermé</label>
+  </div>`;
+});
 
   const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
   const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
