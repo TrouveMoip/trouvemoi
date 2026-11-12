@@ -17,24 +17,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     return html;
   }
 
-  // --- FONCTION POUR LES BOUTONS DE CONTACT ---
-  function jobContactButtons(job) {
-    const parts = [];
-    if (job.contact_phone) {
-      const clean = cleanBeninPhone(job.contact_phone);
-      if (clean) parts.push(`<a href="tel:+229${escapeHtml(clean)}" class="button" style="background:#e0e7ff; color:#1e3a8a; margin-right: 8px; font-size:13px; padding: 8px 16px;">📞 Appeler</a>`);
-    }
-    if (job.contact_whatsapp) {
-      const clean = cleanBeninPhone(job.contact_whatsapp);
-      if (clean) parts.push(`<a href="https://wa.me/229${escapeHtml(clean)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre offre d'emploi. Merci.")}" target="_blank" class="button whatsapp" style="margin-right: 8px; font-size:13px; padding: 8px 16px;">💬 WhatsApp</a>`);
-    }
-    if (job.contact_email) {
-      parts.push(`<a href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + (job.job_title || "Offre TrouveMoi"))}" class="button secondary" style="font-size:13px; padding: 8px 16px;">✉️ E-mail</a>`);
-    }
-    if (!parts.length) return "";
-    return `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">${parts.join("")}</div>`;
-  }
-
   // ==========================================
   // 1. PAGE PUBLIQUE DES EMPLOIS
   // ==========================================
@@ -59,32 +41,37 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const query = `SELECT * FROM job_offers ${whereClause} ORDER BY created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
       const result = await pool.query(query, queryValues);
 
-      const jobs = result.rows.map((job) => `
-  <article class="card" style="border-left: 4px solid #10b981; padding: 20px; margin-bottom: 16px;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
-      <div>
-        <h2 style="font-size: 20px; color: #1e3a8a; margin-bottom: 4px;">${escapeHtml(job.job_title)}</h2>
-        <div style="font-size: 14px; font-weight: 600; color: #4b5563;">🏢 ${escapeHtml(job.company_name)}</div>
-      </div>
-      <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 12px; padding: 6px 12px;">${escapeHtml(job.contract_type)}</span>
-    </div>
-    
-    <div style="display:flex; gap:16px; font-size:13px; color:#6b7280; margin-top:12px;">
-      <span>📍 ${escapeHtml(job.city)}</span>
-    </div>
-    
-    <p style="margin-top: 12px; font-size: 14px; color: #374151; line-height: 1.6;">${escapeHtml(job.description).replace(/\n/g, "<br>").slice(0, 300)}...</p>
-    <div style="text-align:right; margin-top:10px;">
-  <a href="/emplois/${job.id}" style="color:#2563eb; font-weight:600; font-size:14px; text-decoration:none;">Lire la suite →</a>
-</div>
-    
-    <div style="display:flex; gap:10px; margin-top:16px; border-top:1px solid #e5e7eb; padding-top:16px;">
-      ${job.contact_phone ? `<a href="tel:+229${escapeHtml(cleanBeninPhone(job.contact_phone))}" class="button" style="background:#e0e7ff; color:#1e3a8a; font-size:13px; padding:8px 16px; margin:0;">📞 Appeler</a>` : ""}
-      ${job.contact_whatsapp ? `<a href="https://wa.me/229${escapeHtml(cleanBeninPhone(job.contact_whatsapp))}" target="_blank" class="button whatsapp" style="font-size:13px; padding:8px 16px; margin:0;">💬 WhatsApp</a>` : ""}
-      ${job.contact_email ? `<a href="mailto:${escapeHtml(job.contact_email)}" class="button secondary" style="font-size:13px; padding:8px 16px; margin:0;">✉️ E-mail</a>` : ""}
-    </div>
-  </article>
-`).join("");
+      const jobs = result.rows.map((job) => {
+        const cleanPhone = cleanBeninPhone(job.contact_phone);
+        const cleanWa = cleanBeninPhone(job.contact_whatsapp);
+        
+        return `
+          <article class="card" style="border-left: 4px solid #10b981; padding: 20px; margin-bottom: 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h2 style="font-size: 20px; color: #1e3a8a; margin-bottom: 4px;">${escapeHtml(job.job_title)}</h2>
+                <div style="font-size: 14px; font-weight: 600; color: #4b5563;">🏢 ${escapeHtml(job.company_name)}</div>
+              </div>
+              <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 12px; padding: 6px 12px;">${escapeHtml(job.contract_type)}</span>
+            </div>
+            
+            <div style="display:flex; gap:16px; font-size:13px; color:#6b7280; margin-top:12px;">
+              <span>📍 ${escapeHtml(job.city)}</span>
+            </div>
+            
+            <p style="margin-top: 12px; font-size: 14px; color: #374151; line-height: 1.6;">${escapeHtml(job.description).replace(/\n/g, "<br>").slice(0, 300)}...</p>
+            <div style="text-align:right; margin-top:10px;">
+              <a href="/emplois/${job.id}" style="color:#2563eb; font-weight:600; font-size:14px; text-decoration:none;">Lire la suite →</a>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:16px; border-top:1px solid #e5e7eb; padding-top:16px;">
+              ${cleanPhone ? `<a href="tel:+229${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a; font-size:13px; padding:8px 16px; margin:0;">📞 Appeler</a>` : ""}
+              ${cleanWa ? `<a href="https://wa.me/229${escapeHtml(cleanWa)}" target="_blank" class="button whatsapp" style="font-size:13px; padding:8px 16px; margin:0;">💬 WhatsApp</a>` : ""}
+              ${job.contact_email ? `<a href="mailto:${escapeHtml(job.contact_email)}" class="button secondary" style="font-size:13px; padding:8px 16px; margin:0;">✉️ E-mail</a>` : ""}
+            </div>
+          </article>
+        `;
+      }).join("");
 
       const paginationHtml = renderPagination(currentPage, totalPages, "/emplois", { keyword, city });
 
@@ -137,7 +124,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
             <div><label>WhatsApp</label><input name="contact_whatsapp" type="tel" maxlength="30" value="${escapeHtml(proConnected.pro.whatsapp_number || proConnected.pro.phone || "")}" placeholder="0194010345"></div>
           </div>
           <label>E-mail (optionnel)</label>
-<input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
+          <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || "")}">
   
           <p style="font-size:12px; color:#6b7280;">Au moins un moyen de contact est requis.</p>
           <div style="text-align:center; margin-top:20px;">
@@ -248,65 +235,69 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     res.redirect(303, "/mon-espace-pro");
   });
   
-// PAGE DE DÉTAIL D'UNE OFFRE D'EMPLOI
-router.get("/emplois/:id", async (req, res) => {
-  try {
-    const proConnected = await getConnectedPro(req);
-    const id = Number(req.params.id);
-    
-    // On récupère l'offre
-    const result = await pool.query(`SELECT * FROM job_offers WHERE id = $1 AND status = 'approved'`, [id]);
-    if (!result.rows.length) return res.redirect(303, "/emplois");
-    const job = result.rows[0];
+  // ==========================================
+  // 4. PAGE DE DÉTAIL D'UNE OFFRE D'EMPLOI
+  // ==========================================
+  router.get("/emplois/:id", async (req, res) => {
+    try {
+      const proConnected = await getConnectedPro(req);
+      const id = Number(req.params.id);
+      
+      const result = await pool.query(`SELECT * FROM job_offers WHERE id = $1 AND status = 'approved'`, [id]);
+      if (!result.rows.length) return res.redirect(303, "/emplois");
+      const job = result.rows[0];
 
-    // On prépare les boutons de contact
-    let contactButtons = "";
-    if (job.contact_phone) {
-      contactButtons += `<a href="tel:+229${escapeHtml(cleanBeninPhone(job.contact_phone))}" class="button" style="background:#e0e7ff; color:#1e3a8a; width:100%; margin-bottom:10px;">📞 Appeler</a>`;
-    }
-    if (job.contact_whatsapp) {
-      contactButtons += `<a href="https://wa.me/229${escapeHtml(cleanBeninPhone(job.contact_whatsapp))}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre offre d'emploi.")}" target="_blank" class="button whatsapp" style="width:100%; margin-bottom:10px;">💬 WhatsApp</a>`;
-    }
-    if (job.contact_email) {
-      contactButtons += `<a href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}" class="button secondary" style="width:100%;">✉️ Envoyer un e-mail</a>`;
-    }
+      let contactButtons = "";
+      const cleanPhone = cleanBeninPhone(job.contact_phone);
+      const cleanWa = cleanBeninPhone(job.contact_whatsapp);
 
-    res.send(page(job.job_title, `
-      <div style="max-width: 800px; margin: 40px auto;">
-        <div class="card" style="padding: 32px 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
-            <div>
-              <h1 style="font-size: 28px; color: #1e3a8a; margin-bottom: 8px;">${escapeHtml(job.job_title)}</h1>
-              <div style="font-size: 16px; font-weight: 600; color: #4b5563;">🏢 ${escapeHtml(job.company_name)}</div>
+      if (cleanPhone) {
+        contactButtons += `<a href="tel:+229${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a; width:100%; margin-bottom:10px;">📞 Appeler</a>`;
+      }
+      if (cleanWa) {
+        contactButtons += `<a href="https://wa.me/229${escapeHtml(cleanWa)}?text=${encodeURIComponent("Bonjour, je vous contacte via TrouveMoi au sujet de votre offre d'emploi.")}" target="_blank" class="button whatsapp" style="width:100%; margin-bottom:10px;">💬 WhatsApp</a>`;
+      }
+      if (job.contact_email) {
+        contactButtons += `<a href="mailto:${escapeHtml(job.contact_email)}?subject=${encodeURIComponent("Candidature - " + job.job_title)}" class="button secondary" style="width:100%;">✉️ Envoyer un e-mail</a>`;
+      }
+
+      res.send(page(job.job_title, `
+        <div style="max-width: 800px; margin: 40px auto;">
+          <div class="card" style="padding: 32px 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+              <div>
+                <h1 style="font-size: 28px; color: #1e3a8a; margin-bottom: 8px;">${escapeHtml(job.job_title)}</h1>
+                <div style="font-size: 16px; font-weight: 600; color: #4b5563;">🏢 ${escapeHtml(job.company_name)}</div>
+              </div>
+              <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 14px; padding: 8px 16px;">${escapeHtml(job.contract_type)}</span>
             </div>
-            <span class="badge" style="background: #eff6ff; color: #1e40af; font-size: 14px; padding: 8px 16px;">${escapeHtml(job.contract_type)}</span>
+
+            <div style="display:flex; gap:20px; font-size:14px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding-bottom:20px; margin-bottom:20px;">
+              <span>📍 ${escapeHtml(job.city)}</span>
+              <span>📅 Publiée le ${new Date(job.created_at).toLocaleDateString("fr-FR")}</span>
+            </div>
+
+            <h2 style="font-size: 20px; color: #1f2937; margin-bottom: 12px;">Description du poste</h2>
+            <p style="font-size: 15px; line-height: 1.8; color: #374151; white-space: pre-line;">${escapeHtml(job.description)}</p>
           </div>
 
-          <div style="display:flex; gap:20px; font-size:14px; color:#6b7280; border-bottom:1px solid #e5e7eb; padding-bottom:20px; margin-bottom:20px;">
-            <span>📍 ${escapeHtml(job.city)}</span>
-            <span>📅 Publiée le ${new Date(job.created_at).toLocaleDateString("fr-FR")}</span>
+          <div class="card" style="text-align: center;">
+            <h2 style="font-size: 20px; margin-bottom: 16px;">Comment postuler ?</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">Contactez directement l'entreprise via les moyens ci-dessous :</p>
+            <div style="max-width: 400px; margin: 0 auto;">
+              ${contactButtons}
+            </div>
           </div>
-
-          <h2 style="font-size: 20px; color: #1f2937; margin-bottom: 12px;">Description du poste</h2>
-          <p style="font-size: 15px; line-height: 1.8; color: #374151; white-space: pre-line;">${escapeHtml(job.description)}</p>
-        </div>
-
-        <div class="card" style="text-align: center;">
-          <h2 style="font-size: 20px; margin-bottom: 16px;">Comment postuler ?</h2>
-          <p style="color: #6b7280; margin-bottom: 20px;">Contactez directement l'entreprise via les moyens ci-dessous :</p>
-          <div style="max-width: 400px; margin: 0 auto;">
-            ${contactButtons}
+          
+          <div style="text-align: center; margin-top: 20px;">
+            <a href="/emplois" style="color: #6b7280; text-decoration: underline;">← Retour à toutes les offres</a>
           </div>
         </div>
-        
-        <div style="text-align: center; margin-top: 20px;">
-          <a href="/emplois" style="color: #6b7280; text-decoration: underline;">← Retour à toutes les offres</a>
-        </div>
-      </div>
-    `, proConnected));
-  } catch (error) {
-    res.status(500).send(page("Erreur", "<h2>Une erreur est survenue.</h2>", null));
-  }
-});
+      `, proConnected));
+    } catch (error) {
+      res.status(500).send(page("Erreur", "<h2>Une erreur est survenue.</h2>", null));
+    }
+  });
+
   return router;
 };
