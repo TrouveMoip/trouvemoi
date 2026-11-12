@@ -283,52 +283,39 @@ const quartiersParVilleJson = JSON.stringify(QUARTIERS_BENIN);
           if (visibleCount === 1 && lastVisible) select.value = lastVisible.value;
         }
 
-        // ==========================================
-        // 4. CHARGEMENT DES QUARTIERS (Le point critique
-        var citySelect = document.getElementById('city');
-        if (citySelect) {
-          citySelect.addEventListener('change', function() { 
-            var city = this.value; 
-            var select = document.getElementById('neighborhood');
-            
-            if (!city) {
-              select.innerHTML = '<option value="">Choisir</option>';
-              return;
-            }
+       // --- CHARGEMENT DES QUARTIERS (SANS API) ---
+var quartiersParVille = ${quartiersParVilleJson};
 
-            select.innerHTML = '<option value="">Chargement...</option>'; 
-            
-            fetch('/api/neighborhoods?city=' + encodeURIComponent(city))
-              .then(function(response) { return response.json(); })
-              .then(function(data) {
-                select.innerHTML = '<option value="">Choisir</option>'; 
-                for (var i = 0; i < data.neighborhoods.length; i++) {
-                  var n = data.neighborhoods[i];
-                  if (n === "Autre") continue; 
-                  var opt = document.createElement('option'); 
-                  opt.value = n; 
-                  opt.textContent = n; 
-                  select.appendChild(opt); 
-                }
-                var otherOpt = document.createElement('option'); 
-                otherOpt.value = 'Autre'; 
-                otherOpt.textContent = 'Autre'; 
-                select.appendChild(otherOpt); 
-              })
-              .catch(function(e) { 
-                console.error("Erreur quartiers :", e);
-                select.innerHTML = '<option value="">Erreur de chargement</option>'; 
-              });
-          });
-        }
+var citySelect = document.getElementById('city');
+if (citySelect) {
+  citySelect.addEventListener('change', function() { 
+    var city = this.value; 
+    var select = document.getElementById('neighborhood');
+    var quartiers = quartiersParVille[city] || [];
+    
+    select.innerHTML = '<option value="">Choisir</option>'; 
+    
+    for (var i = 0; i < quartiers.length; i++) {
+      var opt = document.createElement('option'); 
+      opt.value = quartiers[i]; 
+      opt.textContent = quartiers[i]; 
+      select.appendChild(opt); 
+    }
+    
+    var otherOpt = document.createElement('option'); 
+    otherOpt.value = 'Autre'; 
+    otherOpt.textContent = 'Autre'; 
+    select.appendChild(otherOpt); 
+  });
+}
 
-        var neighborhoodSelect = document.getElementById('neighborhood');
-        if (neighborhoodSelect) {
-          neighborhoodSelect.addEventListener('change', function() { 
-            var block = document.getElementById('neighborhood-other-block');
-            if (block) block.style.display = (this.value === 'Autre') ? 'block' : 'none';
-          });
-        }
+var neighborhoodSelect = document.getElementById('neighborhood');
+if (neighborhoodSelect) {
+  neighborhoodSelect.addEventListener('change', function() { 
+    var block = document.getElementById('neighborhood-other-block');
+    if (block) block.style.display = (this.value === 'Autre') ? 'block' : 'none';
+  });
+}
 
         // ==========================================
         // 5. LOCALISATION & GPS
