@@ -98,7 +98,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const csrf = getCsrf(req);
     const showArchived = req.query.archives === "1";
 
-    // ✅ On filtre : Par défaut, on cache les rejetés et suspendus
     let whereClause = showArchived 
       ? `WHERE p.status IN ('rejected', 'suspended')` 
       : `WHERE p.status IN ('pending', 'under_review', 'approved')`;
@@ -205,10 +204,10 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
               <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Code suivi</span><strong>${escapeHtml(c.tracking_code)}</strong></div>
               
               <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
-  ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Visage">` : ''}
-  ${c.photo_identite_url ? `<img src="/admin/kyc/${c.id}/photo_identite_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Pièce d'identité">` : ''}
-  ${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Photo KYC">` : ''}
-</div>
+                ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Visage">` : ''}
+                ${c.photo_identite_url ? `<img src="/admin/kyc/${c.id}/photo_identite_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Pièce d'identité">` : ''}
+                ${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Photo KYC">` : ''}
+              </div>
             </div>
 
             <!-- Actions -->
@@ -249,26 +248,22 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const reason = req.body.rejection_reason || null;
     
     try {
-     if (status === "approved") {
-  const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-  const isReactivation = current.rows[0]?.status === 'suspended';
-  
-  if (isReactivation) {
-    await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
-  } else {
-    // ✅ ON GÉNÈRE LE CODE D'ABORD
-    const newCode = await generateUniqueProCode(); 
-    
-    // ✅ ON MET À JOUR LA BASE ET ON ATTEND QUE CE SOIT FINI
-    await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
-    
-    // ✅ ENVOI DU SMS
-    if (current.rows.length > 0) {
-      const pro = current.rows[0];
-      const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
-      try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
-    }
-  }
+      if (status === "approved") {
+        const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+        const isReactivation = current.rows[0]?.status === 'suspended';
+        
+        if (isReactivation) {
+          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+        } else {
+          const newCode = await generateUniqueProCode(); 
+          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
+          
+          if (current.rows.length > 0) {
+            const pro = current.rows[0];
+            const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+            try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
+          }
+        }
       } else {
         await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
         if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
@@ -291,11 +286,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       
       if (proResult.rows.length > 0) {
         const pro = proResult.rows[0];
-       const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
-try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
+        const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
+        try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
+      }
+      
       await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
       res.redirect(303, "/admin/candidatures");
     } catch (e) {
+      console.error("Erreur régénération code:", e);
       res.redirect(303, "/admin/candidatures");
     }
   });
