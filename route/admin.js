@@ -255,7 +255,8 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         if (isReactivation) {
           await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
         } else {
-          const newCode = await generateUniqueProCode(); 
+          // ✅ CORRECTION : Générer le code directement ici
+          const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
           await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
           
           if (current.rows.length > 0) {
@@ -276,45 +277,38 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // Action : Régénérer le code
-router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    console.log("--- DÉBUT GÉNÉRATION CODE POUR ID:", id);
-    
-    const newCode = await generateUniqueProCode();
-    console.log("1. Nouveau code généré:", newCode); 
+  router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      // ✅ CORRECTION : Générer le code directement ici
+      const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
 
-    // On tente de sauvegarder le code
-    const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
-    
-    if (updateResult.rowCount === 0) {
-      console.log("❌ ERREUR: Aucune ligne mise à jour. L'ID n'existe pas ?");
-      return res.redirect(303, "/admin/candidatures");
-    }
-    
-    console.log("2. Code sauvegardé en base pour l'ID:", id);
-
-    const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-    
-    if (proResult.rows.length > 0) {
-      const pro = proResult.rows[0];
-      const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
-      try { 
-        await sendSMS(pro.phone, messageSMS); 
-      } catch(e) { 
-        console.log("3. Erreur SMS ignorée (mode test)"); 
+      const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
+      
+      if (updateResult.rowCount === 0) {
+        console.log("❌ ERREUR: Aucune ligne mise à jour. L'ID n'existe pas ?");
+        return res.redirect(303, "/admin/candidatures");
       }
+
+      const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+      
+      if (proResult.rows.length > 0) {
+        const pro = proResult.rows[0];
+        const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
+        try { 
+          await sendSMS(pro.phone, messageSMS); 
+        } catch(e) { 
+          console.log("Erreur SMS ignorée (mode test)"); 
+        }
+      }
+      
+      await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
+      res.redirect(303, "/admin/candidatures");
+    } catch (e) {
+      console.error("❌ ERREUR CRITIQUE REGENERATION CODE:", e.message);
+      res.status(500).send("Erreur: " + e.message);
     }
-    
-    await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
-    console.log("4. Log admin enregistré.");
-    
-    res.redirect(303, "/admin/candidatures");
-  } catch (e) {
-    console.error("❌ ERREUR CRITIQUE REGENERATION CODE:", e.message);
-    res.status(500).send("Erreur: " + e.message);
-  }
-});
+  });
 
   // Action : Supprimer définitivement
   router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => { 
