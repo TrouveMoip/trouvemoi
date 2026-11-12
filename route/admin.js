@@ -91,16 +91,23 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>`, null));
   });
 
- // ==========================================
-// GESTION DES CANDIDATURES (DESIGN GRILLE)
+// ==========================================
+// GESTION DES CANDIDATURES (SYSTÈME ACCORDÉON)
 // ==========================================
 router.get("/candidatures", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
+  const showArchived = req.query.archives === "1";
+
+  // ✅ On filtre : Par défaut, on cache les rejetés et suspendus
+  let whereClause = showArchived 
+    ? `WHERE p.status IN ('rejected', 'suspended')` 
+    : `WHERE p.status IN ('pending', 'under_review', 'approved')`;
+
   const result = await pool.query(`
     SELECT p.*, pr.category AS profession_category 
     FROM professional_applications p
     LEFT JOIN professions pr ON p.profession = pr.name
-    WHERE p.status != 'payment_pending' 
+    ${whereClause}
     ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
   `);
   
@@ -113,7 +120,7 @@ router.get("/candidatures", requireAdmin, async (req, res) => {
     let actionButtons = "";
     if (c.status === 'pending' || c.status === 'under_review') {
       actionButtons = `
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
           <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
             <input type="hidden" name="csrfToken" value="${csrf}">
             <input type="hidden" name="status" value="approved">
@@ -123,14 +130,14 @@ router.get("/candidatures", requireAdmin, async (req, res) => {
             <input type="hidden" name="csrfToken" value="${csrf}">
             <input type="hidden" name="status" value="rejected">
             <div style="display:flex; gap:5px;">
-              <input name="rejection_reason" placeholder="Motif..." style="margin:0; padding:6px; font-size:12px; flex:1; border-radius:6px;">
-              <button class="danger" style="padding:6px 10px; font-size:12px; margin:0; border-radius:6px;">❌</button>
+              <input name="rejection_reason" placeholder="Motif du rejet..." required style="margin:0; padding:6px; font-size:12px; flex:1; border-radius:6px;">
+              <button class="danger" style="padding:6px 10px; font-size:12px; margin:0; border-radius:6px;">❌ Rejeter</button>
             </div>
           </form>
         </div>`;
     } else if (c.status === 'approved') {
       actionButtons = `
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
           <div style="background:#eff6ff; padding:8px; border-radius:8px; text-align:center;">
             <div style="font-size:10px; color:#1e40af; text-transform:uppercase;">Code Pro</div>
             <div style="font-size:16px; font-weight:bold; font-family:monospace; color:#1e3a8a;">${escapeHtml(c.pro_code || '-')}</div>
@@ -151,7 +158,7 @@ router.get("/candidatures", requireAdmin, async (req, res) => {
         </div>`;
     } else if (c.status === 'suspended') {
       actionButtons = `
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
           <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
             <input type="hidden" name="csrfToken" value="${csrf}">
             <input type="hidden" name="status" value="approved">
@@ -162,48 +169,74 @@ router.get("/candidatures", requireAdmin, async (req, res) => {
             <button class="danger" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">🗑️ Supprimer</button>
           </form>
         </div>`;
+    } else if (c.status === 'rejected') {
+      actionButtons = `
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="background:#fee2e2; padding:8px; border-radius:8px; font-size:12px; color:#991b1b;">
+            <strong>Motif :</strong> ${escapeHtml(c.rejection_reason || 'Non précisé')}
+          </div>
+          <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Supprimer définitivement ?');">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="danger" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">🗑️ Supprimer</button>
+          </form>
+        </div>`;
     }
 
+    // ✅ SYSTÈME ACCORDÉON : <details> et <summary>
     return `
-      <div style="background:white; border-radius:16px; border:1px solid #e5e7eb; box-shadow:0 4px 6px rgba(0,0,0,0.02); display:flex; flex-direction:column; overflow:hidden; border-top:4px solid ${statusColor};">
+      <details style="background:white; border-radius:12px; border:1px solid #e5e7eb; box-shadow:0 2px 4px rgba(0,0,0,0.02); overflow:hidden; border-left:4px solid ${statusColor}; margin-bottom:10px;">
         
-        <div style="padding:15px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f1f5f9;">
-          ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:45px; height:45px; object-fit:cover; border-radius:50%; border:2px solid #e2e8f0;">` : `<div style="width:45px; height:45px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>`}
+        <summary style="padding:12px 15px; display:flex; align-items:center; gap:12px; cursor:pointer; list-style:none; outline:none;">
+          ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:40px; height:40px; object-fit:cover; border-radius:50%; border:2px solid #e2e8f0;">` : `<div style="width:40px; height:40px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:16px;">👤</div>`}
           <div style="flex:1; min-width:0;">
-            <h2 style="margin:0; font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.full_name)}</h2>
-            <div style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.profession)}</div>
+            <div style="font-size:15px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.full_name)}</div>
+            <div style="font-size:12px; color:#64748b;">${escapeHtml(c.profession)} • ${escapeHtml(c.city)}</div>
           </div>
-          <span style="background:${statusColor}20; color:${statusColor}; padding:4px 8px; border-radius:12px; font-size:10px; font-weight:800; text-transform:uppercase;">${statusLabel}</span>
-        </div>
+          <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${statusLabel}</span>
+          <div style="color:#94a3b8; font-size:18px; margin-left:5px;">▼</div>
+        </summary>
 
-        <div style="padding:15px; flex:1; display:flex; flex-direction:column; gap:8px; font-size:12px;">
-          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Téléphone</span><strong>${escapeHtml(c.phone)}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">NPI</span><strong>${escapeHtml(c.npi)}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Ville</span><strong>${escapeHtml(c.city)}</strong></div>
-          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Suivi</span><strong>${escapeHtml(c.tracking_code)}</strong></div>
-        </div>
+        <div style="padding:0 15px 15px 15px; border-top:1px solid #f1f5f9; background:#fafafa; display:grid; grid-template-columns: 1fr 1fr; gap:15px; padding-top:15px;">
+          
+          <!-- Colonne Infos -->
+          <div style="font-size:13px; display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Téléphone</span><strong>${escapeHtml(c.phone)}</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">NPI</span><strong>${escapeHtml(c.npi)}</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Quartier</span><strong>${escapeHtml(c.neighborhood || '-')}</strong></div>
+            <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Code suivi</span><strong>${escapeHtml(c.tracking_code)}</strong></div>
+            <div style="margin-top:10px; display:flex; gap:10px;">
+              <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_identite_url')" style="font-size:12px; color:#2563eb; font-weight:bold; text-decoration:none;">🖼️ Pièce d'identité</a>
+              <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_kyc_url')" style="font-size:12px; color:#2563eb; font-weight:bold; text-decoration:none;">🖼️ Photo KYC</a>
+            </div>
+          </div>
 
-        <div style="padding:0 15px 10px 15px;">
-          <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_identite_url')" style="font-size:11px; color:#2563eb; text-decoration:none; font-weight:bold;">🖼️ Voir pièce d'identité</a>
-          <br>
-          <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_kyc_url')" style="font-size:11px; color:#2563eb; text-decoration:none; font-weight:bold;">🖼️ Voir photo KYC</a>
+          <!-- Colonne Actions -->
+          <div>
+            ${actionButtons}
+          </div>
         </div>
-
-        <div style="padding:0 15px 15px 15px; background:#fafafa; border-top:1px solid #f1f5f9;">
-          ${actionButtons}
-        </div>
-
-      </div>
+      </details>
     `;
   }).join("");
 
   res.send(page("Candidatures", `
-    <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+      <h1 style="margin:0; font-size:24px;">Candidatures</h1>
+      <a href="/admin/candidatures${showArchived ? '' : '?archives=1'}" class="button ${showArchived ? 'success' : 'secondary'}" style="margin:0; font-size:14px;">
+        ${showArchived ? '👈 Retour aux candidatures actives' : '🗂️ Voir les rejetés & suspendus'}
+      </a>
+    </div>
+    
     ${await customAdminMenu("/admin/candidatures", csrf)}
     
-    <!-- ✅ GRILLE RESPONSIVE : 2 COLONNES SUR PC, 1 SUR MOBILE -->
-    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px; margin-top:20px;">
-      ${apps || "<p>Aucune candidature.</p>"}
+    <style>
+      details summary::-webkit-details-marker { display: none; }
+      details[open] summary { background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+      details[open] summary div:last-child { transform: rotate(180deg); }
+    </style>
+
+    <div style="margin-top:20px;">
+      ${apps || `<p style="text-align:center; color:#64748b; padding:40px;">Aucun dossier dans cette section.</p>`}
     </div>
   `, null));
 });
