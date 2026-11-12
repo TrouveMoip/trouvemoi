@@ -994,4 +994,62 @@ async function startServer() {
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
+app.get("/suivi", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  res.send(page("Suivi de dossier", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <h1>📋 Suivre mon dossier</h1>
+      <p style="color:#64748b; margin-bottom:20px;">Entrez votre code de suivi reçu lors de l'inscription.</p>
+      
+      <form action="/suivi" method="POST">
+        <input name="tracking_code" required placeholder="Ex: SUIVI-12345678" style="text-align:center; font-size:18px; text-transform:uppercase;">
+        <button type="submit" style="width:100%;">Vérifier mon dossier</button>
+      </form>
+    </section>
+  `, proConnected));
+});
+app.post("/suivi", async (req, res) => {
+  const code = String(req.body.tracking_code || "").trim().toUpperCase();
+  const proConnected = await getConnectedPro(req);
+  
+  if (!code) return res.redirect(303, "/suivi");
+
+  try {
+    const result = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [code]);
+    
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", `<h2>Code de suivi introuvable.</h2><a href="/suivi">Réessayer</a>`, proConnected));
+    }
+
+    const dossier = result.rows[0];
+    let statutMessage = "";
+    let actionHtml = "";
+
+    if (dossier.payment_status === 'unpaid') {
+      statutMessage = "⏳ En attente de paiement";
+      actionHtml = `<a href="/paiement/${dossier.tracking_code}" class="button success" style="margin-top:20px;">Payer mon inscription (1500 FCFA)</a>`;
+    } else if (dossier.status === 'payment_pending' || dossier.status === 'pending') {
+      statutMessage = "⏳ En cours d'examen par l'équipe";
+    } else if (dossier.status === 'approved') {
+      statutMessage = "✅ Dossier approuvé ! Vous pouvez vous connecter à votre espace pro.";
+      actionHtml = `<a href="/mon-espace-pro" class="button" style="margin-top:20px;">Aller sur mon espace pro</a>`;
+    } else if (dossier.status === 'rejected') {
+      statutMessage = "❌ Dossier refusé";
+      if (dossier.rejection_reason) statutMessage += `<br><small>Motif : ${escapeHtml(dossier.rejection_reason)}</small>`;
+    }
+
+    res.send(page("Résultat du suivi", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>Dossier de ${escapeHtml(dossier.full_name)}</h1>
+        <div style="font-size:18px; font-weight:bold; margin:20px 0; padding:16px; background:#f1f5f9; border-radius:12px;">
+          ${statutMessage}
+        </div>
+        ${actionHtml}
+        <p style="margin-top:20px;"><a href="/suivi" style="color:#6b7280;">← Vérifier un autre code</a></p>
+      </section>
+    `, proConnected));
+  } catch (e) {
+    res.redirect(303, "/suivi");
+  }
+});
 startServer();
