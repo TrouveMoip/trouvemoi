@@ -5,7 +5,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
   router.get("/devenir-professionnel", async (req, res) => { 
   const proConnected = await getConnectedPro(req);
-  const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
   const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
   const cityList = VILLES_BENIN; 
@@ -53,6 +52,12 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     <section style="max-width: 700px; margin: 0 auto;">
       <h1 style="text-align: center; margin-bottom: 24px; color: #1e3a8a;">Devenir professionnel</h1>
       
+      <!-- ✅ MESSAGE FRAIS D'INSCRIPTION (EN HAUT) -->
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; padding:16px; border-radius:8px; margin-bottom:24px; text-align:center;">
+        <p style="margin:0; color:#92400e; font-size:15px; font-weight:600;">💳 Frais d'inscription : <span style="font-size:18px; font-weight:800;">1500 FCFA</span></p>
+        <p style="margin:4px 0 0 0; color:#92400e; font-size:13px;">Ce montant sera à régler à la fin du formulaire pour activer votre profil.</p>
+      </div>
+
       <div class="step-indicator">
         <div class="step-item active" id="indicator-1"><div class="step-circle">1</div><div class="step-label">Identité</div></div>
         <div class="step-item" id="indicator-2"><div class="step-circle">2</div><div class="step-label">Métier</div></div>
@@ -86,7 +91,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               <button type="button" onclick="demanderCodePro()" style="width:100%; margin-bottom:0; padding: 14px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">📩 Recevoir mon code par SMS</button>
             </div>
             <div id="otp-block" style="display:none; margin-top:12px;">
-              <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" required style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
+              <!-- ✅ Retrait du required HTML5, la vérification se fait en JS -->
+              <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
             </div>
           </div>
 
@@ -191,6 +197,11 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           <div style="margin-top:20px; display:flex; align-items:flex-start; gap:10px;">
             <input type="checkbox" name="gdpr_consent" value="yes" required style="width:20px; height:20px; margin-top:2px;">
             <span style="font-size:14px; color:#475569;">J'accepte la <a href="/confidentialite" target="_blank" style="color:#2563eb; font-weight:bold;">Politique de confidentialité</a> et je certifie sur l'honneur l'exactitude de ces informations.</span>
+          </div>
+
+          <!-- ✅ RAPPEL FRAIS D'INSCRIPTION AVANT ENVOI -->
+          <div style="margin-top:24px; padding:16px; background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px;">
+            <p style="margin:0; color:#92400e; font-size:14px;">💳 <strong>Rappel :</strong> Après avoir cliqué sur "Envoyer", vous serez redirigé vers le paiement sécurisé des frais d'inscription de <strong>1500 FCFA</strong>. Votre profil ne sera activé qu'après ce paiement et la validation de notre équipe.</p>
           </div>
 
           <div style="display:flex; gap:12px; margin-top:24px;">
@@ -354,6 +365,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   `;
   res.send(page("Devenir professionnel", content, proConnected));
 });
+
   router.post("/candidatures", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
     const files = req.files || {};
     
@@ -379,6 +391,12 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const lng = Number(longitude) || null;
 
     try {
+      // ✅ VÉRIFICATION DU CODE SMS OBLIGATOIRE
+      const codeValide = await verifyOTP(phone, otpCode);
+      if (!codeValide) {
+        return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Veuillez recommencer.</h2><a href='/devenir-professionnel'>Retour</a>", null));
+      }
+
       if (!files.photo_profil || !files.photo_profil[0] || !files.photo_identite || !files.photo_identite[0] || !files.photo_kyc || !files.photo_kyc[0]) {
         return res.status(400).send(page("Erreur", "<h2>Veuillez bien sélectionner les 3 photos.</h2><a href='/devenir-professionnel'>Retour</a>", null));
       }
