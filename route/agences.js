@@ -224,12 +224,20 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     res.json({ ok: true });
   });
 
-  router.post("/mon-espace-pro/agences/:id/supprimer", async (req, res) => {
-    const proConnected = await getConnectedPro(req);
-    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-    await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
-    res.redirect(303, "/mon-espace-pro/agences");
-  });
+ router.post("/mon-espace-pro/agences/:id/supprimer", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const id = Number(req.params.id);
+  try {
+    // 1. On supprime les statistiques liées à cette agence
+    await pool.query(`DELETE FROM agency_stats WHERE agency_id = $1`, [id]);
+    // 2. On supprime l'agence elle-même
+    await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+  } catch(e) {
+    console.error("Erreur suppression agence:", e);
+  }
+  res.redirect(303, "/mon-espace-pro/agences");
+});
 
   return router;
 };
