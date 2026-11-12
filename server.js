@@ -1169,3 +1169,11 @@ for (let m of metiersOfficiels) {
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
 startServer();
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).send(page("Erreur", "<h2>Une des photos est trop lourde (max 10 Mo).</h2><a href='/devenir-professionnel'>Réessayer</a>", null));
+    }
+  }
+  res.status(500).send("Erreur serveur");
+});
