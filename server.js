@@ -7,6 +7,7 @@ const compression = require("compression");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcrypt"); // ✅ Ajouté ici
 
 // --- CONFIGURATION ---
 const app = express(); 
@@ -16,6 +17,8 @@ const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 const REFERRAL_BONUS = 100;
+
+// Le dictionnaire complet des quartiers
 const QUARTIERS_BENIN = {
   "Abomey": ["Adandokpodji", "Agbloney", "Ahouaga", "Djègbé", "Hounli", "Vidolé", "Agbokpa", "Détohou", "Sèhoun", "Zounzomè", "Gbècon-Houégbo", "Hountondji", "Wankon", "Dossoé", "Houéli", "Kpamè", "Dokpa", "Adjahito", "Logo", "Zohoungo", "Agbloney-Daho", "Agbloney-Lévi", "Tolého-gan", "Awanouto", "Sato-Kpota", "Dakéyégon", "Kodota", "Oussa", "Gbamè", "Malè", "Agouadjí", "Aligoudo", "Ahouassahito", "Agongbo", "Hounya", "Vékpa", "Agondémèdji", "Djognagbo", "Vihondji", "Azali n°1", "Azali n°2", "Doutin", "Alikon-Aplanou", "Houégoudo", "Dokpa-Toyizanli", "Adamè", "Afinzoundji", "Houngoudo", "Gbindo", "Houndossou", "Vanvan", "Samè n°1", "Samè n°2", "Aligbodjito", "Hètchilito", "Dota", "Agnagna", "Zâ", "Timmè"],
   "Abomey-Calavi": ["Agamandin", "Agori", "Aïfa", "Aïtchédji", "Alédjo", "Cité la Victoire", "Cité les Palmiers", "Fandji", "Finafa", "Gbodjo", "Kansounkpa", "Sèmè-Abomey Calavi", "Tankpè", "Tchinangbégbo", "Tokpa-Zoungo", "Tokpa-Zoungo Nord", "Tokpa-Zoungo Sud", "Zogbadjè", "Zopah", "Zoundja", "Abikouholi", "Agbo-Codji-Sèdégbé", "Agonkanmey", "Aïmevo", "Alègléta", "Amanhoun", "Assrossa-Godomey", "Atrokpo-Codji", "Cococodji", "Cocotomey", "Dèkoungbè-Église", "Dèkoungbè-Usine", "Dèkpota", "Dénou-Godomey", "Djoukpa-Togoudo", "Fignonhou", "Ganganzounmè", "Gbèdjè-Womey", "Gbègnigan-Midokpo", "Gninkindji", "Godomey-N'Gbèho", "Godomey-Togoudo", "Hedomè", "Hélouto", "Houakomey", "Hounsa-Agbodokpa", "La Paix", "Lobozounkpa", "Maria-Gléta", "Ningboto", "Nonhouénou", "Ounvènoumèdè", "Plateau", "Salamey", "Sèdjannanko", "Sèdomey", "Sèloli-Fandji", "Sodo", "Togbin-Daho", "Togbin-Fandji", "Togbin-Kpèvi", "Tokpa-Godomey", "Womey Centre", "Yénandjro", "Yolomahouto", "Zounga", "Adjagbo", "Agassa-Godomey", "Agonmé", "Agonsoundja", "Akassato-Centre", "Gbétagbo", "Glo-Tokpa", "Houèkè-Gbo", "Houèkè-Honou", "Kolètin", "Kpodji-les-Monts", "Missessinto", "Zekanmey-Domè", "Zopah Palmeraie", "Adjamè-Golo-Djigbé", "Agongbé", "Agonkessa", "Alladacomè", "Azonsa", "Djissoukpa", "Domey-Gbo", "Glo-Djigbé", "Golo-Fanto", "Golo-Lohoussa", "Missèbo-Espace Saint", "Yékon-Aga", "Yékon-Do", "Zèkanmey", "Adovié-Hêvié", "Akossavié", "Dossounou", "Hêvié Centre", "Houinmè", "Hounyèva", "Hounzèvié", "Sogan", "Zoungo", "Anagbo-Kpanroun", "Avagbé", "Bozoun", "Djigbo", "Hadjanaho"],
@@ -28,35 +31,35 @@ const QUARTIERS_BENIN = {
   "Bantè": ["Acqua", "Akpassi", "Atokoubé", "Bantè Centre", "Bobè", "Couka", "Lougba", "Pira", "Koko", "Djagbalo"],
   "Bassila": ["Alédjo", "Bassila Centre", "Manigri", "Pénéssoulou", "Copargo", "Djougou", "Barienou", "Boukoumbé"],
   "Bembèrèkè": ["Bembèrèkè Centre", "Béroubouay", "Bouanri", "Gomia", "Ina", "Basso", "Bouca", "Dérassi", "Dunkassa"],
-"Bohicon": ["Agongointo", "Avogbana", "Bohicon I", "Bohicon II", "Gnidjazoun", "Lissèzoun", "Ouassaho", "Passagon", "Saclo", "Sodohomè", "Hounli", "Dridji", "Zounzonmè", "Adandokpodji", "Gbècon", "Womey", "Agbadjagou", "Aïdjèdo", "Aïkpa", "Djègbé", "Dossou", "Fongbo", "Gbèdjè", "Kpota", "Sèdjè", "Tovè", "Zohoun", "Zoungoudo"],
-"Bonou": ["Affamé", "Atchonsa", "Bonou Centre", "Damé-Wognon", "Hounviguè", "Kouty", "Ouanho", "Sado"],
-"Boukoumbé": ["Boukoumbé Centre", "Korontière", "Kpéssou", "Natta", "Tabota", "Tchitchao"],
-"Comè": ["Agatogbo", "Akodéha", "Comè Centre", "Ouèdèmè-Pédah", "Oumako", "Bopa", "Gbakpodji", "Lobogo", "Possotome", "Yégodoe", "Adjido", "Agbédranfo", "Ahouandjigo", "Akodéha-Kpodji", "Dodomè", "Gbècon", "Hounli", "Kpinnou", "Sèdjè-Dénou", "Togbota"],
-"Copargo": ["Anandana", "Copargo Centre", "Fonugou", "Koubénébéné", "Koubokoubore", "Koutchanti", "N'Dam", "Pargoute", "Sétrah", "Babanzaoure", "Dalkpalahou", "Gossina", "Lefendi", "Passabia", "Tani", "Yaka", "Yaoura"],
-"Cotonou": ["Akpakpa", "Cadjehoun", "Fidjrossè", "Ganhi", "Gbégamey", "Sainte-Rita", "Sikècodji", "Zogbo", "Agla", "Aïbatin", "Dantokpa", "Houéyiho", "Ladji", "Vèdoko", "Adjégounlè", "Agbato", "Agbondjèdo", "Ayélawadjè 1", "Ayélawadjè 2", "Fifatin", "Gbénonkpo", "Hlacomey", "Kpankpan", "Midombo", "Sègbeya-Nord", "Sègbeya-Sud", "Ahouassa", "Djèdjèlayé", "Gankpodo", "Irédé", "Kowégbo", "Kpondehou tcheme", "Lom-nava", "Minontchou", "Sènadé", "Sènadé Sekou", "Yénawa", "Yénawa daho"],
-"Dangbo": ["Dangbo Centre", "Gbèko", "Houédomey", "Hozin", "Kessounou", "Zounguè", "Dèkin", "Gangban"],
-"Dassa-Zoumè": ["Akoffodjoulé", "Dassa I", "Dassa II", "Kèrè", "Paouignan", "Soclogbo", "Tré", "Gbaffo"],
-"Djakotomey": ["Djakotomey I", "Djakotomey II", "Djakotomey III", "Djakotomey IV", "Kinkinhoué", "Toviklin"],
+  "Bohicon": ["Agongointo", "Avogbana", "Bohicon I", "Bohicon II", "Gnidjazoun", "Lissèzoun", "Ouassaho", "Passagon", "Saclo", "Sodohomè", "Hounli", "Dridji", "Zounzonmè", "Adandokpodji", "Gbècon", "Womey", "Agbadjagou", "Aïdjèdo", "Aïkpa", "Djègbé", "Dossou", "Fongbo", "Gbèdjè", "Kpota", "Sèdjè", "Tovè", "Zohoun", "Zoungoudo"],
+  "Bonou": ["Affamé", "Atchonsa", "Bonou Centre", "Damé-Wognon", "Hounviguè", "Kouty", "Ouanho", "Sado"],
+  "Boukoumbé": ["Boukoumbé Centre", "Korontière", "Kpéssou", "Natta", "Tabota", "Tchitchao"],
+  "Comè": ["Agatogbo", "Akodéha", "Comè Centre", "Ouèdèmè-Pédah", "Oumako", "Bopa", "Gbakpodji", "Lobogo", "Possotome", "Yégodoe", "Adjido", "Agbédranfo", "Ahouandjigo", "Akodéha-Kpodji", "Dodomè", "Gbècon", "Hounli", "Kpinnou", "Sèdjè-Dénou", "Togbota"],
+  "Copargo": ["Anandana", "Copargo Centre", "Fonugou", "Koubénébéné", "Koubokoubore", "Koutchanti", "N'Dam", "Pargoute", "Sétrah", "Babanzaoure", "Dalkpalahou", "Gossina", "Lefendi", "Passabia", "Tani", "Yaka", "Yaoura"],
+  "Cotonou": ["Akpakpa", "Cadjehoun", "Fidjrossè", "Ganhi", "Gbégamey", "Sainte-Rita", "Sikècodji", "Zogbo", "Agla", "Aïbatin", "Dantokpa", "Houéyiho", "Ladji", "Vèdoko", "Adjégounlè", "Agbato", "Agbondjèdo", "Ayélawadjè 1", "Ayélawadjè 2", "Fifatin", "Gbénonkpo", "Hlacomey", "Kpankpan", "Midombo", "Sègbeya-Nord", "Sègbeya-Sud", "Ahouassa", "Djèdjèlayé", "Gankpodo", "Irédé", "Kowégbo", "Kpondehou tcheme", "Lom-nava", "Minontchou", "Sènadé", "Sènadé Sekou", "Yénawa", "Yénawa daho"],
+  "Dangbo": ["Dangbo Centre", "Gbèko", "Houédomey", "Hozin", "Kessounou", "Zounguè", "Dèkin", "Gangban"],
+  "Dassa-Zoumè": ["Akoffodjoulé", "Dassa I", "Dassa II", "Kèrè", "Paouignan", "Soclogbo", "Tré", "Gbaffo"],
+  "Djakotomey": ["Djakotomey I", "Djakotomey II", "Djakotomey III", "Djakotomey IV", "Kinkinhoué", "Toviklin"],
   "Djidja": ["Agondji", "Agouna", "Dan", "Djidja Centre", "Dohouimè", "Gobé", "Oungbègamè", "Setto", "Zoukou", "Kpassè", "Hounli", "Adingningon"],
-"Dogbo": ["Dogbo-Tota", "Ayomi", "Dévé", "Honton", "Kpodji", "Totchangni", "Toviklin", "Djidja"],
-"Glazoué": ["Aklamkpa", "Glazoué Centre", "Kpakpaza", "Thio", "Zaffé", "Gomè", "Assanté", "Kpakpaza-Kpodji", "Sokponta"],
-"Gogounou": ["Bagou", "Gogounou Centre", "Gounarou", "Ouara", "Sori", "Zoungou-Pantrossi", "Bensekou", "Donwari", "Kandi I", "Kandi II", "Kandi III", "Kassakou", "Saah", "Sam", "Sonsoro"],
-"Grand-Popo": ["Adjaha", "Agoué", "Avlo", "Djanglanmey", "Gbéhoué", "Grand-Popo Centre", "Hilla-Condji", "Sèmè"],
-"Guilmaro": ["Guilmaro Centre", "Kounadogou", "Oroukayo", "Tchoumi-Tchoumi"],
-"Ifangni": ["Banigbé", "Daagbé", "Ifangni Centre", "Ko-Koumolou", "Lagbè", "Tchaada"],
-"Igolo": ["Igolo Centre", "Kétou", "Iwoye", "Zagnanado"],
-"Kalalé": ["Basso", "Bouka", "Dérassi", "Dunkassa", "Kalalé Centre", "Péonga", "Bessassi", "Danganzi", "Kidaroukpérou", "Lou", "Nassiconzi", "Zambara"],
-"Kandi": ["Angaradébou", "Bensékou", "Donwari", "Kandi I", "Kandi II", "Kandi III", "Kassakou", "Saah", "Sam", "Sonsoro", "Bagou", "Banigoure", "Gandobou", "Kali", "Kerou", "Nafarou", "Damadi", "Dodopanin", "Gando-Kossikana", "Gansosso-Gbiga", "Gansosso-Yirousse", "Kadjèrè", "Kéféri-Hinkanté", "Kéféri-Sinté", "Pédé", "Al Barika", "Alékparé", "Banigourou", "Baobab", "Kossarou", "Madina", "Zerman-Kouré", "Bakpara", "Héboumey", "Kandi-Fô", "Kandi-Fô-Peulh", "Lafiarou", "Podo", "Sinikoussou-Béri"],
+  "Dogbo": ["Dogbo-Tota", "Ayomi", "Dévé", "Honton", "Kpodji", "Totchangni", "Toviklin", "Djidja"],
+  "Glazoué": ["Aklamkpa", "Glazoué Centre", "Kpakpaza", "Thio", "Zaffé", "Gomè", "Assanté", "Kpakpaza-Kpodji", "Sokponta"],
+  "Gogounou": ["Bagou", "Gogounou Centre", "Gounarou", "Ouara", "Sori", "Zoungou-Pantrossi", "Bensekou", "Donwari", "Kandi I", "Kandi II", "Kandi III", "Kassakou", "Saah", "Sam", "Sonsoro"],
+  "Grand-Popo": ["Adjaha", "Agoué", "Avlo", "Djanglanmey", "Gbéhoué", "Grand-Popo Centre", "Hilla-Condji", "Sèmè"],
+  "Guilmaro": ["Guilmaro Centre", "Kounadogou", "Oroukayo", "Tchoumi-Tchoumi"],
+  "Ifangni": ["Banigbé", "Daagbé", "Ifangni Centre", "Ko-Koumolou", "Lagbè", "Tchaada"],
+  "Igolo": ["Igolo Centre", "Kétou", "Iwoye", "Zagnanado"],
+  "Kalalé": ["Basso", "Bouka", "Dérassi", "Dunkassa", "Kalalé Centre", "Péonga", "Bessassi", "Danganzi", "Kidaroukpérou", "Lou", "Nassiconzi", "Zambara"],
+  "Kandi": ["Angaradébou", "Bensékou", "Donwari", "Kandi I", "Kandi II", "Kandi III", "Kassakou", "Saah", "Sam", "Sonsoro", "Bagou", "Banigoure", "Gandobou", "Kali", "Kerou", "Nafarou", "Damadi", "Dodopanin", "Gando-Kossikana", "Gansosso-Gbiga", "Gansosso-Yirousse", "Kadjèrè", "Kéféri-Hinkanté", "Kéféri-Sinté", "Pédé", "Al Barika", "Alékparé", "Banigourou", "Baobab", "Kossarou", "Madina", "Zerman-Kouré", "Bakpara", "Héboumey", "Kandi-Fô", "Kandi-Fô-Peulh", "Lafiarou", "Podo", "Sinikoussou-Béri"],
   "Karimama": ["Birni-Lafia", "Bogo-Bogo", "Karimama Centre", "Kompa", "Monsey"],
-"Kérou": ["Kérou Centre", "Brignamaro", "Firou", "Kaobagou", "Bagoubagou", "Bambaba", "Bassini", "Bérékossou", "Gando-baka", "Kongourou", "Kossou", "Kossou-ouinra", "Tchoukagnin", "Yakrigorou", "Batinnin", "Djoléni", "Gori", "Gorobani", "Sokongourou", "Kabongourou", "Yiroubara", "Gnampoli", "Yinsiga", "Bakoussarou", "Bipotoko", "Boukoubrou", "Fêtêkou", "Fêtêkou-alaga", "Gamboré", "Gantodo", "Gnangnanou", "Gougninnou", "Pikiré", "Karigourou", "Kédarou", "Kérou-wirou", "Kokokou", "Kparategui", "Sinagourou", "Ouoré", "Manou", "Pikiré-adaga", "Toudakou-banyirou", "Warou-N'gourou", "Yakimotoko"],
-"Kétou": ["Adakplamé", "Idigny", "Kétou Centre", "Kpankou", "Odometa", "Okpometa", "Illara", "Issaba", "Kpédékpo", "Odo-Otin", "Oké-Owo", "Okeho", "Tchikpè"],
-"Klouékanmè": ["Adjan", "Djakotomey", "Klouékanmè Centre", "Kpoba", "Tota"],
-"Kouandé": ["Birni", "Kouandé Centre", "Oroukayo", "Péhunco", "Tchètti", "Guilmaro"],
-"Lalo": ["Ahomadégbé", "Lalo Centre", "Tchi-Ahomadégbé", "Zalli"],
-"Lokossa": ["Lokossa Centre", "Houin", "Ouèssè", "Agamè", "Koudo", "Togba", "Adjakomey", "Agnivèdji", "Agonvè", "Ahouamè", "Akodédjro", "Atikpéta", "Dékanmè", "Djèhadji", "Doukonta", "Fongba", "Gbodédji", "Glo", "Guéhounkon", "Guinkomey", "Saguè", "Takon-Zongo", "Ticomey", "Todoga", "Toguèmè", "Tota-Kindji", "Yènawa", "Zoungamè", "Zounhouè"],
-"Malanville": ["Garou", "Guéné", "Madécali", "Malanville", "Tomboutou", "Tassi-Zenon", "Wouro Hesso", "Tassi-Tédji", "Galiel"],
-"Matéri": ["Dassari", "Gouandé", "Matéri Centre", "Nodi", "Tantéga"],
-"Natitingou": ["Bocoro", "Katangnika", "Koka", "Koubirgou", "Koupeico", "Koussantigou", "Moussansammou", "Onsikoto", "Ourbonna", "Perma", "Tagaye", "Tigninti", "Yetapo", "Kotopounga", "Kouaba", "Kouandata", "Tchoumi-Tchoumi", "Natitingou I", "Natitingou II", "Natitingou III", "Natitingou IV", "Dassari", "Firihoun", "Nagassega", "Ouriyori", "Porga", "Pouri", "Setchindika", "Tankouari", "Tetonga", "Ticninga", "Tihoun", "Coupiani", "Koundri", "Kourou-Koualou", "Niehoun-Laloga", "Nouari", "Tankouayokouhoun", "Tinwega", "Bahoun", "Doga", "Gouande", "Kandeguehoun", "Kouforpissiga", "Sindori-Toni", "Tcharikouanga", "Tiari", "Touboughini", "Kouantieni", "Tassahoun", "Tchassaga"],
+  "Kérou": ["Kérou Centre", "Brignamaro", "Firou", "Kaobagou", "Bagoubagou", "Bambaba", "Bassini", "Bérékossou", "Gando-baka", "Kongourou", "Kossou", "Kossou-ouinra", "Tchoukagnin", "Yakrigorou", "Batinnin", "Djoléni", "Gori", "Gorobani", "Sokongourou", "Kabongourou", "Yiroubara", "Gnampoli", "Yinsiga", "Bakoussarou", "Bipotoko", "Boukoubrou", "Fêtêkou", "Fêtêkou-alaga", "Gamboré", "Gantodo", "Gnangnanou", "Gougninnou", "Pikiré", "Karigourou", "Kédarou", "Kérou-wirou", "Kokokou", "Kparategui", "Sinagourou", "Ouoré", "Manou", "Pikiré-adaga", "Toudakou-banyirou", "Warou-N'gourou", "Yakimotoko"],
+  "Kétou": ["Adakplamé", "Idigny", "Kétou Centre", "Kpankou", "Odometa", "Okpometa", "Illara", "Issaba", "Kpédékpo", "Odo-Otin", "Oké-Owo", "Okeho", "Tchikpè"],
+  "Klouékanmè": ["Adjan", "Djakotomey", "Klouékanmè Centre", "Kpoba", "Tota"],
+  "Kouandé": ["Birni", "Kouandé Centre", "Oroukayo", "Péhunco", "Tchètti", "Guilmaro"],
+  "Lalo": ["Ahomadégbé", "Lalo Centre", "Tchi-Ahomadégbé", "Zalli"],
+  "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè", "Agamè", "Koudo", "Togba", "Adjakomey", "Agnivèdji", "Agonvè", "Ahouamè", "Akodédjro", "Atikpéta", "Dékanmè", "Djèhadji", "Doukonta", "Fongba", "Gbodédji", "Glo", "Guéhounkon", "Guinkomey", "Saguè", "Takon-Zongo", "Ticomey", "Todoga", "Toguèmè", "Tota-Kindji", "Yènawa", "Zoungamè", "Zounhouè"],
+  "Malanville": ["Garou", "Guéné", "Madécali", "Malanville", "Tomboutou", "Tassi-Zenon", "Wouro Hesso", "Tassi-Tédji", "Galiel"],
+  "Matéri": ["Dassari", "Gouandé", "Matéri Centre", "Nodi", "Tantéga"],
+  "Natitingou": ["Bocoro", "Katangnika", "Koka", "Koubirgou", "Koupeico", "Koussantigou", "Moussansammou", "Onsikoto", "Ourbonna", "Perma", "Tagaye", "Tigninti", "Yetapo", "Kotopounga", "Kouaba", "Kouandata", "Tchoumi-Tchoumi", "Natitingou I", "Natitingou II", "Natitingou III", "Natitingou IV", "Dassari", "Firihoun", "Nagassega", "Ouriyori", "Porga", "Pouri", "Setchindika", "Tankouari", "Tetonga", "Ticninga", "Tihoun", "Coupiani", "Koundri", "Kourou-Koualou", "Niehoun-Laloga", "Nouari", "Tankouayokouhoun", "Tinwega", "Bahoun", "Doga", "Gouande", "Kandeguehoun", "Kouforpissiga", "Sindori-Toni", "Tcharikouanga", "Tiari", "Touboughini", "Kouantieni", "Tassahoun", "Tchassaga"],
   "N'Dali": ["Bori", "Gbégourou", "N'Dali Centre", "Ouénou", "Sirarou", "Banhou", "Sakarou", "Wari"],
   "Nikki": ["Biro", "Gnonkourakali", "Nikki Centre", "Ouénou", "Sérékalé", "Suya", "Tasso", "Bouassi", "Gan Maro", "Gori", "Gourou", "Kali", "Kwawolou", "Maro", "Monnon", "Sakabansi", "Takou", "Tontarou"],
   "Ouaké": ["Bagou", "Bodi", "Ouaké Centre", "Sémèrè", "Tchoumi-Tchoumi"],
@@ -83,6 +86,7 @@ const QUARTIERS_BENIN = {
   "Zè": ["Djègbé", "Zè Centre", "Zogbodomey", "Za-Kpota", "Dohouimè", "Ouinhi", "Sagon"],
   "Zogbodomey": ["Akpérou", "Kpédékpo", "Zogbodomey Centre", "Za-Kpota", "Zè", "Dohouimè"]
 };
+
 const VILLES_BENIN = [
   "Abomey", "Abomey-Calavi", "Adjohoun", "Adja-Ouèrè", "Agbangnizoun", "Athiémé", "Avrankou",
   "Banikoara", "Bantè", "Bassila", "Bembèrèkè", "Bohicon", "Bonou", "Boukoumbé",
@@ -100,6 +104,7 @@ const VILLES_BENIN = [
   "Tanguiéta", "Tchaourou", "Toffo", "Tori-Bossito", "Toucountouna", "Toviklin",
   "Zagnanado", "Za-Kpota", "Zè", "Zogbodomey"
 ];
+
 const METIERS_LOCAL_FIXE = [
   "Restaurant", "Boutique", "Supérette", "Supermarché", "Alimentation générale", "Épicerie", "Pharmacie", "Parapharmacie", "Boulangerie", "Pâtisserie", "Boucherie", "Poissonnerie", "Vente de fruits et légumes", "Vente de produits surgelés", "Dépôt de boissons", "Dépôt de gaz domestique", "Quincaillerie", "Agence immobilière", "Boutique de vente téléphones et accessoires", "Boutique Apple Store", "Distributeur agréé Canal+", "Boutique de vente de mèches", "Compagnie d'assurance", "Compagnie de transport", "Boutique de vente appareils électroménager", "Boutique de vêtements", "Boutique de chaussures", "Boutique de sacs et accessoires de mode", "Boutique de tissus et pagnes", "Boutique de cosmétiques", "Boutique de parfumerie", "Boutique de jouets", "Boutique de vente de produits chinois", "Librairie", "Papeterie", "Bijouterie", "Cave à vin", "Magasin de meubles", "Magasin de décoration intérieure", "Magasin de matériaux de construction", "Magasin de peinture", "Magasin de fournitures scolaires", "Magasin de pièces électroniques", "Magasin de matériel informatique", "Barber shop", "Lavage moto",
   "Fast-food", "Maquis", "Cafétéria", "Glacier", "Pizzeria", "Restaurant africain", "Restaurant gastronomique", "Bar", "Discothèque", "Hôtel", "Auberge", "Résidence meublée", "Maison d'hôtes", "Camping", "Espace événementiel", "Salle de réception", "Salle de jeux", "Salle de sport", "Salle de fitness", "Piscine", "Centre de loisirs",
@@ -112,12 +117,14 @@ const METIERS_LOCAL_FIXE = [
   "Salon de beauté", "Salon de coiffure", "Salon de coiffure mixte", "Institut de beauté", "Salon de manucure", "Salon de pédicure", "Centre de soins capillaires", "Salon de tresses", "Atelier de confection", "Pressing", "Blanchisserie", "Teinturerie", "Photographe professionnel", "Studio photo", "Studio d'enregistrement", "Imprimerie", "Centre de photocopie", "Cybercafé",
   "Service de secrétariat", "Service de traduction", "Service de rédaction", "Service informatique", "Service de dépannage", "Service de livraison à domicile", "Service de jardinage", "Service de décoration", "Service traiteur", "Service de location de matériel", "Service événementiel", "Service de maintenance", "Service de réparation", "Service de nettoyage à domicile", "Autres activités"
 ];
+
 const METIERS_SENSIBLES = [
   "Médecin", "Pharmacien", "Dentiste", "Infirmier", "Sage-femme", "Kinésithérapeute", "Technicien de laboratoire",
   "Avocat", "Notaire",
   "Architecte", "Géomètre topographe",
   "Agent de sécurité"
 ];
+
 const PAYMENT_AMOUNT = 1500;
 const SESSION_COOKIE = "tm_admin_session";
 const SESSION_DURATION = 4 * 60 * 60 * 1000;
@@ -164,7 +171,7 @@ async function sendSMS(telephone, message) {
     });
     
     const data = await response.json();
-    console.log("📱 Résultat envoi SMS eSMS :", data);
+    if (!IS_PRODUCTION) console.log("📱 Résultat envoi SMS eSMS :", data);
     return data;
   } catch (error) {
     console.error("❌ Erreur d'envoi de SMS eSMS :", error.message);
@@ -193,13 +200,11 @@ async function sendPushNotification(title, body) {
 }
 
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
-function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯨" : "☆"; return html; }
+function renderStars(rating) { let html = ""; const full = Math.floor(rating), half = (rating - full) >= 0.5; for (let i = 1; i <= 5; i++) html += (i <= full) ? "★" : (i === full + 1 && half) ? "⯪" : "☆"; return html; }
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
 function readCookie(req, name) { for (const item of (req.headers.cookie || "").split(";")) { const [key, ...val] = item.trim().split("="); if (key === name) return val.join("="); } return null; }
 function getOrCreateVisitorId(req, res) { let vid = readCookie(req, "tm_visitor_id"); if (!vid || vid.length < 20) { vid = crypto.randomBytes(16).toString("hex"); res.append("Set-Cookie", `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`); } return vid; }
-function setProCookie(res, code) { 
-  res.append("Set-Cookie", `tm_pro_session=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`); 
-}
+function setProCookie(res, code) { res.append("Set-Cookie", `tm_pro_session=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${7 * 24 * 60 * 60}`); }
 function clearProCookie(res) { res.append("Set-Cookie", `tm_pro_session=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`); }
 function createSessionToken(payload) { const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${encoded}.${crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url")}`; }
 function verifySessionToken(token) { try { if (!token) return null; const [encoded, signature] = token.split("."); const expected = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url"); if (!safeEqual(signature, expected)) return null; const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); return (payload.expiresAt > Date.now() && typeof payload.csrf === "string") ? payload : null; } catch { return null; } }
@@ -216,16 +221,8 @@ async function uploadToCloudinary(buffer, folder, publicId) {
       folder, 
       public_id: publicId, 
       resource_type: "image",
-      incoming_transformation: [
-        { width: 1000, height: 1000, crop: "limit" }, 
-        { quality: "auto:good" }, 
-        { fetch_format: "auto" }
-      ],
-      transformation: [
-        { width: 800, height: 800, crop: "limit" }, 
-        { quality: "auto" }, 
-        { fetch_format: "auto" }
-      ]
+      incoming_transformation: [ { width: 1000, height: 1000, crop: "limit" }, { quality: "auto:good" }, { fetch_format: "auto" } ],
+      transformation: [ { width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" } ]
     }, (error, result) => { 
       if (error) return reject(error); 
       resolve(result); 
@@ -276,7 +273,19 @@ function verifyTotp(secret, token) {
   }
 }
 
-async function verifyKkiapayTransaction(transactionId) { try { const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": process.env.KKIAPAY_PUBLIC_KEY, "x-private-key": process.env.KKIAPAY_PRIVATE_KEY }, body: JSON.stringify({ transactionId }) }); if (!res.ok) return { success: false }; const data = await res.json(); return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.data || data.reference }; } catch (e) { return { success: false }; } }
+async function verifyKkiapayTransaction(transactionId) { 
+  try { 
+    const res = await fetch(`https://api.kkiapay.me/api/v1/transactions/status`, { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.KKIAPAY_PUBLIC_KEY, "x-private-key": process.env.KKIAPAY_PRIVATE_KEY }, 
+      body: JSON.stringify({ transactionId }) 
+    }); 
+    if (!res.ok) return { success: false }; 
+    const data = await res.json(); 
+    // ✅ On utilise uniquement data.reference
+    return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.reference }; 
+  } catch (e) { return { success: false }; } 
+}
 
 async function settlePayment({ dossierId, transactionId, amount, method, source }) {
   const client = await pool.connect();
@@ -653,7 +662,7 @@ app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
 
-// Limite globale : max 100 requêtes par minute par IP
+// Limite globale : max 100 requêtes par minute par IP (sauf pour les webhooks)
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -661,7 +670,12 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use(globalLimiter);
+
+app.use((req, res, next) => {
+  // On ignore le rate limit pour le webhook Kkiapay pour ne pas bloquer les paiements
+  if (req.path.startsWith("/webhooks/")) return next();
+  return globalLimiter(req, res, next);
+});
 
 // --- ROUTES SYSTEME ---
 // 1. Route pour ENVOYER le code par SMS
@@ -683,9 +697,8 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
       [phone, code, expiresAt]
     );
 
-    // 🛠️ MODE TEST : On n'envoie pas de vrai SMS pour l'instant
+    // 🛠️ MODE TEST (À passer en vrai quand eSMS sera validé)
     console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
-    
     res.json({ ok: true, message: "SMS simulé ! Regardez les logs Render." });
     
   } catch (e) {
@@ -699,7 +712,7 @@ async function verifyOTP(phone, code) {
   
   // 🛠️ CODE MAGIQUE POUR LES TESTS (À SUPPRIMER APRÈS)
   if (code === "123456") {
-    console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
+    if (!IS_PRODUCTION) console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
     return true;
   }
   
@@ -828,7 +841,19 @@ app.get("/cron/cleanup", async (req, res) => {
 });
 
 app.get("/robots.txt", (req, res) => { res.type("text/plain"); res.send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /mon-espace-pro\nDisallow: /paiement\nDisallow: /api\n\nSitemap: ${APP_URL}/sitemap.xml`); });
-app.get("/sitemap.xml", async (req, res) => { res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${APP_URL}/</loc></url></urlset>`); });
+
+app.get("/sitemap.xml", async (req, res) => { 
+  try {
+    const pros = await pool.query("SELECT id FROM professional_applications WHERE status = 'approved' LIMIT 1000");
+    let urls = `<url><loc>${APP_URL}/</loc></url>`;
+    for (const p of pros.rows) {
+      urls += `<url><loc>${APP_URL}/pro/${p.id}</loc></url>`;
+    }
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`); 
+  } catch(e) {
+    res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${APP_URL}/</loc></url></urlset>`); 
+  }
+});
 
 app.get("/soutenir", async (req, res) => {
   const proConnected = await getConnectedPro(req);
@@ -919,13 +944,19 @@ const proRoutes = require('./route/pro');
 const emploisRoutes = require('./route/emplois');
 const adminRoutes = require('./route/admin');
 
-// --- BRANCHEMENT ---
+// --- BRANCHEMENT DES ROUTES (CORRIGÉ) ---
 app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN));
+
 app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS));
+
 app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN, QUARTIERS_BENIN));
-app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone, sendSMS, verifyOTP, safeCoord));
+
+app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord));
+
 app.use('/', emploisRoutes(pool, page, getConnectedPro, escapeHtml, cleanBeninPhone, ["CDI", "CDD"], logAdminAction, 15));
+
 app.use('/', agencesRoutes(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT));
+
 app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, deleteFromCloudinary));
 
 // --- GESTION DES ERREURS ---
@@ -1051,6 +1082,7 @@ async function startServer() {
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
+
 app.get("/suivi", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   res.send(page("Suivi de dossier", `
@@ -1065,6 +1097,7 @@ app.get("/suivi", async (req, res) => {
     </section>
   `, proConnected));
 });
+
 app.post("/suivi", async (req, res) => {
   const code = String(req.body.tracking_code || "").trim().toUpperCase();
   const proConnected = await getConnectedPro(req);
@@ -1109,4 +1142,5 @@ app.post("/suivi", async (req, res) => {
     res.redirect(303, "/suivi");
   }
 });
+
 startServer();
