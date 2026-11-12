@@ -1225,7 +1225,7 @@ const trackingCode = String(req.body.tracking_code || "").trim();
     await pool.query(updateQuery, values);
 
     res.send(page("Correction envoyée", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"> 
         <h1 style="color:#10b981;">✅ Correction bien reçue !</h1>
         <p>Votre dossier a été mis à jour et repasse en cours d'examen par notre équipe.</p>
         <p style="margin-top:20px;"><a href="/suivi" class="button">Retour au suivi</a></p>
