@@ -394,6 +394,7 @@ function page(title, content, proConnected, meta = {}) {
               <a href="/mon-espace-pro">Espace pro</a>
               <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a> 
+              <a href="/suivi">Suivi</a>  
               <button id="btn-notif" style="display: none;"></button>
             </div>
             <div class="mobile-menu">
@@ -437,6 +438,7 @@ function page(title, content, proConnected, meta = {}) {
             <h4>Informations</h4>
             <a href="/a-propos">A propos</a>
             <a href="/contact">Contact</a>
+            <a href="/suivi">Suivi</a>
             <a href="/blog">Blog</a>
             <a href="/partenariats">Partenariats</a>
             <a href="/conditions">Conditions</a>
