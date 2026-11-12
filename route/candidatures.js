@@ -55,7 +55,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       <!-- ✅ MESSAGE FRAIS D'INSCRIPTION (EN HAUT) -->
       <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; padding:16px; border-radius:8px; margin-bottom:24px; text-align:center;">
         <p style="margin:0; color:#92400e; font-size:15px; font-weight:600;">💳 Frais d'inscription : <span style="font-size:18px; font-weight:800;">1500 FCFA</span></p>
-        <p style="margin:4px 0 0 0; color:#92400e; font-size:13px;">Ce montant sera à régler à la fin du formulaire pour activer votre profil.</p>
+        <p style="margin:4px 0 0 0; color:#92400e; font-size:13px;">Ce montant devra être réglé à la fin du formulaire afin de procéder à l’activation de votre profil.</p>
       </div>
 
       <div class="step-indicator">
