@@ -1,9 +1,11 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN) {
+module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN, QUARTIERS_BENIN) {
   const router = express.Router();
 
   router.get("/devenir-professionnel", async (req, res) => { 
+    // On prépare TOUS les quartiers de toutes les villes pour le script JS
+const quartiersParVilleJson = JSON.stringify(QUARTIERS_BENIN);
     const proConnected = await getConnectedPro(req);
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
