@@ -282,7 +282,7 @@ router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async 
     console.log("--- DÉBUT GÉNÉRATION CODE POUR ID:", id);
     
     const newCode = await generateUniqueProCode();
-    console.log("1. Nouveau code généré:", newCode);
+    console.log("1. Nouveau code généré:", newCode); 
 
     // On tente de sauvegarder le code
     const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
