@@ -317,10 +317,15 @@ const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${esca
           select.innerHTML = '<option value="">Chargement...</option>'; 
           try { 
             const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
-            const data = await res.json(); 
-            select.innerHTML = '<option value="">Choisir</option>'; 
-            for (const n of data.neighborhoods) { const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); }
-            const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
+const data = await res.json(); 
+select.innerHTML = '<option value="">Choisir</option>'; 
+for (const n of data.neighborhoods) { 
+  // On ignore "Autre" s'il vient de l'API, on l'ajoutera nous-même
+  if (n === "Autre") continue; 
+  const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
+}
+// On ajoute "Autre" UNE SEULE FOIS à la fin
+const otherOpt = document.createElement('option'); otherOpt.value = '__AUTRE__'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt);
           } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
       });
       document.getElementById('neighborhood').addEventListener('change', function() { 
