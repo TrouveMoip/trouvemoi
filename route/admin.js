@@ -301,7 +301,7 @@ try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS
   });
 
   // Action : Supprimer définitivement
-  router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
       const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
