@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord) {
   const router = express.Router();
 
@@ -20,20 +21,21 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
   router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
-   if (!proConnected) return res.send(page("Espace pro", `
-  <section class="card" style="max-width: 500px; margin: 40px auto;">
-    <h1 style="text-align: center;">Espace pro</h1>
-    <form action="/mon-espace-pro/login" method="POST">
-      <label>Code pro</label>
-      <input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;">
-      <button type="submit" style="width: 100%;">Se connecter</button>
-    </form>
-    
-    <div style="text-align:center; margin-top:20px;">
-      <a href="/mon-espace-pro/reinitialiser" style="color:#ef4444; font-size:14px; text-decoration:none;">🔐 Code perdu ?</a>
-    </div>
-  </section>
-`, null));
+    if (!proConnected) return res.send(page("Espace pro", `
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <h1 style="text-align: center;">Espace pro</h1>
+        <form action="/mon-espace-pro/login" method="POST">
+          <label>Code pro</label>
+          <input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;">
+          <button type="submit" style="width: 100%;">Se connecter</button>
+        </form>
+        
+        <div style="text-align:center; margin-top:20px;">
+          <a href="/mon-espace-pro/reinitialiser" style="color:#ef4444; font-size:14px; text-decoration:none;">🔐 Code perdu ?</a>
+        </div>
+      </section>
+    `, null));
+
     let offers = [], gdprRequests = [], myReviews = [], withdrawals = [];
     let stats30 = { views: 0, phone: 0, wa: 0 }, stats90 = { views: 0, phone: 0, wa: 0 }, statsAll = { views: 0, phone: 0, wa: 0 };
     
@@ -42,6 +44,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
       myReviews = (await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
       withdrawals = (await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
+      
       const s30 = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proConnected.pro.id]);
       if (s30.rows.length) { stats30 = { views: Number(s30.rows[0].v || 0), phone: Number(s30.rows[0].p || 0), wa: Number(s30.rows[0].w || 0) }; }
       
@@ -134,17 +137,17 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
             <button type="submit" class="success" style="width: 100%; padding:8px; font-size:13px; border-radius:8px;">Demander le retrait</button>
           </form>
           ${withdrawals.length > 0 ? `
-<div style="margin-top: 16px; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
-  <p style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color:#374151;">Historique des retraits</p>
-  ${withdrawals.map(w => `
-    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
-      <span>${new Date(w.created_at).toLocaleDateString("fr-FR")} - <strong>${w.amount} FCFA</strong></span>
-      <span class="badge" style="background:${w.status === 'pending' ? '#fef3c7' : w.status === 'rejected' ? '#fee2e2' : '#d1fae5'}; color:${w.status === 'pending' ? '#92400e' : w.status === 'rejected' ? '#991b1b' : '#065f46'}; font-size:10px;">
-        ${w.status === 'pending' ? 'En attente' : w.status === 'rejected' ? 'Refusé (recrédité)' : 'Payé'}
-      </span>
-    </div>
-  `).join("")}
-</div>` : ""}
+          <div style="margin-top: 16px; background: white; padding: 12px; border-radius: 8px; border:1px solid #e5e7eb;">
+            <p style="font-size: 12px; font-weight: bold; margin-bottom: 8px; color:#374151;">Historique des retraits</p>
+            ${withdrawals.map(w => `
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                <span>${new Date(w.created_at).toLocaleDateString("fr-FR")} - <strong>${w.amount} FCFA</strong></span>
+                <span class="badge" style="background:${w.status === 'pending' ? '#fef3c7' : w.status === 'rejected' ? '#fee2e2' : '#d1fae5'}; color:${w.status === 'pending' ? '#92400e' : w.status === 'rejected' ? '#991b1b' : '#065f46'}; font-size:10px;">
+                  ${w.status === 'pending' ? 'En attente' : w.status === 'rejected' ? 'Refusé (recrédité)' : 'Payé'}
+                </span>
+              </div>
+            `).join("")}
+          </div>` : ""}
         </section>
       </div>
       
@@ -153,7 +156,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         ${offers.length > 0 ? offers.map(offer => `
           <article class="card" style="box-shadow:none; border:1px solid #e5e7eb; margin-bottom:16px;">
             <h2 style="font-size:18px;">${escapeHtml(offer.job_title)}</h2>
-            <p><span class="badge badge-${offer.status}">${offer.status}</span></p>
+            <p><span class="badge badge-${offer.status}">${escapeHtml(offer.status)}</span></p>
             <div class="actions" style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
               ${offer.status === "approved" ? `<form action="/mon-espace-pro/offre/${offer.id}/close" method="POST" style="margin:0;"><button class="warning" type="submit" style="padding:6px 12px; font-size:12px;">🔒 Cloturer</button></form>` : ""}
               ${offer.status === "closed" ? `<form action="/mon-espace-pro/offre/${offer.id}/reopen" method="POST" style="margin:0;"><button class="success" type="submit" style="padding:6px 12px; font-size:12px;">🔓 Rouvrir</button></form>` : ""}
@@ -210,7 +213,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <label>Téléphone *</label>
           <input name="phone" id="phone-input" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
 
-          <!-- BLOC DE VÉRIFICATION DU NUMÉRO (Une seule case) -->
           <div style="background:#eff6ff; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #bfdbfe;">
             <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire pour changer)</label>
             <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -228,7 +230,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <label>E-mail</label>
           <input name="contact_email" type="email" maxlength="254" value="${escapeHtml(proConnected.pro.contact_email || '')}">
           
-          <!-- SECTION LOCALISATION -->
           <h3 style="margin-top:24px; margin-bottom:12px; border-top:1px solid #e5e7eb; padding-top:20px;">📍 Localisation (si vous avez un local)</h3>
           
           <label>Adresse exacte / Point de repère</label>
@@ -297,7 +298,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     const cleanPhone = cleanBeninPhone(phone);
     const otpCode = String(req.body.otp_code || "").trim();
 
-    // Si le numéro a changé, on vérifie le code SMS
     if (cleanPhone !== proConnected.pro.phone) {
       const codeValide = await verifyOTP(cleanPhone, otpCode);
       if (!codeValide) {
@@ -321,19 +321,21 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       const gdprResult = await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1`, [proConnected.pro.id]);
       const reviewsResult = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1`, [proConnected.pro.id]);
       const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1`, [proConnected.pro.id]);
-const withdrawalsResult = await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1`, [proConnected.pro.id]);
-const statsResult = await pool.query(`SELECT * FROM pro_stats WHERE pro_id = $1`, [proConnected.pro.id]);
+      const withdrawalsResult = await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1`, [proConnected.pro.id]);
+      const statsResult = await pool.query(`SELECT * FROM pro_stats WHERE pro_id = $1`, [proConnected.pro.id]);
 
-const exportData = { 
-  utilisateur: proConnected.pro, 
-  offres: offersResult.rows, 
-  demandes_rgpd: gdprResult.rows, 
-  avis: reviewsResult.rows, 
-  agences: agenciesResult.rows,
-  retraits: withdrawalsResult.rows,
-  statistiques_quotidiennes: statsResult.rows
-};
-      res.setHeader("Content-Type", "application/json"); res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`); res.send(JSON.stringify(exportData, null, 2));
+      const exportData = { 
+        utilisateur: proConnected.pro, 
+        offres: offersResult.rows, 
+        demandes_rgpd: gdprResult.rows, 
+        avis: reviewsResult.rows, 
+        agences: agenciesResult.rows,
+        retraits: withdrawalsResult.rows,
+        statistiques_quotidiennes: statsResult.rows
+      };
+      res.setHeader("Content-Type", "application/json"); 
+      res.setHeader("Content-Disposition", `attachment; filename="trouvemoi-${proConnected.code}.json"`); 
+      res.send(JSON.stringify(exportData, null, 2));
     } catch (e) { res.status(500).send("Erreur."); }
   });
 
@@ -380,270 +382,222 @@ const exportData = {
     if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
     res.redirect(303, "/mon-espace-pro");
   });
-router.get("/modifier-telephone", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  res.send(page("Visibilité", `
-    <section class="card" style="max-width: 500px; margin: 40px auto;">
-      <h1 style="text-align:center;">👁️ Visibilité du numéro</h1>
-      <form action="/mon-espace-pro/modifier-telephone" method="POST">
-        <div style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
-          <label><input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}> <span>Rendre mon numéro public sur mon profil</span></label>
-        </div>
-        <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
-      </form>
-      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
-    </section>
-  `, proConnected));
-});
 
-router.post("/modifier-telephone", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  await pool.query(`UPDATE professional_applications SET phone_public = $1 WHERE id = $2`, [req.body.phone_public === "yes", proConnected.pro.id]);
-  res.redirect(303, "/mon-espace-pro");
-});
-  router.get("/pro/:id/avis", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const id = Number(req.params.id);
-  const result = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
-  if (!result.rows.length) return res.redirect(303, "/");
-  const person = result.rows[0];
-  res.send(page("Avis", `
-    <section class="card" style="max-width: 600px; margin: 40px auto;">
-      <h1 style="text-align:center;">Laisser un avis</h1>
-      <form action="/pro/${person.id}/avis" method="POST">
-        <label>Votre nom *</label><input name="author_name" required maxlength="100">
-        <label>Note *</label>
-        <div class="star-rating-wrapper">
-          <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="Excellent">★</label>
-          <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Très bien">★</label>
-          <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Moyen">★</label>
-          <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
-          <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
-        </div>
-        <style>
-          .star-rating-wrapper { display: flex; flex-direction: row-reverse; justify-content: flex-end; font-size: 40px; margin-bottom: 20px; }
-          .star-rating-wrapper input { display: none; }
-          .star-rating-wrapper label { color: #d1d5db; cursor: pointer; transition: color 0.2s; margin-right: 5px; }
-          .star-rating-wrapper input:checked ~ label, .star-rating-wrapper label:hover, .star-rating-wrapper label:hover ~ label { color: #f59e0b; }
-        </style>
-        <label>Commentaire</label><textarea name="comment" rows="4" maxlength="3000"></textarea>
-        <button type="submit">Envoyer</button>
-      </form>
-    </section>
-  `, proConnected));
-});
-  // ==========================================
-// RÉINITIALISATION DU CODE PRO
-// PAGE DE RÉCUPÉRATION DU CODE PRO
-router.get("/reinitialiser", (req, res) => {
-  res.send(page("Récupérer mon code", `
-    <section class="card" style="max-width: 500px; margin: 40px auto;">
-      <h1 style="text-align:center;">🔐 Récupérer mon code</h1>
-      <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
-        Entrez le numéro de téléphone utilisé lors de votre inscription.
-      </p>
-      
-      <form action="/mon-espace-pro/reinitialiser" method="POST">
-        <label>Votre numéro de téléphone *</label>
-        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" style="text-align:center;">
-        
-        <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir un code par SMS</button>
-      </form>
-      
-      <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
-    </section>
-  `, null));
-});
-
-// ENVOI DU SMS ET VÉRIFICATION
-router.post("/reinitialiser", async (req, res) => {
-  const phone = cleanBeninPhone(req.body.phone);
-  if (!phone) return res.redirect(303, "/mon-espace-pro/reinitialiser");
-
-  try {
-    // 1. On vérifie si le pro existe avec ce numéro
-    const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
-    if (!result.rows.length) {
-      return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
-    }
-
-    // 2. VÉRIFICATION DE LA LIMITE (Max 5 par mois par téléphone)
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const limitKey = `reset_pro_limit:${phone}:${currentYear}-${currentMonth}`;
-    
-    // On regarde combien de fois ce numéro a demandé un code ce mois-ci
-    const attempts = await pool.query(`SELECT count FROM rate_limits_v2 WHERE limit_key = $1`, [limitKey]);
-    const count = attempts.rows.length ? Number(attempts.rows[0].count) : 0;
-
-    if (count >= 5) {
-      return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 5 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
-    }
-
-    // 3. On génère un code à 6 chiffres pour le SMS
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Valable 10 minutes
-
-    // 4. On l'enregistre dans la table otp_codes (créée pour les clients)
-    await pool.query(
-      `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
-       ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
-      [phone, code, expiresAt]
-    );
-
-    // 5. On envoie le SMS
-    await sendSMS(phone, `Votre code de récupération TrouveMoi est : ${code}. Il expire dans 10 minutes.`);
-
-    // 6. On incrémente le compteur de limite pour ce mois
-    await pool.query(
-      `INSERT INTO rate_limits_v2 (limit_key, count, window_start) VALUES ($1, 1, NOW()) 
-       ON CONFLICT (limit_key) DO UPDATE SET count = rate_limits_v2.count + 1`,
-      [limitKey]
-    );
-
-    // 7. On affiche la page pour entrer le code
-    res.send(page("Vérification", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>📩 SMS envoyé</h1>
-        <p>Entrez le code à 6 chiffres reçu au <strong>${escapeHtml(phone)}</strong>.</p>
-        
-        <form action="/mon-espace-pro/verifier-code-pro" method="POST">
-          <input type="hidden" name="phone" value="${escapeHtml(phone)}">
-          <input name="otp_code" type="text" required maxlength="6" placeholder="123456" style="text-align:center; font-size:24px; letter-spacing:5px;">
-          <button type="submit" class="success" style="width:100%;">Vérifier le code</button>
+  router.get("/modifier-telephone", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    res.send(page("Visibilité", `
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <h1 style="text-align:center;">👁️ Visibilité du numéro</h1>
+        <form action="/mon-espace-pro/modifier-telephone" method="POST">
+          <div style="background:#f9fafb; padding:16px; border-radius:12px; border:1px solid #e5e7eb;">
+            <label><input type="checkbox" name="phone_public" value="yes" ${proConnected.pro.phone_public ? "checked" : ""}> <span>Rendre mon numéro public sur mon profil</span></label>
+          </div>
+          <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
         </form>
+        <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
       </section>
-    `, null));
+    `, proConnected));
+  });
 
-  } catch (error) {
-    console.error("Erreur réinit pro :", error.message);
-    res.redirect(303, "/mon-espace-pro/reinitialiser");
-  }
-});
-
-// VÉRIFICATION DU CODE ET GÉNÉRATION DU NOUVEAU CODE PRO
-router.post("/verifier-code-pro", async (req, res) => {
-  const phone = cleanBeninPhone(req.body.phone);
-  const otpCode = String(req.body.otp_code || "").trim();
-
-  try {
-    // On vérifie le code
-    const isCodeValid = await verifyOTP(phone, otpCode);
-    if (!isCodeValid) {
-      return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-espace-pro/reinitialiser'>Recommencer</a>", null));
-    }
-
-    // On génère le NOUVEAU code pro
-    const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1`, [phone]);
-    const pro = result.rows[0];
-    const newCode = await generateUniqueProCode();
-    
-    await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
-    await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
-
-    // On affiche le nouveau code au pro (car il a prouvé qu'il a le téléphone)
-    res.send(page("Nouveau Code", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Nouveau code généré</h1>
-        <p>Bonjour ${escapeHtml(pro.full_name)}, voici votre nouveau code de connexion :</p>
-        <div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:20px 0;">
-          <div style="font-size:32px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div>
-        </div>
-        <a href="/mon-espace-pro" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
-      </section>
-    `, null));
-
-  } catch (error) {
-    res.redirect(303, "/mon-espace-pro/reinitialiser");
-  }
-});
-  // PAGE POUR VOIR SES AVIS ET RÉPONDRE
-router.get("/mes-avis", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-
-  const result = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [proConnected.pro.id]);
-  
-  const avisHtml = result.rows.map(r => `
-    <article class="card" style="margin-bottom:16px;">
-      <div style="display:flex; justify-content:space-between;">
-        <strong>${escapeHtml(r.author_name)}</strong>
-        <span style="color:#f59e0b; font-size:18px;">${renderStars(r.rating)}</span>
-      </div>
-      <p style="margin-top:10px; font-style:italic; color:#4b5563;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
-      
-      ${r.pro_reply ? `
-        <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:12px; margin-top:12px; border-radius:4px;">
-          <strong style="color:#065f46; font-size:13px;">Votre réponse :</strong>
-          <p style="font-size:14px; margin:4px 0 0 0;">${escapeHtml(r.pro_reply)}</p>
-        </div>
-      ` : `
-        <form action="/mon-espace-pro/repondre-avis/${r.id}" method="POST" style="margin-top:12px;">
-          <input name="reply" required placeholder="Écrivez votre réponse ici..." style="padding:12px; font-size:14px; margin-bottom:8px; background:#f8fafc;">
-          <button type="submit" class="success" style="padding:8px 16px; font-size:13px; border-radius:8px;">Répondre</button>
-        </form>
-      `}
-    </article>
-  `).join("");
-
-  res.send(page("Mes Avis", `
-    <div style="max-width: 700px; margin: 0 auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h1>⭐ Mes Avis</h1>
-        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
-      </div>
-      ${avisHtml || "<p style='text-align:center; color:#6b7280;'>Vous n'avez pas encore d'avis approuvé.</p>"}
-    </div>
-  `, proConnected));
-});
-
-// ENREGISTREMENT DE LA RÉPONSE
-router.post("/repondre-avis/:id", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  
-  const id = Number(req.params.id);
-  const reply = String(req.body.reply || "").trim().slice(0, 1000);
-
-  if (reply) {
-    await pool.query(`UPDATE reviews SET pro_reply = $1, pro_reply_date = NOW() WHERE id = $2 AND pro_id = $3`, [reply, id, proConnected.pro.id]);
-  }
-  res.redirect(303, "/mon-espace-pro/mes-avis");
-});
-  // ==========================================
-// DEMANDE DE RETRAIT (PARRAINAGE)
-// ==========================================
-router.post("/demander-retrait", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-
-  const amount = Number(req.body.amount);
-  const phoneNumber = cleanBeninPhone(req.body.phone_number);
-
-  // Sécurité 1 : Vérifier le montant et le numéro
-  if (!phoneNumber || isNaN(amount) || amount < 1000) {
-    return res.status(400).send(page("Erreur", "<h2>Montant ou numéro invalide (minimum 1000 FCFA).</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
-  }
-
-  // Sécurité 2 : Vérifier que le pro a assez d'argent
-  if (amount > Number(proConnected.pro.referral_balance)) {
-    return res.status(400).send(page("Erreur", "<h2>Solde insuffisant. Vous ne pouvez pas retirer plus que ce que vous avez.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
-  }
-
-  try {
-    // 1. On déduit l'argent du solde du pro
-    await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance - $1 WHERE id = $2`, [amount, proConnected.pro.id]);
-    
-    // 2. On enregistre la demande pour que l'admin la valide
-    await pool.query(`INSERT INTO withdrawal_requests (pro_id, amount, phone_number, status) VALUES ($1, $2, $3, 'pending')`, [proConnected.pro.id, amount, phoneNumber]);
-    
+  router.post("/modifier-telephone", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    await pool.query(`UPDATE professional_applications SET phone_public = $1 WHERE id = $2`, [req.body.phone_public === "yes", proConnected.pro.id]);
     res.redirect(303, "/mon-espace-pro");
-  } catch (e) {
-    console.error("Erreur retrait:", e);
-    res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
-  }
-});
+  });
+
+  // RÉINITIALISATION DU CODE PRO
+  router.get("/reinitialiser", (req, res) => {
+    res.send(page("Récupérer mon code", `
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <h1 style="text-align:center;">🔐 Récupérer mon code</h1>
+        <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
+          Entrez le numéro de téléphone utilisé lors de votre inscription.
+        </p>
+        
+        <form action="/mon-espace-pro/reinitialiser" method="POST">
+          <label>Votre numéro de téléphone *</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" style="text-align:center;">
+          
+          <button type="submit" class="warning" style="width:100%; margin-top:10px;">Recevoir un code par SMS</button>
+        </form>
+        
+        <p style="text-align:center; margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+      </section>
+    `, null));
+  });
+
+  router.post("/reinitialiser", async (req, res) => {
+    const phone = cleanBeninPhone(req.body.phone);
+    if (!phone) return res.redirect(303, "/mon-espace-pro/reinitialiser");
+
+    try {
+      const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1 AND status = 'approved'`, [phone]);
+      if (!result.rows.length) {
+        return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-espace-pro/reinitialiser'>Réessayer</a>", null));
+      }
+
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const limitKey = `reset_pro_limit:${phone}:${currentYear}-${currentMonth}`;
+      
+      const attempts = await pool.query(`SELECT count FROM rate_limits_v2 WHERE limit_key = $1`, [limitKey]);
+      const count = attempts.rows.length ? Number(attempts.rows[0].count) : 0;
+
+      if (count >= 5) {
+        return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 5 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
+      }
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      await pool.query(
+        `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
+         ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+        [phone, code, expiresAt]
+      );
+
+      await sendSMS(phone, `Votre code de récupération TrouveMoi est : ${code}. Il expire dans 10 minutes.`);
+
+      await pool.query(
+        `INSERT INTO rate_limits_v2 (limit_key, count, window_start) VALUES ($1, 1, NOW()) 
+         ON CONFLICT (limit_key) DO UPDATE SET count = rate_limits_v2.count + 1`,
+        [limitKey]
+      );
+
+      res.send(page("Vérification", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1>📩 SMS envoyé</h1>
+          <p>Entrez le code à 6 chiffres reçu au <strong>${escapeHtml(phone)}</strong>.</p>
+          
+          <form action="/mon-espace-pro/verifier-code-pro" method="POST">
+            <input type="hidden" name="phone" value="${escapeHtml(phone)}">
+            <input name="otp_code" type="text" required maxlength="6" placeholder="123456" style="text-align:center; font-size:24px; letter-spacing:5px;">
+            <button type="submit" class="success" style="width:100%;">Vérifier le code</button>
+          </form>
+        </section>
+      `, null));
+
+    } catch (error) {
+      console.error("Erreur réinit pro :", error.message);
+      res.redirect(303, "/mon-espace-pro/reinitialiser");
+    }
+  });
+
+  router.post("/verifier-code-pro", async (req, res) => {
+    const phone = cleanBeninPhone(req.body.phone);
+    const otpCode = String(req.body.otp_code || "").trim();
+
+    try {
+      const isCodeValid = await verifyOTP(phone, otpCode);
+      if (!isCodeValid) {
+        return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-espace-pro/reinitialiser'>Recommencer</a>", null));
+      }
+
+      const result = await pool.query(`SELECT id, full_name FROM professional_applications WHERE phone = $1`, [phone]);
+      const pro = result.rows[0];
+      const newCode = await generateUniqueProCode();
+      
+      await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
+      await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
+
+      res.send(page("Nouveau Code", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1>✅ Nouveau code généré</h1>
+          <p>Bonjour ${escapeHtml(pro.full_name)}, voici votre nouveau code de connexion :</p>
+          <div style="background:#1e3a8a; color:white; padding:20px; border-radius:12px; margin:20px 0;">
+            <div style="font-size:32px; font-weight:800; font-family:monospace; letter-spacing:4px;">${escapeHtml(newCode)}</div>
+          </div>
+          <a href="/mon-espace-pro" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+        </section>
+      `, null));
+
+    } catch (error) {
+      res.redirect(303, "/mon-espace-pro/reinitialiser");
+    }
+  });
+
+  router.get("/mes-avis", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    const result = await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [proConnected.pro.id]);
+    
+    const avisHtml = result.rows.map(r => `
+      <article class="card" style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between;">
+          <strong>${escapeHtml(r.author_name)}</strong>
+          <span style="color:#f59e0b; font-size:18px;">${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}</span>
+        </div>
+        <p style="margin-top:10px; font-style:italic; color:#4b5563;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
+        
+        ${r.pro_reply ? `
+          <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:12px; margin-top:12px; border-radius:4px;">
+            <strong style="color:#065f46; font-size:13px;">Votre réponse :</strong>
+            <p style="font-size:14px; margin:4px 0 0 0;">${escapeHtml(r.pro_reply)}</p>
+          </div>
+        ` : `
+          <form action="/mon-espace-pro/repondre-avis/${r.id}" method="POST" style="margin-top:12px;">
+            <input name="reply" required placeholder="Écrivez votre réponse ici..." style="padding:12px; font-size:14px; margin-bottom:8px; background:#f8fafc;">
+            <button type="submit" class="success" style="padding:8px 16px; font-size:13px; border-radius:8px;">Répondre</button>
+          </form>
+        `}
+      </article>
+    `).join("");
+
+    res.send(page("Mes Avis", `
+      <div style="max-width: 700px; margin: 0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h1>⭐ Mes Avis</h1>
+          <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+        </div>
+        ${avisHtml || "<p style='text-align:center; color:#6b7280;'>Vous n'avez pas encore d'avis approuvé.</p>"}
+      </div>
+    `, proConnected));
+  });
+
+  router.post("/repondre-avis/:id", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    
+    const id = Number(req.params.id);
+    const reply = String(req.body.reply || "").trim().slice(0, 1000);
+
+    if (reply) {
+      await pool.query(`UPDATE reviews SET pro_reply = $1, pro_reply_date = NOW() WHERE id = $2 AND pro_id = $3`, [reply, id, proConnected.pro.id]);
+    }
+    res.redirect(303, "/mon-espace-pro/mes-avis");
+  });
+
+  // ==========================================
+  // DEMANDE DE RETRAIT (PARRAINAGE)
+  // ==========================================
+  router.post("/demander-retrait", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    const amount = Number(req.body.amount);
+    const phoneNumber = cleanBeninPhone(req.body.phone_number);
+
+    if (!phoneNumber || isNaN(amount) || amount < 1000) {
+      return res.status(400).send(page("Erreur", "<h2>Montant ou numéro invalide (minimum 1000 FCFA).</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+    }
+
+    if (amount > Number(proConnected.pro.referral_balance)) {
+      return res.status(400).send(page("Erreur", "<h2>Solde insuffisant. Vous ne pouvez pas retirer plus que ce que vous avez.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+    }
+
+    try {
+      await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance - $1 WHERE id = $2`, [amount, proConnected.pro.id]);
+      await pool.query(`INSERT INTO withdrawal_requests (pro_id, amount, phone_number, status) VALUES ($1, $2, $3, 'pending')`, [proConnected.pro.id, amount, phoneNumber]);
+      
+      res.redirect(303, "/mon-espace-pro");
+    } catch (e) {
+      console.error("Erreur retrait:", e);
+      res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
+    }
+  });
+
   return router;
 };
