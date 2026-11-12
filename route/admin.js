@@ -204,10 +204,11 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
               <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Quartier</span><strong>${escapeHtml(c.neighborhood || '-')}</strong></div>
               <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Code suivi</span><strong>${escapeHtml(c.tracking_code)}</strong></div>
               
-              <div style="margin-top:10px; display:flex; gap:15px;">
-                <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_identite_url')" style="font-size:12px; color:#2563eb; font-weight:bold; text-decoration:none;">🖼️ Pièce d'identité</a>
-                <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_kyc_url')" style="font-size:12px; color:#2563eb; font-weight:bold; text-decoration:none;">🖼️ Photo KYC</a>
-              </div>
+              <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+  ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Visage">` : ''}
+  ${c.photo_identite_url ? `<img src="/admin/kyc/${c.id}/photo_identite_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Pièce d'identité">` : ''}
+  ${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" onclick="zoomImage(this.src)" style="width:50px; height:50px; object-fit:cover; border-radius:6px; cursor:pointer; border:1px solid #cbd5e1;" title="Photo KYC">` : ''}
+</div>
             </div>
 
             <!-- Actions -->
