@@ -1269,5 +1269,18 @@ router.get("/pro/:id/agences", async (req, res) => {
     </div>
   `, proConnected));
 });
+  // API POUR LES QUARTIERS
+router.get("/api/neighborhoods", (req, res) => {
+  const city = String(req.query.city || "").trim();
+  if (!city) return res.json({ neighborhoods: [] });
+
+  // On récupère la liste des quartiers pour la ville choisie
+  const quartiers = QUARTIERS_BENIN[city] || []; 
+  
+  // On ajoute l'option "Autre"
+  quartiers.push("Autre");
+
+  res.json({ neighborhoods: quartiers });
+});
   return router;
 };
