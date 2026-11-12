@@ -28,8 +28,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
     const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
     const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
-    
-    // On passe la liste des métiers à local fixe au script JS
     const metiersLocalFixeJson = JSON.stringify(METIERS_LOCAL_FIXE);
     
     const content = `
@@ -63,7 +61,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
         <form id="form-inscription" action="/candidatures" method="POST" enctype="multipart/form-data">
           
-          <!-- ÉTAPE 1 -->
           <div id="step-1" class="form-page active" style="background:white; padding:28px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
             <h2 style="color:#1e40af; margin-bottom:20px; font-size:20px;">👤 Qui êtes-vous ?</h2>
             <label class="fancy-label">Nom et prénoms *</label>
@@ -90,7 +87,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             <button type="button" onclick="nextStep(1)" style="width:100%; margin-top:24px; padding:16px; font-size:16px; font-weight:bold; border-radius:12px;">Suivant →</button>
           </div>
 
-          <!-- ÉTAPE 2 -->
           <div id="step-2" class="form-page" style="background:white; padding:28px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
             <h2 style="color:#1e40af; margin-bottom:20px; font-size:20px;">🛠️ Votre Métier</h2>
             
@@ -128,7 +124,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             </div>
           </div>
 
-          <!-- ÉTAPE 3 -->
           <div id="step-3" class="form-page" style="background:white; padding:28px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
             <h2 style="color:#1e40af; margin-bottom:20px; font-size:20px;">📍 Localisation & Horaires</h2>
             
@@ -142,7 +137,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               <label class="fancy-label">Adresse exacte / Point de repère</label>
               <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total" class="fancy-input">
               
-              <!-- GPS ICI -->
               <input type="hidden" name="latitude" id="latitude">
               <input type="hidden" name="longitude" id="longitude">
               <button type="button" onclick="getLocation()" style="background:#e0e7ff; color:#1e3a8a; width:100%; border-radius:12px; margin-bottom:10px; padding:14px; font-weight:bold; border:1px solid #c7d2fe;">📍 Utiliser ma position actuelle</button>
@@ -160,7 +154,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             </div>
           </div>
 
-          <!-- ÉTAPE 4 -->
           <div id="step-4" class="form-page" style="background:white; padding:28px; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
             <h2 style="color:#1e40af; margin-bottom:20px; font-size:20px;">🛡️ Vérification (KYC)</h2>
             
@@ -203,7 +196,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       </section>
 
       <script>
-        // --- LOGIQUE DES ETAPES ---
         function showStep(step) {
           document.querySelectorAll('.form-page').forEach(el => el.classList.remove('active'));
           document.getElementById('step-' + step).classList.add('active');
@@ -217,20 +209,23 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         
         function nextStep(step) {
           if (step === 1) {
+            const fullName = document.getElementById('input_full_name').value;
+            const npi = document.getElementById('input_npi').value;
             const phone = document.getElementById('input_phone').value;
             const otp = document.getElementById('otp_code_input').value;
-            if(!phone || !otp) { alert("Veuillez remplir le téléphone et le code SMS."); return; }
+            
+            if (!fullName || !npi) { alert("Veuillez remplir votre nom et votre NPI."); return; }
+            if (!phone || !otp) { alert("Veuillez remplir le téléphone et le code SMS."); return; }
           }
           if (step === 2) {
             const city = document.getElementById('city').value;
             const prof = document.getElementById('profession').value;
-            if(!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
+            if (!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
           }
           showStep(step + 1);
         }
         function prevStep(step) { showStep(step - 1); }
         
-        // --- LOGIQUE LOCALISATION & HORAIRES ---
         function toggleLocalisation(isFixe) {
           document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
         }
@@ -246,7 +241,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           );
         }
 
-        // --- LOGIQUE METIERS (BOUTON GRIS) ---
         const METIERS_LOCAL_FIXE = ${metiersLocalFixeJson};
         
         document.getElementById('profession').addEventListener('change', function() {
@@ -265,7 +259,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           }
         });
 
-        // --- LOGIQUE VILLES & QUARTIERS ---
         function filterCities() {
           const search = document.getElementById('search-city').value.toLowerCase();
           const select = document.getElementById('city');
@@ -300,7 +293,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           document.getElementById('neighborhood-other-block').style.display = (this.value === 'Autre') ? 'block' : 'none';
         });
 
-        // --- LOGIQUE SMS ---
         async function demanderCodePro() {
           const phone = document.getElementById('input_phone').value;
           if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
@@ -330,7 +322,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           btn.disabled = false;
         }
 
-        // --- LOGIQUE PHOTOS (FOND VERT) ---
         ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
           const input = document.getElementById(id);
           if(input) {
@@ -382,7 +373,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const lng = Number(longitude) || null;
 
     try {
-      // Vérification des photos
       if (!files.photo_profil || !files.photo_profil[0] || !files.photo_identite || !files.photo_identite[0] || !files.photo_kyc || !files.photo_kyc[0]) {
         return res.status(400).send(page("Erreur", "<h2>Veuillez bien sélectionner les 3 photos.</h2><a href='/devenir-professionnel'>Retour</a>", null));
       }
@@ -410,7 +400,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         ]
       );
 
-      // Envoi de la notification Push
       sendPushNotification("Nouveau Professionnel ! 🚀", `${full_name} (${profession}) vient de s'inscrire sur TrouveMoi.`);
 
       if (BYPASS_PAYMENT) return res.send(page("Succès", `<h1>Inscription validée (Mode Test)</h1><p>Code de suivi : ${trackingCode}</p><a href="/">Accueil</a>`, null));
