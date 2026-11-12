@@ -5,10 +5,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
   router.get("/devenir-professionnel", async (req, res) => { 
     const proConnected = await getConnectedPro(req);
-    const citiesResult = await pool.query("SELECT id, name FROM cities ORDER BY display_order ASC");
     const professionsResult = await pool.query("SELECT id, name, category FROM professions ORDER BY display_order ASC");
 
-    // On utilise notre nouvelle liste de villes
     const cityList = VILLES_BENIN; 
     const cityOptions = cityList.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
     
@@ -30,6 +28,9 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
 
     const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
     const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
+    
+    // On passe la liste des métiers à local fixe au script JS
+    const metiersLocalFixeJson = JSON.stringify(METIERS_LOCAL_FIXE);
     
     const content = `
       <style>
@@ -133,23 +134,24 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             
             <div style="background:#f8fafc; padding:20px; border-radius:16px; border:1px solid #e2e8f0; margin-bottom:20px;">
               <label class="fancy-label" style="margin-top:0; margin-bottom:12px;">Comment travaillez-vous ?</label>
-              <label style="display:flex; align-items:center; gap:10px; margin-bottom:12px; cursor:pointer;"><input type="radio" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)" style="width:20px; height:20px;"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
-              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="radio" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)" style="width:20px; height:20px;"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
+              <label style="display:flex; align-items:center; gap:10px; margin-bottom:12px; cursor:pointer;"><input type="radio" id="radio-fixe" name="type_lieu" value="fixe" onclick="toggleLocalisation(true)" style="width:20px; height:20px;"> <span><strong>🏠 J'ai un local fixe (Boutique, salon, garage...)</strong></span></label>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;"><input type="radio" id="radio-ambulant" name="type_lieu" value="ambulant" checked onclick="toggleLocalisation(false)" style="width:20px; height:20px;"> <span><strong>🚗 Je me déplace chez le client (Ambulant)</strong></span></label>
             </div>
 
             <div id="localisation-block" class="hidden">
               <label class="fancy-label">Adresse exacte / Point de repère</label>
               <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total" class="fancy-input">
               
+              <!-- GPS ICI -->
+              <input type="hidden" name="latitude" id="latitude">
+              <input type="hidden" name="longitude" id="longitude">
+              <button type="button" onclick="getLocation()" style="background:#e0e7ff; color:#1e3a8a; width:100%; border-radius:12px; margin-bottom:10px; padding:14px; font-weight:bold; border:1px solid #c7d2fe;">📍 Utiliser ma position actuelle</button>
+              <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold; font-size:14px; margin-bottom:15px;"></p>
+
               <div style="background:#f8fafc; padding:20px; border-radius:16px; margin-bottom:20px; border:1px solid #e2e8f0;">
                 <label class="fancy-label" style="margin-top:0;">🕒 Horaires d'ouverture</label>
                 ${horairesHtml}
               </div>
-
-              <input type="hidden" name="latitude" id="latitude">
-              <input type="hidden" name="longitude" id="longitude">
-              <button type="button" onclick="getLocation()" style="background:#e0e7ff; color:#1e3a8a; width:100%; border-radius:12px; margin-bottom:10px; padding:14px; font-weight:bold; border:1px solid #c7d2fe;">📍 Utiliser ma position actuelle</button>
-              <p id="gps-status" style="text-align:center; color:#2563eb; font-weight:bold; font-size:14px;"></p>
             </div>
 
             <div style="display:flex; gap:12px; margin-top:10px;">
@@ -201,21 +203,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       </section>
 
       <script>
-        function filterCities() {
-          const search = document.getElementById('search-city').value.toLowerCase();
-          const select = document.getElementById('city');
-          const options = select.options;
-          for (let i = 1; i < options.length; i++) { 
-            const txt = options[i].text.toLowerCase();
-            options[i].style.display = txt.includes(search) ? "block" : "none";
-          }
-          let visibleCount = 0; let lastVisible = null;
-          for (let i = 1; i < options.length; i++) {
-            if (options[i].style.display !== "none") { visibleCount++; lastVisible = options[i]; }
-          }
-          if (visibleCount === 1) select.value = lastVisible.value;
-        }
-
+        // --- LOGIQUE DES ETAPES ---
         function showStep(step) {
           document.querySelectorAll('.form-page').forEach(el => el.classList.remove('active'));
           document.getElementById('step-' + step).classList.add('active');
@@ -242,6 +230,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         }
         function prevStep(step) { showStep(step - 1); }
         
+        // --- LOGIQUE LOCALISATION & HORAIRES ---
         function toggleLocalisation(isFixe) {
           document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
         }
@@ -257,6 +246,61 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           );
         }
 
+        // --- LOGIQUE METIERS (BOUTON GRIS) ---
+        const METIERS_LOCAL_FIXE = ${metiersLocalFixeJson};
+        
+        document.getElementById('profession').addEventListener('change', function() {
+          const metierActuel = this.value;
+          const radioAmbulant = document.getElementById('radio-ambulant');
+          const radioFixe = document.getElementById('radio-fixe');
+          
+          if (METIERS_LOCAL_FIXE.includes(metierActuel)) {
+            radioFixe.checked = true; 
+            radioAmbulant.disabled = true; 
+            radioAmbulant.parentElement.style.opacity = '0.5'; 
+            toggleLocalisation(true); 
+          } else {
+            radioAmbulant.disabled = false; 
+            radioAmbulant.parentElement.style.opacity = '1';
+          }
+        });
+
+        // --- LOGIQUE VILLES & QUARTIERS ---
+        function filterCities() {
+          const search = document.getElementById('search-city').value.toLowerCase();
+          const select = document.getElementById('city');
+          const options = select.options;
+          for (let i = 1; i < options.length; i++) { 
+            const txt = options[i].text.toLowerCase();
+            options[i].style.display = txt.includes(search) ? "block" : "none";
+          }
+          let visibleCount = 0; let lastVisible = null;
+          for (let i = 1; i < options.length; i++) {
+            if (options[i].style.display !== "none") { visibleCount++; lastVisible = options[i]; }
+          }
+          if (visibleCount === 1) select.value = lastVisible.value;
+        }
+
+        document.getElementById('city').addEventListener('change', async function() { 
+          const city = this.value; const select = document.getElementById('neighborhood');
+          select.innerHTML = '<option value="">Chargement...</option>'; 
+          try { 
+            const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
+            const data = await res.json(); 
+            select.innerHTML = '<option value="">Choisir</option>'; 
+            for (const n of data.neighborhoods) { 
+              if (n === "Autre") continue; 
+              const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
+            }
+            const otherOpt = document.createElement('option'); otherOpt.value = 'Autre'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
+          } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
+        });
+
+        document.getElementById('neighborhood').addEventListener('change', function() { 
+          document.getElementById('neighborhood-other-block').style.display = (this.value === 'Autre') ? 'block' : 'none';
+        });
+
+        // --- LOGIQUE SMS ---
         async function demanderCodePro() {
           const phone = document.getElementById('input_phone').value;
           if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
@@ -285,27 +329,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           }
           btn.disabled = false;
         }
-        
-        document.getElementById('city').addEventListener('change', async function() { 
-          const city = this.value; const select = document.getElementById('neighborhood');
-          select.innerHTML = '<option value="">Chargement...</option>'; 
-          try { 
-            const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
-            const data = await res.json(); 
-            select.innerHTML = '<option value="">Choisir</option>'; 
-            for (const n of data.neighborhoods) { 
-              if (n === "Autre") continue; 
-              const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
-            }
-            const otherOpt = document.createElement('option'); otherOpt.value = 'Autre'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
-          } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
-        });
 
-        document.getElementById('neighborhood').addEventListener('change', function() { 
-          document.getElementById('neighborhood-other-block').style.display = (this.value === 'Autre') ? 'block' : 'none';
-        });
-
-        // Gestion de l'affichage des photos (fond vert)
+        // --- LOGIQUE PHOTOS (FOND VERT) ---
         ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
           const input = document.getElementById(id);
           if(input) {
@@ -357,6 +382,11 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const lng = Number(longitude) || null;
 
     try {
+      // Vérification des photos
+      if (!files.photo_profil || !files.photo_profil[0] || !files.photo_identite || !files.photo_identite[0] || !files.photo_kyc || !files.photo_kyc[0]) {
+        return res.status(400).send(page("Erreur", "<h2>Veuillez bien sélectionner les 3 photos.</h2><a href='/devenir-professionnel'>Retour</a>", null));
+      }
+
       const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_${Date.now()}`);
       const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${Date.now()}`);
       const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${Date.now()}`);
