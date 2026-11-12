@@ -27,8 +27,8 @@ const QUARTIERS_BENIN = {
   "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
   "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
   "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
-  };
-  const VILLES_BENIN = [
+};
+const VILLES_BENIN = [
   "Abomey", "Abomey-Calavi", "Adjohoun", "Adja-Ouèrè", "Agbangnizoun", "Athiémé", "Avrankou",
   "Banikoara", "Bantè", "Bassila", "Bembèrèkè", "Bohicon", "Bonou", "Boukoumbé",
   "Comè", "Copargo", "Cotonou",
@@ -46,44 +46,21 @@ const QUARTIERS_BENIN = {
   "Zagnanado", "Za-Kpota", "Zè", "Zogbodomey"
 ];
 const METIERS_LOCAL_FIXE = [
-  // COMMERCES ET BOUTIQUES
   "Restaurant", "Boutique", "Supérette", "Supermarché", "Alimentation générale", "Épicerie", "Pharmacie", "Parapharmacie", "Boulangerie", "Pâtisserie", "Boucherie", "Poissonnerie", "Vente de fruits et légumes", "Vente de produits surgelés", "Dépôt de boissons", "Dépôt de gaz domestique", "Quincaillerie", "Agence immobilière", "Boutique de vente téléphones et accessoires", "Boutique Apple Store", "Distributeur agréé Canal+", "Boutique de vente de mèches", "Compagnie d'assurance", "Compagnie de transport", "Boutique de vente appareils électroménager", "Boutique de vêtements", "Boutique de chaussures", "Boutique de sacs et accessoires de mode", "Boutique de tissus et pagnes", "Boutique de cosmétiques", "Boutique de parfumerie", "Boutique de jouets", "Boutique de vente de produits chinois", "Librairie", "Papeterie", "Bijouterie", "Cave à vin", "Magasin de meubles", "Magasin de décoration intérieure", "Magasin de matériaux de construction", "Magasin de peinture", "Magasin de fournitures scolaires", "Magasin de pièces électroniques", "Magasin de matériel informatique", "Barber shop", "Lavage moto",
-
-  // RESTAURATION, HÉBERGEMENT ET LOISIRS
   "Fast-food", "Maquis", "Cafétéria", "Glacier", "Pizzeria", "Restaurant africain", "Restaurant gastronomique", "Bar", "Discothèque", "Hôtel", "Auberge", "Résidence meublée", "Maison d'hôtes", "Camping", "Espace événementiel", "Salle de réception", "Salle de jeux", "Salle de sport", "Salle de fitness", "Piscine", "Centre de loisirs",
-
-  // SANTÉ ET BIEN-ÊTRE
   "Clinique", "Hôpital", "Cabinet médical", "Cabinet dentaire", "Cabinet ophtalmologique", "Laboratoire d'analyses médicales", "Centre de radiologie", "Centre de soins", "Centre de kinésithérapie", "Centre de vaccination", "Cabinet vétérinaire", "Opticien", "Centre de bien-être", "Institut de massage", "Centre dermatologique",
-
-  // ÉDUCATION ET FORMATION
   "École maternelle", "École primaire", "Collège", "Lycée", "Université", "Établissement d'enseignement supérieur", "Centre de formation professionnelle", "Centre de formation informatique", "Auto-école", "Crèche", "Garderie", "Centre de soutien scolaire", "Centre de langues", "Bibliothèque",
-
-  // AUTOMOBILE, MOTO ET TRANSPORT
   "Garage", "Garage automobile", "Garage moto", "Station-service", "Centre de lavage automobile", "Vente de véhicules", "Location de véhicules", "Agence de location de motos", "Vente de pneus", "Vente de batteries automobiles", "Vente de lubrifiants", "Centre de vidange", "Centre de diagnostic automobile", "Carrosserie automobile", "Auto-électricité", "Vulcanisateur", "Boutique de vente de pièces détachées de moto", "Boutique de vente de pièces détachées automobiles", "Agence de transport interurbain", "Agence de voyage", "Gare routière", "Compagnie de livraison", "Entreprise de déménagement", "Agence de fret et transit",
-
-  // SERVICES PROFESSIONNELS ET ADMINISTRATIFS
   "Cabinet comptable", "Cabinet juridique", "Cabinet d'avocats", "Cabinet de conseil", "Agence de communication", "Agence de publicité", "Agence de marketing digital", "Agence web", "Agence de graphisme", "Agence de création audiovisuelle", "Cabinet d'architecture", "Cabinet de géomètre", "Agence de sécurité privée", "Agence de nettoyage", "Entreprise de gardiennage", "Agence de recrutement", "Cabinet de ressources humaines", "Cabinet d'expertise immobilière", "Agence de décoration événementielle", "Pompes funèbres",
-
-  // BANQUE, FINANCE ET TÉLÉCOMMUNICATIONS
   "Banque", "Institution de microfinance", "Agence de transfert d'argent", "Agence Mobile Money", "Agence de change", "Agence d'assurance", "Agence de paiement électronique", "Agence de télécommunications", "Boutique de vente de cartes SIM", "Centre de services téléphoniques", "Agence de services financiers",
-
-  // ARTISANAT, RÉPARATION ET CONSTRUCTION
   "Atelier de couture", "Atelier de broderie", "Atelier de menuiserie", "Atelier de soudure", "Atelier de mécanique", "Atelier de réparation de téléphones", "Atelier de réparation informatique", "Atelier de réparation électroménager", "Atelier de réparation électronique", "Atelier de réparation de réfrigérateurs", "Entreprise de plomberie", "Entreprise d'électricité", "Entreprise de construction", "Entreprise de BTP", "Entreprise de carrelage", "Entreprise de peinture bâtiment", "Entreprise de vitrerie", "Entreprise de climatisation", "Entreprise de forage", "Entreprise de forage et installation de pompes", "Entreprise de décoration intérieure", "Entreprise de menuiserie aluminium", "Entreprise de menuiserie bois", "Atelier de fabrication métallique", "Entreprise de paysagisme",
-
-  // BEAUTÉ, MODE ET SERVICES PERSONNELS
   "Salon de beauté", "Salon de coiffure", "Salon de coiffure mixte", "Institut de beauté", "Salon de manucure", "Salon de pédicure", "Centre de soins capillaires", "Salon de tresses", "Atelier de confection", "Pressing", "Blanchisserie", "Teinturerie", "Photographe professionnel", "Studio photo", "Studio d'enregistrement", "Imprimerie", "Centre de photocopie", "Cybercafé",
-
-  // AUTRES SERVICES
   "Service de secrétariat", "Service de traduction", "Service de rédaction", "Service informatique", "Service de dépannage", "Service de livraison à domicile", "Service de jardinage", "Service de décoration", "Service traiteur", "Service de location de matériel", "Service événementiel", "Service de maintenance", "Service de réparation", "Service de nettoyage à domicile", "Autres activités"
 ];
 const METIERS_SENSIBLES = [
-  // Santé
   "Médecin", "Pharmacien", "Dentiste", "Infirmier", "Sage-femme", "Kinésithérapeute", "Technicien de laboratoire",
-  // Juridique
   "Avocat", "Notaire",
-  // Bâtiment
   "Architecte", "Géomètre topographe",
-  // Sécurité (Uniquement l'agent, pas le gardien)
   "Agent de sécurité"
 ];
 const PAYMENT_AMOUNT = 1500;
@@ -184,13 +161,11 @@ async function uploadToCloudinary(buffer, folder, publicId) {
       folder, 
       public_id: publicId, 
       resource_type: "image",
-      // 👇 Compression AVANT le stockage
       incoming_transformation: [
         { width: 1000, height: 1000, crop: "limit" }, 
         { quality: "auto:good" }, 
         { fetch_format: "auto" }
       ],
-      // 👇 Version d'affichage optimisée (optionnelle)
       transformation: [
         { width: 800, height: 800, crop: "limit" }, 
         { quality: "auto" }, 
@@ -334,97 +309,30 @@ function page(title, content, proConnected, meta = {}) {
       ${canonicalUrl ? `<link rel="canonical" href="${escapeHtml(canonicalUrl)}">` : ""}
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        /* FOND GLOBAL DOUX */
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; 
-          padding: 0; 
-          background: #f8fafc; 
-          color: #1e293b; 
-          line-height: 1.6; 
-          min-height: 100vh; 
-          display: flex; 
-          flex-direction: column; 
+          padding: 0; background: #f8fafc; color: #1e293b; line-height: 1.6; 
+          min-height: 100vh; display: flex; flex-direction: column; 
         }
-        
-        /* EN-TÊTE */
         header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; padding: 16px 20px; box-shadow: 0 4px 20px rgba(30,64,175,0.15); position: sticky; top: 0; z-index: 100; }
         .header-content { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
         nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         nav a, nav button { color: white; text-decoration: none; padding: 8px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; background: transparent; border: none; cursor: pointer; transition: background 0.2s; }
         nav a:hover, nav button:hover { background: rgba(255,255,255,0.2); }
         main { max-width: 1200px; width: 100%; margin: 0 auto; padding: 24px 20px; flex: 1; }
-        
-        /* CARTES FLOTTANTES */
-        .card { 
-          background: white; 
-          padding: 28px; 
-          margin-bottom: 24px; 
-          border-radius: 20px; 
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); 
-          border: 1px solid #f1f5f9; 
-          transition: transform 0.3s ease, box-shadow 0.3s ease; 
-        }
-        .card:hover {
-          transform: translateY(-4px); 
-          box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.1); 
-        }
-
-        /* TITRES */
+        .card { background: white; padding: 28px; margin-bottom: 24px; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); border: 1px solid #f1f5f9; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.1); }
         h1 { font-size: 32px; margin-bottom: 20px; color: #0f172a; font-weight: 800; letter-spacing: -0.5px; }
         h2 { font-size: 24px; margin-bottom: 16px; color: #1e40af; font-weight: 700; }
-        
-        /* CHAMPS DE SAISIE MODERNES */
-        input, textarea, select { 
-          width: 100%; 
-          padding: 16px 20px; 
-          margin-bottom: 16px; 
-          border: 1px solid #e2e8f0; 
-          border-radius: 14px; 
-          font-size: 15px; 
-          background: #f8fafc; 
-          color: #1e293b;
-          transition: all 0.2s; 
-        }
-        input:focus, textarea:focus, select:focus { 
-          outline: none; 
-          border-color: #3b82f6; 
-          background: white; 
-          box-shadow: 0 0 0 4px rgba(59,130,246,0.1); 
-        }
-        
-        /* BOUTONS */
-        button, .button { 
-          display: inline-flex; 
-          align-items: center; 
-          justify-content: center; 
-          border: none; 
-          background: #2563eb; 
-          color: white; 
-          padding: 14px 28px; 
-          border-radius: 14px; 
-          cursor: pointer; 
-          text-decoration: none; 
-          text-align: center; 
-          font-size: 15px; 
-          font-weight: 600; 
-          transition: all 0.2s; 
-          margin-right: 8px; 
-          margin-bottom: 8px; 
-        }
-        button:hover, .button:hover { 
-          background: #1d4ed8; 
-          transform: translateY(-2px); 
-          box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); 
-        }
-        
+        input, textarea, select { width: 100%; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 14px; font-size: 15px; background: #f8fafc; color: #1e293b; transition: all 0.2s; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #3b82f6; background: white; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+        button, .button { display: inline-flex; align-items: center; justify-content: center; border: none; background: #2563eb; color: white; padding: 14px 28px; border-radius: 14px; cursor: pointer; text-decoration: none; text-align: center; font-size: 15px; font-weight: 600; transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; }
+        button:hover, .button:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
         .danger { background: #ef4444; } .danger:hover { background: #dc2626; box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3); }
         .secondary { background: white; color: #4b5563; border: 1px solid #d1d5db; } .secondary:hover { background: #f3f4f6; color: #111827; }
         .warning { background: #f59e0b; } .warning:hover { background: #d97706; box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.3); }
         .success { background: #10b981; } .success:hover { background: #059669; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); }
         .whatsapp { background: #25d366; } .whatsapp:hover { background: #1da851; box-shadow: 0 10px 15px -3px rgba(37, 211, 102, 0.3); }
-        
-        /* GRILLES ET CARTES PROS */
         .pros-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 24px; }
         .pro-card { background: white; border-radius: 20px; padding: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; transition: all 0.3s ease; position: relative; overflow: hidden; }
         .pro-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }
@@ -433,8 +341,6 @@ function page(title, content, proConnected, meta = {}) {
         .pro-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
         .pro-actions a { padding: 10px; font-size: 13px; border-radius: 10px; margin: 0; text-align: center; font-weight: 600; }
         .pro-profile-link { grid-column: span 2; background: #f1f5f9; color: #334155; font-weight: 700; }
-        
-        /* BADGES ET ALERTES */
         .badge { display: inline-block; padding: 6px 12px; border-radius: 30px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
         .kyc-tick { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; background: #3b82f6; color: white; border-radius: 50%; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; box-shadow: 0 2px 5px rgba(59,130,246,0.4); }
         .kyc-tick-lg { width: 24px; height: 24px; font-size: 14px; margin-left: 8px; }
@@ -442,16 +348,8 @@ function page(title, content, proConnected, meta = {}) {
         .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
         .alert-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
         .alert-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
-        
-        /* ANIMATION D'ALERTE */
-        @keyframes pulse-alert {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-          50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
+        @keyframes pulse-alert { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
         .alert-animated { animation: pulse-alert 2s infinite; background-color: #fef2f2 !important; border: 2px solid #ef4444 !important; color: #991b1b !important; font-weight: 700; }
-
-        /* PIED DE PAGE */
         footer { background: #0f172a; color: #94a3b8; padding: 60px 20px 20px; margin-top: 80px; }
         .footer-content { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
         .footer-col h4 { color: white; margin-bottom: 16px; font-size: 15px; text-transform: uppercase; font-weight: 800; }
@@ -460,13 +358,9 @@ function page(title, content, proConnected, meta = {}) {
         .footer-bottom { max-width: 1200px; margin: 32px auto 0; padding-top: 24px; border-top: 1px solid #1e293b; text-align: center; font-size: 13px; color: #64748b; }
         .desktop-menu { display: flex; gap: 6px; align-items: center; }
         .mobile-menu { display: none; }
-
-        /* FORMULAIRES MULTI-ÉTAPES */
         .fancy-label { font-weight: 600; color: #334155; margin-bottom: 6px; display: block; font-size: 14px; }
         .fancy-input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; color: #1e293b; margin-bottom: 18px; transition: all 0.2s; }
         .fancy-input:focus { background: white; border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); outline: none; }
-        
-        /* RESPONSIVE MOBILE */
         @media (max-width: 768px) {
           header { padding: 14px 16px; }
           .header-content { flex-direction: column; text-align: center; }
@@ -484,12 +378,7 @@ function page(title, content, proConnected, meta = {}) {
           .footer-content { grid-template-columns: 1fr; text-align: center; }
           .footer-col a { display: inline-block; margin: 0 10px; }
         }
-        /* Optimisation des images */
-img {
-  max-width: 100%;
-  height: auto;
-  content-visibility: auto;
-}
+        img { max-width: 100%; height: auto; content-visibility: auto; }
       </style>
     </head>
     <body>
@@ -503,25 +392,24 @@ img {
               ${!proConnected ? `<a href="/devenir-professionnel">Devenir pro</a>` : `<a href="/publier-emploi">Publier une offre</a>`}
               <a href="/mes-favoris">❤️ Favoris</a>
               <a href="/mon-espace-pro">Espace pro</a>
-             <a href="/mon-compte">Mon compte</a>
+              <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a> 
-              <!-- BOUTON NOTIFICATION -->
               <button id="btn-notif" style="display: none;"></button>
             </div>
             <div class="mobile-menu">
-  <div class="main-links">
-    <a href="/">Professionnels</a>
-    <a href="/emplois">Emploi</a>
-    <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
-  </div>
-  <div id="mobile-dropdown" class="mobile-dropdown">
-  <a href="/devenir-professionnel">Devenir pro</a>
-  <a href="/mes-favoris">❤️ Favoris</a>
-  <a href="/mon-compte">Mon compte</a> <!-- 👈 LIGNE AJOUTÉE -->
-  <a href="/mon-espace-pro">Espace pro</a>
-  <a href="/contact">Contact</a>
-</div>
-</div>
+              <div class="main-links">
+                <a href="/">Professionnels</a>
+                <a href="/emplois">Emploi</a>
+                <button class="burger-btn" onclick="document.getElementById('mobile-dropdown').classList.toggle('show')">☰</button>
+              </div>
+              <div id="mobile-dropdown" class="mobile-dropdown">
+                <a href="/devenir-professionnel">Devenir pro</a>
+                <a href="/mes-favoris">❤️ Favoris</a>
+                <a href="/mon-compte">Mon compte</a>
+                <a href="/mon-espace-pro">Espace pro</a>
+                <a href="/contact">Contact</a>
+              </div>
+            </div>
           </nav>
         </div>
       </header>
@@ -632,11 +520,11 @@ img {
 
   const firebaseConfig = {
     apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
-authDomain: "trouvemoi-c1b01.firebaseapp.com",
-projectId: "trouvemoi-c1b01",
-storageBucket: "trouvemoi-c1b01.appspot.com",
-messagingSenderId: "317041094178",
-appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
+    authDomain: "trouvemoi-c1b01.firebaseapp.com",
+    projectId: "trouvemoi-c1b01",
+    storageBucket: "trouvemoi-c1b01.appspot.com",
+    messagingSenderId: "317041094178",
+    appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -647,71 +535,67 @@ appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
     .then((registration) => {
       messaging = getMessaging(app);
       window.swRegistration = registration;
-      
-      // Le service est prêt, on active le bouton
-      const btn = document.getElementById('btn-notif');
-      if(btn) btn.innerText = "🔔 Activer les alertes";
     })
     .catch((err) => console.error("Erreur ServiceWorker:", err));
   }
 
- //window.demanderNotifications = async function() {
-  const btn = document.getElementById('btn-notif');
-  if(btn) btn.innerText = "⏳ Chargement...";
+  window.demanderNotifications = async function() {
+    const btn = document.getElementById('btn-notif');
+    if(btn) btn.innerText = "⏳ Chargement...";
 
-  setTimeout(async () => {
-    try {
-      const permission = await Notification.requestPermission();
-      
-      if (permission === 'granted') {
-        if(btn) btn.innerText = "⏳ Récupération...";
+    setTimeout(async () => {
+      try {
+        const permission = await Notification.requestPermission();
         
-        getToken(messaging, { 
-          serviceWorkerRegistration: window.swRegistration,
-          vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
-        })
-        .then((currentToken) => {
-          if (currentToken) {
-            if(btn) {
-              btn.innerText = "✅ Alertes OK";
-              btn.style.background = "#10b981"; 
+        if (permission === 'granted') {
+          if(btn) btn.innerText = "⏳ Récupération...";
+          
+          getToken(messaging, { 
+            serviceWorkerRegistration: window.swRegistration,
+            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+          })
+          .then((currentToken) => {
+            if (currentToken) {
+              if(btn) {
+                btn.innerText = "✅ Alertes OK";
+                btn.style.background = "#10b981"; 
+              }
+              fetch('/api/save-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: currentToken })
+              }).then(() => console.log('Token sauvegardé !'));
             }
-            fetch('/api/save-token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ token: currentToken })
-            }).then(() => console.log('Token sauvegardé !'));
-          }
-        }).catch((err) => {
-          console.error('Erreur token :', err);
-          if(btn) {
-              btn.innerText = "❌ Erreur";
-              btn.style.background = "#ef4444";
-          }
-          alert("Détail de l'erreur Firebase : " + err.message);
-        });
-      } else {
-        alert("Vous avez refusé les notifications.");
+          }).catch((err) => {
+            console.error('Erreur token :', err);
+            if(btn) {
+                btn.innerText = "❌ Erreur";
+                btn.style.background = "#ef4444";
+            }
+            alert("Détail de l'erreur Firebase : " + err.message);
+          });
+        } else {
+          alert("Vous avez refusé les notifications.");
+          if(btn) btn.innerText = "🔔 Activer les alertes";
+        }
+      } catch (e) {
+        console.error(e);
         if(btn) btn.innerText = "🔔 Activer les alertes";
       }
-    } catch (e) {
-      console.error(e);
-      if(btn) btn.innerText = "🔔 Activer les alertes";
-    }
-  }, 1500);
-}
+    }, 1500);
+  }
 </script>
     </body>
     </html>
   `;
 }
-
 // --- MIDDLEWARES GLOBAUX ---
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
+
 // Limite globale : max 100 requêtes par minute par IP
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
@@ -742,7 +626,7 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
       [phone, code, expiresAt]
     );
 
-  // 🛠️ MODE TEST : On n'envoie pas de vrai SMS pour l'instant
+    // 🛠️ MODE TEST : On n'envoie pas de vrai SMS pour l'instant
     console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
     
     res.json({ ok: true, message: "SMS simulé ! Regardez les logs Render." });
@@ -751,6 +635,7 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
     res.status(500).json({ ok: false });
   }
 });
+
 // 2. Route pour VÉRIFIER le code
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
@@ -765,6 +650,7 @@ async function verifyOTP(phone, code) {
   if (!result.rows.length) return false;
   return safeEqual(result.rows[0].code, code);
 }
+
 // --- CRÉATION DU FICHIER POUR LES NOTIFICATIONS (FIREBASE) ---
 app.get("/firebase-messaging-sw.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript");
@@ -773,12 +659,12 @@ app.get("/firebase-messaging-sw.js", (req, res) => {
     importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
     firebase.initializeApp({
-     apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
-authDomain: "trouvemoi-c1b01.firebaseapp.com",
-projectId: "trouvemoi-c1b01",
-storageBucket: "trouvemoi-c1b01.appspot.com",
-messagingSenderId: "317041094178",
-appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
+      apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
+      authDomain: "trouvemoi-c1b01.firebaseapp.com",
+      projectId: "trouvemoi-c1b01",
+      storageBucket: "trouvemoi-c1b01.appspot.com",
+      messagingSenderId: "317041094178",
+      appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
     });
 
     const messaging = firebase.messaging();
@@ -794,6 +680,7 @@ appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
     });
   `);
 });
+
 app.get("/manifest.json", (req, res) => {
   res.json({
     name: "TrouveMoi",
@@ -818,6 +705,18 @@ app.get("/manifest.json", (req, res) => {
       }
     ]
   });
+});
+
+app.post("/api/save-token", express.json(), async (req, res) => {
+  try {
+    const token = String(req.body.token || "").trim();
+    if (!token) return res.json({ ok: false });
+    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, token TEXT UNIQUE, created_at TIMESTAMP DEFAULT NOW())`);
+    await pool.query(`INSERT INTO push_tokens (token) VALUES ($1) ON CONFLICT (token) DO NOTHING`, [token]);
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false });
+  }
 });
 
 app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
@@ -954,10 +853,6 @@ app.get("/don/verifier", async (req, res) => {
   }
 });
 
-app.use(express.urlencoded({ extended: true, limit: "20kb" }));
-app.use(express.json({ limit: "20kb" }));
-app.use(compression());
-
 // --- IMPORTATION DES ROUTES ---
 const pagesRoutes = require('./route/pages');
 const contactRoutes = require('./route/contact');
@@ -966,163 +861,70 @@ const candidaturesRoutes = require('./route/candidatures');
 const proRoutes = require('./route/pro');
 const emploisRoutes = require('./route/emplois');
 const adminRoutes = require('./route/admin');
-app.post("/api/save-token", express.json(), async (req, res) => {
-  try {
-    const token = String(req.body.token || "").trim();
-    if (!token) return res.json({ ok: false });
-    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, token TEXT UNIQUE, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`INSERT INTO push_tokens (token) VALUES ($1) ON CONFLICT (token) DO NOTHING`, [token]);
-    res.json({ ok: true });
-  } catch (e) {
-    res.json({ ok: false });
-  }
-});
+
 // --- BRANCHEMENT ---
-app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP));
+app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN));
 app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS));
 app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN));
-app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone, sendSMS, verifyOTP));
+app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone, sendSMS, verifyOTP, safeCoord));
 app.use('/', emploisRoutes(pool, page, getConnectedPro, escapeHtml, cleanBeninPhone, ["CDI", "CDD"], logAdminAction, 15));
 app.use('/', agencesRoutes(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT));
 app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, deleteFromCloudinary));
-app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP));
+
+// --- GESTION DES ERREURS ---
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).send(page("Erreur", "<h2>Une des photos est trop lourde (max 10 Mo).</h2><a href='/devenir-professionnel'>Réessayer</a>", null));
+    }
+  }
+  console.error("Erreur serveur :", err);
+  res.status(500).send("Erreur serveur");
+});
 
 // --- DEMARRAGE ---
 async function startServer() {
   try {
     await pool.query("SELECT 1");
+
     // --- INSERTION DES MÉTIERS D'ÉTABLISSEMENTS ---
-const etablissements = [
-  { name: "Restaurant", cat: "Établissements" },
-  { name: "Boutique", cat: "Établissements" },
-  { name: "Supérette", cat: "Établissements" },
-  { name: "Pharmacie", cat: "Établissements" },
-  { name: "Agence immobilière", cat: "Établissements" },
-  { name: "Garage", cat: "Établissements" },
-  { name: "Salon de beauté", cat: "Établissements" },
-  { name: "Hôtel", cat: "Établissements" }
-];
+    const etablissements = [
+      { name: "Restaurant", cat: "Établissements" }, { name: "Boutique", cat: "Établissements" }, { name: "Supérette", cat: "Établissements" }, { name: "Pharmacie", cat: "Établissements" }, { name: "Agence immobilière", cat: "Établissements" }, { name: "Garage", cat: "Établissements" }, { name: "Salon de beauté", cat: "Établissements" }, { name: "Hôtel", cat: "Établissements" }
+    ];
+    for (let e of etablissements) {
+      await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [e.name, e.cat]);
+    }
 
-for (let e of etablissements) {
-  await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [e.name, e.cat]);
-}
     // --- MÉTIERS INSPIRÉS DES NOMENCLATURES OFFICIELLES DU BÉNIN ---
-const metiersOfficiels = [
-  // Bâtiment & Travaux Publics
-  { name: "Maçon", cat: "Bâtiment & TP" }, { name: "Coffreur", cat: "Bâtiment & TP" },
-  { name: "Ferrailleur", cat: "Bâtiment & TP" }, { name: "Charpentier", cat: "Bâtiment & TP" },
-  { name: "Couvreur", cat: "Bâtiment & TP" }, { name: "Plombier", cat: "Bâtiment & TP" },
-  { name: "Électricien Bâtiment", cat: "Bâtiment & TP" }, { name: "Peintre en bâtiment", cat: "Bâtiment & TP" },
-  { name: "Carreleur", cat: "Bâtiment & TP" }, { name: "Géomètre topographe", cat: "Bâtiment & TP" },
-  { name: "Technicien d'étude du bâtiment", cat: "Bâtiment & TP" }, { name: "Constructeur d'ouvrages en béton armé", cat: "Bâtiment & TP" },
+    const metiersOfficiels = [
+      { name: "Maçon", cat: "Bâtiment & TP" }, { name: "Coffreur", cat: "Bâtiment & TP" }, { name: "Ferrailleur", cat: "Bâtiment & TP" }, { name: "Charpentier", cat: "Bâtiment & TP" }, { name: "Couvreur", cat: "Bâtiment & TP" }, { name: "Plombier", cat: "Bâtiment & TP" }, { name: "Électricien Bâtiment", cat: "Bâtiment & TP" }, { name: "Peintre en bâtiment", cat: "Bâtiment & TP" }, { name: "Carreleur", cat: "Bâtiment & TP" }, { name: "Géomètre topographe", cat: "Bâtiment & TP" }, { name: "Technicien d'étude du bâtiment", cat: "Bâtiment & TP" }, { name: "Constructeur d'ouvrages en béton armé", cat: "Bâtiment & TP" },
+      { name: "Menuisier bois", cat: "Menuiserie & Bois" }, { name: "Ébéniste", cat: "Menuiserie & Bois" }, { name: "Menuisier aluminium", cat: "Menuiserie & Bois" }, { name: "Vitrier", cat: "Menuiserie & Bois" }, { name: "Technicien constructeur ouvrage bois", cat: "Menuiserie & Bois" },
+      { name: "Soudeur", cat: "Métal & Métallurgie" }, { name: "Métallier", cat: "Métal & Métallurgie" }, { name: "Ferronnier d'art", cat: "Métal & Métallurgie" }, { name: "Fondeur de bronze", cat: "Métal & Métallurgie" }, { name: "Bijoutier", cat: "Métal & Métallurgie" }, { name: "Orfèvre", cat: "Métal & Métallurgie" },
+      { name: "Sculpteur sur bois", cat: "Artisanat d'Art" }, { name: "Potier", cat: "Artisanat d'Art" }, { name: "Céramiste", cat: "Artisanat d'Art" }, { name: "Vannier", cat: "Artisanat d'Art" }, { name: "Maroquinier d'art", cat: "Artisanat d'Art" }, { name: "Tisserand", cat: "Artisanat d'Art" }, { name: "Brodeur", cat: "Artisanat d'Art" }, { name: "Teinturier", cat: "Artisanat d'Art" }, { name: "Décorateur floral", cat: "Artisanat d'Art" }, { name: "Créateur de parfums", cat: "Artisanat d'Art" }, { name: "Paysagiste", cat: "Artisanat d'Art" }, { name: "Créateur d'espaces verts", cat: "Artisanat d'Art" },
+      { name: "Mécanicien automobile", cat: "Automobile & Mécanique" }, { name: "Électricien automobile", cat: "Automobile & Mécanique" }, { name: "Tôlier", cat: "Automobile & Mécanique" }, { name: "Technicien diagnostic auto", cat: "Automobile & Mécanique" }, { name: "Contrôleur technique automobile", cat: "Automobile & Mécanique" }, { name: "Mécanicien moto", cat: "Automobile & Mécanique" },
+      { name: "Technicien en énergies renouvelables", cat: "Énergie & Froid" }, { name: "Installateur photovoltaïque", cat: "Énergie & Froid" }, { name: "Technicien froid et climatisation", cat: "Énergie & Froid" }, { name: "Ascensoriste", cat: "Énergie & Froid" }, { name: "Domoticien", cat: "Énergie & Froid" },
+      { name: "Aviculteur", cat: "Agriculture & Élevage" }, { name: "Cuniculteur", cat: "Agriculture & Élevage" }, { name: "Éleveur de bovins", cat: "Agriculture & Élevage" }, { name: "Éleveur de porcins", cat: "Agriculture & Élevage" }, { name: "Pisciculteur", cat: "Agriculture & Élevage" }, { name: "Aquaculteur", cat: "Agriculture & Élevage" }, { name: "Horticulteur", cat: "Agriculture & Élevage" }, { name: "Maraîcher", cat: "Agriculture & Élevage" }, { name: "Pépiniériste", cat: "Agriculture & Élevage" }, { name: "Producteur céréalier", cat: "Agriculture & Élevage" }, { name: "Producteur de racines et tubercules", cat: "Agriculture & Élevage" }, { name: "Arboriculteur fruitier", cat: "Agriculture & Élevage" }, { name: "Exploitant palmier à huile", cat: "Agriculture & Élevage" },
+      { name: "Technicien Canal+ / Installateur parabole", cat: "Numérique & Tech" }, { name: "Technicien réseau / Câblage", cat: "Numérique & Tech" }, { name: "Développeur web", cat: "Numérique & Tech" }, { name: "Développeur mobile", cat: "Numérique & Tech" }, { name: "Cybersécurité", cat: "Numérique & Tech" }, { name: "Data Analyst", cat: "Numérique & Tech" }, { name: "Expert IA / Big Data", cat: "Numérique & Tech" }, { name: "Marketing digital", cat: "Numérique & Tech" }, { name: "Graphiste", cat: "Numérique & Tech" }, { name: "Community Manager", cat: "Numérique & Tech" }, { name: "Technicien maintenance informatique", cat: "Numérique & Tech" },
+      { name: "Infirmier", cat: "Santé" }, { name: "Sage-femme", cat: "Santé" }, { name: "Technicien de laboratoire", cat: "Santé" }, { name: "Aide-soignant", cat: "Santé" }, { name: "Kinésithérapeute", cat: "Santé" }, { name: "Secrétaire médical", cat: "Santé" }, { name: "Dentiste", cat: "Santé" }, { name: "Pharmacien", cat: "Santé" },
+      { name: "Cuisinier", cat: "Hôtellerie & Restauration" }, { name: "Pâtissier", cat: "Hôtellerie & Restauration" }, { name: "Boulanger", cat: "Hôtellerie & Restauration" }, { name: "Serveur", cat: "Hôtellerie & Restauration" }, { name: "Réceptionniste d'hôtel", cat: "Hôtellerie & Restauration" }, { name: "Guide touristique", cat: "Hôtellerie & Restauration" }, { name: "Agent d'entretien hôtelier", cat: "Hôtellerie & Restauration" }, { name: "Traiteur", cat: "Hôtellerie & Restauration" },
+      { name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" }, { name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" }, { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" }, { name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" }, { name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" }, { name: "Livreur", cat: "Services & Administration" },
+      { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" }, { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" },
+      { name: "Restaurant", cat: "Commerce & Boutiques" }, { name: "Boutique", cat: "Commerce & Boutiques" }, { name: "Supérette", cat: "Commerce & Boutiques" }, { name: "Supermarché", cat: "Commerce & Boutiques" }, { name: "Alimentation générale", cat: "Commerce & Boutiques" }, { name: "Épicerie", cat: "Commerce & Boutiques" }, { name: "Pharmacie", cat: "Commerce & Boutiques" }, { name: "Parapharmacie", cat: "Commerce & Boutiques" }, { name: "Boulangerie", cat: "Commerce & Boutiques" }, { name: "Pâtisserie", cat: "Commerce & Boutiques" }, { name: "Boucherie", cat: "Commerce & Boutiques" }, { name: "Poissonnerie", cat: "Commerce & Boutiques" }, { name: "Vente de fruits et légumes", cat: "Commerce & Boutiques" }, { name: "Vente de produits surgelés", cat: "Commerce & Boutiques" }, { name: "Dépôt de boissons", cat: "Commerce & Boutiques" }, { name: "Dépôt de gaz domestique", cat: "Commerce & Boutiques" }, { name: "Quincaillerie", cat: "Commerce & Boutiques" }, { name: "Agence immobilière", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de téléphones et accessoires", cat: "Commerce & Boutiques" }, { name: "Boutique Apple Store", cat: "Commerce & Boutiques" }, { name: "Distributeur agréé Canal+", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de mèches", cat: "Commerce & Boutiques" }, { name: "Compagnie d'assurance", cat: "Commerce & Boutiques" }, { name: "Compagnie de transport", cat: "Commerce & Boutiques" }, { name: "Boutique de vente d'appareils électroménagers", cat: "Commerce & Boutiques" }, { name: "Boutique de vêtements", cat: "Commerce & Boutiques" }, { name: "Boutique de chaussures", cat: "Commerce & Boutiques" }, { name: "Boutique de sacs et accessoires de mode", cat: "Commerce & Boutiques" }, { name: "Boutique de tissus et pagnes", cat: "Commerce & Boutiques" }, { name: "Boutique de cosmétiques", cat: "Commerce & Boutiques" }, { name: "Boutique de parfumerie", cat: "Commerce & Boutiques" }, { name: "Boutique de jouets", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de produits chinois", cat: "Commerce & Boutiques" }, { name: "Librairie", cat: "Commerce & Boutiques" }, { name: "Papeterie", cat: "Commerce & Boutiques" }, { name: "Bijouterie", cat: "Commerce & Boutiques" }, { name: "Cave à vin", cat: "Commerce & Boutiques" }, { name: "Magasin de meubles", cat: "Commerce & Boutiques" }, { name: "Magasin de décoration intérieure", cat: "Commerce & Boutiques" }, { name: "Magasin de matériaux de construction", cat: "Commerce & Boutiques" }, { name: "Magasin de peinture", cat: "Commerce & Boutiques" }, { name: "Magasin de fournitures scolaires", cat: "Commerce & Boutiques" }, { name: "Magasin de pièces électroniques", cat: "Commerce & Boutiques" }, { name: "Magasin de matériel informatique", cat: "Commerce & Boutiques" }, { name: "Barber shop", cat: "Commerce & Boutiques" }, { name: "Lavage moto", cat: "Commerce & Boutiques" },
+      { name: "Fast-food", cat: "Restauration & Loisirs" }, { name: "Maquis", cat: "Restauration & Loisirs" }, { name: "Cafétéria", cat: "Restauration & Loisirs" }, { name: "Glacier", cat: "Restauration & Loisirs" }, { name: "Pizzeria", cat: "Restauration & Loisirs" }, { name: "Restaurant africain", cat: "Restauration & Loisirs" }, { name: "Restaurant gastronomique", cat: "Restauration & Loisirs" }, { name: "Bar", cat: "Restauration & Loisirs" }, { name: "Discothèque", cat: "Restauration & Loisirs" }, { name: "Hôtel", cat: "Restauration & Loisirs" }, { name: "Auberge", cat: "Restauration & Loisirs" }, { name: "Résidence meublée", cat: "Restauration & Loisirs" }, { name: "Maison d'hôtes", cat: "Restauration & Loisirs" }, { name: "Camping", cat: "Restauration & Loisirs" }, { name: "Espace événementiel", cat: "Restauration & Loisirs" }, { name: "Salle de réception", cat: "Restauration & Loisirs" }, { name: "Salle de jeux", cat: "Restauration & Loisirs" }, { name: "Salle de sport", cat: "Restauration & Loisirs" }, { name: "Salle de fitness", cat: "Restauration & Loisirs" }, { name: "Piscine", cat: "Restauration & Loisirs" }, { name: "Centre de loisirs", cat: "Restauration & Loisirs" },
+      { name: "Clinique", cat: "Santé & Bien-être" }, { name: "Hôpital", cat: "Santé & Bien-être" }, { name: "Cabinet médical", cat: "Santé & Bien-être" }, { name: "Cabinet dentaire", cat: "Santé & Bien-être" }, { name: "Cabinet ophtalmologique", cat: "Santé & Bien-être" }, { name: "Laboratoire d'analyses médicales", cat: "Santé & Bien-être" }, { name: "Centre de radiologie", cat: "Santé & Bien-être" }, { name: "Centre de soins", cat: "Santé & Bien-être" }, { name: "Centre de kinésithérapie", cat: "Santé & Bien-être" }, { name: "Centre de vaccination", cat: "Santé & Bien-être" }, { name: "Cabinet vétérinaire", cat: "Santé & Bien-être" }, { name: "Opticien", cat: "Santé & Bien-être" }, { name: "Centre de bien-être", cat: "Santé & Bien-être" }, { name: "Institut de massage", cat: "Santé & Bien-être" }, { name: "Centre dermatologique", cat: "Santé & Bien-être" },
+      { name: "École maternelle", cat: "Éducation & Formation" }, { name: "École primaire", cat: "Éducation & Formation" }, { name: "Collège", cat: "Éducation & Formation" }, { name: "Lycée", cat: "Éducation & Formation" }, { name: "Université", cat: "Éducation & Formation" }, { name: "Établissement d'enseignement supérieur", cat: "Éducation & Formation" }, { name: "Centre de formation professionnelle", cat: "Éducation & Formation" }, { name: "Centre de formation informatique", cat: "Éducation & Formation" }, { name: "Auto-école", cat: "Éducation & Formation" }, { name: "Crèche", cat: "Éducation & Formation" }, { name: "Garderie", cat: "Éducation & Formation" }, { name: "Centre de soutien scolaire", cat: "Éducation & Formation" }, { name: "Centre de langues", cat: "Éducation & Formation" }, { name: "Bibliothèque", cat: "Éducation & Formation" },
+      { name: "Garage", cat: "Automobile & Transport" }, { name: "Garage automobile", cat: "Automobile & Transport" }, { name: "Garage moto", cat: "Automobile & Transport" }, { name: "Station-service", cat: "Automobile & Transport" }, { name: "Centre de lavage automobile", cat: "Automobile & Transport" }, { name: "Vente de véhicules", cat: "Automobile & Transport" }, { name: "Location de véhicules", cat: "Automobile & Transport" }, { name: "Agence de location de motos", cat: "Automobile & Transport" }, { name: "Vente de pneus", cat: "Automobile & Transport" }, { name: "Vente de batteries automobiles", cat: "Automobile & Transport" }, { name: "Vente de lubrifiants", cat: "Automobile & Transport" }, { name: "Centre de vidange", cat: "Automobile & Transport" }, { name: "Centre de diagnostic automobile", cat: "Automobile & Transport" }, { name: "Carrosserie automobile", cat: "Automobile & Transport" }, { name: "Auto-électricité", cat: "Automobile & Transport" }, { name: "Vulcanisateur", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées de moto", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées automobiles", cat: "Automobile & Transport" }, { name: "Agence de transport interurbain", cat: "Automobile & Transport" }, { name: "Agence de voyage", cat: "Automobile & Transport" }, { name: "Gare routière", cat: "Automobile & Transport" }, { name: "Compagnie de livraison", cat: "Automobile & Transport" }, { name: "Entreprise de déménagement", cat: "Automobile & Transport" }, { name: "Agence de fret et transit", cat: "Automobile & Transport" },
+      { name: "Cabinet comptable", cat: "Services & Administration" }, { name: "Cabinet juridique", cat: "Services & Administration" }, { name: "Cabinet d'avocats", cat: "Services & Administration" }, { name: "Cabinet de conseil", cat: "Services & Administration" }, { name: "Agence de communication", cat: "Services & Administration" }, { name: "Agence de publicité", cat: "Services & Administration" }, { name: "Agence de marketing digital", cat: "Services & Administration" }, { name: "Agence web", cat: "Services & Administration" }, { name: "Agence de graphisme", cat: "Services & Administration" }, { name: "Agence de création audiovisuelle", cat: "Services & Administration" }, { name: "Cabinet d'architecture", cat: "Services & Administration" }, { name: "Cabinet de géomètre", cat: "Services & Administration" }, { name: "Agence de sécurité privée", cat: "Services & Administration" }, { name: "Agence de nettoyage", cat: "Services & Administration" }, { name: "Entreprise de gardiennage", cat: "Services & Administration" }, { name: "Agence de recrutement", cat: "Services & Administration" }, { name: "Cabinet de ressources humaines", cat: "Services & Administration" }, { name: "Cabinet d'expertise immobilière", cat: "Services & Administration" }, { name: "Agence de décoration événementielle", cat: "Services & Administration" }, { name: "Pompes funèbres", cat: "Services & Administration" },
+      { name: "Banque", cat: "Finance & Télécoms" }, { name: "Institution de microfinance", cat: "Finance & Télécoms" }, { name: "Agence de transfert d'argent", cat: "Finance & Télécoms" }, { name: "Agence Mobile Money", cat: "Finance & Télécoms" }, { name: "Agence de change", cat: "Finance & Télécoms" }, { name: "Agence d'assurance", cat: "Finance & Télécoms" }, { name: "Agence de paiement électronique", cat: "Finance & Télécoms" }, { name: "Agence de télécommunications", cat: "Finance & Télécoms" }, { name: "Boutique de vente de cartes SIM", cat: "Finance & Télécoms" }, { name: "Centre de services téléphoniques", cat: "Finance & Télécoms" }, { name: "Agence de services financiers", cat: "Finance & Télécoms" },
+      { name: "Atelier de couture", cat: "Artisanat & Construction" }, { name: "Atelier de broderie", cat: "Artisanat & Construction" }, { name: "Atelier de menuiserie", cat: "Artisanat & Construction" }, { name: "Atelier de soudure", cat: "Artisanat & Construction" }, { name: "Atelier de mécanique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de téléphones", cat: "Artisanat & Construction" }, { name: "Atelier de réparation informatique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électroménager", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électronique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de réfrigérateurs", cat: "Artisanat & Construction" }, { name: "Entreprise de plomberie", cat: "Artisanat & Construction" }, { name: "Entreprise d'électricité", cat: "Artisanat & Construction" }, { name: "Entreprise de construction", cat: "Artisanat & Construction" }, { name: "Entreprise de BTP", cat: "Artisanat & Construction" }, { name: "Entreprise de carrelage", cat: "Artisanat & Construction" }, { name: "Entreprise de peinture bâtiment", cat: "Artisanat & Construction" }, { name: "Entreprise de vitrerie", cat: "Artisanat & Construction" }, { name: "Entreprise de climatisation", cat: "Artisanat & Construction" }, { name: "Entreprise de forage", cat: "Artisanat & Construction" }, { name: "Entreprise de forage et installation de pompes", cat: "Artisanat & Construction" }, { name: "Entreprise de décoration intérieure", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie aluminium", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie bois", cat: "Artisanat & Construction" }, { name: "Atelier de fabrication métallique", cat: "Artisanat & Construction" }, { name: "Entreprise de paysagisme", cat: "Artisanat & Construction" },
+      { name: "Salon de beauté", cat: "Beauté & Mode" }, { name: "Salon de coiffure", cat: "Beauté & Mode" }, { name: "Salon de coiffure mixte", cat: "Beauté & Mode" }, { name: "Institut de beauté", cat: "Beauté & Mode" }, { name: "Salon de manucure", cat: "Beauté & Mode" }, { name: "Salon de pédicure", cat: "Beauté & Mode" }, { name: "Centre de soins capillaires", cat: "Beauté & Mode" }, { name: "Salon de tresses", cat: "Beauté & Mode" }, { name: "Atelier de confection", cat: "Beauté & Mode" }, { name: "Pressing", cat: "Beauté & Mode" }, { name: "Blanchisserie", cat: "Beauté & Mode" }, { name: "Teinturerie", cat: "Beauté & Mode" }, { name: "Photographe professionnel", cat: "Beauté & Mode" }, { name: "Studio photo", cat: "Beauté & Mode" }, { name: "Studio d'enregistrement", cat: "Beauté & Mode" }, { name: "Imprimerie", cat: "Beauté & Mode" }, { name: "Centre de photocopie", cat: "Beauté & Mode" }, { name: "Cybercafé", cat: "Beauté & Mode" },
+      { name: "Service de secrétariat", cat: "Autres Services" }, { name: "Service de traduction", cat: "Autres Services" }, { name: "Service de rédaction", cat: "Autres Services" }, { name: "Service informatique", cat: "Autres Services" }, { name: "Service de dépannage", cat: "Autres Services" }, { name: "Service de livraison à domicile", cat: "Autres Services" }, { name: "Service de jardinage", cat: "Autres Services" }, { name: "Service de décoration", cat: "Autres Services" }, { name: "Service traiteur", cat: "Autres Services" }, { name: "Service de location de matériel", cat: "Autres Services" }, { name: "Service événementiel", cat: "Autres Services" }, { name: "Service de maintenance", cat: "Autres Services" }, { name: "Service de réparation", cat: "Autres Services" }, { name: "Service de nettoyage à domicile", cat: "Autres Services" }, { name: "Autres activités", cat: "Autres Services" }
+    ];
 
-  // Menuiserie & Bois
-  { name: "Menuisier bois", cat: "Menuiserie & Bois" }, { name: "Ébéniste", cat: "Menuiserie & Bois" },
-  { name: "Menuisier aluminium", cat: "Menuiserie & Bois" }, { name: "Vitrier", cat: "Menuiserie & Bois" },
-  { name: "Technicien constructeur ouvrage bois", cat: "Menuiserie & Bois" },
+    for (let m of metiersOfficiels) {
+      await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [m.name, m.cat]);
+    }
 
-  // Métal & Métallurgie
-  { name: "Soudeur", cat: "Métal & Métallurgie" }, { name: "Métallier", cat: "Métal & Métallurgie" },
-  { name: "Ferronnier d'art", cat: "Métal & Métallurgie" }, { name: "Fondeur de bronze", cat: "Métal & Métallurgie" },
-  { name: "Bijoutier", cat: "Métal & Métallurgie" }, { name: "Orfèvre", cat: "Métal & Métallurgie" },
-
-  // Artisanat d'Art & Décoration
-  { name: "Sculpteur sur bois", cat: "Artisanat d'Art" }, { name: "Potier", cat: "Artisanat d'Art" },
-  { name: "Céramiste", cat: "Artisanat d'Art" }, { name: "Vannier", cat: "Artisanat d'Art" },
-  { name: "Maroquinier d'art", cat: "Artisanat d'Art" }, { name: "Tisserand", cat: "Artisanat d'Art" },
-  { name: "Brodeur", cat: "Artisanat d'Art" }, { name: "Teinturier", cat: "Artisanat d'Art" },
-  { name: "Décorateur floral", cat: "Artisanat d'Art" }, { name: "Créateur de parfums", cat: "Artisanat d'Art" },
-  { name: "Paysagiste", cat: "Artisanat d'Art" }, { name: "Créateur d'espaces verts", cat: "Artisanat d'Art" },
-
-  // Automobile & Mécanique
-  { name: "Mécanicien automobile", cat: "Automobile & Mécanique" }, { name: "Électricien automobile", cat: "Automobile & Mécanique" },
-  { name: "Tôlier", cat: "Automobile & Mécanique" }, { name: "Technicien diagnostic auto", cat: "Automobile & Mécanique" },
-  { name: "Contrôleur technique automobile", cat: "Automobile & Mécanique" }, { name: "Mécanicien moto", cat: "Automobile & Mécanique" },
-
-  // Énergie & Froid
-  { name: "Technicien en énergies renouvelables", cat: "Énergie & Froid" },
-  { name: "Installateur photovoltaïque", cat: "Énergie & Froid" },
-  { name: "Technicien froid et climatisation", cat: "Énergie & Froid" },
-  { name: "Ascensoriste", cat: "Énergie & Froid" },
-  { name: "Domoticien", cat: "Énergie & Froid" },
-
-  // Agriculture, Élevage & Pêche
-  { name: "Aviculteur", cat: "Agriculture & Élevage" }, { name: "Cuniculteur", cat: "Agriculture & Élevage" },
-  { name: "Éleveur de bovins", cat: "Agriculture & Élevage" }, { name: "Éleveur de porcins", cat: "Agriculture & Élevage" },
-  { name: "Pisciculteur", cat: "Agriculture & Élevage" }, { name: "Aquaculteur", cat: "Agriculture & Élevage" },
-  { name: "Horticulteur", cat: "Agriculture & Élevage" }, { name: "Maraîcher", cat: "Agriculture & Élevage" },
-  { name: "Pépiniériste", cat: "Agriculture & Élevage" }, { name: "Producteur céréalier", cat: "Agriculture & Élevage" },
-  { name: "Producteur de racines et tubercules", cat: "Agriculture & Élevage" },
-  { name: "Arboriculteur fruitier", cat: "Agriculture & Élevage" }, { name: "Exploitant palmier à huile", cat: "Agriculture & Élevage" },
-
-  // Numérique & Tech
-  { name: "Technicien Canal+ / Installateur parabole", cat: "Numérique & Tech" },
-  { name: "Technicien réseau / Câblage", cat: "Numérique & Tech" },
-  { name: "Développeur web", cat: "Numérique & Tech" }, { name: "Développeur mobile", cat: "Numérique & Tech" },
-  { name: "Cybersécurité", cat: "Numérique & Tech" }, { name: "Data Analyst", cat: "Numérique & Tech" },
-  { name: "Expert IA / Big Data", cat: "Numérique & Tech" }, { name: "Marketing digital", cat: "Numérique & Tech" },
-  { name: "Graphiste", cat: "Numérique & Tech" }, { name: "Community Manager", cat: "Numérique & Tech" },
-  { name: "Technicien maintenance informatique", cat: "Numérique & Tech" },
-
-  // Santé & Paramédical
-  { name: "Infirmier", cat: "Santé" }, { name: "Sage-femme", cat: "Santé" },
-  { name: "Technicien de laboratoire", cat: "Santé" }, { name: "Aide-soignant", cat: "Santé" },
-  { name: "Kinésithérapeute", cat: "Santé" }, { name: "Secrétaire médical", cat: "Santé" },
-  { name: "Dentiste", cat: "Santé" }, { name: "Pharmacien", cat: "Santé" },
-
-  // Hôtellerie & Restauration
-  { name: "Cuisinier", cat: "Hôtellerie & Restauration" }, { name: "Pâtissier", cat: "Hôtellerie & Restauration" },
-  { name: "Boulanger", cat: "Hôtellerie & Restauration" }, { name: "Serveur", cat: "Hôtellerie & Restauration" },
-  { name: "Réceptionniste d'hôtel", cat: "Hôtellerie & Restauration" }, { name: "Guide touristique", cat: "Hôtellerie & Restauration" },
-  { name: "Agent d'entretien hôtelier", cat: "Hôtellerie & Restauration" }, { name: "Traiteur", cat: "Hôtellerie & Restauration" },
-
-  // Services & Administration
-  { name: "Comptable", cat: "Services & Administration" }, { name: "Secrétaire administratif", cat: "Services & Administration" },
-  { name: "Agent administratif", cat: "Services & Administration" }, { name: "Juriste", cat: "Services & Administration" },
-  { name: "Assistant RH", cat: "Services & Administration" }, { name: "Agent de sécurité", cat: "Sécurité & Gardiennage" },
-  { name: "Gardien", cat: "Services & Administration" }, { name: "Femme de ménage", cat: "Services & Administration" },
-  { name: "Jardinier", cat: "Services & Administration" }, { name: "Chauffeur", cat: "Services & Administration" },
-  { name: "Livreur", cat: "Services & Administration" },
-
-  // Éducation & Formation
-  { name: "Professeur", cat: "Éducation & Formation" }, { name: "Instituteur", cat: "Éducation & Formation" },
-  { name: "Répétiteur", cat: "Éducation & Formation" }, { name: "Formateur professionnel", cat: "Éducation & Formation" },
-
-  // NOUVEAUX MÉTIERS COMMERCE, LOISIRS, SANTÉ...
-  { name: "Restaurant", cat: "Commerce & Boutiques" }, { name: "Boutique", cat: "Commerce & Boutiques" }, { name: "Supérette", cat: "Commerce & Boutiques" }, { name: "Supermarché", cat: "Commerce & Boutiques" }, { name: "Alimentation générale", cat: "Commerce & Boutiques" }, { name: "Épicerie", cat: "Commerce & Boutiques" }, { name: "Pharmacie", cat: "Commerce & Boutiques" }, { name: "Parapharmacie", cat: "Commerce & Boutiques" }, { name: "Boulangerie", cat: "Commerce & Boutiques" }, { name: "Pâtisserie", cat: "Commerce & Boutiques" }, { name: "Boucherie", cat: "Commerce & Boutiques" }, { name: "Poissonnerie", cat: "Commerce & Boutiques" }, { name: "Vente de fruits et légumes", cat: "Commerce & Boutiques" }, { name: "Vente de produits surgelés", cat: "Commerce & Boutiques" }, { name: "Dépôt de boissons", cat: "Commerce & Boutiques" }, { name: "Dépôt de gaz domestique", cat: "Commerce & Boutiques" }, { name: "Quincaillerie", cat: "Commerce & Boutiques" }, { name: "Agence immobilière", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de téléphones et accessoires", cat: "Commerce & Boutiques" }, { name: "Boutique Apple Store", cat: "Commerce & Boutiques" }, { name: "Distributeur agréé Canal+", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de mèches", cat: "Commerce & Boutiques" }, { name: "Compagnie d'assurance", cat: "Commerce & Boutiques" }, { name: "Compagnie de transport", cat: "Commerce & Boutiques" }, { name: "Boutique de vente d'appareils électroménagers", cat: "Commerce & Boutiques" }, { name: "Boutique de vêtements", cat: "Commerce & Boutiques" }, { name: "Boutique de chaussures", cat: "Commerce & Boutiques" }, { name: "Boutique de sacs et accessoires de mode", cat: "Commerce & Boutiques" }, { name: "Boutique de tissus et pagnes", cat: "Commerce & Boutiques" }, { name: "Boutique de cosmétiques", cat: "Commerce & Boutiques" }, { name: "Boutique de parfumerie", cat: "Commerce & Boutiques" }, { name: "Boutique de jouets", cat: "Commerce & Boutiques" }, { name: "Boutique de vente de produits chinois", cat: "Commerce & Boutiques" }, { name: "Librairie", cat: "Commerce & Boutiques" }, { name: "Papeterie", cat: "Commerce & Boutiques" }, { name: "Bijouterie", cat: "Commerce & Boutiques" }, { name: "Cave à vin", cat: "Commerce & Boutiques" }, { name: "Magasin de meubles", cat: "Commerce & Boutiques" }, { name: "Magasin de décoration intérieure", cat: "Commerce & Boutiques" }, { name: "Magasin de matériaux de construction", cat: "Commerce & Boutiques" }, { name: "Magasin de peinture", cat: "Commerce & Boutiques" }, { name: "Magasin de fournitures scolaires", cat: "Commerce & Boutiques" }, { name: "Magasin de pièces électroniques", cat: "Commerce & Boutiques" }, { name: "Magasin de matériel informatique", cat: "Commerce & Boutiques" }, { name: "Barber shop", cat: "Commerce & Boutiques" }, { name: "Lavage moto", cat: "Commerce & Boutiques" },
-
-  // Restauration & Loisirs
-  { name: "Fast-food", cat: "Restauration & Loisirs" }, { name: "Maquis", cat: "Restauration & Loisirs" }, { name: "Cafétéria", cat: "Restauration & Loisirs" }, { name: "Glacier", cat: "Restauration & Loisirs" }, { name: "Pizzeria", cat: "Restauration & Loisirs" }, { name: "Restaurant africain", cat: "Restauration & Loisirs" }, { name: "Restaurant gastronomique", cat: "Restauration & Loisirs" }, { name: "Bar", cat: "Restauration & Loisirs" }, { name: "Discothèque", cat: "Restauration & Loisirs" }, { name: "Hôtel", cat: "Restauration & Loisirs" }, { name: "Auberge", cat: "Restauration & Loisirs" }, { name: "Résidence meublée", cat: "Restauration & Loisirs" }, { name: "Maison d'hôtes", cat: "Restauration & Loisirs" }, { name: "Camping", cat: "Restauration & Loisirs" }, { name: "Espace événementiel", cat: "Restauration & Loisirs" }, { name: "Salle de réception", cat: "Restauration & Loisirs" }, { name: "Salle de jeux", cat: "Restauration & Loisirs" }, { name: "Salle de sport", cat: "Restauration & Loisirs" }, { name: "Salle de fitness", cat: "Restauration & Loisirs" }, { name: "Piscine", cat: "Restauration & Loisirs" }, { name: "Centre de loisirs", cat: "Restauration & Loisirs" },
-
-  // Santé & Bien-être
-  { name: "Clinique", cat: "Santé & Bien-être" }, { name: "Hôpital", cat: "Santé & Bien-être" }, { name: "Cabinet médical", cat: "Santé & Bien-être" }, { name: "Cabinet dentaire", cat: "Santé & Bien-être" }, { name: "Cabinet ophtalmologique", cat: "Santé & Bien-être" }, { name: "Laboratoire d'analyses médicales", cat: "Santé & Bien-être" }, { name: "Centre de radiologie", cat: "Santé & Bien-être" }, { name: "Centre de soins", cat: "Santé & Bien-être" }, { name: "Centre de kinésithérapie", cat: "Santé & Bien-être" }, { name: "Centre de vaccination", cat: "Santé & Bien-être" }, { name: "Cabinet vétérinaire", cat: "Santé & Bien-être" }, { name: "Opticien", cat: "Santé & Bien-être" }, { name: "Centre de bien-être", cat: "Santé & Bien-être" }, { name: "Institut de massage", cat: "Santé & Bien-être" }, { name: "Centre dermatologique", cat: "Santé & Bien-être" },
-
-  // Éducation & Formation
-  { name: "École maternelle", cat: "Éducation & Formation" }, { name: "École primaire", cat: "Éducation & Formation" }, { name: "Collège", cat: "Éducation & Formation" }, { name: "Lycée", cat: "Éducation & Formation" }, { name: "Université", cat: "Éducation & Formation" }, { name: "Établissement d'enseignement supérieur", cat: "Éducation & Formation" }, { name: "Centre de formation professionnelle", cat: "Éducation & Formation" }, { name: "Centre de formation informatique", cat: "Éducation & Formation" }, { name: "Auto-école", cat: "Éducation & Formation" }, { name: "Crèche", cat: "Éducation & Formation" }, { name: "Garderie", cat: "Éducation & Formation" }, { name: "Centre de soutien scolaire", cat: "Éducation & Formation" }, { name: "Centre de langues", cat: "Éducation & Formation" }, { name: "Bibliothèque", cat: "Éducation & Formation" },
-
-  // Automobile & Transport
-  { name: "Garage", cat: "Automobile & Transport" }, { name: "Garage automobile", cat: "Automobile & Transport" }, { name: "Garage moto", cat: "Automobile & Transport" }, { name: "Station-service", cat: "Automobile & Transport" }, { name: "Centre de lavage automobile", cat: "Automobile & Transport" }, { name: "Vente de véhicules", cat: "Automobile & Transport" }, { name: "Location de véhicules", cat: "Automobile & Transport" }, { name: "Agence de location de motos", cat: "Automobile & Transport" }, { name: "Vente de pneus", cat: "Automobile & Transport" }, { name: "Vente de batteries automobiles", cat: "Automobile & Transport" }, { name: "Vente de lubrifiants", cat: "Automobile & Transport" }, { name: "Centre de vidange", cat: "Automobile & Transport" }, { name: "Centre de diagnostic automobile", cat: "Automobile & Transport" }, { name: "Carrosserie automobile", cat: "Automobile & Transport" }, { name: "Auto-électricité", cat: "Automobile & Transport" }, { name: "Vulcanisateur", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées de moto", cat: "Automobile & Transport" }, { name: "Boutique de vente de pièces détachées automobiles", cat: "Automobile & Transport" }, { name: "Agence de transport interurbain", cat: "Automobile & Transport" }, { name: "Agence de voyage", cat: "Automobile & Transport" }, { name: "Gare routière", cat: "Automobile & Transport" }, { name: "Compagnie de livraison", cat: "Automobile & Transport" }, { name: "Entreprise de déménagement", cat: "Automobile & Transport" }, { name: "Agence de fret et transit", cat: "Automobile & Transport" },
-
-  // Services & Administration
-  { name: "Cabinet comptable", cat: "Services & Administration" }, { name: "Cabinet juridique", cat: "Services & Administration" }, { name: "Cabinet d'avocats", cat: "Services & Administration" }, { name: "Cabinet de conseil", cat: "Services & Administration" }, { name: "Agence de communication", cat: "Services & Administration" }, { name: "Agence de publicité", cat: "Services & Administration" }, { name: "Agence de marketing digital", cat: "Services & Administration" }, { name: "Agence web", cat: "Services & Administration" }, { name: "Agence de graphisme", cat: "Services & Administration" }, { name: "Agence de création audiovisuelle", cat: "Services & Administration" }, { name: "Cabinet d'architecture", cat: "Services & Administration" }, { name: "Cabinet de géomètre", cat: "Services & Administration" }, { name: "Agence de sécurité privée", cat: "Services & Administration" }, { name: "Agence de nettoyage", cat: "Services & Administration" }, { name: "Entreprise de gardiennage", cat: "Services & Administration" }, { name: "Agence de recrutement", cat: "Services & Administration" }, { name: "Cabinet de ressources humaines", cat: "Services & Administration" }, { name: "Cabinet d'expertise immobilière", cat: "Services & Administration" }, { name: "Agence de décoration événementielle", cat: "Services & Administration" }, { name: "Pompes funèbres", cat: "Services & Administration" },
-
-  // Finance & Télécoms
-  { name: "Banque", cat: "Finance & Télécoms" }, { name: "Institution de microfinance", cat: "Finance & Télécoms" }, { name: "Agence de transfert d'argent", cat: "Finance & Télécoms" }, { name: "Agence Mobile Money", cat: "Finance & Télécoms" }, { name: "Agence de change", cat: "Finance & Télécoms" }, { name: "Agence d'assurance", cat: "Finance & Télécoms" }, { name: "Agence de paiement électronique", cat: "Finance & Télécoms" }, { name: "Agence de télécommunications", cat: "Finance & Télécoms" }, { name: "Boutique de vente de cartes SIM", cat: "Finance & Télécoms" }, { name: "Centre de services téléphoniques", cat: "Finance & Télécoms" }, { name: "Agence de services financiers", cat: "Finance & Télécoms" },
-
-  // Artisanat & Construction
-  { name: "Atelier de couture", cat: "Artisanat & Construction" }, { name: "Atelier de broderie", cat: "Artisanat & Construction" }, { name: "Atelier de menuiserie", cat: "Artisanat & Construction" }, { name: "Atelier de soudure", cat: "Artisanat & Construction" }, { name: "Atelier de mécanique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de téléphones", cat: "Artisanat & Construction" }, { name: "Atelier de réparation informatique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électroménager", cat: "Artisanat & Construction" }, { name: "Atelier de réparation électronique", cat: "Artisanat & Construction" }, { name: "Atelier de réparation de réfrigérateurs", cat: "Artisanat & Construction" }, { name: "Entreprise de plomberie", cat: "Artisanat & Construction" }, { name: "Entreprise d'électricité", cat: "Artisanat & Construction" }, { name: "Entreprise de construction", cat: "Artisanat & Construction" }, { name: "Entreprise de BTP", cat: "Artisanat & Construction" }, { name: "Entreprise de carrelage", cat: "Artisanat & Construction" }, { name: "Entreprise de peinture bâtiment", cat: "Artisanat & Construction" }, { name: "Entreprise de vitrerie", cat: "Artisanat & Construction" }, { name: "Entreprise de climatisation", cat: "Artisanat & Construction" }, { name: "Entreprise de forage", cat: "Artisanat & Construction" }, { name: "Entreprise de forage et installation de pompes", cat: "Artisanat & Construction" }, { name: "Entreprise de décoration intérieure", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie aluminium", cat: "Artisanat & Construction" }, { name: "Entreprise de menuiserie bois", cat: "Artisanat & Construction" }, { name: "Atelier de fabrication métallique", cat: "Artisanat & Construction" }, { name: "Entreprise de paysagisme", cat: "Artisanat & Construction" },
-
-  // Beauté & Mode
-  { name: "Salon de beauté", cat: "Beauté & Mode" }, { name: "Salon de coiffure", cat: "Beauté & Mode" }, { name: "Salon de coiffure mixte", cat: "Beauté & Mode" }, { name: "Institut de beauté", cat: "Beauté & Mode" }, { name: "Salon de manucure", cat: "Beauté & Mode" }, { name: "Salon de pédicure", cat: "Beauté & Mode" }, { name: "Centre de soins capillaires", cat: "Beauté & Mode" }, { name: "Salon de tresses", cat: "Beauté & Mode" }, { name: "Atelier de confection", cat: "Beauté & Mode" }, { name: "Pressing", cat: "Beauté & Mode" }, { name: "Blanchisserie", cat: "Beauté & Mode" }, { name: "Teinturerie", cat: "Beauté & Mode" }, { name: "Photographe professionnel", cat: "Beauté & Mode" }, { name: "Studio photo", cat: "Beauté & Mode" }, { name: "Studio d'enregistrement", cat: "Beauté & Mode" }, { name: "Imprimerie", cat: "Beauté & Mode" }, { name: "Centre de photocopie", cat: "Beauté & Mode" }, { name: "Cybercafé", cat: "Beauté & Mode" },
-
-  // Autres Services
-  { name: "Service de secrétariat", cat: "Autres Services" }, { name: "Service de traduction", cat: "Autres Services" }, { name: "Service de rédaction", cat: "Autres Services" }, { name: "Service informatique", cat: "Autres Services" }, { name: "Service de dépannage", cat: "Autres Services" }, { name: "Service de livraison à domicile", cat: "Autres Services" }, { name: "Service de jardinage", cat: "Autres Services" }, { name: "Service de décoration", cat: "Autres Services" }, { name: "Service traiteur", cat: "Autres Services" }, { name: "Service de location de matériel", cat: "Autres Services" }, { name: "Service événementiel", cat: "Autres Services" }, { name: "Service de maintenance", cat: "Autres Services" }, { name: "Service de réparation", cat: "Autres Services" }, { name: "Service de nettoyage à domicile", cat: "Autres Services" }, { name: "Autres activités", cat: "Autres Services" }
-];
-
-for (let m of metiersOfficiels) {
-  await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [m.name, m.cat]);
-}
-//
     // --- INITIALISATION DE FIREBASE ---
     if (process.env.FIREBASE_PROJECT_ID) {
       admin.initializeApp({
@@ -1193,11 +995,3 @@ for (let m of metiersOfficiels) {
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
 startServer();
-app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).send(page("Erreur", "<h2>Une des photos est trop lourde (max 10 Mo).</h2><a href='/devenir-professionnel'>Réessayer</a>", null));
-    }
-  }
-  res.status(500).send("Erreur serveur");
-});
