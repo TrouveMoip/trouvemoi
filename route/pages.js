@@ -1,19 +1,8 @@
 const express = require('express');
 const crypto = require('crypto');
-bcrypt = require('bcrypt');
-const QUARTIERS_BENIN = {
-  "Cotonou": ["Akpakpa", "Cadjehoun", "Fidjrossè", "Ganhi", "Gbégamey", "Sainte-Rita", "Sikècodji", "Zogbo", "Agla", "Aïbatin", "Dantokpa", "Houéyiho", "Ladji", "Vèdoko"],
-  "Porto-Novo": ["Djègan-Kpèvi", "Ouando", "Tokpa", "Zongo", "Attakè", "Avrankou"],
-  "Parakou": ["Zongo", "Titirou", "Ganhi", "Ladji", "Tourou"],
-  "Abomey-Calavi": ["Calavi Centre", "Godomey", "Zogbadjè", "Akassato", "Togba", "Hèvié"],
-  "Bohicon": ["Bohicon Centre", "Saclo", "Passagon", "Sodohomè"],
-  "Natitingou": ["Natitingou Centre", "Kouandé", "Toucountouna"],
-  "Ouidah": ["Ouidah Centre", "Djègbadji", "Pahou", "Sèmè"],
-  "Lokossa": ["Lokossa Centre", "Houin", "Ouèssè"],
-  "Kandi": ["Kandi Centre", "Angaradébou", "Sonsoro"],
-  "Malanville": ["Malanville Centre", "Garou", "Toumboutou"]
-};
-module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP) {
+const bcrypt = require('bcrypt');
+
+module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN) {
   const router = express.Router();
 
   function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
@@ -67,9 +56,9 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               <svg width="20" height="20" viewBox="0 0 24 24" fill="${person.is_favorite ? '#ef4444' : 'none'}" stroke="${person.is_favorite ? '#ef4444' : '#6b7280'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
             </div>
             <div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
-  <span>${escapeHtml(displayName)} ${renderKycBadge(person)}</span>
-  ${person.agencies_count > 0 ? `<a href="/pro/${person.id}/agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences disponibles</a>` : ""}
-</div>
+              <span>${escapeHtml(displayName)} ${renderKycBadge(person)}</span>
+              ${person.agencies_count > 0 ? `<a href="/pro/${person.id}/agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences disponibles</a>` : ""}
+            </div>
             <div class="pro-meta" style="color: ${borderColor}; font-weight: 700; font-size: 11px;">${escapeHtml(person.profession)}</div>
             <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
             <div style="margin: 8px 0;">${reviewsCount > 0 ? renderStars(avgRating) : "Pas d'avis"}</div>
@@ -141,37 +130,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
         const queryValues = [...values, visitorId, limit, offset];
         const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $${queryValues.length - 2}) AS is_favorite FROM professional_applications p ${whereClause} ORDER BY ${orderBy} LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
         result = await pool.query(query, queryValues);
-        // Recherche des agences correspondantes
-let agencesSearchHtml = "";
-try {
-  let agenceWhere = ` WHERE a.status = 'approved'`;
-  let agenceValues = [];
-  if (profession) {
-    agenceValues.push(`%${profession}%`);
-    agenceWhere += ` AND (a.name ILIKE $${agenceValues.length} OR p.profession ILIKE $${agenceValues.length})`;
-  }
-  if (city) {
-    agenceValues.push(`%${city}%`);
-    agenceWhere += ` AND a.address ILIKE $${agenceValues.length}`;
-  }
-  const agencesResult = await pool.query(`SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id ${agenceWhere} LIMIT 5`, agenceValues);
-  
-  if (agencesResult.rows.length > 0) {
-    agencesSearchHtml = `<h2 style="text-align: center; margin: 30px 0 20px 0;">🏢 Agences correspondantes</h2><div class="pros-grid">${agencesResult.rows.map(ag => `
-      <article class="pro-card" style="border-left: 4px solid #8b5cf6;">
-        <div class="pro-name">🏢 ${escapeHtml(ag.name)}</div>
-        <div class="pro-meta" style="color: #8b5cf6; font-weight: 700;">Réseau : ${escapeHtml(ag.parent_name)}</div>
-        <div class="pro-meta">📍 ${escapeHtml(ag.address)}</div>
-        <div class="pro-actions" style="margin-top: 12px;">
-          <a href="/agence/${ag.id}" class="button" style="grid-column: span 2; background:#8b5cf6; color:white;">Voir l'agence →</a>
-        </div>
-      </article>
-    `).join("")}</div>`;
-  }
-} catch (e) {
-  console.error("Erreur recherche agences:", e);
-}
-
+        
         let agenceQuery = `SELECT a.id, a.name, a.address, p.company_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status = 'approved'`;
         let agenceValues = [];
         if (profession) { agenceValues.push(`%${profession}%`); agenceQuery += ` AND (a.name ILIKE $${agenceValues.length} OR p.profession ILIKE $${agenceValues.length})`; }
@@ -183,7 +142,7 @@ try {
           agencesSearchHtml = `<h2 style="text-align: center; margin: 30px 0 20px 0;">🏢 Agences correspondantes</h2><div class="pros-grid" style="margin-bottom: 40px;">${agencesSearch.rows.map(ag => `<article class="pro-card" style="border-left: 4px solid #8b5cf6;"><div class="pro-name">${escapeHtml(ag.name)}</div><div class="pro-meta" style="color: #8b5cf6;">Réseau : ${escapeHtml(ag.parent_name)}</div><div class="pro-meta">📍 ${escapeHtml(ag.address)}</div><div class="pro-actions" style="margin-top:10px;"><a href="/agence/${ag.id}" class="button" style="grid-column: span 2; background:#8b5cf6; color:white;">Voir l'agence</a></div></article>`).join("")}</div>`;
         }
 
-prosSection = `<div class="pros-grid" id="pros-grid">${result.rows.map(person => `<article class="pro-card"><div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;"><span>${escapeHtml(getDisplayName(person))}</span>${person.agencies_count > 0 ? `<a href="/pro/${person.id}/agences" style="display:inline-flex; align-items:center; background:#dcfce7; color:#166534; padding:4px 10px; border-radius:20px; font-size:10px; font-weight:700; border:1px solid #bbf7d0; text-decoration:none; cursor:pointer;" onmouseover="this.style.background='#bbf7d0'" onmouseout="this.style.background='#dcfce7'"><span style="width:6px; height:6px; background:#22c55e; border-radius:50%; margin-right:6px;"></span>Agences</a>` : ""}</div><div class="pro-meta" style="color:#2563eb;">${escapeHtml(person.profession)}</div><div class="pro-meta">📍 ${escapeHtml(person.city)}</div><div class="pro-actions" style="margin-top:10px;"><a href="/pro/${person.id}" class="button" style="grid-column: span 2; background:#f3f4f6; color:#374151;">Voir le profil</a></div></article>`).join("")}</div>`;
+        prosSection = `<div class="pros-grid" id="pros-grid">${result.rows.map(person => `<article class="pro-card"><div class="pro-name" style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;"><span>${escapeHtml(getDisplayName(person))}</span></div><div class="pro-meta" style="color:#2563eb;">${escapeHtml(person.profession)}</div><div class="pro-meta">📍 ${escapeHtml(person.city)}</div><div class="pro-actions" style="margin-top:10px;"><a href="/pro/${person.id}" class="button" style="grid-column: span 2; background:#f3f4f6; color:#374151;">Voir le profil</a></div></article>`).join("")}</div>`;
         paginationHtml = renderPagination(currentPage, totalPages, "/recherche", { profession, city, category, neighborhood, sort, ...(hasCoords ? { lat, lng } : {}) });
       }
 
@@ -218,200 +177,177 @@ prosSection = `<div class="pros-grid" id="pros-grid">${result.rows.map(person =>
       res.send(page("Recherche", content, proConnected));
     } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur technique</h2>", null)); }
   });
-
   // ==========================================
-  // 3. PAGE PROFIL PUBLIC
-  // ==========================================
-  router.get("/pro/:id", async (req, res) => { 
-    try {
-      const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
-      if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-      const visitorId = getOrCreateVisitorId(req, res);
-      pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
+// 3. PAGE PROFIL PUBLIC
+// ==========================================
+router.get("/pro/:id", async (req, res) => { 
+  try {
+    const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+    const visitorId = getOrCreateVisitorId(req, res);
+    pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
 
-      const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id, visitorId]);
-      if (!result.rows.length) return res.redirect(303, "/");
-      const person = result.rows[0];
-      const displayName = getDisplayName(person);
+    const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id, visitorId]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const person = result.rows[0];
+    const displayName = getDisplayName(person);
 
-      const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
-      const similarHtml = similarResult.rows.map(sim => `<a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;"><div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div><div style="font-size:13px; color:#6b7280;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div></a>`).join("");
+    const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
+    const similarHtml = similarResult.rows.map(sim => `<a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;"><div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div><div style="font-size:13px; color:#6b7280;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div></a>`).join("");
 
-      let rawPhone = (person.phone || "").replace(/\D/g, ""); if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
-      const phoneClean = rawPhone; const whatsappNumber = /^\d{8,10}$/.test(rawPhone) ? "229" + rawPhone : null;
+    let rawPhone = (person.phone || "").replace(/\D/g, ""); if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
+    const phoneClean = rawPhone; const whatsappNumber = /^\d{8,10}$/.test(rawPhone) ? "229" + rawPhone : null;
 
-      let contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
-      const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
-      
-      let horairesHtml = "";
-      if (person.horaires_json) {
-        let h = {}; try { h = JSON.parse(person.horaires_json); } catch (e) { h = {}; }
-        const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-        let rows = "";
-        jours.forEach(j => {
-          if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
-          else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
-        });
-        horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
-      }
-
-      const galerieData = [{ url: person.photo_galerie_1, desc: person.photo_galerie_1_desc }, { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc }, { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }].filter(item => item.url);
-      let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; gap:10px;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">${item.desc ? `<p style="font-size:12px; margin-top:4px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
-
-      const content = `
-        <div style="max-width: 800px; margin: 0 auto;">
-          <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
- <div style="margin-bottom:12px;">
-  <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
-    ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
-  </a>
-</div>
-            ${openStatusBadge}
-            <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
-            <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
-            <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-            <div style="font-size: 22px; color: #f59e0b; margin-top: 12px;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size:15px; color:#6b7280;">(${person.reviews_count} avis)</span></div>
-          </div>
-          
-          <div class="card">
-            <h2>À propos</h2>
-            <p style="white-space: pre-line;">${escapeHtml(person.service_description)}</p>
-            ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire</a>` : ""}</div>` : ""}
-            <div style="margin-top: 24px;">${contactButtons}</div>
-            <!-- BOUTON PARTAGER (Tous réseaux) --> 
-<div style="text-align: center; margin-top: 16px;">
-  <button onclick="partagerProfil('${escapeHtml(displayName)}', '${escapeHtml(person.profession)}', '${escapeHtml(person.city)}', '${APP_URL}/pro/${person.id}')" style="display:inline-flex; align-items:center; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding:10px 24px; border-radius:30px; text-decoration:none; font-weight:bold; font-size:14px; cursor:pointer; margin:0;">
-    📤 Partager ce profil
-  </button>
-</div>
-<!-- SECTION MES AGENCES -->
-${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
-<div class="card" id="section-agences" style="margin-top:20px;"> <!-- 👈 AJOUT DE L'ID ICI -->
-  <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
-  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
-  ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
-      <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
-        <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
-        <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
-        <div style="font-size:12px; color:#2563eb; font-weight:600;">Voir l'agence →</div>
-      </a>
-    `).join("")}
-  </div>
-</div>
-` : ""}
-<script>
-  function partagerProfil(nom, metier, ville, lien) {
-const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' + metier + ') à ' + ville + '. Voici son profil : ' + lien;    
-    // Si le téléphone supporte le partage natif (la plupart des mobiles)
-    if (navigator.share) {
-      navigator.share({
-        title: 'TrouveMoi - ' + nom,
-        text: texte,
-        url: lien
-      }).catch((error) => console.log('Erreur de partage', error));
-    } else {
-      // Sinon (sur ordinateur), on copie le lien
-      navigator.clipboard.writeText(texte).then(() => {
-        alert("✅ Le lien et le texte ont été copiés ! Vous pouvez les coller dans WhatsApp, Facebook, SMS, etc.");
-      }).catch(() => {
-        prompt("Copiez ce lien pour partager :", texte);
+    let contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
+    const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
+    
+    let horairesHtml = "";
+    if (person.horaires_json) {
+      let h = {}; try { h = JSON.parse(person.horaires_json); } catch (e) { h = {}; }
+      const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+      let rows = "";
+      jours.forEach(j => {
+        if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
+        else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
       });
+      horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
     }
-  }
-  async function handleFavorite(e, id, isFav) {
-    e.preventDefault();
-    const btn = document.getElementById('fav-btn-' + id);
-    
-    // 1. Changement visuel immédiat (sans attendre le serveur)
-    if (isFav) {
-        btn.innerHTML = '🤍 Ajouter aux favoris';
-    } else {
-        btn.innerHTML = '❤️ Retirer des favoris';
-    }
-    
-    // 2. On envoie la requête au serveur en arrière-plan
-    try {
-        const res = await fetch('/api/favorite/' + id, { method: 'POST' });
-        const data = await res.json();
-        
-        if (!data.ok) {
-            // Si erreur, on remet l'ancien texte
-            btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris';
-        }
-    } catch(err) {
-        btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris';
-    }
-}
-</script>
+
+    const galerieData = [{ url: person.photo_galerie_1, desc: person.photo_galerie_1_desc }, { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc }, { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }].filter(item => item.url);
+    let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; gap:10px;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">${item.desc ? `<p style="font-size:12px; margin-top:4px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
+
+    const content = `
+      <div style="max-width: 800px; margin: 0 auto;">
+        <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
+          <div style="margin-bottom:12px;">
+            <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
+              ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
+            </a>
           </div>
-
-          ${galerieHtml}
-
-         <div class="card" style="background: #f9fafb;">
-  <h2>Avis des clients (${person.reviews_count})</h2>
-  ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
-  
-  <!-- AFFICHAGE DES AVIS ET RÉPONSES -->
-  <div style="margin-top: 20px;">
-    ${(await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [person.id])).rows.map(r => `
-      <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-          <strong>${escapeHtml(r.author_name)}</strong>
-          <a href="/contact?report=${r.id}" style="font-size:11px; color:#ef4444; text-decoration:none; margin-left:10px; font-weight:bold;">🚩 Signaler</a>
-          <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
+          ${openStatusBadge}
+          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
+          <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
+          <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+          <div style="font-size: 22px; color: #f59e0b; margin-top: 12px;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size:15px; color:#6b7280;">(${person.reviews_count} avis)</span></div>
         </div>
-        <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
         
-        ${r.pro_reply ? `
-          <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px; margin-top:12px; border-radius:4px;">
-            <strong style="color:#065f46; font-size:12px; text-transform:uppercase;">Réponse du professionnel :</strong>
-            <p style="font-size:14px; margin:4px 0 0 0; color:#374151;">${escapeHtml(r.pro_reply)}</p>
+        <div class="card">
+          <h2>À propos</h2>
+          <p style="white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+          ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire</a>` : ""}</div>` : ""}
+          <div style="margin-top: 24px;">${contactButtons}</div>
+          
+          <div style="text-align: center; margin-top: 16px;">
+            <button onclick="partagerProfil('${escapeHtml(displayName)}', '${escapeHtml(person.profession)}', '${escapeHtml(person.city)}', '${APP_URL}/pro/${person.id}')" style="display:inline-flex; align-items:center; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding:10px 24px; border-radius:30px; text-decoration:none; font-weight:bold; font-size:14px; cursor:pointer; margin:0;">
+              📤 Partager ce profil
+            </button>
           </div>
-        ` : ""}
-      </div>
-    `).join("")}
-  </div>
 
-  <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
-</div>
+          ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
+          <div class="card" id="section-agences" style="margin-top:20px;">
+            <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
+                <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
+                  <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
+                  <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
+                  <div style="font-size:12px; color:#2563eb; font-weight:600;">Voir l'agence →</div>
+                </a>
+              `).join("")}
+            </div>
+          </div>
+          ` : ""}
+          
+          <script>
+            function partagerProfil(nom, metier, ville, lien) {
+              const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' + metier + ') à ' + ville + '. Voici son profil : ' + lien;
+              if (navigator.share) {
+                navigator.share({ title: 'TrouveMoi - ' + nom, text: texte, url: lien }).catch((error) => console.log('Erreur de partage', error));
+              } else {
+                navigator.clipboard.writeText(texte).then(() => {
+                  alert("✅ Le lien et le texte ont été copiés ! Vous pouvez les coller dans WhatsApp, Facebook, SMS, etc.");
+                }).catch(() => { prompt("Copiez ce lien pour partager :", texte); });
+              }
+            }
+            async function handleFavorite(e, id, isFav) {
+              e.preventDefault();
+              const btn = document.getElementById('fav-btn-' + id);
+              if (isFav) { btn.innerHTML = '🤍 Ajouter aux favoris'; } else { btn.innerHTML = '❤️ Retirer des favoris'; }
+              try {
+                  const res = await fetch('/api/favorite/' + id, { method: 'POST' });
+                  const data = await res.json();
+                  if (!data.ok) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
+              } catch(err) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
+            }
+          </script>
+        </div>
 
-          ${similarHtml ? `<div style="margin-top: 24px;"><h2>Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
-        </div>`;
-      res.send(page(displayName, content, proConnected, { title: `${displayName} - ${person.profession}` }));
-    } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-  });
+        ${galerieHtml}
 
-  // ==========================================
-  // 4. PAGE AGENCE PUBLIQUE
-  // ==========================================
-  router.get("/agence/:id", async (req, res) => {
-    try {
-      const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
-      if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-      const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved'`, [id]);
-      if (!result.rows.length) return res.redirect(303, "/");
-      const agency = result.rows[0]; const parentName = getDisplayName(agency);
-      
-      const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
-      let contactButtons = "";
-      if (agency.phone_public && displayPhone) {
-        const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
-        const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
-        contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-  <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
-${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
-</div>`;
-      }
+        <div class="card" style="background: #f9fafb;">
+          <h2>Avis des clients (${person.reviews_count})</h2>
+          ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
+          
+          <div style="margin-top: 20px;">
+            ${(await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [person.id])).rows.map(r => `
+              <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                  <strong>${escapeHtml(r.author_name)}</strong>
+                  <a href="/contact?report=${r.id}" style="font-size:11px; color:#ef4444; text-decoration:none; margin-left:10px; font-weight:bold;">🚩 Signaler</a>
+                  <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
+                </div>
+                <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
+                
+                ${r.pro_reply ? `
+                  <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px; margin-top:12px; border-radius:4px;">
+                    <strong style="color:#065f46; font-size:12px; text-transform:uppercase;">Réponse du professionnel :</strong>
+                    <p style="font-size:14px; margin:4px 0 0 0; color:#374151;">${escapeHtml(r.pro_reply)}</p>
+                  </div>
+                ` : ""}
+              </div>
+            `).join("")}
+          </div>
+
+          <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
+        </div>
+
+        ${similarHtml ? `<div style="margin-top: 24px;"><h2>Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
+      </div>`;
+    res.send(page(displayName, content, proConnected, { title: `${displayName} - ${person.profession}` }));
+  } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+});
+
+// ==========================================
+// 4. PAGE AGENCE PUBLIQUE
+// ==========================================
+router.get("/agence/:id", async (req, res) => {
+  try {
+    const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+    const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved'`, [id]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const agency = result.rows[0]; const parentName = getDisplayName(agency);
+    
+    const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
+    let contactButtons = "";
+    if (agency.phone_public && displayPhone) {
+      const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
+      const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
+      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+        <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
+        ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
+      </div>`;
+    }
 
     pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
     res.send(page(agency.name, `<div style="max-width: 800px; margin: 0 auto;"><div class="card" style="text-align:center;"><span class="badge" style="background:#8b5cf6; color:white;">🏢 Agence officielle</span><h1>${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1><div style="color: #2563eb; font-weight: bold;">Réseau : ${escapeHtml(parentName)}</div><div style="margin-top:20px; background:#eff6ff; padding:20px; border-radius:12px;"><p>${escapeHtml(agency.address)}</p>${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}</div>${contactButtons}</div><div style="text-align:center; margin-top:24px;"><a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a></div></div>`, proConnected, { title: agency.name }));
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-  // ==========================================
-  // 5. PAGES STATIQUES
-  // ==========================================
- router.get("/a-propos", async (req, res) => {
+// ==========================================
+// 5. PAGES STATIQUES (À PROPOS, CGU, CONFIDENTIALITE, ETC.)
+// ==========================================
+router.get("/a-propos", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   res.send(page("À propos", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>À propos de TrouveMoi</h1><p>TrouveMoi est la première plateforme béninoise qui met en relation directe les clients avec des professionnels vérifiés de leur quartier.</p><p>Notre mission est de valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p></section>`, proConnected));
 });
@@ -457,72 +393,72 @@ router.get("/conditions", async (req, res) => {
   `;
   res.send(page("Conditions Générales", content, proConnected));
 });
+  router.get("/mentions-legales", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
+        <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold;">Mentions légales</h1>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Déclaration à l'APDP</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Conformément à la loi 2017-20 portant code du numérique en République du Bénin (Livre 5ième relatif à la protection des données personnelles et de la vie privée), le site a fait l'objet d'une déclaration auprès de l'Autorité de Protection des Données Personnelles (<a href="https://www.apdp.bj" target="_blank" style="color: #2563eb; text-decoration: underline;">www.apdp.bj</a>) sous le numéro <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[ Numéro de récépissé en cours d'attribution ]</span>.</p>
+        <p style="margin-bottom: 16px; color: #374151;">En tout état de cause <strong>ADK SERVICES</strong> collecte des informations personnelles relatives à l'utilisateur que pour le besoin de certains services proposés par le site <strong>trouvemoi.bj</strong>. L'utilisateur fournit ces informations en toute connaissance de cause, notamment lorsqu'il procède par lui-même à leur saisie. Conformément aux dispositions de la loi 2017-20 portant code du numérique en République du Bénin, tout utilisateur dispose d'un droit d'accès, de rectification et d'opposition aux données personnelles le concernant, en effectuant sa demande écrite et signée, accompagnée d'une copie du titre d'identité avec signature du titulaire de la pièce, en précisant l'adresse à laquelle la réponse doit être envoyée. Aucune information personnelle de l'utilisateur du site <strong>trouvemoi.bj</strong> n'est publiée à l'insu de l'utilisateur, échangée, transférée, cédée ou vendue sur un support quelconque à des tiers.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Droit d'accès</h2>
+        <p style="margin-bottom: 16px; color: #374151;">En application de cette loi, les internautes disposent d'un droit d'accès, de rectification, de modification et de suppression concernant les données qui les concernent personnellement. Ce droit peut être exercé par voie postale auprès de <strong>ADK SERVICES</strong> ou par voie électronique à l'adresse email suivante : <strong>contact@trouvemoi.bj</strong>. Les informations personnelles collectées ne sont en aucun cas confiées à des tiers.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Confidentialité</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Vos données personnelles sont confidentielles et ne seront en aucun cas communiquées à des tiers.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Propriété intellectuelle</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Tout le contenu du présent site, incluant, de façon non limitative, les graphismes, images, textes, vidéos, animations, sons, logos, gifs et icônes ainsi que leur mise en forme sont la propriété exclusive de <strong>ADK SERVICES</strong> à l'exception des marques, logos ou contenus appartenant à d'autres sociétés partenaires ou auteurs.</p>
+        <p style="margin-bottom: 16px; color: #374151;">Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de <strong>ADK SERVICES</strong>.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Conditions de service</h2>
+        <p style="margin-bottom: 16px; color: #374151;">L'utilisation de la plateforme <strong>TrouveMoi</strong> implique l'acceptation pleine et entière des présentes conditions. Les professionnels s'engagent à fournir des informations exactes notamment lors de la vérification d'identité (KYC) et à traiter les clients avec respect. Les clients s'engagent à ne pas utiliser la plateforme à des fins frauduleuses. <strong>TrouveMoi</strong> se réserve le droit de suspendre ou supprimer tout compte ne respectant pas ces règles, ou dont le dossier KYC s'avérerait falsifié. <strong>TrouveMoi</strong> agit en tant qu'intermédiaire technique de mise en relation et ne peut être tenu responsable des litiges commerciaux entre clients et professionnels.</p>
+        <div style="margin-top: 40px; text-align: center;" class="no-print"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
+      </section>
+    `;
+    res.send(page("Mentions Légales", content, proConnected));
+  });
 
-router.get("/mentions-legales", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const content = `
-    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
-      <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold;">Mentions légales</h1>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Déclaration à l'APDP</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Conformément à la loi 2017-20 portant code du numérique en République du Bénin (Livre 5ième relatif à la protection des données personnelles et de la vie privée), le site a fait l'objet d'une déclaration auprès de l'Autorité de Protection des Données Personnelles (<a href="https://www.apdp.bj" target="_blank" style="color: #2563eb; text-decoration: underline;">www.apdp.bj</a>) sous le numéro <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[ Numéro de récépissé en cours d'attribution ]</span>.</p>
-      <p style="margin-bottom: 16px; color: #374151;">En tout état de cause <strong>ADK SERVICES</strong> collecte des informations personnelles relatives à l'utilisateur que pour le besoin de certains services proposés par le site <strong>trouvemoi.bj</strong>. L'utilisateur fournit ces informations en toute connaissance de cause, notamment lorsqu'il procède par lui-même à leur saisie. Conformément aux dispositions de la loi 2017-20 portant code du numérique en République du Bénin, tout utilisateur dispose d'un droit d'accès, de rectification et d'opposition aux données personnelles le concernant, en effectuant sa demande écrite et signée, accompagnée d'une copie du titre d'identité avec signature du titulaire de la pièce, en précisant l'adresse à laquelle la réponse doit être envoyée. Aucune information personnelle de l'utilisateur du site <strong>trouvemoi.bj</strong> n'est publiée à l'insu de l'utilisateur, échangée, transférée, cédée ou vendue sur un support quelconque à des tiers.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Droit d'accès</h2>
-      <p style="margin-bottom: 16px; color: #374151;">En application de cette loi, les internautes disposent d'un droit d'accès, de rectification, de modification et de suppression concernant les données qui les concernent personnellement. Ce droit peut être exercé par voie postale auprès de <strong>ADK SERVICES</strong> ou par voie électronique à l'adresse email suivante : <strong>contact@trouvemoi.bj</strong>. Les informations personnelles collectées ne sont en aucun cas confiées à des tiers.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Confidentialité</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Vos données personnelles sont confidentielles et ne seront en aucun cas communiquées à des tiers.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Propriété intellectuelle</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Tout le contenu du présent site, incluant, de façon non limitative, les graphismes, images, textes, vidéos, animations, sons, logos, gifs et icônes ainsi que leur mise en forme sont la propriété exclusive de <strong>ADK SERVICES</strong> à l'exception des marques, logos ou contenus appartenant à d'autres sociétés partenaires ou auteurs.</p>
-      <p style="margin-bottom: 16px; color: #374151;">Toute reproduction, distribution, modification, adaptation, retransmission ou publication, même partielle, de ces différents éléments est strictement interdite sans l'accord exprès par écrit de <strong>ADK SERVICES</strong>.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">Conditions de service</h2>
-      <p style="margin-bottom: 16px; color: #374151;">L'utilisation de la plateforme <strong>TrouveMoi</strong> implique l'acceptation pleine et entière des présentes conditions. Les professionnels s'engagent à fournir des informations exactes notamment lors de la vérification d'identité (KYC) et à traiter les clients avec respect. Les clients s'engagent à ne pas utiliser la plateforme à des fins frauduleuses. <strong>TrouveMoi</strong> se réserve le droit de suspendre ou supprimer tout compte ne respectant pas ces règles, ou dont le dossier KYC s'avérerait falsifié. <strong>TrouveMoi</strong> agit en tant qu'intermédiaire technique de mise en relation et ne peut être tenu responsable des litiges commerciaux entre clients et professionnels.</p>
-      <div style="margin-top: 40px; text-align: center;" class="no-print"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
-    </section>
-  `;
-  res.send(page("Mentions Légales", content, proConnected));
-});
+  router.get("/confidentialite", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
+        <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold; text-align: center;">Politique de Confidentialité des Données Personnelles</h1>
+        <p style="margin-bottom: 16px; color: #374151;">La présente politique de confidentialité est fondée sur l'article 415 figurant au livre cinquième du code du numérique relatif à la Protection des Données à caractère personnelle.</p>
+        <p style="margin-bottom: 16px; color: #374151;">Elle mentionne la preuve de l'accomplissement des formalités préalables auprès de l'Autorité de Protection des Données Personnelles (APDP) et vous aide à comprendre quelles informations nous collectons et traitons dans notre structure <strong>ADK SERVICES</strong>, les données personnelles, les finalités visées ainsi que la politique de management mise en place aux fins de respecter la législation en vigueur en matière de protection des données personnelles et de la vie privée en République du Bénin.</p>
+        <p style="margin-bottom: 24px; color: #374151; font-weight: 500;">Veuillez lire attentivement cette Politique de confidentialité qui nous engage.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">1. Responsable du traitement</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Le responsable du traitement de vos Données Personnelles est la structure <strong>ADK SERVICES</strong>, éditrice de la plateforme TrouveMoi.<br>Adresse email : <strong>contact@trouvemoi.bj</strong></p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">2. Formalités préalables</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Le traitement est poursuivi conformément au Récépissé n° <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[Numéro en cours d'attribution]</span> délivré par l'Autorité de Protection des données Personnelles (APDP).</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">3. Les données personnelles objet du traitement</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Les données traitées sont : Nom, prénom, numéro de téléphone, adresse mail, NPI, photo d'identité, carte d'identité, photo d'identité KYC et adresse géographique (ville et quartier).</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">4. Les opérations effectuées</h2>
+        <p style="margin-bottom: 16px; color: #374151;">ADK SERVICES ne collecte des informations personnelles relatives des clients et des professionnels de métiers que pour le besoin exclusif de services proposés par elle-même. Les informations recueillies font l'objet des opérations suivantes (traitement électronique) destiné à l'atteinte des finalités ci-dessous mentionnées. Les données sont conservées dans des infrastructures sécurisées.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">5. La/les finalité(s) du/des traitement(s)</h2>
+        <p style="margin-bottom: 8px; color: #374151;">Les informations sont collectées pour :</p>
+        <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>La mise en relation entre les clients et les professionnels</li><li>La vérification d'identité des professionnels (KYC) pour éviter les arnaques</li><li>La gestion des paiements et des abonnements</li><li>L'envoi de notifications par SMS</li></ol>
+        <p style="margin-bottom: 16px; color: #374151;">Il convient de rappeler que chaque traitement correspond à une finalité précise et unique. Dans l'hypothèse où un seul et même traitement pourrait servir plusieurs finalités, votre consentement sera recueilli distinctement pour chacune d'elles.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">6. Destinataires des Données personnelles communication et transfert</h2>
+        <p style="margin-bottom: 8px; color: #374151;">Les destinataires de ces données sont les services internes suivants :</p>
+        <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>Direction des traitements de données : ADK SERVICES</li><li>Secrétariat Administratif : Support Client TrouveMoi</li><li>Service Informatique : Administrateur Technique</li></ol>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">7. Durée du traitement, conservation et stockage</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Les Données Personnelles sont traitées par nos soins pendant (toute la durée de vie du compte de l'utilisateur, et supprimées immédiatement en cas de demande de suppression par l'utilisateur).<br>Pour plus d'informations concernant les durées de conservation, vous pouvez nous contacter à l'adresse mail suivante : <strong>contact@trouvemoi.bj</strong>.<br>Après la durée ci-dessus mentionnée, vos données sont supprimées.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">8. Les droits des personnes concernées à propos des traitements</h2>
+        <p style="margin-bottom: 8px; color: #374151;">La loi vous donne sur vos données personnelles les droits suivants :</p>
+        <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>Droit d'accès aux informations collectées ;</li><li>Droit d'interrogation ;</li><li>Droit de modification ;</li><li>Droit de rectification ;</li><li>Droit à la portabilité ;</li><li>Droit d'opposition au traitement ;</li><li>Droit de suppression de données ;</li><li>Droit à l'oubli ;</li><li>Droit à réparation.</li></ol>
+        <p style="margin-bottom: 16px; color: #374151;">Vous pouvez consulter la définition de ces droits à l'adresse de l'APDP. Vous pouvez exercer vos droits en écrivant à ADK SERVICES par e-mail à l'adresse suivante :<br>- email : <strong>contact@trouvemoi.bj</strong></p>
+        <p style="margin-bottom: 16px; color: #374151;">Nous garantissons une réponse à vos demandes dans un délai de 30 jours à compter de la date de réception de la demande.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">9. Plaintes</h2>
+        <p style="margin-bottom: 8px; color: #374151;">Vous avez le droit de déposer une plainte auprès de l'Autorité de Protection des Données Personnelles :</p>
+        <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>La plainte est déposée au siège de l'institution Rue 6.076 Aïdjèdo Cotonou</li><li>Adressée (mail uniquement) à l'adresse : contact@apdp.bj</li></ol>
+        <p style="margin-bottom: 16px; color: #374151;">Ceci est sans préjudice d'un recours devant un tribunal compétent.</p>
+        <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">10. Pour en savoir plus</h2>
+        <p style="margin-bottom: 16px; color: #374151;">Si vous avez d'autres questions ou commentaires concernant le traitement de vos données personnelles, n'hésitez pas à contacter le Délégué à la Protection des Données Personnelles par e-mail à : <strong>contact@trouvemoi.bj</strong></p>
+        <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">Date de dernière mise à jour : 31/10/2026</p>
+        <div style="margin-top: 40px; text-align: center;" class="no-print"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
+      </section>
+    `;
+    res.send(page("Politique de Confidentialité", content, proConnected));
+  });
 
-router.get("/confidentialite", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const content = `
-    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8; text-align: justify;">
-      <h1 style="font-size: 26px; color: #111827; margin-bottom: 30px; font-weight: bold; text-align: center;">Politique de Confidentialité des Données Personnelles</h1>
-      <p style="margin-bottom: 16px; color: #374151;">La présente politique de confidentialité est fondée sur l'article 415 figurant au livre cinquième du code du numérique relatif à la Protection des Données à caractère personnelle.</p>
-      <p style="margin-bottom: 16px; color: #374151;">Elle mentionne la preuve de l'accomplissement des formalités préalables auprès de l'Autorité de Protection des Données Personnelles (APDP) et vous aide à comprendre quelles informations nous collectons et traitons dans notre structure <strong>ADK SERVICES</strong>, les données personnelles, les finalités visées ainsi que la politique de management mise en place aux fins de respecter la législation en vigueur en matière de protection des données personnelles et de la vie privée en République du Bénin.</p>
-      <p style="margin-bottom: 24px; color: #374151; font-weight: 500;">Veuillez lire attentivement cette Politique de confidentialité qui nous engage.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">1. Responsable du traitement</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Le responsable du traitement de vos Données Personnelles est la structure <strong>ADK SERVICES</strong>, éditrice de la plateforme TrouveMoi.<br>Adresse email : <strong>contact@trouvemoi.bj</strong></p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">2. Formalités préalables</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Le traitement est poursuivi conformément au Récépissé n° <span style="font-style: italic; border-bottom: 1px dashed #6b7280; padding: 0 4px;">[Numéro en cours d'attribution]</span> délivré par l'Autorité de Protection des données Personnelles (APDP).</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">3. Les données personnelles objet du traitement</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Les données traitées sont : Nom, prénom, numéro de téléphone, adresse mail, NPI, photo d'identité, carte d'identité, photo d'identité KYC et adresse géographique (ville et quartier).</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">4. Les opérations effectuées</h2>
-      <p style="margin-bottom: 16px; color: #374151;">ADK SERVICES ne collecte des informations personnelles relatives des clients et des professionnels de métiers que pour le besoin exclusif de services proposés par elle-même. Les informations recueillies font l'objet des opérations suivantes (traitement électronique) destiné à l'atteinte des finalités ci-dessous mentionnées. Les données sont conservées dans des infrastructures sécurisées.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">5. La/les finalité(s) du/des traitement(s)</h2>
-      <p style="margin-bottom: 8px; color: #374151;">Les informations sont collectées pour :</p>
-      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>La mise en relation entre les clients et les professionnels</li><li>La vérification d'identité des professionnels (KYC) pour éviter les arnaques</li><li>La gestion des paiements et des abonnements</li><li>L'envoi de notifications par SMS</li></ol>
-      <p style="margin-bottom: 16px; color: #374151;">Il convient de rappeler que chaque traitement correspond à une finalité précise et unique. Dans l'hypothèse où un seul et même traitement pourrait servir plusieurs finalités, votre consentement sera recueilli distinctement pour chacune d'elles.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">6. Destinataires des Données personnelles communication et transfert</h2>
-      <p style="margin-bottom: 8px; color: #374151;">Les destinataires de ces données sont les services internes suivants :</p>
-      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>Direction des traitements de données : ADK SERVICES</li><li>Secrétariat Administratif : Support Client TrouveMoi</li><li>Service Informatique : Administrateur Technique</li></ol>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">7. Durée du traitement, conservation et stockage</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Les Données Personnelles sont traitées par nos soins pendant (toute la durée de vie du compte de l'utilisateur, et supprimées immédiatement en cas de demande de suppression par l'utilisateur).<br>Pour plus d'informations concernant les durées de conservation, vous pouvez nous contacter à l'adresse mail suivante : <strong>contact@trouvemoi.bj</strong>.<br>Après la durée ci-dessus mentionnée, vos données sont supprimées.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">8. Les droits des personnes concernées à propos des traitements</h2>
-      <p style="margin-bottom: 8px; color: #374151;">La loi vous donne sur vos données personnelles les droits suivants :</p>
-      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>Droit d'accès aux informations collectées ;</li><li>Droit d'interrogation ;</li><li>Droit de modification ;</li><li>Droit de rectification ;</li><li>Droit à la portabilité ;</li><li>Droit d'opposition au traitement ;</li><li>Droit de suppression de données ;</li><li>Droit à l'oubli ;</li><li>Droit à réparation.</li></ol>
-      <p style="margin-bottom: 16px; color: #374151;">Vous pouvez consulter la définition de ces droits à l'adresse de l'APDP. Vous pouvez exercer vos droits en écrivant à ADK SERVICES par e-mail à l'adresse suivante :<br>- email : <strong>contact@trouvemoi.bj</strong></p>
-      <p style="margin-bottom: 16px; color: #374151;">Nous garantissons une réponse à vos demandes dans un délai de 30 jours à compter de la date de réception de la demande.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">9. Plaintes</h2>
-      <p style="margin-bottom: 8px; color: #374151;">Vous avez le droit de déposer une plainte auprès de l'Autorité de Protection des Données Personnelles :</p>
-      <ol style="margin-left: 20px; color: #374151; margin-bottom: 16px;"><li>La plainte est déposée au siège de l'institution Rue 6.076 Aïdjèdo Cotonou</li><li>Adressée (mail uniquement) à l'adresse : contact@apdp.bj</li></ol>
-      <p style="margin-bottom: 16px; color: #374151;">Ceci est sans préjudice d'un recours devant un tribunal compétent.</p>
-      <h2 style="font-size: 18px; color: #111827; margin-top: 24px; margin-bottom: 12px; font-weight: bold;">10. Pour en savoir plus</h2>
-      <p style="margin-bottom: 16px; color: #374151;">Si vous avez d'autres questions ou commentaires concernant le traitement de vos données personnelles, n'hésitez pas à contacter le Délégué à la Protection des Données Personnelles par e-mail à : <strong>contact@trouvemoi.bj</strong></p>
-      <p style="font-size: 14px; color: #6b7280; margin-top: 30px;">Date de dernière mise à jour : 31/10/2026</p>
-      <div style="margin-top: 40px; text-align: center;" class="no-print"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
-    </section>
-  `;
-  res.send(page("Politique de Confidentialité", content, proConnected));
-});
   // ==========================================
   // 6. BLOG
   // ==========================================
@@ -543,192 +479,547 @@ router.get("/confidentialite", async (req, res) => {
     if (!article) return res.redirect(303, "/blog");
     res.send(page(article.title, `<article class="card" style="max-width:800px; margin:40px auto;"><h1 style="font-size:28px;">${escapeHtml(article.title)}</h1><p class="muted" style="font-size:13px; margin-bottom:20px;">Publié le ${new Date(article.created_at).toLocaleDateString("fr-FR")}</p><div style="line-height:1.8; color:#374151;">${escapeHtml(article.content).replace(/\n/g, "<br>")}</div><p style="margin-top:30px;"><a href="/blog" style="color:#2563eb;">← Retour au blog</a></p></article>`, proConnected));
   });
-// ==========================================
-// 7. FAVORIS ET COMPTE CLIENT
-// ==========================================
 
-// A. Ajouter/Retirer un favori
-router.post("/api/favorite/:id", async (req, res) => {
-  try {
+  // ==========================================
+  // 7. FAVORIS ET COMPTE CLIENT
+  // ==========================================
+
+  router.post("/api/favorite/:id", async (req, res) => {
+    try {
+      const visitorId = getOrCreateVisitorId(req, res);
+      const proId = Number(req.params.id);
+      if (!Number.isSafeInteger(proId) || proId < 1) return res.json({ ok: false });
+
+      const check = await pool.query("SELECT 1 FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+      if (check.rows.length) {
+        await pool.query("DELETE FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
+        res.json({ ok: true, isFav: false });
+      } else {
+        await pool.query("INSERT INTO client_favorites (visitor_id, pro_id) VALUES ($1, $2)", [visitorId, proId]);
+        res.json({ ok: true, isFav: true });
+      }
+    } catch (e) { res.json({ ok: false }); }
+  });
+
+  router.get("/mes-favoris", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
     const visitorId = getOrCreateVisitorId(req, res);
-    const proId = Number(req.params.id);
-    if (!Number.isSafeInteger(proId) || proId < 1) return res.json({ ok: false });
+    
+    const result = await pool.query(`
+      SELECT p.*, 
+      (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
+      (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating 
+      FROM professional_applications p 
+      JOIN client_favorites cf ON p.id = cf.pro_id 
+      WHERE cf.visitor_id = $1 AND p.status = 'approved'
+      ORDER BY cf.created_at DESC
+    `, [visitorId]);
 
-    const check = await pool.query("SELECT 1 FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
-    if (check.rows.length) {
-      await pool.query("DELETE FROM client_favorites WHERE visitor_id = $1 AND pro_id = $2", [visitorId, proId]);
-      res.json({ ok: true, isFav: false });
-    } else {
-      await pool.query("INSERT INTO client_favorites (visitor_id, pro_id) VALUES ($1, $2)", [visitorId, proId]);
-      res.json({ ok: true, isFav: true });
-    }
-  } catch (e) { res.json({ ok: false }); }
-});
+    const cards = result.rows.map(person => {
+      const displayName = getDisplayName(person);
+      return `
+        <article class="pro-card" style="border-left: 4px solid #ef4444;">
+          <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())" style="top: 12px; right: 12px; width: 30px; height: 30px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+          </div>
+          <div class="pro-card-top">
+            <div>
+              <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge(person)}</div>
+              <div class="pro-meta">${escapeHtml(person.profession)}</div>
+              <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
+            </div>
+          </div>
+          <div class="pro-actions" style="margin-top: 12px; gap: 4px;">
+            <a href="/pro/${person.id}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
+          </div>
+        </article>
+      `;
+    }).join("");
 
-// B. Page Mes Favoris
-router.get("/mes-favoris", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const visitorId = getOrCreateVisitorId(req, res);
-  
-  const result = await pool.query(`
-    SELECT p.*, 
-    (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
-    (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating 
-    FROM professional_applications p 
-    JOIN client_favorites cf ON p.id = cf.pro_id 
-    WHERE cf.visitor_id = $1 AND p.status = 'approved'
-    ORDER BY cf.created_at DESC
-  `, [visitorId]);
-
-  const cards = result.rows.map(person => {
-    const displayName = getDisplayName(person);
-    return `
-      <article class="pro-card" style="border-left: 4px solid #ef4444;">
-        <div class="favorite-btn active" onclick="toggleFav(event, ${person.id}).then(() => location.reload())" style="top: 12px; right: 12px; width: 30px; height: 30px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444" stroke="#ef4444" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+    res.send(page("Mes Favoris", `
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1>❤️ Mes Favoris</h1>
+        <div class="alert alert-info" style="text-align:center; margin-bottom:20px;">
+          💡 <strong>Astuce :</strong> Créez un compte gratuit pour retrouver vos favoris sur tous vos appareils. 
+          <a href="/mon-compte" style="font-weight:bold; text-decoration:underline;">Créer un compte</a>
         </div>
-        <div class="pro-card-top">
-          <div>
-            <div class="pro-name">${escapeHtml(displayName)} ${renderKycBadge(person)}</div>
-            <div class="pro-meta">${escapeHtml(person.profession)}</div>
-            <div class="pro-meta">📍 ${escapeHtml(person.city)}</div>
+        <a href="/" style="color: #6b7280; font-size: 14px;">← Retour à l'accueil</a>
+      </div>
+      <div class="pros-grid">
+        ${cards || `<div class="card"><p style="text-align:center;">Vous n'avez pas encore de favoris. Cliquez sur le cœur d'un professionnel pour le sauvegarder ici.</p></div>`}
+      </div>
+    `, proConnected));
+  });
+
+  router.get("/mon-compte", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const visitorId = getOrCreateVisitorId(req, res);
+    
+    const clientResult = await pool.query(`SELECT * FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+    const client = clientResult.rows[0];
+    const isConnected = client && client.phone;
+
+    const favorites = await pool.query(`SELECT COUNT(*) FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
+    const count = Number(favorites.rows[0]?.count || 0);
+
+    let content = "";
+
+    if (isConnected) {
+      const code = await getOrCreateClientCode(visitorId);
+      content = `
+        <div style="max-width: 450px; margin: 0 auto; text-align:center;">
+          <h2>Bonjour ${escapeHtml(client.full_name)} 👋</h2>
+          <p style="font-size:14px; color:#4b5563;">Votre code de récupération secret :</p>
+          <div class="pro-code-box" style="margin: 20px 0; background:#1e3a8a; color:white; padding:20px; border-radius:12px;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Votre code</div>
+            <div class="pro-code-value" style="font-size:36px; letter-spacing: 5px; font-weight:bold;">${escapeHtml(code || "Indisponible")}</div>
+          </div>
+          <p style="font-size:14px;"><strong>${count}</strong> favori(s) enregistré(s).</p>
+          <div style="margin:24px 0;"><a class="button" href="/mes-favoris" style="width:100%;">❤️ Voir mes favoris</a></div>
+          <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
+          <a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:14px; text-decoration:none;">Se déconnecter de cet appareil</a>
+          <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+            <form action="/mon-compte/supprimer" method="POST" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Toutes vos données et favoris seront perdus.')">
+              <button type="submit" class="danger" style="width:100%;">🗑️ Supprimer définitivement mon compte</button>
+            </form>
           </div>
         </div>
-        <div class="pro-actions" style="margin-top: 12px; gap: 4px;">
-          <a href="/pro/${person.id}" class="button pro-profile-link" style="padding: 6px; font-size: 11px;">Voir le profil →</a>
+      `;
+    } else {
+      content = `
+        <div style="max-width: 450px; margin: 0 auto;">
+          
+          <!-- FORMULAIRE DE CONNEXION -->
+          <div id="box-login">
+            <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">🔑 Se connecter</h2>
+            <form action="/mon-compte/connexion-code" method="POST">
+              <label class="fancy-label">Téléphone</label>
+              <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
+              
+              <label class="fancy-label">Mot de passe</label>
+              <input name="password" type="password" required placeholder="Votre mot de passe" class="fancy-input">
+              
+              <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Se connecter</button>
+              <div style="text-align:center; margin-top:15px;">
+                <a href="/mon-compte/reinitialiser" style="color:#ef4444; font-size:13px; text-decoration:none;">Mot de passe oublié ?</a>
+              </div>
+            </form>
+            <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
+              Pas encore de compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">S'inscrire</a>
+            </p>
+          </div>
+
+          <!-- FORMULAIRE D'INSCRIPTION (Caché au début) -->
+          <div id="box-register" style="display:none;">
+            <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">✨ Créer un compte</h2>
+            <form action="/mon-compte/enregistrer" method="POST">
+              <label class="fancy-label">Nom complet</label>
+              <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont" class="fancy-input">
+              
+              <label class="fancy-label">Téléphone</label>
+              <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input">
+              
+              <label class="fancy-label">Vérification du numéro *</label>
+              <div style="display:flex; gap:10px; margin-bottom:14px;">
+                <input name="otp_code" placeholder="Code SMS" required class="fancy-input" style="margin-bottom:0;">
+                <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
+              </div>
+
+              <label class="fancy-label">Mot de passe</label>
+              <input name="password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
+              
+              <label class="fancy-label">Confirmer le mot de passe</label>
+              <input name="password_confirm" type="password" required minlength="6" placeholder="Retapez le mot de passe" class="fancy-input">
+              
+              <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; background:#10b981; margin-top:10px;">Créer mon compte</button>
+            </form>
+            <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
+              Déjà un compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">Se connecter</a>
+            </p>
+          </div>
+
         </div>
-      </article>
-    `;
-  }).join("");
 
-  res.send(page("Mes Favoris", `
-    <div style="text-align: center; margin-bottom: 30px;">
-      <h1>❤️ Mes Favoris</h1>
-      <div class="alert alert-info" style="text-align:center; margin-bottom:20px;">
-  💡 <strong>Astuce :</strong> Créez un compte gratuit pour retrouver vos favoris sur tous vos appareils. 
-  <a href="/mon-compte" style="font-weight:bold; text-decoration:underline;">Créer un compte</a>
-</div>
-      <a href="/" style="color: #6b7280; font-size: 14px;">← Retour à l'accueil</a>
-    </div>
-    <div class="pros-grid">
-      ${cards || `<div class="card"><p style="text-align:center;">Vous n'avez pas encore de favoris. Cliquez sur le cœur d'un professionnel pour le sauvegarder ici.</p></div>`}
-    </div>
-  `, proConnected));
-});
+        <script>
+          function toggleAccountForm(e) {
+            e.preventDefault();
+            const login = document.getElementById('box-login');
+            const register = document.getElementById('box-register');
+            if (login.style.display === 'none') {
+              login.style.display = 'block';
+              register.style.display = 'none';
+            } else {
+              login.style.display = 'none';
+              register.style.display = 'block';
+            }
+          }
 
-// C. Page Mon Compte (Portail avec Connexion / Inscription)
-router.get("/mon-compte", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const visitorId = getOrCreateVisitorId(req, res);
-  
-  const clientResult = await pool.query(`SELECT * FROM client_codes WHERE visitor_id = $1`, [visitorId]);
-  const client = clientResult.rows[0];
-  const isConnected = client && client.phone;
+          async function demanderCode() {
+            const phoneInput = document.querySelector('input[name="phone"]');
+            if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
+              alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
+              return;
+            }
+            const btn = event.target;
+            btn.innerText = "Envoi...";
+            btn.disabled = true;
+            
+            try {
+              const res = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phone: phoneInput.value })
+              });
+              const data = await res.json();
+              if (data.ok) {
+                alert("✅ Code envoyé ! Vérifiez vos SMS.");
+                btn.innerText = "Renvoyer";
+              } else {
+                alert(data.error || "Erreur d'envoi.");
+                btn.innerText = "Recevoir";
+              }
+            } catch(e) {
+              alert("Erreur réseau.");
+              btn.innerText = "Recevoir";
+            }
+            btn.disabled = false;
+          }
+        </script>
+      `;
+    }
 
-  const favorites = await pool.query(`SELECT COUNT(*) FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
-  const count = Number(favorites.rows[0]?.count || 0);
+    res.send(page("Mon compte", `<section class="card" style="max-width: 800px; margin: 40px auto;">${content}</section>`, proConnected));
+  });
 
-  let content = "";
+  router.post("/mon-compte/enregistrer", async (req, res) => {
+    const otpCode = String(req.body.otp_code || "").trim();
+    const visitorId = getOrCreateVisitorId(req, res);
+    const fullName = String(req.body.full_name || "").trim().slice(0, 150);
+    const phone = cleanBeninPhone(req.body.phone);
+    const password = String(req.body.password || "");
+    const passwordConfirm = String(req.body.password_confirm || "");
 
-  if (isConnected) {
-    const code = await getOrCreateClientCode(visitorId);
-    content = `
-      <div style="max-width: 450px; margin: 0 auto; text-align:center;">
-        <h2>Bonjour ${escapeHtml(client.full_name)} 👋</h2>
-        <p style="font-size:14px; color:#4b5563;">Votre code de récupération secret :</p>
-        <div class="pro-code-box" style="margin: 20px 0; background:#1e3a8a; color:white; padding:20px; border-radius:12px;">
-          <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; opacity:0.85;">Votre code</div>
-          <div class="pro-code-value" style="font-size:36px; letter-spacing: 5px; font-weight:bold;">${escapeHtml(code || "Indisponible")}</div>
+    if (!fullName || !phone || password.length < 6) return res.redirect(303, "/mon-compte");
+    if (password !== passwordConfirm) return res.status(400).send(page("Erreur", "<h2>Les mots de passe ne correspondent pas.</h2><a href='/mon-compte'>Retour</a>", null));
+
+    try {
+      const codeValide = await verifyOTP(phone, otpCode);
+      if (!codeValide) {
+        return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte'>Retour</a>", null));
+      }
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      const existing = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
+      if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Ce numéro a déjà un compte.</h2><a href='/mon-compte'>Se connecter</a>", null));
+
+      const code = await getOrCreateClientCode(visitorId);
+      await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2, password_hash = $3 WHERE visitor_id = $4`, [fullName, phone, passwordHash, visitorId]);
+      res.redirect(303, "/mon-compte");
+    } catch (error) { res.redirect(303, "/mon-compte"); }
+  });
+
+  router.post("/mon-compte/connexion-code", async (req, res) => {
+    const phone = cleanBeninPhone(req.body.phone);
+    const password = String(req.body.password || "");
+    const visitorId = getOrCreateVisitorId(req, res);
+
+    if (!phone || !password) return res.redirect(303, "/mon-compte");
+
+    try {
+      const result = await pool.query(`SELECT id, visitor_id, password_hash FROM client_codes WHERE phone = $1`, [phone]);
+      if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
+      
+      const client = result.rows[0];
+      if (!client.password_hash) return res.status(400).send(page("Erreur", "<h2>Ce compte n'a pas encore de mot de passe.</h2><a href='/mon-compte'>Retour</a>", null));
+
+      const match = await bcrypt.compare(password, client.password_hash);
+      
+      if (!match) return res.status(401).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
+
+      if (client.visitor_id !== visitorId) {
+          await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1 AND phone IS NULL`, [visitorId]);
+          await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE id = $2`, [visitorId, client.id]);
+      }
+      
+      res.redirect(303, "/mon-compte");
+    } catch (error) { res.redirect(303, "/mon-compte"); }
+  });
+
+  router.post("/mon-compte/reinitialiser", async (req, res) => {
+    const phone = cleanBeninPhone(req.body.phone);
+    if (!phone) return res.redirect(303, "/mon-compte");
+    
+    res.send(page("Information", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 Information</h1><p>La récupération automatique par SMS est en cours de configuration. Veuillez contacter notre support pour récupérer votre compte.</p><a href="/contact" class="button">Contacter le support</a></section>`, null));
+  });
+    
+  router.get("/pro/:id/avis", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+
+    const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const person = result.rows[0];
+    const displayName = person.company_name?.trim() || person.full_name || "";
+
+    res.send(page("Laisser un avis", `
+      <section class="card" style="max-width: 600px; margin: 40px auto;">
+        <h1 style="text-align:center;">Laisser un avis</h1>
+        <div class="alert alert-info" style="text-align:center;">
+          ⭐ Avis sur <strong>${escapeHtml(displayName)}</strong> (${escapeHtml(person.profession)}).
         </div>
-        <p style="font-size:14px;"><strong>${count}</strong> favori(s) enregistré(s).</p>
-        <div style="margin:24px 0;"><a class="button" href="/mes-favoris" style="width:100%;">❤️ Voir mes favoris</a></div>
-        <hr style="border:none; border-top:1px solid #e5e7eb; margin:24px 0;">
-        <a href="/mon-compte/deconnexion" style="color:#ef4444; font-size:14px; text-decoration:none;">Se déconnecter de cet appareil</a>
-        <div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
-  <form action="/mon-compte/supprimer" method="POST" onsubmit="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Toutes vos données et favoris seront perdus.')">
-    <button type="submit" class="danger" style="width:100%;">🗑️ Supprimer définitivement mon compte</button>
-  </form>
-</div>
-      </div>
-    `;
-  } else {
-    content = `
-      <div style="max-width: 450px; margin: 0 auto;">
+        <form action="/pro/${person.id}/avis" method="POST">
+          <label>Votre nom *</label>
+          <input name="author_name" required maxlength="100">
+          
+          <label>Note *</label>
+          <div class="star-rating-wrapper">
+            <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="Excellent">★</label>
+            <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Très bien">★</label>
+            <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Moyen">★</label>
+            <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
+            <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
+          </div>
+          <style>
+            .star-rating-wrapper { display: flex; flex-direction: row-reverse; justify-content: flex-end; font-size: 40px; margin-bottom: 20px; }
+            .star-rating-wrapper input { display: none; }
+            .star-rating-wrapper label { color: #d1d5db; cursor: pointer; transition: color 0.2s; margin-right: 5px; }
+            .star-rating-wrapper input:checked ~ label, .star-rating-wrapper label:hover, .star-rating-wrapper label:hover ~ label { color: #f59e0b; }
+          </style>
+          
+          <label>Commentaire</label>
+          <textarea name="comment" rows="4" maxlength="3000"></textarea>
+          
+          <div style="text-align:center; margin-top:20px;">
+            <button type="submit">Envoyer</button>
+            <a class="button secondary" href="/pro/${person.id}">Annuler</a>
+          </div>
+        </form>
+      </section>
+    `, proConnected));
+  });
+
+  router.post("/pro/:id/avis", async (req, res) => {
+    try {
+      const proId = Number(req.params.id);
+      const visitorId = getOrCreateVisitorId(req, res);
+      if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
+      
+      const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
+      if (!check.rows.length) return res.redirect(303, "/");
+
+      const contactProof = await pool.query(`
+        SELECT 1 FROM contact_events
+        WHERE pro_id = $1 AND visitor_id = $2 AND created_at >= NOW() - INTERVAL '30 days'
+        UNION ALL
+        SELECT 1 FROM pro_stats
+        WHERE pro_id = $1 AND last_visitor_id = $2
+          AND (phone_clicks > 0 OR wa_clicks > 0)
+          AND date >= CURRENT_DATE - INTERVAL '30 days'
+        LIMIT 1
+      `, [proId, visitorId]);
+      
+      if (contactProof.rows.length === 0) {
+        return res.status(403).send(page("Preuve de contact requise", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444;">🔒 Preuve de contact requise</h1><p>Pour garantir l'authenticité des avis, seuls les clients ayant contacté ce professionnel via TrouveMoi (Appel ou WhatsApp) dans les 30 derniers jours peuvent laisser un avis.</p><a class="button" href="/pro/${proId}" style="margin-top:20px;">Retour au profil</a></section>`, null));
+      }
+
+      const ratingNum = Number(req.body.rating);
+      if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        return res.status(400).send(page("Erreur", "<h2>Note invalide (1 a 5).</h2>", null));
+      }
+      const author = String(req.body.author_name || "").trim().slice(0, 100);
+      if (!author) return res.status(400).send(page("Erreur", "<h2>Nom requis.</h2>", null));
+      const comment = String(req.body.comment || "").slice(0, 3000);
+
+      const alreadyReviewed = await pool.query(`SELECT id FROM reviews WHERE pro_id = $1 AND visitor_id = $2 LIMIT 1`, [proId, visitorId]);
+      if (alreadyReviewed.rows.length) {
+        return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><p>Vous avez deja laisse un avis sur ce professionnel. Merci !</p><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
+      }
+
+      try {
+        await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status, visitor_id) VALUES ($1, $2, $3, $4, 'pending', $5)`, [proId, author, ratingNum, comment, visitorId]);
+      } catch (insertError) {
+        if (insertError.code === "23505") {
+          return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
+        }
+        throw insertError;
+      }
+
+      res.send(page("Succes", `<section class='card' style='text-align:center; max-width: 500px; margin: 40px auto;'><h1>Merci !</h1><p>Votre avis sera examine par notre equipe avant publication.</p><a class='button' href='/pro/${proId}'>Retour au profil</a></section>`, null));
+    } catch (e) { 
+      res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
+    }
+  });
+
+  router.post("/api/track/:id/:type", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const type = req.params.type;
+      const visitorId = getOrCreateVisitorId(req, res);
+      if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
+      
+      let col = "";
+      if (type === "phone") col = "phone_clicks";
+      else if (type === "wa") col = "wa_clicks";
+      else return res.json({ ok: false });
+
+      await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1, last_visitor_id = $2`, [id, visitorId]);
+      await pool.query(`INSERT INTO contact_events (pro_id, visitor_id, type) VALUES ($1, $2, $3)`, [id, visitorId, type]);
+
+      res.json({ ok: true });
+    } catch (e) { 
+      console.error("Erreur tracking :", e.message);
+      res.json({ ok: false }); 
+    }
+  });
+
+  router.get("/mon-compte/deconnexion", (req, res) => {
+    res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    res.redirect(303, "/mon-compte");
+  });
+
+  // ==========================================
+  // 8. PAGE DE PAIEMENT (Kkiapay)
+  // ==========================================
+  router.get("/paiement/:trackingCode", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const trackingCode = String(req.params.trackingCode || "").trim();
+    
+    const result = await pool.query(`SELECT id, full_name, payment_status FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    
+    const dossier = result.rows[0];
+    if (dossier.payment_status === 'paid') {
+      return res.send(page("Déjà payé", `<section class="card" style="text-align:center;"><h1>✅ Déjà payé</h1><p>Votre dossier est déjà réglé.</p><a href="/" class="button">Retour à l'accueil</a></section>`, proConnected));
+    }
+
+    res.send(page("Paiement", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
+        <h1>💳 Finalisez votre inscription</h1>
+        <p>Bonjour <strong>${escapeHtml(dossier.full_name)}</strong>,</p>
+        <p style="margin-bottom: 20px;">Pour valider l'étude de votre dossier, veuillez régler les frais d'inscription de <strong>1500 FCFA</strong>.</p>
         
-        <!-- FORMULAIRE DE CONNEXION -->
-        <div id="box-login">
-          <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">🔑 Se connecter</h2>
-          <form action="/mon-compte/connexion-code" method="POST">
-            <label class="fancy-label">Téléphone</label>
-            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
-            
-            <label class="fancy-label">Mot de passe</label>
-            <input name="password" type="password" required placeholder="Votre mot de passe" class="fancy-input">
-            
-            <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Se connecter</button>
-            <div style="text-align:center; margin-top:15px;">
-  <a href="/mon-compte/reinitialiser" style="color:#ef4444; font-size:13px; text-decoration:none;">Mot de passe oublié ?</a>
-</div>
-          </form>
-          <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
-            Pas encore de compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">S'inscrire</a>
-          </p>
-        </div>
+        <button onclick="payer()" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px;">
+          Payer 1500 FCFA
+        </button>
+        
+        <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">Paiement sécurisé via Mobile Money (MTN / Moov).</p>
+      </section>
+      
+      <script src="https://cdn.kkiapay.me/k.js"></script>
+      <script>
+        function payer() {
+          openKkiapayWidget({ 
+            amount: 1500, 
+            api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
+            sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
+            callback: "${APP_URL}/paiement/verifier?tracking=${trackingCode}", 
+            data: "${trackingCode}" 
+          });
+        }
+        
+        addSuccessListener(function(response) {
+          if (response && response.transactionId) {
+            window.location.href = "/paiement/verifier?tracking=${trackingCode}&transaction_id=" + response.transactionId;
+          }
+        });
+      </script>
+    `, proConnected));
+  });
 
-        <!-- FORMULAIRE D'INSCRIPTION (Caché au début) -->
-        <div id="box-register" style="display:none;">
-          <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">✨ Créer un compte</h2>
-          <form action="/mon-compte/enregistrer" method="POST">
-            <label class="fancy-label">Nom complet</label>
-            <input name="full_name" required maxlength="150" placeholder="Ex: Jean Dupont" class="fancy-input">
-            
-            <label class="fancy-label">Téléphone</label>
-            <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input">
-            
-            <label class="fancy-label">Vérification du numéro *</label>
-            <div style="display:flex; gap:10px; margin-bottom:14px;">
-              <input name="otp_code" placeholder="Code SMS" required class="fancy-input" style="margin-bottom:0;">
-              <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
-            </div>
+  router.get("/paiement/verifier", async (req, res) => {
+    const trackingCode = String(req.query.tracking || "").trim();
+    const transactionId = String(req.query.transaction_id || "").trim();
+    const proConnected = await getConnectedPro(req);
 
-            <label class="fancy-label">Mot de passe</label>
-            <input name="password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
-            
-            <label class="fancy-label">Confirmer le mot de passe</label>
-            <input name="password_confirm" type="password" required minlength="6" placeholder="Retapez le mot de passe" class="fancy-input">
-            
-            <button type="submit" style="width:100%; padding:14px; font-size:16px; border-radius:12px; background:#10b981; margin-top:10px;">Créer mon compte</button>
-          </form>
-          <p style="text-align:center; margin-top:20px; font-size:14px; color:#6b7280;">
-            Déjà un compte ? <a href="#" onclick="toggleAccountForm(event)" style="color:#2563eb; font-weight:bold; text-decoration:none;">Se connecter</a>
-          </p>
-        </div>
+    if (!trackingCode || !transactionId) return res.redirect(303, "/");
 
-      </div>
+    try {
+      const verification = await verifyKkiapayTransaction(transactionId);
+      
+      if (verification.success) {
+        const dossier = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+        if (dossier.rows.length) {
+           await settlePayment({
+             dossierId: dossier.rows[0].id,
+             transactionId: transactionId,
+             amount: verification.amount,
+             method: 'kkiapay',
+             source: 'redirect'
+           });
+           
+           // ✅ PAGE DE SUCCÈS AVEC NUMÉRO DE SUIVI CLAIR
+           return res.send(page("Succès", `
+             <section class="card" style="text-align:center; max-width: 600px; margin: 40px auto;">
+               <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
+               <p style="font-size:16px; color:#374151; margin-bottom:24px;">Votre dossier est maintenant en cours d'examen par notre équipe.</p>
+               
+               <div style="background:#f8fafc; border:1px dashed #cbd5e0; padding:20px; border-radius:12px; margin-bottom:24px;">
+                 <p style="font-size:14px; color:#64748b; margin-bottom:10px;">Votre numéro de suivi (à conserver précieusement) :</p>
+                 <div style="font-size:28px; font-weight:900; font-family:monospace; color:#1e3a8a; letter-spacing:2px;" id="tracking-code">${escapeHtml(trackingCode)}</div>
+                 <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(trackingCode)}').then(() => alert('✅ Code copié !'))" style="margin-top:12px; padding:8px 16px; font-size:13px; background:#e2e8f0; color:#1e293b; border:none; border-radius:6px; cursor:pointer;">📋 Copier</button>
+               </div>
+               
+               <div style="display:flex; flex-direction:column; gap:12px;">
+                 <a href="/suivi" class="button" style="background:#2563eb; width:100%; padding:14px; font-size:16px;">🔍 Suivre mon dossier maintenant</a>
+                 <a href="/" class="button secondary" style="width:100%;">Retour à l'accueil</a>
+               </div>
+             </section>
+           `, proConnected));
+        }
+      }
+      res.send(page("Erreur", `<section class="card" style="text-align:center;"><h1>❌ Paiement non confirmé</h1><p>Si vous avez été débité, contactez-nous.</p><a href="/contact" class="button">Contact</a></section>`, proConnected));
+    } catch (e) {
+      res.redirect(303, "/");
+    }
+  });
+
+  async function getOrCreateClientCode(visitorId) {
+    if (!visitorId) return null;
+    let result = await pool.query(`SELECT code FROM client_codes WHERE visitor_id = $1`, [visitorId]);
+    if (result.rows.length) return result.rows[0].code;
+    
+    const newCode = crypto.randomBytes(4).toString("hex").toUpperCase();
+    await pool.query(`INSERT INTO client_codes (visitor_id, code) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [visitorId, newCode]);
+    return newCode;
+  }
+
+  router.get("/mon-compte/reinitialiser", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    res.send(page("Mot de passe oublié", `
+      <section class="card" style="max-width: 450px; margin: 40px auto;">
+        <h1 style="text-align:center; font-size:22px;">🔐 Mot de passe oublié</h1>
+        <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
+          Entrez votre numéro de téléphone pour recevoir un code de vérification.
+        </p>
+        
+        <form action="/mon-compte/reinitialiser" method="POST">
+          <label class="fancy-label">Votre téléphone *</label>
+          <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
+          
+          <div style="display:flex; gap:10px; margin-bottom:14px;">
+            <input name="otp_code" placeholder="Code reçu par SMS" required class="fancy-input" style="margin-bottom:0;">
+            <button type="button" onclick="demanderCodeReset()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
+          </div>
+
+          <label class="fancy-label">Nouveau mot de passe *</label>
+          <input name="new_password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
+          
+          <button type="submit" class="success" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Changer mon mot de passe</button>
+        </form>
+        
+        <p style="text-align:center; margin-top:20px;"><a href="/mon-compte" style="color:#6b7280; font-size:14px;">← Retour à la connexion</a></p>
+      </section>
 
       <script>
-        function toggleAccountForm(e) {
-          e.preventDefault();
-          const login = document.getElementById('box-login');
-          const register = document.getElementById('box-register');
-          if (login.style.display === 'none') {
-            login.style.display = 'block';
-            register.style.display = 'none';
-          } else {
-            login.style.display = 'none';
-            register.style.display = 'block';
-          }
-        }
-
-        async function demanderCode() {
+        async function demanderCodeReset() {
           const phoneInput = document.querySelector('input[name="phone"]');
           if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
             alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
             return;
           }
           const btn = event.target;
-          btn.innerText = "Envoi...";
-          btn.disabled = true;
+          btn.innerText = "Envoi..."; btn.disabled = true;
           
           try {
             const res = await fetch('/api/send-otp', {
@@ -751,536 +1042,104 @@ router.get("/mon-compte", async (req, res) => {
           btn.disabled = false;
         }
       </script>
-    `;
-  }
+    `, proConnected));
+  });
 
-  res.send(page("Mon compte", `<section class="card" style="max-width: 800px; margin: 40px auto;">${content}</section>`, proConnected));
-});
-// D. Créer un compte client (avec mot de passe sécurisé)
-router.post("/mon-compte/enregistrer", async (req, res) => {
-  const otpCode = String(req.body.otp_code || "").trim();
-  const visitorId = getOrCreateVisitorId(req, res);
-  const fullName = String(req.body.full_name || "").trim().slice(0, 150);
-  const phone = cleanBeninPhone(req.body.phone);
-  const password = String(req.body.password || "");
-  const passwordConfirm = String(req.body.password_confirm || "");
+  router.post("/mon-compte/reinitialiser", async (req, res) => {
+    const phone = cleanBeninPhone(req.body.phone);
+    const otpCode = String(req.body.otp_code || "").trim();
+    const newPassword = String(req.body.new_password || "");
 
-  if (!fullName || !phone || password.length < 6) return res.redirect(303, "/mon-compte");
-  if (password !== passwordConfirm) return res.status(400).send(page("Erreur", "<h2>Les mots de passe ne correspondent pas.</h2><a href='/mon-compte'>Retour</a>", null));
-
-  try {
-    // Vérification du code SMS
-const codeValide = await verifyOTP(phone, otpCode);
-if (!codeValide) {
-  return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte'>Retour</a>", null));
-}
-    // Sécurité maximale avec bcrypt (12 tours = très sécurisé)
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // On vérifie si le numéro existe déjà
-    const existing = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
-    if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Ce numéro a déjà un compte.</h2><a href='/mon-compte'>Se connecter</a>", null));
-
-    const code = await getOrCreateClientCode(visitorId);
-    await pool.query(`UPDATE client_codes SET full_name = $1, phone = $2, password_hash = $3 WHERE visitor_id = $4`, [fullName, phone, passwordHash, visitorId]);
-    res.redirect(303, "/mon-compte");
-  } catch (error) { res.redirect(303, "/mon-compte"); }
-});
-
-// E. Se connecter avec téléphone + mot de passe (Sécurisé)
-router.post("/mon-compte/connexion-code", async (req, res) => {
-  const phone = cleanBeninPhone(req.body.phone);
-  const password = String(req.body.password || "");
-  const visitorId = getOrCreateVisitorId(req, res);
-
-  if (!phone || !password) return res.redirect(303, "/mon-compte");
-
-  try {
-    const result = await pool.query(`SELECT id, visitor_id, password_hash FROM client_codes WHERE phone = $1`, [phone]);
-    if (!result.rows.length) return res.status(404).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
-    
-    const client = result.rows[0];
-    if (!client.password_hash) return res.status(400).send(page("Erreur", "<h2>Ce compte n'a pas encore de mot de passe.</h2><a href='/mon-compte'>Retour</a>", null));
-
-    const match = await bcrypt.compare(password, client.password_hash);
-    
-    if (!match) return res.status(401).send(page("Erreur", "<h2>Numéro ou mot de passe incorrect.</h2><a href='/mon-compte'>Retour</a>", null));
-
-    // On fusionne proprement : l'ancien visiteur prend le nouveau cookie
-    if (client.visitor_id !== visitorId) {
-        // On supprime l'ancien profil visiteur temporaire s'il existe
-        await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1 AND phone IS NULL`, [visitorId]);
-        // On lie le compte au nouvel appareil
-        await pool.query(`UPDATE client_codes SET visitor_id = $1 WHERE id = $2`, [visitorId, client.id]);
-    }
-    
-    res.redirect(303, "/mon-compte");
-  } catch (error) { res.redirect(303, "/mon-compte"); }
-});
-// F. Réinitialiser le mot de passe
-router.post("/mon-compte/reinitialiser", async (req, res) => {
-  const phone = cleanBeninPhone(req.body.phone);
-  if (!phone) return res.redirect(303, "/mon-compte");
-  
-  res.send(page("Information", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 Information</h1><p>La récupération automatique par SMS est en cours de configuration. Veuillez contacter notre support pour récupérer votre compte.</p><a href="/contact" class="button">Contacter le support</a></section>`, null));
-});
-  
-// PAGE POUR LAISSER UN AVIS
-router.get("/pro/:id/avis", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const id = Number(req.params.id);
-  if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-
-  const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
-  if (!result.rows.length) return res.redirect(303, "/");
-  const person = result.rows[0];
-  const displayName = person.company_name?.trim() || person.full_name || "";
-
-  res.send(page("Laisser un avis", `
-    <section class="card" style="max-width: 600px; margin: 40px auto;">
-      <h1 style="text-align:center;">Laisser un avis</h1>
-      <div class="alert alert-info" style="text-align:center;">
-        ⭐ Avis sur <strong>${escapeHtml(displayName)}</strong> (${escapeHtml(person.profession)}).
-      </div>
-      <form action="/pro/${person.id}/avis" method="POST">
-        <label>Votre nom *</label>
-        <input name="author_name" required maxlength="100">
-        
-        <label>Note *</label>
-<div class="star-rating-wrapper">
-  <input type="radio" id="star5" name="rating" value="5" required /><label for="star5" title="Excellent">★</label>
-  <input type="radio" id="star4" name="rating" value="4" /><label for="star4" title="Très bien">★</label>
-  <input type="radio" id="star3" name="rating" value="3" /><label for="star3" title="Moyen">★</label>
-  <input type="radio" id="star2" name="rating" value="2" /><label for="star2" title="Mauvais">★</label>
-  <input type="radio" id="star1" name="rating" value="1" /><label for="star1" title="Très mauvais">★</label>
-</div>
-<style>
-  .star-rating-wrapper {
-    display: flex;
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    font-size: 40px;
-    margin-bottom: 20px;
-  }
-  .star-rating-wrapper input {
-    display: none;
-  }
-  .star-rating-wrapper label {
-    color: #d1d5db;
-    cursor: pointer;
-    transition: color 0.2s;
-    margin-right: 5px;
-  }
-  .star-rating-wrapper input:checked ~ label,
-  .star-rating-wrapper label:hover,
-  .star-rating-wrapper label:hover ~ label {
-    color: #f59e0b;
-  }
-</style>
-        
-        <label>Commentaire</label>
-        <textarea name="comment" rows="4" maxlength="3000"></textarea>
-        
-        <div style="text-align:center; margin-top:20px;">
-          <button type="submit">Envoyer</button>
-          <a class="button secondary" href="/pro/${person.id}">Annuler</a>
-        </div>
-      </form>
-    </section>
-  `, proConnected));
-});
-  // ==========================================
-// ENREGISTREMENT D'UN AVIS (POST)
-// ==========================================
-router.post("/pro/:id/avis", async (req, res) => {
-  try {
-    const proId = Number(req.params.id);
-    const visitorId = getOrCreateVisitorId(req, res);
-    if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
-    
-    const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
-    if (!check.rows.length) return res.redirect(303, "/");
-
-    // On vérifie que le client a bien contacté le pro (via Appel/WhatsApp) ces 30 derniers jours
-    const contactProof = await pool.query(`
-      SELECT 1 FROM contact_events
-       WHERE pro_id = $1 AND visitor_id = $2 AND created_at >= NOW() - INTERVAL '30 days'
-       UNION ALL
-      SELECT 1 FROM pro_stats
-       WHERE pro_id = $1 AND last_visitor_id = $2
-         AND (phone_clicks > 0 OR wa_clicks > 0)
-         AND date >= CURRENT_DATE - INTERVAL '30 days'
-       LIMIT 1
-    `, [proId, visitorId]);
-    
-    if (contactProof.rows.length === 0) {
-      return res.status(403).send(page("Preuve de contact requise", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align: center;"><h1 style="color:#ef4444;">🔒 Preuve de contact requise</h1><p>Pour garantir l'authenticité des avis, seuls les clients ayant contacté ce professionnel via TrouveMoi (Appel ou WhatsApp) dans les 30 derniers jours peuvent laisser un avis.</p><a class="button" href="/pro/${proId}" style="margin-top:20px;">Retour au profil</a></section>`, null));
-    }
-
-    const ratingNum = Number(req.body.rating);
-    if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-      return res.status(400).send(page("Erreur", "<h2>Note invalide (1 a 5).</h2>", null));
-    }
-    const author = String(req.body.author_name || "").trim().slice(0, 100);
-    if (!author) return res.status(400).send(page("Erreur", "<h2>Nom requis.</h2>", null));
-    const comment = String(req.body.comment || "").slice(0, 3000);
-
-    const alreadyReviewed = await pool.query(`SELECT id FROM reviews WHERE pro_id = $1 AND visitor_id = $2 LIMIT 1`, [proId, visitorId]);
-    if (alreadyReviewed.rows.length) {
-      return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><p>Vous avez deja laisse un avis sur ce professionnel. Merci !</p><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
-    }
+    if (!phone || !otpCode || newPassword.length < 6) return res.redirect(303, "/mon-compte/reinitialiser");
 
     try {
-      await pool.query(`INSERT INTO reviews (pro_id, author_name, rating, comment, status, visitor_id) VALUES ($1, $2, $3, $4, 'pending', $5)`, [proId, author, ratingNum, comment, visitorId]);
-    } catch (insertError) {
-      if (insertError.code === "23505") {
-        return res.status(409).send(page("Avis deja depose", `<section class="card" style="max-width: 600px; margin: 40px auto; text-align:center;"><h1>✅ Avis deja enregistre</h1><a class="button" href="/pro/${proId}">Retour au profil</a></section>`, null));
+      const isCodeValid = await verifyOTP(phone, otpCode);
+      if (!isCodeValid) {
+        return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte/reinitialiser'>Réessayer</a>", null));
       }
-      throw insertError;
-    }
 
-    res.send(page("Succes", `<section class='card' style='text-align:center; max-width: 500px; margin: 40px auto;'><h1>Merci !</h1><p>Votre avis sera examine par notre equipe avant publication.</p><a class='button' href='/pro/${proId}'>Retour au profil</a></section>`, null));
-  } catch (e) { 
-    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
-  }
-});
-  // ==========================================
-// TRACKING DES CLICS (Appels & WhatsApp)
-// ==========================================
-router.post("/api/track/:id/:type", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    const type = req.params.type;
+      const result = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
+      if (!result.rows.length) {
+        return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-compte'>Retour</a>", null));
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 12);
+      await pool.query(`UPDATE client_codes SET password_hash = $1 WHERE phone = $2`, [passwordHash, phone]);
+
+      res.send(page("Succès", `
+        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+          <h1 style="color:#10b981;">✅ Mot de passe modifié</h1>
+          <p>Votre mot de passe a bien été réinitialisé.</p>
+          <a href="/mon-compte" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
+        </section>
+      `, null));
+    } catch (e) {
+      console.error("Erreur réinit client :", e);
+      res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
+    }
+  });
+
+  router.post("/mon-compte/supprimer", async (req, res) => {
     const visitorId = getOrCreateVisitorId(req, res);
-    if (!Number.isSafeInteger(id) || id < 1) return res.json({ ok: false });
-    
-    let col = "";
-    if (type === "phone") col = "phone_clicks";
-    else if (type === "wa") col = "wa_clicks";
-    else return res.json({ ok: false });
-
-    // 1. Mise à jour des stats
-    await pool.query(`INSERT INTO pro_stats (pro_id, date, ${col}, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (pro_id, date) DO UPDATE SET ${col} = pro_stats.${col} + 1, last_visitor_id = $2`, [id, visitorId]);
-
-    // 2. Enregistrement de la preuve de contact (pour les avis)
-    await pool.query(`INSERT INTO contact_events (pro_id, visitor_id, type) VALUES ($1, $2, $3)`, [id, visitorId, type]);
-
-    res.json({ ok: true });
-  } catch (e) { 
-    console.error("Erreur tracking :", e.message);
-    res.json({ ok: false }); 
-  }
-});
-  // ==========================================
-// ROUTES AJOUTÉES POUR RÉPARER LES BUGS
-// ==========================================
-
-// 1. Déconnexion du compte client
-router.get("/mon-compte/deconnexion", (req, res) => {
-  res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
-  res.redirect(303, "/mon-compte");
-});
-
-// 2. API pour remplir la liste des quartiers (formulaire pro)
-router.get("/api/neighborhoods", (req, res) => {
-  const city = String(req.query.city || "").trim();
-  if (!city) return res.json({ neighborhoods: [] });
-
-  // On récupère la liste de la ville
-  const quartiers = QUARTIERS_BENIN[city] || []; 
-  
-  // On ajoute l'option "Autre" à la fin de la liste
-  quartiers.push("Autre");
-
-  res.json({ neighborhoods: quartiers });
-});
-// 3. Formulaire de demande de retrait (Espace Pro)
-router.post("/mon-espace-pro/demander-retrait", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-
-  const amount = Number(req.body.amount);
-  const phoneNumber = cleanBeninPhone(req.body.phone_number);
-
-  // Sécurité : on vérifie que le montant est valide et qu'il y a assez d'argent
-  if (!phoneNumber || isNaN(amount) || amount < 1000) {
-    return res.status(400).send(page("Erreur", "<h2>Montant ou numéro invalide (minimum 1000 FCFA).</h2>", proConnected));
-  }
-
-  if (amount > Number(proConnected.pro.referral_balance)) {
-    return res.status(400).send(page("Erreur", "<h2>Solde insuffisant.</h2>", proConnected));
-  }
-
-  try {
-    // 1. On déduit l'argent du solde du pro (pour éviter qu'il ne le dépense deux fois)
-    await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance - $1 WHERE id = $2`, [amount, proConnected.pro.id]);
-    
-    // 2. On enregistre la demande pour que l'admin la valide
-    await pool.query(`INSERT INTO withdrawal_requests (pro_id, amount, phone_number, status) VALUES ($1, $2, $3, 'pending')`, [proConnected.pro.id, amount, phoneNumber]);
-    
-    res.redirect(303, "/mon-espace-pro");
-  } catch (e) {
-    res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2>", proConnected));
-  }
-});
-  // ==========================================
-// 4. PAGE DE PAIEMENT (Kkiapay)
-// ==========================================
-router.get("/paiement/:trackingCode", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const trackingCode = String(req.params.trackingCode || "").trim();
-  
-  // On vérifie que le dossier existe bien
-  const result = await pool.query(`SELECT id, full_name, payment_status FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
-  if (!result.rows.length) return res.redirect(303, "/");
-  
-  const dossier = result.rows[0];
-  if (dossier.payment_status === 'paid') {
-    return res.send(page("Déjà payé", `<section class="card" style="text-align:center;"><h1>✅ Déjà payé</h1><p>Votre dossier est déjà réglé.</p><a href="/" class="button">Retour à l'accueil</a></section>`, proConnected));
-  }
-
-  res.send(page("Paiement", `
-    <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
-      <h1>💳 Finalisez votre inscription</h1>
-      <p>Bonjour <strong>${escapeHtml(dossier.full_name)}</strong>,</p>
-      <p style="margin-bottom: 20px;">Pour valider l'étude de votre dossier, veuillez régler les frais d'inscription de <strong>1500 FCFA</strong>.</p>
+    try {
+      await pool.query(`DELETE FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
+      await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1`, [visitorId]);
       
-      <button onclick="payer()" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px;">
-        Payer 1500 FCFA
-      </button>
-      
-      <p style="font-size: 12px; color: #6b7280; margin-top: 20px;">Paiement sécurisé via Mobile Money (MTN / Moov).</p>
-    </section>
-    
-    <script src="https://cdn.kkiapay.me/k.js"></script>
-    <script>
-      function payer() {
-        openKkiapayWidget({ 
-          amount: 1500, 
-          api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
-          sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
-          callback: "${APP_URL}/paiement/verifier?tracking=${trackingCode}", 
-          data: "${trackingCode}" 
-        });
-      }
-      
-      addSuccessListener(function(response) {
-        if (response && response.transactionId) {
-          window.location.href = "/paiement/verifier?tracking=${trackingCode}&transaction_id=" + response.transactionId;
-        }
-      });
-    </script>
-  `, proConnected));
-});
-
-// Vérification du paiement après retour de Kkiapay
-router.get("/paiement/verifier", async (req, res) => {
-  const trackingCode = String(req.query.tracking || "").trim();
-  const transactionId = String(req.query.transaction_id || "").trim();
-  const proConnected = await getConnectedPro(req);
-
-  if (!trackingCode || !transactionId) return res.redirect(303, "/");
-
-  try {
-    // On appelle la fonction de vérification de ton serveur.js
-    const verification = await verifyKkiapayTransaction(transactionId);
-    
-    if (verification.success) {
-      const dossier = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
-      if (dossier.rows.length) {
-         await settlePayment({
-           dossierId: dossier.rows[0].id,
-           transactionId: transactionId,
-           amount: verification.amount,
-           method: 'kkiapay',
-           source: 'redirect'
-         });
-         return res.send(page("Succès", `<section class="card" style="text-align:center;"><h1>🎉 Paiement réussi !</h1><p>Votre dossier est maintenant en cours d'examen par notre équipe.</p><a href="/" class="button">Retour à l'accueil</a></section>`, proConnected));
-      }
+      res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+      res.redirect(303, "/");
+    } catch (e) {
+      res.status(500).send(page("Erreur", "<h2>Erreur lors de la suppression.</h2>", null));
     }
-    res.send(page("Erreur", `<section class="card" style="text-align:center;"><h1>❌ Paiement non confirmé</h1><p>Si vous avez été débité, contactez-nous.</p><a href="/contact" class="button">Contact</a></section>`, proConnected));
-  } catch (e) {
-    res.redirect(303, "/");
-  }
-});
-  // Fonction pour créer ou récupérer le code d'un client
-async function getOrCreateClientCode(visitorId) {
-  if (!visitorId) return null;
-  let result = await pool.query(`SELECT code FROM client_codes WHERE visitor_id = $1`, [visitorId]);
-  if (result.rows.length) return result.rows[0].code;
-  
-  // Si le visiteur n'a pas de code, on lui en crée un
-  const newCode = crypto.randomBytes(4).toString("hex").toUpperCase();
-  await pool.query(`INSERT INTO client_codes (visitor_id, code) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [visitorId, newCode]);
-  return newCode;
-}
-  // PAGE POUR RÉCUPÉRER SON MOT DE PASSE (CLIENT)
-router.get("/mon-compte/reinitialiser", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  res.send(page("Mot de passe oublié", `
-    <section class="card" style="max-width: 450px; margin: 40px auto;">
-      <h1 style="text-align:center; font-size:22px;">🔐 Mot de passe oublié</h1>
-      <p style="font-size:14px; color:#6b7280; text-align:center; margin-bottom:20px;">
-        Entrez votre numéro de téléphone pour recevoir un code de vérification.
-      </p>
-      
-      <form action="/mon-compte/reinitialiser" method="POST">
-        <label class="fancy-label">Votre téléphone *</label>
-        <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input" style="text-align:center;">
-        
-        <div style="display:flex; gap:10px; margin-bottom:14px;">
-          <input name="otp_code" placeholder="Code reçu par SMS" required class="fancy-input" style="margin-bottom:0;">
-          <button type="button" onclick="demanderCodeReset()" style="margin-bottom:0; padding: 12px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">Recevoir</button>
+  });
+
+  router.get("/pro/:id/agences", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const id = Number(req.params.id);
+    
+    const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+    if (!proResult.rows.length) return res.redirect(303, "/");
+    const person = proResult.rows[0];
+    const displayName = person.company_name?.trim() || person.full_name;
+
+    const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [id]);
+
+    const agencesHtml = agenciesResult.rows.map(ag => `
+      <a href="/agence/${ag.id}" style="display:block; background:white; padding:20px; border-radius:16px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s; margin-bottom:16px;" onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.1)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:700; color:#1e293b; font-size:18px; margin-bottom:4px;">🏢 ${escapeHtml(ag.name)}</div>
+            <div style="font-size:14px; color:#64748b;">📍 ${escapeHtml(ag.address)}</div>
+          </div>
+          <div style="color:#2563eb; font-weight:600; font-size:14px;">Voir →</div>
         </div>
+      </a>
+    `).join("");
 
-        <label class="fancy-label">Nouveau mot de passe *</label>
-        <input name="new_password" type="password" required minlength="6" placeholder="Au moins 6 caractères" class="fancy-input">
-        
-        <button type="submit" class="success" style="width:100%; padding:14px; font-size:16px; border-radius:12px; margin-top:10px;">Changer mon mot de passe</button>
-      </form>
-      
-      <p style="text-align:center; margin-top:20px;"><a href="/mon-compte" style="color:#6b7280; font-size:14px;">← Retour à la connexion</a></p>
-    </section>
-
-    <script>
-      async function demanderCodeReset() {
-        const phoneInput = document.querySelector('input[name="phone"]');
-        if (!phoneInput.value || !/^01[0-9]{8}$/.test(phoneInput.value)) {
-          alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
-          return;
-        }
-        const btn = event.target;
-        btn.innerText = "Envoi..."; btn.disabled = true;
-        
-        try {
-          const res = await fetch('/api/send-otp', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ phone: phoneInput.value })
-          });
-          const data = await res.json();
-          if (data.ok) {
-            alert("✅ Code envoyé ! Vérifiez vos SMS.");
-            btn.innerText = "Renvoyer";
-          } else {
-            alert(data.error || "Erreur d'envoi.");
-            btn.innerText = "Recevoir";
-          }
-        } catch(e) {
-          alert("Erreur réseau.");
-          btn.innerText = "Recevoir";
-        }
-        btn.disabled = false;
-      }
-    </script>
-  `, proConnected));
-});
-
-// TRAITEMENT DU NOUVEAU MOT DE PASSE
-router.post("/mon-compte/reinitialiser", async (req, res) => {
-  const phone = cleanBeninPhone(req.body.phone);
-  const otpCode = String(req.body.otp_code || "").trim();
-  const newPassword = String(req.body.new_password || "");
-
-  if (!phone || !otpCode || newPassword.length < 6) return res.redirect(303, "/mon-compte/reinitialiser");
-
-  try {
-    // 1. Vérification du code SMS
-    const isCodeValid = await verifyOTP(phone, otpCode);
-    if (!isCodeValid) {
-      return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré.</h2><a href='/mon-compte/reinitialiser'>Réessayer</a>", null));
-    }
-
-    // 2. Vérification que le compte existe
-    const result = await pool.query(`SELECT id FROM client_codes WHERE phone = $1`, [phone]);
-    if (!result.rows.length) {
-      return res.status(404).send(page("Erreur", "<h2>Aucun compte trouvé avec ce numéro.</h2><a href='/mon-compte'>Retour</a>", null));
-    }
-
-    // 3. Hash du nouveau mot de passe et mise à jour
-    const bcrypt = require('bcrypt'); // On s'assure que bcrypt est disponible
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    await pool.query(`UPDATE client_codes SET password_hash = $1 WHERE phone = $2`, [passwordHash, phone]);
-
-    // 4. Succès
-    res.send(page("Succès", `
-      <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-        <h1 style="color:#10b981;">✅ Mot de passe modifié</h1>
-        <p>Votre mot de passe a bien été réinitialisé.</p>
-        <a href="/mon-compte" class="button success" style="margin-top:20px; width:100%;">Se connecter</a>
-      </section>
-    `, null));
-  } catch (e) {
-    console.error("Erreur réinit client :", e);
-    res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
-  }
-});
-  // ROUTE POUR SUPPRIMER LE COMPTE CLIENT
-router.post("/mon-compte/supprimer", async (req, res) => {
-  const visitorId = getOrCreateVisitorId(req, res);
-  try {
-    // On supprime le compte client et ses favoris
-    await pool.query(`DELETE FROM client_favorites WHERE visitor_id = $1`, [visitorId]);
-    await pool.query(`DELETE FROM client_codes WHERE visitor_id = $1`, [visitorId]);
-    
-    // On vide le cookie
-    res.append("Set-Cookie", `tm_visitor_id=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
-    res.redirect(303, "/");
-  } catch (e) {
-    res.status(500).send(page("Erreur", "<h2>Erreur lors de la suppression.</h2>", null));
-  }
-});
-  // PAGE DÉDIÉE AUX AGENCES D'UN PRO
-router.get("/pro/:id/agences", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const id = Number(req.params.id);
-  
-  // 1. On récupère le pro
-  const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
-  if (!proResult.rows.length) return res.redirect(303, "/");
-  const person = proResult.rows[0];
-  const displayName = person.company_name?.trim() || person.full_name;
-
-  // 2. On récupère ses agences
-  const agenciesResult = await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [id]);
-
-  const agencesHtml = agenciesResult.rows.map(ag => `
-    <a href="/agence/${ag.id}" style="display:block; background:white; padding:20px; border-radius:16px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s; margin-bottom:16px;" onmouseover="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 4px 12px rgba(59,130,246,0.1)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div>
-          <div style="font-weight:700; color:#1e293b; font-size:18px; margin-bottom:4px;">🏢 ${escapeHtml(ag.name)}</div>
-          <div style="font-size:14px; color:#64748b;">📍 ${escapeHtml(ag.address)}</div>
+    res.send(page(`Agences de ${displayName}`, `
+      <div style="max-width: 700px; margin: 40px auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h1 style="margin:0; font-size:24px;">🏢 Agences de ${escapeHtml(displayName)}</h1>
+          <a href="/pro/${person.id}" class="button secondary" style="margin:0;">← Retour au profil</a>
         </div>
-        <div style="color:#2563eb; font-weight:600; font-size:14px;">Voir →</div>
+        
+        <p style="color:#64748b; margin-bottom:24px;">Voici les adresses physiques de ce professionnel :</p>
+        
+        ${agencesHtml || "<p>Aucune agence disponible pour le moment.</p>"}
       </div>
-    </a>
-  `).join("");
+    `, proConnected));
+  });
 
-  res.send(page(`Agences de ${displayName}`, `
-    <div style="max-width: 700px; margin: 40px auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h1 style="margin:0; font-size:24px;">🏢 Agences de ${escapeHtml(displayName)}</h1>
-        <a href="/pro/${person.id}" class="button secondary" style="margin:0;">← Retour au profil</a>
-      </div>
-      
-      <p style="color:#64748b; margin-bottom:24px;">Voici les adresses physiques de ce professionnel :</p>
-      
-      ${agencesHtml || "<p>Aucune agence disponible pour le moment.</p>"}
-    </div>
-  `, proConnected));
-});
-  // API POUR LES QUARTIERS
-router.get("/api/neighborhoods", (req, res) => {
-  const city = String(req.query.city || "").trim();
-  if (!city) return res.json({ neighborhoods: [] });
+  router.get("/api/neighborhoods", (req, res) => {
+    const city = String(req.query.city || "").trim();
+    if (!city) return res.json({ neighborhoods: [] });
 
-  // On récupère la liste des quartiers pour la ville choisie
-  const quartiers = QUARTIERS_BENIN[city] || []; 
-  
-  // On ajoute l'option "Autre"
-  quartiers.push("Autre");
+    // ✅ Utilise la liste complète passée par server.js
+    const quartiers = QUARTIERS_BENIN[city] ? [...QUARTIERS_BENIN[city]] : []; 
+    
+    quartiers.push("Autre");
 
-  res.json({ neighborhoods: quartiers });
-});
+    res.json({ neighborhoods: quartiers });
+  });
+
   return router;
 };
