@@ -91,121 +91,122 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>`, null));
   });
 
-  // ==========================================
-  // GESTION DES CANDIDATURES (NOUVEAU DESIGN)
-  // ==========================================
-  router.get("/candidatures", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const result = await pool.query(`
-      SELECT p.*, pr.category AS profession_category 
-      FROM professional_applications p
-      LEFT JOIN professions pr ON p.profession = pr.name
-      WHERE p.status != 'payment_pending' 
-      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
-    `);
-    
-    const apps = result.rows.map(c => {
-      // Gestion des badges
-      let statusBadge = "";
-      if (c.status === 'approved') statusBadge = `<span class="badge" style="background:#d1fae5; color:#065f46;">✅ Approuvé</span>`;
-      else if (c.status === 'rejected') statusBadge = `<span class="badge" style="background:#fee2e2; color:#991b1b;">❌ Rejeté</span>`;
-      else if (c.status === 'suspended') statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e;">⏸️ Suspendu</span>`;
-      else statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e;">⏳ En attente</span>`;
+ // ==========================================
+// GESTION DES CANDIDATURES (DESIGN GRILLE)
+// ==========================================
+router.get("/candidatures", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`
+    SELECT p.*, pr.category AS profession_category 
+    FROM professional_applications p
+    LEFT JOIN professions pr ON p.profession = pr.name
+    WHERE p.status != 'payment_pending' 
+    ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
+  `);
+  
+  const apps = result.rows.map(c => {
+    let statusColor = "#f59e0b", statusLabel = "En attente";
+    if (c.status === 'approved') { statusColor = "#10b981"; statusLabel = "Approuvé"; }
+    else if (c.status === 'rejected') { statusColor = "#ef4444"; statusLabel = "Rejeté"; }
+    else if (c.status === 'suspended') { statusColor = "#f97316"; statusLabel = "Suspendu"; }
 
-      // Bloc des boutons d'action
-      let actionButtons = "";
-      if (c.status === 'pending' || c.status === 'under_review') {
-        actionButtons = `
-          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px;">
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="approved">
-              <button class="success" style="width:100%; padding:10px; font-size:14px;">✅ Approuver</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="rejected">
-              <div style="display:flex; gap:8px;">
-                <input name="rejection_reason" placeholder="Motif..." style="margin:0; padding:8px; font-size:13px; flex:1;">
-                <button class="danger" style="padding:10px; font-size:14px; margin:0;">❌ Rejeter</button>
-              </div>
-            </form>
-          </div>`;
-      } else if (c.status === 'approved') {
-        actionButtons = `
-          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:200px; background:#eff6ff; padding:10px; border-radius:8px; text-align:center;">
-              <div style="font-size:11px; color:#1e40af; text-transform:uppercase;">Code Pro :</div>
-              <div style="font-size:20px; font-weight:bold; font-family:monospace; color:#1e3a8a;">${escapeHtml(c.pro_code || '-')}</div>
+    let actionButtons = "";
+    if (c.status === 'pending' || c.status === 'under_review') {
+      actionButtons = `
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="approved">
+            <button class="success" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">✅ Approuver</button>
+          </form>
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="rejected">
+            <div style="display:flex; gap:5px;">
+              <input name="rejection_reason" placeholder="Motif..." style="margin:0; padding:6px; font-size:12px; flex:1; border-radius:6px;">
+              <button class="danger" style="padding:6px 10px; font-size:12px; margin:0; border-radius:6px;">❌</button>
             </div>
-            <form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <button class="warning" style="width:100%; padding:10px; font-size:13px;">🔄 Nouveau code</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="suspended">
-              <button class="danger" style="width:100%; padding:10px; font-size:13px; background:#f59e0b;">⏸️ Suspendre</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0; flex:1;" onsubmit="return confirm('⚠️ Supprimer DÉFINITIVEMENT ce compte ?');">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <button class="danger" style="width:100%; padding:10px; font-size:13px;">🗑️ Supprimer</button>
-            </form>
-          </div>`;
-      } else if (c.status === 'suspended') {
-        actionButtons = `
-          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px;">
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="approved">
-              <button class="success" style="width:100%; padding:10px; font-size:14px;">▶️ Réactiver</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0; flex:1;" onsubmit="return confirm('⚠️ Supprimer DÉFINITIVEMENT ce compte ?');">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <button class="danger" style="width:100%; padding:10px; font-size:14px;">🗑️ Supprimer</button>
-            </form>
-          </div>`;
-      }
-
-      return `
-        <div class="card" style="margin-bottom:20px; border-left:4px solid ${c.status === 'approved' ? '#10b981' : c.status === 'rejected' ? '#ef4444' : '#f59e0b'};">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
-            <div style="display:flex; gap:15px; align-items:center;">
-              ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:60px; height:60px; object-fit:cover; border-radius:50%; border:2px solid #3b82f6;">` : `<div style="width:60px; height:60px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px;">👤</div>`}
-              <div>
-                <h2 style="margin:0; font-size:18px;">${escapeHtml(c.full_name)}</h2>
-                <div style="font-size:14px; color:#6b7280;">${escapeHtml(c.profession)} • ${escapeHtml(c.city)}</div>
-              </div>
-            </div>
-            <div>${statusBadge}</div>
+          </form>
+        </div>`;
+    } else if (c.status === 'approved') {
+      actionButtons = `
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+          <div style="background:#eff6ff; padding:8px; border-radius:8px; text-align:center;">
+            <div style="font-size:10px; color:#1e40af; text-transform:uppercase;">Code Pro</div>
+            <div style="font-size:16px; font-weight:bold; font-family:monospace; color:#1e3a8a;">${escapeHtml(c.pro_code || '-')}</div>
           </div>
+          <form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🔄 Nouveau code</button>
+          </form>
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="suspended">
+            <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px; background:#f97316;">⏸️ Suspendre</button>
+          </form>
+          <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Supprimer définitivement ?');">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="danger" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🗑️ Supprimer</button>
+          </form>
+        </div>`;
+    } else if (c.status === 'suspended') {
+      actionButtons = `
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+          <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <input type="hidden" name="status" value="approved">
+            <button class="success" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">▶️ Réactiver</button>
+          </form>
+          <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Supprimer définitivement ?');">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="danger" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">🗑️ Supprimer</button>
+          </form>
+        </div>`;
+    }
 
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-top:20px; background:#f8fafc; padding:15px; border-radius:12px;">
-            <div><span style="font-size:12px; color:#64748b;">Téléphone</span><br><strong>${escapeHtml(c.phone)}</strong></div>
-            <div><span style="font-size:12px; color:#64748b;">NPI</span><br><strong>${escapeHtml(c.npi)}</strong></div>
-            <div><span style="font-size:12px; color:#64748b;">Quartier</span><br><strong>${escapeHtml(c.neighborhood || '-')}</strong></div>
-            <div><span style="font-size:12px; color:#64748b;">Code suivi</span><br><strong>${escapeHtml(c.tracking_code)}</strong></div>
-            ${c.contact_email ? `<div><span style="font-size:12px; color:#64748b;">Email</span><br><strong>${escapeHtml(c.contact_email)}</strong></div>` : ''}
+    return `
+      <div style="background:white; border-radius:16px; border:1px solid #e5e7eb; box-shadow:0 4px 6px rgba(0,0,0,0.02); display:flex; flex-direction:column; overflow:hidden; border-top:4px solid ${statusColor};">
+        
+        <div style="padding:15px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #f1f5f9;">
+          ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:45px; height:45px; object-fit:cover; border-radius:50%; border:2px solid #e2e8f0;">` : `<div style="width:45px; height:45px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px;">👤</div>`}
+          <div style="flex:1; min-width:0;">
+            <h2 style="margin:0; font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.full_name)}</h2>
+            <div style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.profession)}</div>
           </div>
+          <span style="background:${statusColor}20; color:${statusColor}; padding:4px 8px; border-radius:12px; font-size:10px; font-weight:800; text-transform:uppercase;">${statusLabel}</span>
+        </div>
 
-          <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
-            ${c.photo_identite_url ? `<img src="/admin/kyc/${c.id}/photo_identite_url" onclick="zoomImage(this.src)" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb;">` : ''}
-            ${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" onclick="zoomImage(this.src)" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb;">` : ''}
-          </div>
+        <div style="padding:15px; flex:1; display:flex; flex-direction:column; gap:8px; font-size:12px;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Téléphone</span><strong>${escapeHtml(c.phone)}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">NPI</span><strong>${escapeHtml(c.npi)}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Ville</span><strong>${escapeHtml(c.city)}</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Suivi</span><strong>${escapeHtml(c.tracking_code)}</strong></div>
+        </div>
 
-          ${c.status === 'rejected' && c.rejection_reason ? `<div style="margin-top:15px; padding:10px; background:#fef2f2; border-radius:8px; color:#991b1b; font-size:13px;"><strong>Motif du refus :</strong> ${escapeHtml(c.rejection_reason)}</div>` : ''}
+        <div style="padding:0 15px 10px 15px;">
+          <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_identite_url')" style="font-size:11px; color:#2563eb; text-decoration:none; font-weight:bold;">🖼️ Voir pièce d'identité</a>
+          <br>
+          <a href="#" onclick="event.preventDefault(); zoomImage('/admin/kyc/${c.id}/photo_kyc_url')" style="font-size:11px; color:#2563eb; text-decoration:none; font-weight:bold;">🖼️ Voir photo KYC</a>
+        </div>
 
+        <div style="padding:0 15px 15px 15px; background:#fafafa; border-top:1px solid #f1f5f9;">
           ${actionButtons}
         </div>
-      `;
-    }).join("");
 
-    res.send(page("Candidatures", `
-      <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
-      ${await customAdminMenu("/admin/candidatures", csrf)}
-      <div style="margin-top:20px;">${apps || "<p>Aucune candidature.</p>"}</div>
-    `, null));
-  });
+      </div>
+    `;
+  }).join("");
+
+  res.send(page("Candidatures", `
+    <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
+    ${await customAdminMenu("/admin/candidatures", csrf)}
+    
+    <!-- ✅ GRILLE RESPONSIVE : 2 COLONNES SUR PC, 1 SUR MOBILE -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:16px; margin-top:20px;">
+      ${apps || "<p>Aucune candidature.</p>"}
+    </div>
+  `, null));
+});
 
   // Action : Changer le statut (Approuver, Rejeter, Suspendre)
   router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
