@@ -376,12 +376,37 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     res.send(page("Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1>📸 Galerie</h1><form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data"><input type="file" name="photo1"><input type="text" name="desc1" placeholder="Description"><input type="file" name="photo2"><input type="text" name="desc2" placeholder="Description"><button type="submit" style="width:100%;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
   });
 
-  router.post("/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }]), async (req, res) => {
-    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-    const galleryKey = `gallery_limit:${proConnected.pro.id}`;
-    if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
+ router.post("/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }]), async (req, res) => {
+  const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  const galleryKey = `gallery_limit:${proConnected.pro.id}`;
+  if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
+
+  try {
+    const files = req.files || {};
+    let url1 = proConnected.pro.photo_galerie_1;
+    let url2 = proConnected.pro.photo_galerie_2;
+    const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
+    const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
+
+    if (files.photo1?.[0]) {
+      const r = await uploadToCloudinary(files.photo1[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_1_${Date.now()}`);
+      url1 = r.secure_url;
+    }
+    if (files.photo2?.[0]) {
+      const r = await uploadToCloudinary(files.photo2[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_2_${Date.now()}`);
+      url2 = r.secure_url;
+    }
+
+    await pool.query(`UPDATE professional_applications SET photo_galerie_1 = $1, photo_galerie_1_desc = $2, photo_galerie_2 = $3, photo_galerie_2_desc = $4 WHERE id = $5`,
+      [url1, desc1 || null, url2, desc2 || null, proConnected.pro.id]);
+    
     res.redirect(303, "/mon-espace-pro");
-  });
+  } catch (e) {
+    console.error("Erreur upload galerie:", e);
+    await clearRateLimit(galleryKey);
+    res.redirect(303, "/mon-espace-pro/modifier-galerie");
+  }
+});
 
   router.get("/modifier-telephone", async (req, res) => {
     const proConnected = await getConnectedPro(req);
