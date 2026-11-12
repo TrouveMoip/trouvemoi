@@ -1185,8 +1185,8 @@ app.post("/suivi", async (req, res) => {
     res.redirect(303, "/suivi");
   }
 });
-app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }]), async (req, res) => {
-  const trackingCode = String(req.body.tracking_code || "").trim();
+app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
+const trackingCode = String(req.body.tracking_code || "").trim();
   const full_name = String(req.body.full_name || "").trim();
   const npi = String(req.body.npi || "").trim();
   const phone = cleanBeninPhone(req.body.phone);
@@ -1214,6 +1214,11 @@ app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }
       updateQuery += `, photo_identite_url = $${values.length}`;
     }
 
+    if (files.photo_kyc && files.photo_kyc[0]) {
+  const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_fix_${Date.now()}`);
+  values.push(p3.secure_url);
+  updateQuery += `, photo_kyc_url = $${values.length}`;
+}
     values.push(dossierId);
     updateQuery += ` WHERE id = $${values.length}`;
 
