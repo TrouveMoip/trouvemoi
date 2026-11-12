@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 
-module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary) {
+module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary,sendSMS) {
   const router = express.Router();
 
   // LA FONCTION adminMenu COMPLETE AVEC TOUS LES BOUTONS
@@ -338,17 +338,35 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     `, null));
   });
 
-  router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
-    const id = Number(req.params.id); const status = req.body.status; const reason = req.body.rejection_reason || null;
+ router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id); 
+  const status = req.body.status; 
+  const reason = req.body.rejection_reason || null;
+  
+  try {
     if (status === "approved") {
       const newCode = await generateUniqueProCode(); 
+      const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+      
       await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
+      
+      // ✅ ENVOI DU SMS AUTOMATIQUE AVEC LE CODE PRO
+      if (proResult.rows.length > 0) {
+        const pro = proResult.rows[0];
+        const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+        await sendSMS(pro.phone, messageSMS);
+      }
+      
     } else {
       await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
       if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
     }
     res.redirect(303, "/admin/candidatures");
-  });
+  } catch (e) {
+    console.error("Erreur changement statut:", e);
+    res.redirect(303, "/admin/candidatures");
+  }
+});
 
   // ==========================================
   // AVIS & SIGNALEMENTS
