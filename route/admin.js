@@ -148,7 +148,7 @@ router.get("/candidatures", requireAdmin, async (req, res) => {
           </form>
           <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
             <input type="hidden" name="csrfToken" value="${csrf}">
-            <input type="hidden" name="status" value="suspended">
+            <input type="hidden" name="status" value="suspended"> 
             <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px; background:#f97316;">⏸️ Suspendre</button>
           </form>
           <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Supprimer définitivement ?');">
