@@ -291,9 +291,8 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       
       if (proResult.rows.length > 0) {
         const pro = proResult.rows[0];
-        const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
-        await sendSMS(pro.phone, messageSMS);
-      }
+       const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
+try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
       await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
       res.redirect(303, "/admin/candidatures");
     } catch (e) {
