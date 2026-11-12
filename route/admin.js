@@ -249,22 +249,26 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const reason = req.body.rejection_reason || null;
     
     try {
-      if (status === "approved") {
-        const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-        const isReactivation = current.rows[0]?.status === 'suspended';
-        
-        if (isReactivation) {
-          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
-        } else {
-          const newCode = await generateUniqueProCode(); 
-          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
-          
-          if (current.rows.length > 0) {
-            const pro = current.rows[0];
-            const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
-            await sendSMS(pro.phone, messageSMS);
-          }
-        }
+     if (status === "approved") {
+  const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+  const isReactivation = current.rows[0]?.status === 'suspended';
+  
+  if (isReactivation) {
+    await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+  } else {
+    // ✅ ON GÉNÈRE LE CODE D'ABORD
+    const newCode = await generateUniqueProCode(); 
+    
+    // ✅ ON MET À JOUR LA BASE ET ON ATTEND QUE CE SOIT FINI
+    await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
+    
+    // ✅ ENVOI DU SMS
+    if (current.rows.length > 0) {
+      const pro = current.rows[0];
+      const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+      try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
+    }
+  }
       } else {
         await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
         if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
