@@ -472,6 +472,7 @@ function page(title, content, proConnected, meta = {}) {
                 <a href="/mes-favoris">❤️ Favoris</a>
                 <a href="/mon-compte">Mon compte</a>
                 <a href="/mon-espace-pro">Espace pro</a>
+                 <a href="/suivi">Suivi</a>
                 <a href="/contact">Contact</a>
               </div>
             </div>
