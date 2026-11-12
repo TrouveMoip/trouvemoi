@@ -4,7 +4,6 @@ const crypto = require('crypto');
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
 
-  // LA FONCTION adminMenu COMPLETE AVEC TOUS LES BOUTONS
   async function customAdminMenu(current, csrf) {
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     try {
@@ -59,7 +58,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
           <label>Code de validation (6 chiffres)</label>
           <div style="position:relative; margin-bottom:20px;">
             <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px;">
-            <span onclick="document.getElementById('totp-input').type = document.getElementById('totp-input').type === 'text' ? 'password' : 'text'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
+            <span onclick="document.getElementById('totp-input').type = document.getElementById('totp-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
           </div>
           
           <button style="width:100%; margin-top:10px;">Connexion</button>
@@ -93,30 +92,201 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // GESTION DES AGENCES (Admin)
+  // GESTION DES CANDIDATURES (NOUVEAU DESIGN)
   // ==========================================
-  router.get("/agences", requireAdmin, async (req, res) => {
+  router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT a.*, p.full_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status != 'pending_payment' ORDER BY a.created_at DESC`);
-    const rows = result.rows.map(a => `
-      <article class="card" style="margin-bottom:20px; border-left: 4px solid #8b5cf6;">
-        <div style="display:flex; justify-content:space-between;">
-          <div><h2 style="font-size:18px;">${escapeHtml(a.name)}</h2><p class="muted" style="font-size:14px;">Réseau : <strong>${escapeHtml(a.parent_name)}</strong></p><p style="font-size:13px;">📍 ${escapeHtml(a.address)}</p></div>
-          <div>${a.status === 'pending_validation' ? `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ À valider</span>` : a.status === 'approved' ? `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ Validée</span>` : `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`}</div>
+    const result = await pool.query(`
+      SELECT p.*, pr.category AS profession_category 
+      FROM professional_applications p
+      LEFT JOIN professions pr ON p.profession = pr.name
+      WHERE p.status != 'payment_pending' 
+      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
+    `);
+    
+    const apps = result.rows.map(c => {
+      // Gestion des badges
+      let statusBadge = "";
+      if (c.status === 'approved') statusBadge = `<span class="badge" style="background:#d1fae5; color:#065f46;">✅ Approuvé</span>`;
+      else if (c.status === 'rejected') statusBadge = `<span class="badge" style="background:#fee2e2; color:#991b1b;">❌ Rejeté</span>`;
+      else if (c.status === 'suspended') statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e;">⏸️ Suspendu</span>`;
+      else statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e;">⏳ En attente</span>`;
+
+      // Bloc des boutons d'action
+      let actionButtons = "";
+      if (c.status === 'pending' || c.status === 'under_review') {
+        actionButtons = `
+          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px;">
+            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <input type="hidden" name="status" value="approved">
+              <button class="success" style="width:100%; padding:10px; font-size:14px;">✅ Approuver</button>
+            </form>
+            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <input type="hidden" name="status" value="rejected">
+              <div style="display:flex; gap:8px;">
+                <input name="rejection_reason" placeholder="Motif..." style="margin:0; padding:8px; font-size:13px; flex:1;">
+                <button class="danger" style="padding:10px; font-size:14px; margin:0;">❌ Rejeter</button>
+              </div>
+            </form>
+          </div>`;
+      } else if (c.status === 'approved') {
+        actionButtons = `
+          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px; background:#eff6ff; padding:10px; border-radius:8px; text-align:center;">
+              <div style="font-size:11px; color:#1e40af; text-transform:uppercase;">Code Pro :</div>
+              <div style="font-size:20px; font-weight:bold; font-family:monospace; color:#1e3a8a;">${escapeHtml(c.pro_code || '-')}</div>
+            </div>
+            <form action="/admin/candidatures/${c.id}/regenerer-code" method="POST" style="margin:0; flex:1;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="warning" style="width:100%; padding:10px; font-size:13px;">🔄 Nouveau code</button>
+            </form>
+            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <input type="hidden" name="status" value="suspended">
+              <button class="danger" style="width:100%; padding:10px; font-size:13px; background:#f59e0b;">⏸️ Suspendre</button>
+            </form>
+            <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0; flex:1;" onsubmit="return confirm('⚠️ Supprimer DÉFINITIVEMENT ce compte ?');">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="danger" style="width:100%; padding:10px; font-size:13px;">🗑️ Supprimer</button>
+            </form>
+          </div>`;
+      } else if (c.status === 'suspended') {
+        actionButtons = `
+          <div style="display:flex; gap:10px; margin-top:15px; border-top:1px solid #e5e7eb; padding-top:15px;">
+            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <input type="hidden" name="status" value="approved">
+              <button class="success" style="width:100%; padding:10px; font-size:14px;">▶️ Réactiver</button>
+            </form>
+            <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0; flex:1;" onsubmit="return confirm('⚠️ Supprimer DÉFINITIVEMENT ce compte ?');">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="danger" style="width:100%; padding:10px; font-size:14px;">🗑️ Supprimer</button>
+            </form>
+          </div>`;
+      }
+
+      return `
+        <div class="card" style="margin-bottom:20px; border-left:4px solid ${c.status === 'approved' ? '#10b981' : c.status === 'rejected' ? '#ef4444' : '#f59e0b'};">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; gap:15px; align-items:center;">
+              ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:60px; height:60px; object-fit:cover; border-radius:50%; border:2px solid #3b82f6;">` : `<div style="width:60px; height:60px; background:#f1f5f9; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px;">👤</div>`}
+              <div>
+                <h2 style="margin:0; font-size:18px;">${escapeHtml(c.full_name)}</h2>
+                <div style="font-size:14px; color:#6b7280;">${escapeHtml(c.profession)} • ${escapeHtml(c.city)}</div>
+              </div>
+            </div>
+            <div>${statusBadge}</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-top:20px; background:#f8fafc; padding:15px; border-radius:12px;">
+            <div><span style="font-size:12px; color:#64748b;">Téléphone</span><br><strong>${escapeHtml(c.phone)}</strong></div>
+            <div><span style="font-size:12px; color:#64748b;">NPI</span><br><strong>${escapeHtml(c.npi)}</strong></div>
+            <div><span style="font-size:12px; color:#64748b;">Quartier</span><br><strong>${escapeHtml(c.neighborhood || '-')}</strong></div>
+            <div><span style="font-size:12px; color:#64748b;">Code suivi</span><br><strong>${escapeHtml(c.tracking_code)}</strong></div>
+            ${c.contact_email ? `<div><span style="font-size:12px; color:#64748b;">Email</span><br><strong>${escapeHtml(c.contact_email)}</strong></div>` : ''}
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+            ${c.photo_identite_url ? `<img src="/admin/kyc/${c.id}/photo_identite_url" onclick="zoomImage(this.src)" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb;">` : ''}
+            ${c.photo_kyc_url ? `<img src="/admin/kyc/${c.id}/photo_kyc_url" onclick="zoomImage(this.src)" style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid #e5e7eb;">` : ''}
+          </div>
+
+          ${c.status === 'rejected' && c.rejection_reason ? `<div style="margin-top:15px; padding:10px; background:#fef2f2; border-radius:8px; color:#991b1b; font-size:13px;"><strong>Motif du refus :</strong> ${escapeHtml(c.rejection_reason)}</div>` : ''}
+
+          ${actionButtons}
         </div>
-        ${a.status === 'pending_validation' ? `<div style="margin-top:15px; display:flex; gap:10px;"><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Refuser</button></form></div>` : ""}
-      </article>`).join("");
-    res.send(page("Agences", `<h1 style="text-align:center; margin-bottom:20px;">Gestion des Agences</h1>${await customAdminMenu("/admin/agences", csrf)}${rows || "<p>Aucune agence.</p>"}`, null));
+      `;
+    }).join("");
+
+    res.send(page("Candidatures", `
+      <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
+      ${await customAdminMenu("/admin/candidatures", csrf)}
+      <div style="margin-top:20px;">${apps || "<p>Aucune candidature.</p>"}</div>
+    `, null));
   });
 
-  router.post("/agences/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
+  // Action : Changer le statut (Approuver, Rejeter, Suspendre)
+  router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id); 
+    const status = req.body.status; 
+    const reason = req.body.rejection_reason || null;
+    
     try {
-      if (["approved", "rejected"].includes(req.body.status)) {
-        await pool.query(`UPDATE agencies SET status = $1, updated_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
-        await logAdminAction(`agency_${req.body.status}`, "agency", Number(req.params.id), null);
+      if (status === "approved") {
+        // Si on réactive un compte suspendu, on ne régénère pas de code
+        const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+        const isReactivation = current.rows[0]?.status === 'suspended';
+        
+        if (isReactivation) {
+          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+        } else {
+          const newCode = await generateUniqueProCode(); 
+          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
+          
+          if (current.rows.length > 0) {
+            const pro = current.rows[0];
+            const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+            await sendSMS(pro.phone, messageSMS);
+          }
+        }
+      } else {
+        await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
+        if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
       }
-    } catch (e) { console.error("Erreur agence admin:", e); }
-    res.redirect(303, "/admin/agences");
+      res.redirect(303, "/admin/candidatures");
+    } catch (e) {
+      console.error("Erreur changement statut:", e);
+      res.redirect(303, "/admin/candidatures");
+    }
+  });
+
+  // Action : Régénérer le code
+  router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      const newCode = await generateUniqueProCode();
+      const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+      
+      await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, id]);
+      
+      if (proResult.rows.length > 0) {
+        const pro = proResult.rows[0];
+        const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
+        await sendSMS(pro.phone, messageSMS);
+      }
+      await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
+      res.redirect(303, "/admin/candidatures");
+    } catch (e) {
+      res.redirect(303, "/admin/candidatures");
+    }
+  });
+
+  // Action : Supprimer définitivement
+  router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
+      if (proResult.rows.length) {
+        const pro = proResult.rows[0];
+        for (let p of [pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url]) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
+      }
+      await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [id]);
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [id]);
+      
+      await logAdminAction("pro_deleted_by_admin", "pro", id, "Compte supprimé définitivement par admin");
+      res.redirect(303, "/admin/candidatures");
+    } catch (e) {
+      res.redirect(303, "/admin/candidatures");
+    }
   });
 
   // ==========================================
@@ -227,150 +397,32 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // CANDIDATURES
+  // AUTRES ROUTES (Agences, Avis, Retraits, etc.)
   // ==========================================
-  router.get("/candidatures", requireAdmin, async (req, res) => {
+  router.get("/agences", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
-    const result = await pool.query(`
-      SELECT p.*, pr.category AS profession_category 
-      FROM professional_applications p
-      LEFT JOIN professions pr ON p.profession = pr.name
-      WHERE p.status != 'payment_pending' 
-      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC LIMIT 50
-    `);
-    
-    const apps = result.rows.map(c => {
-      const photos = `
-        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px;">
-          ${c.photo_profil_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_profil_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #3b82f6; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Visage</div></div>` : ""}
-          ${c.photo_identite_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_identite_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #ef4444; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600;">Pièce d'identité</div></div>` : ""}
-          ${c.photo_kyc_url ? `<div style="text-align:center;"><img src="/admin/kyc/${c.id}/photo_kyc_url" style="width:100px; height:100px; object-fit:cover; border-radius:8px; border:2px solid #f59e0b; cursor:pointer;" onclick="zoomImage(this.src)"><div style="font-size:11px; margin-top:4px; font-weight:600; color:#b45309;">KYC (Visage + Pièce)</div></div>` : ""}
-        </div>`;
-
-      let codeBlock = "";
-      if (c.status === 'approved' && c.pro_code) {
-        const waNumber = c.whatsapp_number || c.phone;
-        const cleanWa = String(waNumber).replace(/[()\s.-]/g, "").replace(/^\+/, "");
-        const waMessage = encodeURIComponent(`Bonjour ${c.full_name}, votre candidature sur TrouveMoi a été approuvée ✅\n\nVotre code de connexion est : ${c.pro_code}\n\nConnectez-vous ici : https://trouvemoi.bj/mon-espace-pro`);  
-        codeBlock = `
-          <div style="background:#eff6ff; padding:16px; border-radius:12px; border:1px solid #bfdbfe; margin-bottom:16px;">
-            <div style="font-size:12px; color:#1e40af; text-transform:uppercase; font-weight:700; margin-bottom:5px;">Code de connexion généré</div>
-            <div style="font-size:28px; font-weight:800; font-family:monospace; color:#1e3a8a; letter-spacing:2px; margin-bottom:12px;">${escapeHtml(c.pro_code)}</div>
-            <div style="display:flex; gap:10px;">
-              <a href="https://wa.me/${cleanWa}?text=${waMessage}" target="_blank" class="button whatsapp" style="font-size:13px; padding:8px 16px; margin:0; flex:1; text-align:center;">📱 Envoyer par WhatsApp</a>
-            </div>
-          </div>
-        `;
-      }
-      
-      let actionButtons = "";
-      if (c.status === 'pending' || c.status === 'under_review') {
-        actionButtons = `
-          <div style="display:flex; gap:10px; margin-top:20px; border-top:1px solid #e5e7eb; padding-top:15px;">
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="approved">
-              <button class="success" style="width:100%; padding:12px; font-size:14px;">✅ Approuver le dossier</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0; flex:1;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="rejected">
-              <div style="display:flex; gap:8px;">
-                <input name="rejection_reason" placeholder="Motif du refus..." style="margin:0; padding:10px; font-size:13px; flex:1;">
-                <button class="danger" style="padding:12px; font-size:14px; margin:0;">❌ Rejeter</button>
-              </div>
-            </form>
-          </div>`;
-      } else {
-        const statusLabel = c.status === 'approved' ? '✅ Approuvé' : c.status === 'rejected' ? '❌ Rejeté' : c.status === 'payment_pending' ? '⏳ En attente de paiement' : c.status;
-        actionButtons = `
-          <div style="margin-top:15px; padding:10px; background:#f9fafb; border-radius:8px; text-align:center; font-weight:bold; color:#374151;">
-            Statut actuel : ${statusLabel}
-          </div>
-          ${codeBlock}
-        `;
-      }
-
-      return `
-        <details class="admin-details">
-          <summary class="admin-summary">
-            <div class="admin-summary-info">
-              <div style="display:flex; align-items:center; gap:15px;">
-                ${c.photo_profil_url ? `<img src="/admin/kyc/${c.id}/photo_profil_url" style="width:40px; height:40px; object-fit:cover; border-radius:50%; border:2px solid #3b82f6;">` : ""}
-                <div>
-                  <strong style="font-size:16px; color:#111827;">${escapeHtml(c.full_name)}</strong> 
-                  <span style="color:#6b7280; font-size:14px; margin-left:5px;">— ${escapeHtml(c.profession)}</span>
-                </div>
-              </div>
-              <div>
-                <span class="badge" style="background:${c.status === 'approved' ? '#d1fae5' : c.status === 'rejected' ? '#fee2e2' : '#fef3c7'}; color:${c.status === 'approved' ? '#065f46' : c.status === 'rejected' ? '#991b1b' : '#92400e'};">
-                  ${c.status === 'approved' ? 'Approuvé' : c.status === 'rejected' ? 'Refusé' : c.status === 'payment_pending' ? 'Attente Paiement' : 'En attente'}
-                </span>
-              </div>
-            </div>
-            <div style="margin-left:15px; color:#9ca3af; font-size:20px;">▼</div>
-          </summary>
-          <div class="admin-content">
-            ${photos}
-            
-            <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e5e7eb; font-size:14px; margin-bottom:15px;">
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <p><strong>Téléphone :</strong> ${escapeHtml(c.phone)}</p>
-                <p><strong>NPI :</strong> ${escapeHtml(c.npi)}</p>
-                <p><strong>Catégorie :</strong> <span class="badge" style="background:#eff6ff; color:#1e40af;">${escapeHtml(c.profession_category || 'Non classée')}</span></p>
-                <p><strong>Ville :</strong> ${escapeHtml(c.city)}</p>
-                <p><strong>Quartier :</strong> ${escapeHtml(c.neighborhood || "-")}</p>
-                <p><strong>Email :</strong> ${escapeHtml(c.contact_email || "-")}</p>
-                <p><strong>Code suivi :</strong> <code>${escapeHtml(c.tracking_code)}</code></p>
-              </div>
-            </div>
-            
-            ${actionButtons}
-          </div>
-        </details>
-      `;
-    }).join("");
-
-    res.send(page("Candidatures", `
-      <h1 style="text-align:center; margin-bottom:20px;">Gestion des Candidatures</h1>
-      ${await customAdminMenu("/admin/candidatures", csrf)}
-      <div style="margin-top:20px;">${apps || "<p>Aucune candidature.</p>"}</div>
-    `, null));
+    const result = await pool.query(`SELECT a.*, p.full_name AS parent_name FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.status != 'pending_payment' ORDER BY a.created_at DESC`);
+    const rows = result.rows.map(a => `
+      <article class="card" style="margin-bottom:20px; border-left: 4px solid #8b5cf6;">
+        <div style="display:flex; justify-content:space-between;">
+          <div><h2 style="font-size:18px;">${escapeHtml(a.name)}</h2><p class="muted" style="font-size:14px;">Réseau : <strong>${escapeHtml(a.parent_name)}</strong></p><p style="font-size:13px;">📍 ${escapeHtml(a.address)}</p></div>
+          <div>${a.status === 'pending_validation' ? `<span class="badge" style="background:#fef3c7;color:#92400e;">⏳ À valider</span>` : a.status === 'approved' ? `<span class="badge" style="background:#d1fae5;color:#065f46;">✅ Validée</span>` : `<span class="badge" style="background:#fee2e2;color:#991b1b;">❌ Refusée</span>`}</div>
+        </div>
+        ${a.status === 'pending_validation' ? `<div style="margin-top:15px; display:flex; gap:10px;"><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Refuser</button></form></div>` : ""}
+      </article>`).join("");
+    res.send(page("Agences", `<h1 style="text-align:center; margin-bottom:20px;">Gestion des Agences</h1>${await customAdminMenu("/admin/agences", csrf)}${rows || "<p>Aucune agence.</p>"}`, null));
   });
 
- router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
-  const id = Number(req.params.id); 
-  const status = req.body.status; 
-  const reason = req.body.rejection_reason || null;
-  
-  try {
-    if (status === "approved") {
-      const newCode = await generateUniqueProCode(); 
-      const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-      
-      await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
-      
-      // ✅ ENVOI DU SMS AUTOMATIQUE AVEC LE CODE PRO
-      if (proResult.rows.length > 0) {
-        const pro = proResult.rows[0];
-        const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
-        await sendSMS(pro.phone, messageSMS);
+  router.post("/agences/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
+    try {
+      if (["approved", "rejected"].includes(req.body.status)) {
+        await pool.query(`UPDATE agencies SET status = $1, updated_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
+        await logAdminAction(`agency_${req.body.status}`, "agency", Number(req.params.id), null);
       }
-      
-    } else {
-      await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
-      if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
-    }
-    res.redirect(303, "/admin/candidatures");
-  } catch (e) {
-    console.error("Erreur changement statut:", e);
-    res.redirect(303, "/admin/candidatures");
-  }
-});
+    } catch (e) { console.error("Erreur agence admin:", e); }
+    res.redirect(303, "/admin/agences");
+  });
 
-  // ==========================================
-  // AVIS & SIGNALEMENTS
-  // ==========================================
   router.get("/avis", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 50`);
@@ -382,19 +434,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     try {
       const id = Number(req.params.id);
       const status = String(req.body.status || "");
-
       if (["pending", "approved", "rejected"].includes(status)) {
         await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [status, id]);
         await logAdminAction(`review_${status}`, "review", id, null);
       }
-      
       res.redirect(303, "/admin/avis");
-    } catch (error) {
-      console.error("Erreur statut avis :", error.message);
-      res.redirect(303, "/admin/avis");
-    }
+    } catch (error) { res.redirect(303, "/admin/avis"); }
   });
-  // MESSAGES
+
   router.get("/messages", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM contact_messages ORDER BY created_at DESC`);
@@ -403,7 +450,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.send(page("Messages", `<h1>Messages</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs}`, null));
   });
 
-  // RETRAITS & RGPD
   router.get("/retraits", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT w.*, p.full_name, p.pro_code FROM withdrawal_requests w JOIN professional_applications p ON p.id = w.pro_id ORDER BY CASE WHEN w.status = 'pending' THEN 0 ELSE 1 END, w.created_at DESC`);
@@ -428,21 +474,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const id = Number(req.params.id);
     try {
       const result = await pool.query(`SELECT pro_id, amount FROM withdrawal_requests WHERE id = $1 AND status = 'pending'`, [id]);
-      
       if (result.rows.length) {
         const withdrawal = result.rows[0];
-        // On re-crédite le solde du pro
         await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance + $1 WHERE id = $2`, [withdrawal.amount, withdrawal.pro_id]);
-        // On marque le retrait comme rejeté
         await pool.query(`UPDATE withdrawal_requests SET status = 'rejected', processed_at = NOW() WHERE id = $1`, [id]);
-        
         await logAdminAction("withdrawal_rejected", "pro", withdrawal.pro_id, `Retrait de ${withdrawal.amount} FCFA rejeté. Solde recrédité.`);
       }
       res.redirect(303, "/admin/retraits");
-    } catch (error) {
-      console.error("Erreur rejet retrait:", error);
-      res.redirect(303, "/admin/retraits");
-    }
+    } catch (error) { res.redirect(303, "/admin/retraits"); }
   });
 
   router.get("/rgpd", requireAdmin, async (req, res) => {
@@ -456,24 +495,15 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const id = Number(req.params.id);
     try {
       const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
-      
       if (requestResult.rows.length && requestResult.rows[0].pro_id) {
         const proId = requestResult.rows[0].pro_id;
-
         const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [proId]);
-        
         if (proResult.rows.length) {
           const pro = proResult.rows[0];
-          const photos = [pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url];
-          
-          for (let p of photos) {
-            if (p) {
-              try { await deleteFromCloudinary(p); } catch (e) { console.error("Erreur Cloudinary:", e); }
-            }
+          for (let p of [pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url]) {
+            if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
           }
         }
-
-        // Suppression des données en base
         await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
@@ -481,27 +511,20 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
-        
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
         await logAdminAction("gdpr_deleted_pro", "pro", proId, "Compte professionnel supprimé définitivement (DB + Cloudinary)");
       } else {
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
       }
-      
       res.redirect(303, "/admin/rgpd");
-    } catch (error) {
-      console.error("Erreur suppression RGPD:", error);
-      res.status(500).send("Erreur lors de la suppression.");
-    }
+    } catch (error) { res.status(500).send("Erreur lors de la suppression."); }
   });
 
-  // DÉCONNEXION
   router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
     await pool.query(`UPDATE admin_sessions SET revoked_at = NOW() WHERE jti = $1`, [req.adminSession.jti]).catch(() => {});
     clearSessionCookie(res); res.redirect(303, "/admin");
   });
 
-  // SIGNALEMENTS D'AVIS
   router.get("/signalisations", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, v.comment AS review_comment, v.author_name, p.full_name AS pro_name FROM review_reports r JOIN reviews v ON v.id = r.review_id JOIN professional_applications p ON p.id = v.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
@@ -526,7 +549,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.redirect(303, "/admin/signalisations");
   });
 
-  // OFFRES D'EMPLOI (Admin)
   router.get("/emplois", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
@@ -539,7 +561,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.redirect(303, "/admin/emplois");
   });
 
-  // DONS & BLOG & LOGS & QR CODE & NOTIFICATIONS
   router.get("/dons", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
@@ -590,9 +611,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
 
-  // ==========================================
-  // PARAMÈTRES ADMIN (Sécurité)
-  // ==========================================
   router.get("/parametres", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
@@ -624,7 +642,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
       return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
     }
-    
     res.send(page("Succès", `
       <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
         <h1>✅ Vérification réussie</h1>
