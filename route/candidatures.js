@@ -196,117 +196,176 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       </section>
 
       <script>
+        // ==========================================
+        // 1. GESTION DES ÉTAPES
+        // ==========================================
         function showStep(step) {
-          document.querySelectorAll('.form-page').forEach(el => el.classList.remove('active'));
-          document.getElementById('step-' + step).classList.add('active');
-          for (let i = 1; i <= 4; i++) {
-            const indicator = document.getElementById('indicator-' + i);
-            indicator.classList.remove('active', 'completed');
-            if (i < step) indicator.classList.add('completed');
-            if (i === step) indicator.classList.add('active');
+          var pages = document.querySelectorAll('.form-page');
+          for (var i = 0; i < pages.length; i++) { pages[i].classList.remove('active'); }
+          var current = document.getElementById('step-' + step);
+          if (current) current.classList.add('active');
+          
+          for (var j = 1; j <= 4; j++) {
+            var indicator = document.getElementById('indicator-' + j);
+            if (indicator) {
+              indicator.classList.remove('active', 'completed');
+              if (j < step) indicator.classList.add('completed');
+              if (j === step) indicator.classList.add('active');
+            }
           }
         }
         
         function nextStep(step) {
           if (step === 1) {
-            const fullName = document.getElementById('input_full_name').value;
-            const npi = document.getElementById('input_npi').value;
-            const phone = document.getElementById('input_phone').value;
-            const otp = document.getElementById('otp_code_input').value;
+            var fullName = document.getElementById('input_full_name').value;
+            var npi = document.getElementById('input_npi').value;
+            var phone = document.getElementById('input_phone').value;
+            var otp = document.getElementById('otp_code_input').value;
             
             if (!fullName || !npi) { alert("Veuillez remplir votre nom et votre NPI."); return; }
             if (!phone || !otp) { alert("Veuillez remplir le téléphone et le code SMS."); return; }
           }
           if (step === 2) {
-            const city = document.getElementById('city').value;
-            const prof = document.getElementById('profession').value;
+            var city = document.getElementById('city').value;
+            var prof = document.getElementById('profession').value;
             if (!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
           }
           showStep(step + 1);
         }
+        
         function prevStep(step) { showStep(step - 1); }
         
-        function toggleLocalisation(isFixe) {
-          document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
+        // ==========================================
+        // 2. GESTION DES METIERS (BOUTON GRIS)
+        // ==========================================
+        var METIERS_LOCAL_FIXE = ${metiersLocalFixeJson};
+        
+        var profSelect = document.getElementById('profession');
+        if (profSelect) {
+          profSelect.addEventListener('change', function() {
+            var metierActuel = this.value;
+            var radioAmbulant = document.getElementById('radio-ambulant');
+            var radioFixe = document.getElementById('radio-fixe');
+            
+            if (METIERS_LOCAL_FIXE.indexOf(metierActuel) !== -1) {
+              if (radioFixe) radioFixe.checked = true; 
+              if (radioAmbulant) {
+                radioAmbulant.disabled = true; 
+                radioAmbulant.parentElement.style.opacity = '0.5'; 
+              }
+              toggleLocalisation(true); 
+            } else {
+              if (radioAmbulant) {
+                radioAmbulant.disabled = false; 
+                radioAmbulant.parentElement.style.opacity = '1';
+              }
+            }
+          });
         }
+
+        // ==========================================
+        // 3. RECHERCHE DES VILLES
+        // ==========================================
+        function filterCities() {
+          var search = document.getElementById('search-city').value.toLowerCase();
+          var select = document.getElementById('city');
+          var options = select.options;
+          for (var i = 1; i < options.length; i++) { 
+            var txt = options[i].text.toLowerCase();
+            options[i].style.display = txt.indexOf(search) !== -1 ? "block" : "none";
+          }
+          var visibleCount = 0; var lastVisible = null;
+          for (var i = 1; i < options.length; i++) {
+            if (options[i].style.display !== "none") { visibleCount++; lastVisible = options[i]; }
+          }
+          if (visibleCount === 1 && lastVisible) select.value = lastVisible.value;
+        }
+
+        // ==========================================
+        // 4. CHARGEMENT DES QUARTIERS (Le point critique)
+        // ==========================================
+        var citySelect = document.getElementById('city');
+        if (citySelect) {
+          citySelect.addEventListener('change', function() { 
+            var city = this.value; 
+            var select = document.getElementById('neighborhood');
+            
+            if (!city) {
+              select.innerHTML = '<option value="">Choisir</option>';
+              return;
+            }
+
+            select.innerHTML = '<option value="">Chargement...</option>'; 
+            
+            fetch('/api/neighborhoods?city=' + encodeURIComponent(city))
+              .then(function(response) { return response.json(); })
+              .then(function(data) {
+                select.innerHTML = '<option value="">Choisir</option>'; 
+                for (var i = 0; i < data.neighborhoods.length; i++) {
+                  var n = data.neighborhoods[i];
+                  if (n === "Autre") continue; 
+                  var opt = document.createElement('option'); 
+                  opt.value = n; 
+                  opt.textContent = n; 
+                  select.appendChild(opt); 
+                }
+                var otherOpt = document.createElement('option'); 
+                otherOpt.value = 'Autre'; 
+                otherOpt.textContent = 'Autre'; 
+                select.appendChild(otherOpt); 
+              })
+              .catch(function(e) { 
+                console.error("Erreur quartiers :", e);
+                select.innerHTML = '<option value="">Erreur de chargement</option>'; 
+              });
+          });
+        }
+
+        var neighborhoodSelect = document.getElementById('neighborhood');
+        if (neighborhoodSelect) {
+          neighborhoodSelect.addEventListener('change', function() { 
+            var block = document.getElementById('neighborhood-other-block');
+            if (block) block.style.display = (this.value === 'Autre') ? 'block' : 'none';
+          });
+        }
+
+        // ==========================================
+        // 5. LOCALISATION & GPS
+        // ==========================================
+        function toggleLocalisation(isFixe) {
+          var block = document.getElementById('localisation-block');
+          if (block) block.style.display = isFixe ? 'block' : 'none';
+        }
+        
         function getLocation() {
-          const status = document.getElementById('gps-status');
+          var status = document.getElementById('gps-status');
           navigator.geolocation.getCurrentPosition(
-            (position) => {
+            function(position) {
               document.getElementById('latitude').value = position.coords.latitude;
               document.getElementById('longitude').value = position.coords.longitude;
               status.innerText = "✅ Position GPS enregistrée !";
             },
-            () => { status.innerText = "❌ Impossible de vous localiser."; }
+            function() { status.innerText = "❌ Impossible de vous localiser."; }
           );
         }
 
-        const METIERS_LOCAL_FIXE = ${metiersLocalFixeJson};
-        
-        document.getElementById('profession').addEventListener('change', function() {
-          const metierActuel = this.value;
-          const radioAmbulant = document.getElementById('radio-ambulant');
-          const radioFixe = document.getElementById('radio-fixe');
-          
-          if (METIERS_LOCAL_FIXE.includes(metierActuel)) {
-            radioFixe.checked = true; 
-            radioAmbulant.disabled = true; 
-            radioAmbulant.parentElement.style.opacity = '0.5'; 
-            toggleLocalisation(true); 
-          } else {
-            radioAmbulant.disabled = false; 
-            radioAmbulant.parentElement.style.opacity = '1';
-          }
-        });
-
-        function filterCities() {
-          const search = document.getElementById('search-city').value.toLowerCase();
-          const select = document.getElementById('city');
-          const options = select.options;
-          for (let i = 1; i < options.length; i++) { 
-            const txt = options[i].text.toLowerCase();
-            options[i].style.display = txt.includes(search) ? "block" : "none";
-          }
-          let visibleCount = 0; let lastVisible = null;
-          for (let i = 1; i < options.length; i++) {
-            if (options[i].style.display !== "none") { visibleCount++; lastVisible = options[i]; }
-          }
-          if (visibleCount === 1) select.value = lastVisible.value;
-        }
-
-        document.getElementById('city').addEventListener('change', async function() { 
-          const city = this.value; const select = document.getElementById('neighborhood');
-          select.innerHTML = '<option value="">Chargement...</option>'; 
-          try { 
-            const res = await fetch('/api/neighborhoods?city=' + encodeURIComponent(city)); 
-            const data = await res.json(); 
-            select.innerHTML = '<option value="">Choisir</option>'; 
-            for (const n of data.neighborhoods) { 
-              if (n === "Autre") continue; 
-              const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
-            }
-            const otherOpt = document.createElement('option'); otherOpt.value = 'Autre'; otherOpt.textContent = 'Autre'; select.appendChild(otherOpt); 
-          } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
-        });
-
-        document.getElementById('neighborhood').addEventListener('change', function() { 
-          document.getElementById('neighborhood-other-block').style.display = (this.value === 'Autre') ? 'block' : 'none';
-        });
-
-        async function demanderCodePro() {
-          const phone = document.getElementById('input_phone').value;
+        // ==========================================
+        // 6. ENVOI DU CODE SMS
+        // ==========================================
+        function demanderCodePro() {
+          var phone = document.getElementById('input_phone').value;
           if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
           
-          const btn = event.target;
+          var btn = event.target;
           btn.innerText = "..."; btn.disabled = true;
           
-          try {
-            const res = await fetch('/api/send-otp', {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ phone: phone })
-            });
-            const data = await res.json();
+          fetch('/api/send-otp', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ phone: phone })
+          })
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
             if (data.ok) {
               alert("✅ Code envoyé ! Vérifiez vos SMS (ou les logs Render).");
               document.getElementById('otp-block').style.display = 'block';
@@ -315,16 +374,22 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               alert(data.error || "Erreur d'envoi.");
               btn.innerText = "Recevoir";
             }
-          } catch(e) {
+            btn.disabled = false;
+          })
+          .catch(function(e) {
             alert("Erreur réseau.");
             btn.innerText = "Recevoir";
-          }
-          btn.disabled = false;
+            btn.disabled = false;
+          });
         }
 
-        ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
-          const input = document.getElementById(id);
-          if(input) {
+        // ==========================================
+        // 7. GESTION DES PHOTOS (FOND VERT)
+        // ==========================================
+        var photosIds = ['photo_profil', 'photo_identite', 'photo_kyc'];
+        photosIds.forEach(function(id) {
+          var input = document.getElementById(id);
+          if (input) {
             input.addEventListener('change', function() {
               if (this.files && this.files.length > 0) {
                 this.parentElement.style.border = "2px solid #10b981";
@@ -333,7 +398,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
                 this.parentElement.style.padding = "10px";
                 
                 if (!this.parentElement.querySelector('.photo-ok')) {
-                  const msg = document.createElement('div');
+                  var msg = document.createElement('div');
                   msg.className = 'photo-ok';
                   msg.style.cssText = 'color: #10b981; font-size: 12px; font-weight: bold; margin-top: 5px;';
                   msg.innerHTML = '✅ Photo sélectionnée';
