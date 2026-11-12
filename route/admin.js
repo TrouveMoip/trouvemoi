@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 
-module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary,sendSMS) {
+module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
 
   // LA FONCTION adminMenu COMPLETE AVEC TOUS LES BOUTONS
