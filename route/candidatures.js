@@ -95,6 +95,18 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
             <div id="otp-block" style="display:none; margin-top:12px;">
               <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
             </div>
+
+            <!-- ✅ NOUVELLE PARTIE WHATSAPP -->
+            <div style="margin-top:15px; border-top:1px solid #bfdbfe; padding-top:15px;">
+              <label class="fancy-label" style="color:#1e3a8a; font-size:13px;">Ce numéro de téléphone est-il aussi votre numéro WhatsApp ? *</label>
+              <div style="display:flex; gap:15px; margin-bottom:10px;">
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="is_wa_same" value="yes" required onclick="toggleWaField(false)"> Oui</label>
+                <label style="display:flex; align-items:center; gap:5px; cursor:pointer;"><input type="radio" name="is_wa_same" value="no" required onclick="toggleWaField(true)"> Non</label>
+              </div>
+              <div id="wa-field" style="display:none;">
+                <input name="whatsapp_number" id="whatsapp_input" type="tel" maxlength="30" placeholder="Entrez votre autre numéro WhatsApp (01XXXXXXXX)" pattern="01[0-9]{8}" class="fancy-input" style="margin-bottom:0; background:#fff;">
+              </div>
+            </div>
           </div>
 
           <button type="button" onclick="nextStep(1)" style="width:100%; margin-top:24px; padding:16px; font-size:16px; font-weight:bold; border-radius:12px;">Suivant →</button>
@@ -231,9 +243,18 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         const npi = document.getElementById('input_npi').value.trim();
         const phone = document.getElementById('input_phone').value.trim();
         const otp = document.getElementById('otp_code_input').value.trim();
+        const waSame = document.querySelector('input[name="is_wa_same"]:checked');
 
         if(!name || !npi || !phone) { alert("Veuillez remplir le nom, le NPI et le téléphone."); return; }
         if(!otp) { alert("Veuillez entrer le code SMS reçu."); return; }
+        if(!waSame) { alert("Veuillez indiquer si votre numéro de téléphone est aussi votre WhatsApp."); return; }
+        
+        if(waSame.value === 'no') {
+           const waInput = document.getElementById('whatsapp_input').value.trim();
+           if(!waInput || !/^01[0-9]{8}$/.test(waInput)) {
+             alert("Veuillez entrer un numéro WhatsApp valide (ex: 01XXXXXXXX)."); return;
+           }
+        }
       }
       if (step === 2) {
         const city = document.getElementById('city').value;
@@ -305,7 +326,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         for (const n of data.neighborhoods) { 
           const opt = document.createElement('option'); opt.value = n; opt.textContent = n; select.appendChild(opt); 
         }
-        // ❌ L'OPTION "AUTRE" A ÉTÉ RETIRÉE D'ICI POUR ÉVITER LE DOUBLON
       } catch (e) { select.innerHTML = '<option value="">Erreur</option>'; } 
     });
 
@@ -343,6 +363,19 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       btn.disabled = false;
     }
 
+    function toggleWaField(show) {
+      const waField = document.getElementById('wa-field');
+      const waInput = document.getElementById('whatsapp_input');
+      if (show) {
+        waField.style.display = 'block';
+        waInput.required = true;
+      } else {
+        waField.style.display = 'none';
+        waInput.required = false;
+        waInput.value = ''; // On vide le champ si on choisit "Oui"
+      }
+    }
+
     // --- LOGIQUE PHOTOS (FOND VERT) ---
     ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
       const input = document.getElementById(id);
@@ -375,9 +408,15 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     
     const { 
       full_name, company_name, phone, npi, city, profession, service_description,
-      contact_preference, contact_email, whatsapp_number, experience, service_area, availability,
+      contact_preference, contact_email, experience, service_area, availability,
       referred_by, type_lieu, adresse_exacte, latitude, longitude, phone_public
     } = req.body;
+
+    // ✅ Gestion du numéro WhatsApp
+    let whatsapp_number = req.body.whatsapp_number;
+    if (req.body.is_wa_same === 'yes') {
+      whatsapp_number = phone; // Si c'est le même, on prend le numéro principal
+    }
 
     const otpCode = String(req.body.otp_code || "").trim();
     const neighborhood = req.body.neighborhood === 'Autre' ? req.body.neighborhood_other : req.body.neighborhood;
