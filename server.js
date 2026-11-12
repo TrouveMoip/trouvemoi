@@ -1136,27 +1136,40 @@ app.post("/suivi", async (req, res) => {
       `;
     } 
     else if (dossier.status === 'rejected') {
-      statutMessage = `❌ Dossier refusé : <span style="color:#ef4444;">${escapeHtml(dossier.rejection_reason || "Motif non précisé")}</span>`;
-      // ✅ FORMULAIRE DE CORRECTION (Re-upload photo KYC)
-      actionHtml = `
-        <div style="background:#fef2f2; border:1px solid #fecaca; padding:20px; border-radius:12px; margin-top:20px;">
-          <h3 style="color:#991b1b; font-size:16px; margin-bottom:10px;">Corriger mon dossier</h3>
-          <p style="font-size:13px; color:#7f1d1d; margin-bottom:15px;">Vous pouvez re-uploader vos photos KYC pour corriger le problème.</p>
-          <form action="/suivi/corriger" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="tracking_code" value="${escapeHtml(dossier.tracking_code)}">
-            <div style="text-align:left; margin-bottom:10px;">
-              <label style="font-size:12px; font-weight:bold;">Nouvelle photo visage</label>
-              <input type="file" name="photo_profil" accept="image/*" style="padding:8px; background:white;">
-            </div>
-            <div style="text-align:left; margin-bottom:15px;">
-              <label style="font-size:12px; font-weight:bold;">Nouvelle photo Pièce d'identité</label>
-              <input type="file" name="photo_identite" accept="image/*" style="padding:8px; background:white;">
-            </div>
-            <button type="submit" class="warning" style="width:100%;">Renvoyer pour vérification</button>
-          </form>
-        </div>
-      `;
-    }
+  statutMessage = `❌ Dossier refusé : <span style="color:#ef4444; font-weight:bold;">${escapeHtml(dossier.rejection_reason || "Motif non précisé")}</span>`;
+  
+  // ✅ FORMULAIRE DE CORRECTION COMPLET (Pré-rempli avec ses anciennes infos)
+  actionHtml = `
+    <div style="background:#fef2f2; border:1px solid #fecaca; padding:20px; border-radius:12px; margin-top:20px; text-align:left;">
+      <h3 style="color:#991b1b; font-size:16px; margin-bottom:10px;">🛠️ Corriger mon dossier</h3>
+      <p style="font-size:13px; color:#7f1d1d; margin-bottom:15px;">Modifiez uniquement les informations qui posent problème et renvoyez votre dossier.</p>
+      
+      <form action="/suivi/corriger" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="tracking_code" value="${escapeHtml(dossier.tracking_code)}">
+        
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nom complet *</label>
+        <input type="text" name="full_name" value="${escapeHtml(dossier.full_name)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">NPI *</label>
+        <input type="text" name="npi" value="${escapeHtml(dossier.npi)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Téléphone *</label>
+        <input type="tel" name="phone" value="${escapeHtml(dossier.phone)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Ville *</label>
+        <input type="text" name="city" value="${escapeHtml(dossier.city)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo visage (optionnel)</label>
+        <input type="file" name="photo_profil" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px; background:white;">
+
+        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo Pièce d'identité (optionnel)</label>
+        <input type="file" name="photo_identite" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
+
+        <button type="submit" class="warning" style="width:100%; padding:12px; font-weight:bold; border-radius:8px; border:none; color:white; background:#f59e0b; cursor:pointer;">Renvoyer mon dossier pour vérification</button>
+      </form>
+    </div>
+  `;
+}
 
     res.send(page("Résultat du suivi", `
       <section class="card" style="max-width: 550px; margin: 40px auto; text-align:center;">
@@ -1170,6 +1183,53 @@ app.post("/suivi", async (req, res) => {
     `, proConnected));
   } catch (e) {
     res.redirect(303, "/suivi");
+  }
+});
+app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }]), async (req, res) => {
+  const trackingCode = String(req.body.tracking_code || "").trim();
+  const full_name = String(req.body.full_name || "").trim();
+  const npi = String(req.body.npi || "").trim();
+  const phone = cleanBeninPhone(req.body.phone);
+  const city = String(req.body.city || "").trim();
+  const files = req.files || {};
+
+  if (!trackingCode) return res.redirect(303, "/suivi");
+
+  try {
+    const dossierResult = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+    if (!dossierResult.rows.length) return res.redirect(303, "/suivi");
+    const dossierId = dossierResult.rows[0].id;
+
+    let updateQuery = `UPDATE professional_applications SET full_name = $1, npi = $2, phone = $3, city = $4, status = 'pending', rejection_reason = null, updated_at = NOW()`;
+    let values = [full_name, npi, phone, city];
+
+    if (files.photo_profil && files.photo_profil[0]) {
+      const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_fix_${Date.now()}`);
+      values.push(p1.secure_url);
+      updateQuery += `, photo_profil_url = $${values.length}`;
+    }
+    if (files.photo_identite && files.photo_identite[0]) {
+      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_fix_${Date.now()}`);
+      values.push(p2.secure_url);
+      updateQuery += `, photo_identite_url = $${values.length}`;
+    }
+
+    values.push(dossierId);
+    updateQuery += ` WHERE id = $${values.length}`;
+
+    await pool.query(updateQuery, values);
+
+    res.send(page("Correction envoyée", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1 style="color:#10b981;">✅ Correction bien reçue !</h1>
+        <p>Votre dossier a été mis à jour et repasse en cours d'examen par notre équipe.</p>
+        <p style="margin-top:20px;"><a href="/suivi" class="button">Retour au suivi</a></p>
+      </section>
+    `, null));
+
+  } catch (e) {
+    console.error("Erreur correction:", e);
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la correction.</h2><a href='/suivi'>Retour</a>", null));
   }
 });
 
