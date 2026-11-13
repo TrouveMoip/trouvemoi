@@ -131,7 +131,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           <div id="neighborhood-other-block" class="hidden" style="margin-top:-10px; margin-bottom:18px;"><input name="neighborhood_other" maxlength="150" placeholder="Précisez votre quartier" class="fancy-input"></div>
 
           <label class="fancy-label">Profession *</label>
-          <select id="profession" name="profession" required class="fancy-input"><option value="">Choisir</option>${professionOptions}</select>
+<input type="text" id="search-profession" placeholder="🔍 Rechercher votre métier (ex: Plombier)..." style="padding:12px; border-radius:12px; border:1px solid #e2e8f0; width:100%; margin-bottom:10px;" oninput="filterProfessions()">
+<select id="profession" name="profession" required class="fancy-input"><option value="">Choisir</option>${professionOptions}</select>
           
           <label class="fancy-label">Description de vos services *</label>
           <textarea name="service_description" rows="4" required maxlength="3000" placeholder="Décrivez ce que vous faites, vos spécialités..." class="fancy-input"></textarea>
