@@ -14,17 +14,29 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
   const professionOptions = Object.values(professionsByCategory).flat().map(name => `<option value="${escapeHtml(name)}">`).join("");  
   
-  const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-  let horairesHtml = "";
-  jours.forEach(j => {
-    horairesHtml += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px; color:#475569;">${j}</div>
-      <input type="time" name="h_${j}_o" style="margin:0; width:110px; padding:8px; background:#f8fafc; border:1px solid #e2e8f0;">
-      <span style="color:#94a3b8;">à</span>
-      <input type="time" name="h_${j}_f" style="margin:0; width:110px; padding:8px; background:#f8fafc; border:1px solid #e2e8f0;">
-      <label style="margin:0; display:flex; align-items:center; gap:4px; font-size:12px; color:#64748b;"><input type="checkbox" name="h_${j}_ferme" value="yes" style="margin:0;"> Fermé</label>
-    </div>`;
-  });
+ const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+let horairesHtml = "";
+jours.forEach(j => {
+  horairesHtml += `
+    <div style="display:flex; align-items:center; justify-content:space-between; background:white; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
+      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px; color:#334155;">${j}</div>
+      
+      <div style="display:flex; align-items:center; gap:5px;">
+        <input type="radio" name="h_${j}_status" value="open" checked onclick="toggleJour('${j}', true)" id="open_${j}">
+        <label for="open_${j}" style="font-size:13px; cursor:pointer; margin-right:10px;">Ouvert</label>
+        
+        <input type="radio" name="h_${j}_status" value="closed" onclick="toggleJour('${j}', false)" id="closed_${j}">
+        <label for="closed_${j}" style="font-size:13px; cursor:pointer;">Fermé</label>
+      </div>
+      
+      <div id="heures_${j}" style="display:flex; align-items:center; gap:5px;">
+        <input type="time" name="h_${j}_o" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
+        <span style="color:#94a3b8;">à</span>
+        <input type="time" name="h_${j}_f" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
+      </div>
+    </div>
+  `;
+});
 
   const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
   const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
@@ -272,7 +284,29 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     function toggleLocalisation(isFixe) {
       document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
     }
-    
+    const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+let horairesHtml = "";
+jours.forEach(j => {
+  horairesHtml += `
+    <div style="display:flex; align-items:center; justify-content:space-between; background:white; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
+      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px; color:#334155;">${j}</div>
+      
+      <div style="display:flex; align-items:center; gap:5px;">
+        <input type="radio" name="h_${j}_status" value="open" checked onclick="toggleJour('${j}', true)" id="open_${j}">
+        <label for="open_${j}" style="font-size:13px; cursor:pointer; margin-right:10px;">Ouvert</label>
+        
+        <input type="radio" name="h_${j}_status" value="closed" onclick="toggleJour('${j}', false)" id="closed_${j}">
+        <label for="closed_${j}" style="font-size:13px; cursor:pointer;">Fermé</label>
+      </div>
+      
+      <div id="heures_${j}" style="display:flex; align-items:center; gap:5px;">
+        <input type="time" name="h_${j}_o" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
+        <span style="color:#94a3b8;">à</span>
+        <input type="time" name="h_${j}_f" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
+      </div>
+    </div>
+  `;
+});
     function getLocation() {
       const status = document.getElementById('gps-status');
       status.innerText = "⏳ Récupération de votre position...";
