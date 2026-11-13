@@ -278,8 +278,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   
   // On vérifie si le métier choisi est dans la liste
   if (metiersSensibles.includes(prof)) {
-    const continuer = confirm("⚠️ ATTENTION : Vous avez choisi un métier sensible (" + prof + ").\n\nUne vérification rigoureuse de vos diplômes et agréments sera effectuée par notre équipe. Toute fausse déclaration entraînera un rejet définitif.\n\nSouhaitez-vous continuer ?");
-    
+const continuer = confirm("⚠️ ATTENTION : Vous avez choisi un métier sensible (" + prof + "). Une vérification rigoureuse de vos diplômes sera effectuée par notre équipe. Toute fausse déclaration entraînera un rejet définitif. Souhaitez-vous continuer ?");    
     if (!continuer) {
       return; // Le pro a cliqué sur Annuler, on reste à l'étape 2
     }
