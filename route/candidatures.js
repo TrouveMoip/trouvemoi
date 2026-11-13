@@ -283,6 +283,25 @@ jours.forEach(j => {
     function toggleLocalisation(isFixe) {
       document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
     }
+    // --- LOGIQUE HORAIRES (Bouton Ouvert/Fermé) ---
+function toggleJour(jour) {
+  const isOpen = document.getElementById('open_' + jour).checked;
+  const btn = document.getElementById('btn_' + jour);
+  const heuresDiv = document.getElementById('heures_' + jour);
+  
+  if (isOpen) {
+    btn.innerText = "Ouvert";
+    btn.style.background = "#10b981"; // Vert
+    heuresDiv.style.display = 'flex';
+  } else {
+    btn.innerText = "Fermé";
+    btn.style.background = "#94a3b8"; // Gris
+    heuresDiv.style.display = 'none';
+    // On vide les champs d'heure si on ferme
+    document.querySelector(`input[name="h_${jour}_o"]`).value = '';
+    document.querySelector(`input[name="h_${jour}_f"]`).value = '';
+  }
+}
    
     function getLocation() {
       const status = document.getElementById('gps-status');
