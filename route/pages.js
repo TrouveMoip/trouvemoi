@@ -18,9 +18,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     return html;
   }
 
-  // ==========================================
   // 1. PAGE D'ACCUEIL
-  // ==========================================
   router.get("/", async (req, res) => {
     try {
       const proConnected = await getConnectedPro(req);
