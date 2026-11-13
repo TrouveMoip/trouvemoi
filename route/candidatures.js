@@ -284,29 +284,7 @@ jours.forEach(j => {
     function toggleLocalisation(isFixe) {
       document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
     }
-    const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-let horairesHtml = "";
-jours.forEach(j => {
-  horairesHtml += `
-    <div style="display:flex; align-items:center; justify-content:space-between; background:white; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px; flex-wrap:wrap; gap:10px;">
-      <div style="width:100px; font-weight:600; text-transform:capitalize; font-size:14px; color:#334155;">${j}</div>
-      
-      <div style="display:flex; align-items:center; gap:5px;">
-        <input type="radio" name="h_${j}_status" value="open" checked onclick="toggleJour('${j}', true)" id="open_${j}">
-        <label for="open_${j}" style="font-size:13px; cursor:pointer; margin-right:10px;">Ouvert</label>
-        
-        <input type="radio" name="h_${j}_status" value="closed" onclick="toggleJour('${j}', false)" id="closed_${j}">
-        <label for="closed_${j}" style="font-size:13px; cursor:pointer;">Fermé</label>
-      </div>
-      
-      <div id="heures_${j}" style="display:flex; align-items:center; gap:5px;">
-        <input type="time" name="h_${j}_o" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
-        <span style="color:#94a3b8;">à</span>
-        <input type="time" name="h_${j}_f" style="margin:0; padding:6px; border-radius:6px; border:1px solid #cbd5e1; font-size:13px; width:100px;">
-      </div>
-    </div>
-  `;
-});
+   
     function getLocation() {
       const status = document.getElementById('gps-status');
       status.innerText = "⏳ Récupération de votre position...";
