@@ -35,6 +35,12 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         </div>
       </section>
     `, null));
+    // ✅ Sécurité : Si le pro n'a pas de code de parrainage, on lui en crée un
+if (!proConnected.pro.referral_code) {
+  const newRefCode = crypto.randomBytes(3).toString('hex');
+  await pool.query(`UPDATE professional_applications SET referral_code = $1 WHERE id = $2`, [newRefCode, proConnected.pro.id]);
+  proConnected.pro.referral_code = newRefCode; // On met à jour la variable pour l'affichage immédiat
+}
 
     let offers = [], gdprRequests = [], myReviews = [], withdrawals = [];
     let stats30 = { views: 0, phone: 0, wa: 0 }, stats90 = { views: 0, phone: 0, wa: 0 }, statsAll = { views: 0, phone: 0, wa: 0 };
