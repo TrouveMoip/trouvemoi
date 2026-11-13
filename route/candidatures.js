@@ -14,28 +14,27 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
   const professionOptions = Object.values(professionsByCategory).flat().map(name => `<option value="${escapeHtml(name)}">`).join("");  
   
- const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-let horairesHtml = "";
-jours.forEach(j => {
-  horairesHtml += `
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e2e8f0; gap:10px;">
-      <div style="width:70px; font-weight:600; text-transform:capitalize; font-size:14px; color:#334155;">${j}</div>
-      
-      <div style="display:flex; align-items:center;">
-        <!-- On utilise une checkbox cachée pour gérer l'état ouvert/fermé -->
-        <input type="checkbox" name="h_${j}_open" value="yes" id="open_${j}" checked onchange="toggleJour('${j}')" style="display:none;">
+  const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  let horairesHtml = "";
+  
+  jours.forEach(j => {
+    horairesHtml += `
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #e2e8f0; gap:10px;">
+        <div style="width:70px; font-weight:600; text-transform:capitalize; font-size:14px; color:#334155;">${j}</div>
         
-        <button type="button" onclick="document.getElementById('open_${j}').click()" id="btn_${j}" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; width:70px;">Ouvert</button>
-      </div>
+        <div style="display:flex; align-items:center;">
+          <input type="checkbox" name="h_${j}_open" value="yes" id="open_${j}" checked onchange="toggleJour('${j}')" style="display:none;">
+          <button type="button" onclick="document.getElementById('open_${j}').click()" id="btn_${j}" style="background:#10b981; color:white; border:none; padding:6px 12px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer; width:70px;">Ouvert</button>
+        </div>
 
-      <div id="heures_${j}" style="display:flex; align-items:center; gap:5px;">
-        <input type="time" name="h_${j}_o" style="margin:0; padding:4px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; width:85px; background:#f8fafc;">
-        <span style="color:#94a3b8; font-size:12px;">à</span>
-        <input type="time" name="h_${j}_f" style="margin:0; padding:4px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; width:85px; background:#f8fafc;">
+        <div id="heures_${j}" style="display:flex; align-items:center; gap:5px;">
+          <input type="time" name="h_${j}_o" style="margin:0; padding:4px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; width:85px; background:#f8fafc;">
+          <span style="color:#94a3b8; font-size:12px;">à</span>
+          <input type="time" name="h_${j}_f" style="margin:0; padding:4px; border:1px solid #cbd5e1; border-radius:6px; font-size:12px; width:85px; background:#f8fafc;">
+        </div>
       </div>
-    </div>
-  `;
-});
+    `;
+  });
 
   const refFromUrl = String(req.query.ref || "").trim().toLowerCase();
   const refCookie = refFromUrl || readCookie(req, "tm_ref") || "";
@@ -173,7 +172,6 @@ jours.forEach(j => {
 
           <div id="localisation-block" class="hidden">
             <label class="fancy-label">Adresse exacte / Point de repère</label>
-            <!-- ✅ J'ai retiré le "required" ici pour que ça marche quand le champ est désactivé -->
             <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total" class="fancy-input">
             
             <input type="hidden" name="latitude" id="latitude">
@@ -283,26 +281,26 @@ jours.forEach(j => {
     function toggleLocalisation(isFixe) {
       document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
     }
+
     // --- LOGIQUE HORAIRES (Bouton Ouvert/Fermé) ---
-function toggleJour(jour) {
-  const isOpen = document.getElementById('open_' + jour).checked;
-  const btn = document.getElementById('btn_' + jour);
-  const heuresDiv = document.getElementById('heures_' + jour);
-  
-  if (isOpen) {
-    btn.innerText = "Ouvert";
-    btn.style.background = "#10b981"; // Vert
-    heuresDiv.style.display = 'flex';
-  } else {
-    btn.innerText = "Fermé";
-    btn.style.background = "#94a3b8"; // Gris
-    heuresDiv.style.display = 'none';
-    // On vide les champs d'heure si on ferme
-    document.querySelector(`input[name="h_${jour}_o"]`).value = '';
-    document.querySelector(`input[name="h_${jour}_f"]`).value = '';
-  }
-}
-   
+    function toggleJour(jour) {
+      var isOpen = document.getElementById('open_' + jour).checked;
+      var btn = document.getElementById('btn_' + jour);
+      var heuresDiv = document.getElementById('heures_' + jour);
+      
+      if (isOpen) {
+        btn.innerText = "Ouvert";
+        btn.style.background = "#10b981";
+        heuresDiv.style.display = "flex";
+      } else {
+        btn.innerText = "Fermé";
+        btn.style.background = "#94a3b8";
+        heuresDiv.style.display = "none";
+        document.getElementsByName('h_' + jour + '_o')[0].value = "";
+        document.getElementsByName('h_' + jour + '_f')[0].value = "";
+      }
+    }
+
     function getLocation() {
       const status = document.getElementById('gps-status');
       status.innerText = "⏳ Récupération de votre position...";
@@ -314,18 +312,16 @@ function toggleJour(jour) {
           
           status.innerText = "✅ Position GPS enregistrée !";
           
-          // ✅ On demande au pro s'il est exactement sur place
-const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ? Cliquez sur OK si vous êtes sur place. Cliquez sur Annuler si vous êtes ailleurs.");          
+          const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ? Cliquez sur OK si vous êtes sur place. Cliquez sur Annuler si vous êtes ailleurs.");
+          
           const adresseInput = document.querySelector('input[name="adresse_exacte"]');
           
           if (isExactLocation) {
-            // Si OUI : On désactive le champ adresse (grisé)
             adresseInput.value = "Position GPS exacte enregistrée";
             adresseInput.disabled = true;
             adresseInput.style.background = "#e5e7eb";
             adresseInput.style.cursor = "not-allowed";
           } else {
-            // Si NON : On laisse le champ actif
             adresseInput.disabled = false;
             adresseInput.style.background = "";
             adresseInput.style.cursor = "";
@@ -430,7 +426,7 @@ const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre
       } else {
         waField.style.display = 'none';
         waInput.required = false;
-        waInput.value = ''; // On vide le champ si on choisit "Oui"
+        waInput.value = ''; 
       }
     }
 
@@ -473,7 +469,7 @@ const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre
     // ✅ Gestion du numéro WhatsApp
     let whatsapp_number = req.body.whatsapp_number;
     if (req.body.is_wa_same === 'yes') {
-      whatsapp_number = phone; // Si c'est le même, on prend le numéro principal
+      whatsapp_number = phone;
     }
 
     const otpCode = String(req.body.otp_code || "").trim();
@@ -481,8 +477,8 @@ const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre
 
     const horaires = {};
     ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
-if (req.body[`h_${j}_open`]) {
-      const o = req.body[`h_${j}_o`];
+      if (req.body[`h_${j}_open`]) {
+        const o = req.body[`h_${j}_o`];
         const f = req.body[`h_${j}_f`];
         if (o && f) horaires[j] = { o, f };
       }
@@ -492,13 +488,11 @@ if (req.body[`h_${j}_open`]) {
     const lng = Number(longitude) || null;
 
     try {
-      // ✅ VÉRIFICATION DU CODE SMS OBLIGATOIRE
       const codeValide = await verifyOTP(phone, otpCode);
       if (!codeValide) {
         return res.status(400).send(page("Erreur", "<h2>Code SMS invalide ou expiré. Veuillez recommencer.</h2><a href='/devenir-professionnel'>Retour</a>", null));
       }
 
-      // ✅ VÉRIFICATION ANTI-DOUBLON : NPI ET TELEPHONE
       const existingPro = await pool.query(`SELECT id FROM professional_applications WHERE npi = $1 OR phone = $2`, [npi, phone]);
       if (existingPro.rows.length) {
         return res.status(400).send(page("Erreur", "<h2>Un dossier existe déjà avec ce NPI ou ce numéro de téléphone.</h2><p>Si vous avez déjà un compte, veuillez vous connecter ou contacter le support.</p><a href='/devenir-professionnel'>Retour</a>", null));
