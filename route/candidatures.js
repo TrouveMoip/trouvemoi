@@ -12,7 +12,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   
   const professionsByCategory = {};
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
-const professionOptions = Object.values(professionsByCategory).flat().map(name => `<option value="${escapeHtml(name)}">`).join("");  
+  const professionOptions = Object.values(professionsByCategory).flat().map(name => `<option value="${escapeHtml(name)}">`).join("");  
+  
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesHtml = "";
   jours.forEach(j => {
@@ -95,7 +96,6 @@ const professionOptions = Object.values(professionsByCategory).flat().map(name =
               <input name="otp_code" id="otp_code_input" placeholder="Entrez le code à 6 chiffres" style="margin-bottom:0; background:#fff; text-align:center; letter-spacing:4px; font-size:18px;" class="fancy-input">
             </div>
 
-            <!-- ✅ NOUVELLE PARTIE WHATSAPP -->
             <div style="margin-top:15px; border-top:1px solid #bfdbfe; padding-top:15px;">
               <label class="fancy-label" style="color:#1e3a8a; font-size:13px;">Ce numéro de téléphone est-il aussi votre numéro WhatsApp ? *</label>
               <div style="display:flex; gap:15px; margin-bottom:10px;">
@@ -130,10 +130,10 @@ const professionOptions = Object.values(professionsByCategory).flat().map(name =
           <div id="neighborhood-other-block" class="hidden" style="margin-top:-10px; margin-bottom:18px;"><input name="neighborhood_other" maxlength="150" placeholder="Précisez votre quartier" class="fancy-input"></div>
 
           <label class="fancy-label">Profession *</label>
-<input type="text" id="profession" name="profession" list="profession-list" required placeholder="Tapez votre métier (ex: Plombier)..." class="fancy-input" autocomplete="off">
-<datalist id="profession-list">
-  ${professionOptions.replace(/<optgroup label="[^"]*">|<\/optgroup>/g, "")}
-</datalist>
+          <input type="text" id="profession" name="profession" list="profession-list" required placeholder="Tapez votre métier (ex: Plombier)..." class="fancy-input" autocomplete="off">
+          <datalist id="profession-list">
+            ${professionOptions}
+          </datalist>
           
           <label class="fancy-label">Description de vos services *</label>
           <textarea name="service_description" rows="4" required maxlength="3000" placeholder="Décrivez ce que vous faites, vos spécialités..." class="fancy-input"></textarea>
@@ -162,6 +162,7 @@ const professionOptions = Object.values(professionsByCategory).flat().map(name =
 
           <div id="localisation-block" class="hidden">
             <label class="fancy-label">Adresse exacte / Point de repère</label>
+            <!-- ✅ J'ai retiré le "required" ici pour que ça marche quand le champ est désactivé -->
             <input name="adresse_exacte" maxlength="200" placeholder="Ex: Carrefour Ste Rita, à côté de la station Total" class="fancy-input">
             
             <input type="hidden" name="latitude" id="latitude">
@@ -271,15 +272,41 @@ const professionOptions = Object.values(professionsByCategory).flat().map(name =
     function toggleLocalisation(isFixe) {
       document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
     }
+    
     function getLocation() {
       const status = document.getElementById('gps-status');
+      status.innerText = "⏳ Récupération de votre position...";
+      
       navigator.geolocation.getCurrentPosition(
         (position) => {
           document.getElementById('latitude').value = position.coords.latitude;
           document.getElementById('longitude').value = position.coords.longitude;
+          
           status.innerText = "✅ Position GPS enregistrée !";
+          
+          // ✅ On demande au pro s'il est exactement sur place
+          const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ?\n\nCliquez sur OK si vous êtes sur place (l'adresse manuelle sera désactivée).\nCliquez sur Annuler si vous êtes ailleurs (vous pourrez écrire votre adresse).");
+          
+          const adresseInput = document.querySelector('input[name="adresse_exacte"]');
+          
+          if (isExactLocation) {
+            // Si OUI : On désactive le champ adresse (grisé)
+            adresseInput.value = "Position GPS exacte enregistrée";
+            adresseInput.disabled = true;
+            adresseInput.style.background = "#e5e7eb";
+            adresseInput.style.cursor = "not-allowed";
+          } else {
+            // Si NON : On laisse le champ actif
+            adresseInput.disabled = false;
+            adresseInput.style.background = "";
+            adresseInput.style.cursor = "";
+            adresseInput.value = "";
+            adresseInput.focus();
+          }
         },
-        () => { status.innerText = "❌ Impossible de vous localiser."; }
+        () => { 
+          status.innerText = "❌ Impossible de vous localiser. Veuillez autoriser le GPS ou écrire l'adresse manuellement."; 
+        }
       );
     }
 
