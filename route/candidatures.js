@@ -268,11 +268,23 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
            }
         }
       }
-      if (step === 2) {
-        const city = document.getElementById('city').value;
-        const prof = document.getElementById('profession').value;
-        if(!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
-      }
+     if (step === 2) {
+  const city = document.getElementById('city').value;
+  const prof = document.getElementById('profession').value;
+  if(!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
+
+  // ✅ VÉRIFICATION DES MÉTIERS SENSIBLES
+  const metiersSensibles = ["Médecin", "Pharmacien", "Dentiste", "Infirmier", "Sage-femme", "Kinésithérapeute", "Technicien de laboratoire", "Avocat", "Notaire", "Architecte", "Géomètre topographe", "Agent de sécurité"];
+  
+  // On vérifie si le métier choisi est dans la liste
+  if (metiersSensibles.includes(prof)) {
+    const continuer = confirm("⚠️ ATTENTION : Vous avez choisi un métier sensible (" + prof + ").\n\nUne vérification rigoureuse de vos diplômes et agréments sera effectuée par notre équipe. Toute fausse déclaration entraînera un rejet définitif.\n\nSouhaitez-vous continuer ?");
+    
+    if (!continuer) {
+      return; // Le pro a cliqué sur Annuler, on reste à l'étape 2
+    }
+  }
+}
       showStep(step + 1);
     }
     function prevStep(step) { showStep(step - 1); }
