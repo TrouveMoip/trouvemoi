@@ -249,23 +249,28 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     
     try {
       if (status === "approved") {
-        const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-        const isReactivation = current.rows[0]?.status === 'suspended';
-        
-        if (isReactivation) {
-          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
-        } else {
-          // ✅ CORRECTION : Générer le code directement ici
-          const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
-          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, kyc_verified = true WHERE id = $3`, [status, newCode, id]);
-          
-          if (current.rows.length > 0) {
-            const pro = current.rows[0];
-            const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
-            try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
-          }
-        }
-      } else {
+  const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+  const isReactivation = current.rows[0]?.status === 'suspended';
+  
+  if (isReactivation) {
+    await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+  } else {
+    // ✅ Générer le code Pro
+    const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
+    
+    // ✅ Générer le code de parrainage (ex: a1b2c3)
+    const referralCode = crypto.randomBytes(3).toString('hex');
+    
+    // ✅ On enregistre les deux
+    await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true WHERE id = $4`, [status, newCode, referralCode, id]);
+    
+    if (current.rows.length > 0) {
+      const pro = current.rows[0];
+      const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+      try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
+    }
+  }
+} else {
         await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
         if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
       }
