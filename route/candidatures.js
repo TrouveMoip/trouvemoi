@@ -12,8 +12,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
   
   const professionsByCategory = {};
   for (const p of professionsResult.rows) { const cat = p.category || "Autres"; if (!professionsByCategory[cat]) professionsByCategory[cat] = []; professionsByCategory[cat].push(p.name); }
-  const professionOptions = Object.entries(professionsByCategory).map(([category, names]) => `<optgroup label="${escapeHtml(category)}">${names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("");
-  
+const professionOptions = Object.values(professionsByCategory).flat().map(name => `<option value="${escapeHtml(name)}">`).join("");  
   const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   let horairesHtml = "";
   jours.forEach(j => {
@@ -318,18 +317,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       }
       if (visibleCount === 1) select.value = lastVisible.value;
     }
-// --- RECHERCHE DE MÉTIERS ---
-function filterProfessions() {
-  const search = document.getElementById('search-profession').value.toLowerCase();
-  const select = document.getElementById('profession');
-  const options = select.options;
-  
-  for (let i = 1; i < options.length; i++) { 
-    const txt = options[i].text.toLowerCase();
-    // Si le texte contient la recherche, on l'affiche, sinon on le cache
-    options[i].style.display = txt.includes(search) ? "block" : "none";
-  }
-}
+
     document.getElementById('city').addEventListener('change', async function() { 
       const city = this.value; const select = document.getElementById('neighborhood');
       select.innerHTML = '<option value="">Chargement...</option>'; 
