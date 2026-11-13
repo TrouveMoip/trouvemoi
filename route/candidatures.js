@@ -285,8 +285,7 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           status.innerText = "✅ Position GPS enregistrée !";
           
           // ✅ On demande au pro s'il est exactement sur place
-          const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ?\n\nCliquez sur OK si vous êtes sur place (l'adresse manuelle sera désactivée).\nCliquez sur Annuler si vous êtes ailleurs (vous pourrez écrire votre adresse).");
-          
+const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ? Cliquez sur OK si vous êtes sur place. Cliquez sur Annuler si vous êtes ailleurs.");          
           const adresseInput = document.querySelector('input[name="adresse_exacte"]');
           
           if (isExactLocation) {
