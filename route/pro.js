@@ -542,6 +542,44 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       res.redirect(303, "/mon-espace-pro/reinitialiser");
     }
   });
+ 
+// MES MESSAGES (Boîte de réception du Pro)
+router.get("/mes-messages", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  // On récupère les messages destinés à ce pro
+  const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id]);
+  
+  const messagesHtml = result.rows.map(m => `
+    <article class="card" style="margin-bottom:16px; border-left:4px solid #3b82f6;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <strong style="color:#1e293b;">${escapeHtml(m.name)}</strong>
+        <span style="font-size:12px; color:#64748b;">${new Date(m.created_at).toLocaleDateString("fr-FR")}</span>
+      </div>
+      <p style="font-size:13px; color:#64748b; margin-bottom:10px;">
+        📧 ${escapeHtml(m.email)} | 📞 ${escapeHtml(m.phone || "Non renseigné")}
+      </p>
+      <div style="background:#f8fafc; padding:15px; border-radius:8px; font-size:14px; color:#374151;">
+        ${escapeHtml(m.message)}
+      </div>
+      <div style="margin-top:15px; display:flex; gap:10px;">
+        ${m.email ? `<a href="mailto:${escapeHtml(m.email)}?subject=Réponse à votre message TrouveMoi" class="button" style="font-size:12px; padding:8px 16px;">✉️ Répondre par Email</a>` : ''}
+        ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" class="button whatsapp" style="font-size:12px; padding:8px 16px;">💬 Répondre sur WhatsApp</a>` : ''}
+      </div>
+    </article>
+  `).join("");
+
+  res.send(page("Mes Messages", `
+    <div style="max-width: 800px; margin: 0 auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1>📩 Mes Messages</h1>
+        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+      </div>
+      ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Vous n'avez pas encore reçu de message.</p></div>"}
+    </div>
+  `, proConnected));
+});
 
   router.get("/mes-avis", async (req, res) => {
     const proConnected = await getConnectedPro(req);
