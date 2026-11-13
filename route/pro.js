@@ -4,18 +4,57 @@ const crypto = require('crypto');
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord) {
   const router = express.Router();
 
-  router.post("/login", async (req, res) => {
-    const ip = req.ip || "unknown"; const ipKey = `pro_login:ip:${ip}`;
-    if (!(await takeRateLimit(ipKey, 30, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<h1>⏳ Trop de tentatives</h1>", null));
-    const code = String(req.body.pro_code || "").trim().toUpperCase();
-    const codeKey = `pro_login:code:${code}`;
-    if (!(await takeRateLimit(codeKey, 3, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<h1>⏳ Trop de tentatives sur ce code</h1>", null));
-    try {
-      const result = await pool.query(`SELECT id FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]);
-      if (!result.rows.length) return res.status(401).send(page("Erreur", "<h2>Code incorrect.</h2>", null));
-      await clearRateLimit(codeKey); setProCookie(res, code); res.redirect(303, "/mon-espace-pro");
-    } catch (error) { res.redirect(303, "/mon-espace-pro"); }
-  });
+ router.post("/login", async (req, res) => {
+  const ip = req.ip || "unknown"; const ipKey = `pro_login:ip:${ip}`;
+  if (!(await takeRateLimit(ipKey, 30, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<h1>⏳ Trop de tentatives</h1>", null));
+  
+  const code = String(req.body.pro_code || "").trim().toUpperCase();
+  const codeKey = `pro_login:code:${code}`;
+  if (!(await takeRateLimit(codeKey, 3, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<h1>⏳ Trop de tentatives sur ce code</h1>", null));
+  
+  try {
+    // ✅ On cherche le code SANS filtrer sur le statut pour voir s'il existe
+    const result = await pool.query(`SELECT id, status FROM professional_applications WHERE pro_code = $1`, [code]);
+    
+    // Si le code n'existe pas du tout
+    if (!result.rows.length) {
+      return res.status(401).send(page("Erreur", "<h2>Code pro incorrect.</h2><a href='/mon-espace-pro'>Réessayer</a>", null));
+    }
+    
+    const pro = result.rows[0];
+
+    // ✅ Si le code existe mais que le compte est suspendu
+    if (pro.status === 'suspended') {
+      return res.status(403).send(page("Compte suspendu", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1 style="color:#f59e0b;">⏸️ Compte suspendu</h1>
+          <p style="margin-bottom:20px;">Votre compte professionnel a été suspendu par l'administration.</p>
+          <p style="margin-bottom:20px; font-size:14px; color:#64748b;">Si vous pensez qu'il s'agit d'une erreur, veuillez contacter notre support.</p>
+          <a href="/contact" class="button" style="width:100%;">📩 Contacter l'administration</a>
+        </section>
+      `, null));
+    }
+
+    // ✅ Si le statut n'est pas "approved" (ex: en attente, rejeté)
+    if (pro.status !== 'approved') {
+      return res.status(403).send(page("Compte non actif", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1 style="color:#3b82f6;">⏳ Compte non actif</h1>
+          <p style="margin-bottom:20px;">Votre dossier n'est pas encore approuvé par l'administration.</p>
+          <a href="/suivi" class="button" style="width:100%;">Vérifier l'état de mon dossier</a>
+        </section>
+      `, null));
+    }
+
+    // ✅ Si tout est bon, on le connecte
+    await clearRateLimit(codeKey); 
+    setProCookie(res, code); 
+    res.redirect(303, "/mon-espace-pro");
+    
+  } catch (error) { 
+    res.redirect(303, "/mon-espace-pro"); 
+  }
+});
 
   router.post("/logout", (req, res) => { clearProCookie(res); res.redirect(303, "/mon-espace-pro"); });
 
