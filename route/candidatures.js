@@ -481,7 +481,7 @@ const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre
 
     const horaires = {};
     ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
-if (req.body[`h_${j}_status`] === 'open') {
+if (req.body[`h_${j}_open`]) {
       const o = req.body[`h_${j}_o`];
         const f = req.body[`h_${j}_f`];
         if (o && f) horaires[j] = { o, f };
