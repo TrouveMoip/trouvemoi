@@ -82,6 +82,7 @@ if (!proConnected.pro.referral_code) {
 }
 
     let offers = [], gdprRequests = [], myReviews = [], withdrawals = [];
+    let unreadMessagesCount = 0;
     let stats30 = { views: 0, phone: 0, wa: 0 }, stats90 = { views: 0, phone: 0, wa: 0 }, statsAll = { views: 0, phone: 0, wa: 0 };
     
     try {
@@ -89,6 +90,8 @@ if (!proConnected.pro.referral_code) {
       gdprRequests = (await pool.query(`SELECT * FROM gdpr_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 20`, [proConnected.pro.id])).rows;
       myReviews = (await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
       withdrawals = (await pool.query(`SELECT * FROM withdrawal_requests WHERE pro_id = $1 ORDER BY created_at DESC LIMIT 10`, [proConnected.pro.id])).rows;
+      const unreadRes = await pool.query(`SELECT COUNT(*) FROM contact_messages WHERE pro_id = $1 AND pro_is_read = false`, [proConnected.pro.id]);
+unreadMessagesCount = Number(unreadRes.rows[0]?.count || 0);
       
       const s30 = await pool.query(`SELECT SUM(views) as v, SUM(phone_clicks) as p, SUM(wa_clicks) as w FROM pro_stats WHERE pro_id = $1 AND date >= CURRENT_DATE - INTERVAL '30 days'`, [proConnected.pro.id]);
       if (s30.rows.length) { stats30 = { views: Number(s30.rows[0].v || 0), phone: Number(s30.rows[0].p || 0), wa: Number(s30.rows[0].w || 0) }; }
