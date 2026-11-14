@@ -1044,6 +1044,9 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply TEXT`);
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply_date TIMESTAMP`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
     
     // --- CRÉATION DE LA TABLE POUR LES DONS ---
     await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
