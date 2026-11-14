@@ -33,7 +33,27 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
       const totalPages = Math.ceil(totalAllPros / limit);
 
-const query = `SELECT p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, (SELECT COUNT(*) FROM agencies a WHERE a.parent_pro_id = p.id AND a.status = 'approved') AS agencies_count, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') ORDER BY p.created_at DESC LIMIT $1 OFFSET $2`;
+const query = `
+  SELECT 
+    p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified,
+    COALESCE(rev.reviews_count, 0) AS reviews_count,
+    COALESCE(rev.avg_rating, 0) AS avg_rating,
+    COALESCE(agc.agencies_count, 0) AS agencies_count,
+    EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite
+  FROM professional_applications p
+  LEFT JOIN (
+    SELECT pro_id, COUNT(*) AS reviews_count, AVG(rating) AS avg_rating 
+    FROM reviews WHERE status = 'approved' GROUP BY pro_id
+  ) rev ON rev.pro_id = p.id
+  LEFT JOIN (
+    SELECT parent_pro_id, COUNT(*) AS agencies_count 
+    FROM agencies WHERE status = 'approved' GROUP BY parent_pro_id
+  ) agc ON agc.parent_pro_id = p.id
+  WHERE p.status = 'approved' 
+    AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
+  ORDER BY p.created_at DESC 
+  LIMIT $1 OFFSET $2
+`;
       const result = await pool.query(query, [limit, offset, visitorId]);
 
       const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
