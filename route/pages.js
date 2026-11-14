@@ -342,14 +342,39 @@ router.get("/agence/:id", async (req, res) => {
   } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
 });
 
-// ==========================================
 // 5. PAGES STATIQUES (À PROPOS, CGU, CONFIDENTIALITE, ETC.)
-// ==========================================
 router.get("/a-propos", async (req, res) => {
   const proConnected = await getConnectedPro(req);
-  res.send(page("À propos", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>À propos de TrouveMoi</h1><p>TrouveMoi est la première plateforme béninoise qui met en relation directe les clients avec des professionnels vérifiés de leur quartier.</p><p>Notre mission est de valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p></section>`, proConnected));
-});
+  res.send(page("À propos", `
+    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;">
+      <h1 style="color: #1e3a8a; margin-bottom: 20px;">À propos de TrouveMoi</h1>
+      
+      <p style="margin-bottom: 15px;">TrouveMoi est la première plateforme béninoise de mise en relation directe entre les clients et les professionnels vérifiés de leur quartier. Notre mission est simple : valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p>
 
+      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les clients ?</h2>
+      <p style="margin-bottom: 15px;">Trouver un professionnel n'a jamais été aussi simple. Un client se connecte, tape le métier recherché (ex: Plombier, Auto-école) et sa ville. Grâce à la géolocalisation, il voit instantanément les professionnels les plus proches. Il peut consulter leurs profils, leurs photos, leurs horaires et leurs avis, puis les contacter en un clic via Appeler ou WhatsApp. Ce service est entièrement gratuit pour les clients.</p>
+
+      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les professionnels ?</h2>
+      <p style="margin-bottom: 15px;">Chaque professionnel passe par un processus d'inscription et de vérification d'identité (KYC) rigoureux. Une fois son dossier validé, il obtient un code Pro unique pour accéder à son espace personnel et gérer sa visibilité.</p>
+
+      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Notre modèle économique</h2>
+      <p style="margin-bottom: 15px;">Pour garantir la qualité et le fonctionnement de nos serveurs, la plateforme fonctionne avec un système d'abonnement :</p>
+      <ul style="margin-left: 20px; margin-bottom: 15px; color: #4b5563;">
+        <li><strong>Inscription unique :</strong> 1500 FCFA pour l'étude de dossier et la création du profil vérifié.</li>
+        <li><strong>Période de grâce :</strong> Les 6 premiers mois sont offerts après la validation du dossier, pour permettre au professionnel de se faire connaître.</li>
+        <li><strong>Abonnement mensuel :</strong> Après ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil visible dans les recherches.</li>
+      </ul>
+      <p style="margin-bottom: 15px;">Si un professionnel ne renouvelle pas son abonnement, son profil n'est plus visible dans les résultats de recherche, mais ses données restent en sécurité sur la plateforme.</p>
+
+      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">La confiance au cœur du système</h2>
+      <p style="margin-bottom: 15px;">La modération est notre priorité. Les avis sont vérifiés avant publication, et les professionnels ne respectant pas nos règles peuvent être suspendus. Nous rappelons également aux clients de ne jamais payer un professionnel avant de l'avoir rencontré.</p>
+
+      <div style="margin-top: 40px; text-align: center;">
+        <a href="/" class="button" style="background: #2563eb;">Découvrir les professionnels</a>
+      </div>
+    </section>
+  `, proConnected));
+});
 router.get("/partenariats", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à <strong>contact@trouvemoi.bj</strong>.</p></section>`, proConnected));
