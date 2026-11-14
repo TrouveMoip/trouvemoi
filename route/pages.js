@@ -866,7 +866,7 @@ router.get("/conditions", async (req, res) => {
       const visitorId = getOrCreateVisitorId(req, res);
       if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
       
-      const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved'`, [proId]);
+const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [proId]);
       if (!check.rows.length) return res.redirect(303, "/");
 
       const contactProof = await pool.query(`
