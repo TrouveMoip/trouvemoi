@@ -648,6 +648,20 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
 // GESTION DES ABONNEMENTS
 router.get("/abonnements", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
+  // ✅ CALCUL DU BILAN DU MOIS EN COURS
+const startOfMonth = `DATE_TRUNC('month', CURRENT_DATE)`;
+
+// Revenus des inscriptions (1500F)
+const inscriptionsRes = await pool.query(`SELECT COUNT(*) as count, SUM(payment_amount) as total FROM professional_applications WHERE payment_status = 'paid' AND payment_date >= ${startOfMonth}`);
+const totalInscriptions = Number(inscriptionsRes.rows[0].total || 0);
+const countInscriptions = Number(inscriptionsRes.rows[0].count || 0);
+
+// Revenus des abonnements (600F)
+const abonnementsRes = await pool.query(`SELECT COUNT(*) as count, SUM(600) as total FROM professional_applications WHERE last_payment_at >= ${startOfMonth}`);
+const totalAbonnements = Number(abonnementsRes.rows[0].total || 0);
+const countAbonnements = Number(abonnementsRes.rows[0].count || 0);
+
+const totalGeneral = totalInscriptions + totalAbonnements;
   
   // On récupère tous les pros approuvés
   const result = await pool.query(`
@@ -714,6 +728,25 @@ router.get("/abonnements", requireAdmin, async (req, res) => {
   res.send(page("Abonnements", `
     <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
     ${await customAdminMenu("/admin/abonnements", csrf)}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+  <div class="card" style="text-align: center; border-top: 4px solid #3b82f6; margin: 0;">
+    <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Inscriptions du mois</h3>
+    <div style="font-size: 32px; font-weight: 900; color: #1e3a8a; margin: 10px 0;">${totalInscriptions} FCFA</div>
+    <p style="font-size: 13px; color: #94a3b8;">${countInscriptions} inscription(s) validée(s)</p>
+  </div>
+  
+  <div class="card" style="text-align: center; border-top: 4px solid #10b981; margin: 0;">
+    <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Abonnements du mois</h3>
+    <div style="font-size: 32px; font-weight: 900; color: #065f46; margin: 10px 0;">${totalAbonnements} FCFA</div>
+    <p style="font-size: 13px; color: #94a3b8;">${countAbonnements} abonnement(s) payé(s)</p>
+  </div>
+
+  <div class="card" style="text-align: center; border-top: 4px solid #f59e0b; margin: 0; background: #fffbeb;">
+    <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
+    <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
+    <p style="font-size: 13px; color: #d97706;">Mois en cours</p>
+  </div>
+</div>
     
     <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
       💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
