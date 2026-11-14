@@ -111,8 +111,16 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     `);
     
     const apps = result.rows.map(c => {
-      let statusColor = "#f59e0b", statusLabel = "En attente";
-      if (c.status === 'approved') { statusColor = "#10b981"; statusLabel = "Approuvé"; }
+     let statusColor = "#f59e0b", statusLabel = "En attente";
+if (c.status === 'approved') { 
+  statusColor = "#10b981"; 
+  statusLabel = "Approuvé"; 
+  // ✅ On vérifie l'abonnement
+  if (c.subscription_status === 'expired') {
+    statusColor = "#ef4444"; 
+    statusLabel = "Abonnement expiré";
+  }
+}
       else if (c.status === 'rejected') { statusColor = "#ef4444"; statusLabel = "Rejeté"; }
       else if (c.status === 'suspended') { statusColor = "#f97316"; statusLabel = "Suspendu"; }
 
