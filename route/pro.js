@@ -152,7 +152,10 @@ unreadMessagesCount = Number(unreadRes.rows[0]?.count || 0);
             <a class="button secondary" href="/mon-espace-pro/modifier-photo">📷 Photo</a>
             <a class="button secondary" href="/mon-espace-pro/modifier-galerie">📸 Galerie</a>
             <a class="button secondary" href="/mon-espace-pro/mes-avis">⭐ Mes Avis</a>
-            <a class="button secondary" href="/mon-espace-pro/mes-messages">📩 Mes Messages</a>
+            <a class="button secondary" href="/mon-espace-pro/mes-messages" style="position:relative;">
+  📩 Mes Messages
+  ${unreadMessagesCount > 0 ? `<span style="position:absolute; top:-5px; right:-5px; background:red; color:white; border-radius:50%; padding:2px 6px; font-size:10px; font-weight:bold;">${unreadMessagesCount}</span>` : ""}
+</a>
           </div>
         </section>
         
