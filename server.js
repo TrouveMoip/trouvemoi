@@ -316,8 +316,31 @@ async function settlePayment({ dossierId, transactionId, amount, method, source 
   }
 }
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
-async function cleanupExpiredDossiers() { return 0; }
+async function cleanupExpiredDossiers() {
+  try {
+    // ✅ 1. Passer en "expired" les abonnements échus
+    const expiredResult = await pool.query(`
+      UPDATE professional_applications 
+      SET subscription_status = 'expired' 
+      WHERE subscription_status = 'active' 
+        AND subscription_expires_at IS NOT NULL 
+        AND subscription_expires_at < NOW()
+    `);
+    
+    // ✅ 2. Remettre en "active" ceux qui ont payé et dont la date a été repoussée
+    await pool.query(`
+      UPDATE professional_applications 
+      SET subscription_status = 'active' 
+      WHERE subscription_status = 'expired' 
+        AND subscription_expires_at > NOW()
+    `);
 
+    return expiredResult.rowCount || 0;
+  } catch (e) {
+    console.error("Erreur cleanup:", e);
+    return 0;
+  }
+}
 // --- FONCTION DE RENDU HTML (DESIGN PREMIUM & DOUX) ---
 function page(title, content, proConnected, meta = {}) {
   const pageTitle = `${meta.title || title} - TrouveMoi`;
