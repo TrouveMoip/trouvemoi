@@ -648,22 +648,36 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
 // GESTION DES ABONNEMENTS
 router.get("/abonnements", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
-  // ✅ CALCUL DU BILAN DU MOIS EN COURS
-const startOfMonth = `DATE_TRUNC('month', CURRENT_DATE)`;
-
-// Revenus des inscriptions (1500F)
-const inscriptionsRes = await pool.query(`SELECT COUNT(*) as count, SUM(payment_amount) as total FROM professional_applications WHERE payment_status = 'paid' AND payment_date >= ${startOfMonth}`);
-const totalInscriptions = Number(inscriptionsRes.rows[0].total || 0);
-const countInscriptions = Number(inscriptionsRes.rows[0].count || 0);
-
-// Revenus des abonnements (600F)
-const abonnementsRes = await pool.query(`SELECT COUNT(*) as count, SUM(600) as total FROM professional_applications WHERE last_payment_at >= ${startOfMonth}`);
-const totalAbonnements = Number(abonnementsRes.rows[0].total || 0);
-const countAbonnements = Number(abonnementsRes.rows[0].count || 0);
-
-const totalGeneral = totalInscriptions + totalAbonnements;
   
-  // On récupère tous les pros approuvés
+  // ✅ On récupère le mois sélectionné (par défaut, le mois en cours)
+  const currentMonth = new Date().toISOString().slice(0, 7); // ex: "2026-11"
+  const selectedMonth = String(req.query.month || currentMonth);
+  const startDate = `${selectedMonth}-01`;
+  const endDate = `${selectedMonth}-31`; // Approximation simple pour le SQL
+
+  // ✅ CALCUL DU BILAN DU MOIS SÉLECTIONNÉ
+  const inscriptionsRes = await pool.query(`
+    SELECT COUNT(*) as count, SUM(payment_amount) as total 
+    FROM professional_applications 
+    WHERE payment_status = 'paid' 
+      AND payment_date >= $1::date 
+      AND payment_date < ($1::date + INTERVAL '1 month')
+  `, [startDate]);
+  const totalInscriptions = Number(inscriptionsRes.rows[0].total || 0);
+  const countInscriptions = Number(inscriptionsRes.rows[0].count || 0);
+
+  const abonnementsRes = await pool.query(`
+    SELECT COUNT(*) as count, SUM(600) as total 
+    FROM professional_applications 
+    WHERE last_payment_at >= $1::date 
+      AND last_payment_at < ($1::date + INTERVAL '1 month')
+  `, [startDate]);
+  const totalAbonnements = Number(abonnementsRes.rows[0].total || 0);
+  const countAbonnements = Number(abonnementsRes.rows[0].count || 0);
+
+  const totalGeneral = totalInscriptions + totalAbonnements;
+
+  // On récupère la liste des pros (comme avant)
   const result = await pool.query(`
     SELECT id, full_name, company_name, phone, profession, subscription_status, subscription_expires_at, last_payment_at
     FROM professional_applications 
@@ -674,23 +688,21 @@ const totalGeneral = totalInscriptions + totalAbonnements;
   `);
 
   const rows = result.rows.map(p => {
-    const isExpired = p.subscription_status === 'expired';
+    const isExpired = p.subscription_status === 'expired' && p.subscription_expires_at != null;
     const expiryDate = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
     
-    // Calcul des jours restants
     let daysLeft = 0;
     if (expiryDate) {
       const diffTime = expiryDate - new Date();
       daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
-    // Couleur du badge
     let badgeColor = "#10b981"; // Vert
     let badgeText = `Actif (${daysLeft} j)`;
-    if (isExpired || daysLeft <= 0) { badgeColor = "#ef4444"; badgeText = "Expiré"; }
+    if (p.subscription_expires_at == null) { badgeText = "Actif (Legacy)"; }
+    else if (isExpired || daysLeft <= 0) { badgeColor = "#ef4444"; badgeText = "Expiré"; }
     else if (daysLeft <= 7) { badgeColor = "#f59e0b"; badgeText = `Bientôt expiré (${daysLeft} j)`; }
 
-    // Lien WhatsApp pour relancer
     const waNumber = p.phone ? p.phone.replace(/\D/g, "").replace(/^(00229|229)/, "") : "";
     const waMessage = encodeURIComponent(`Bonjour ${p.full_name}, votre abonnement TrouveMoi ${isExpired ? 'a expiré' : 'arrive à échéance'}. Merci de régler vos 600 FCFA pour rester visible sur la plateforme.`);
 
@@ -701,17 +713,11 @@ const totalGeneral = totalInscriptions + totalAbonnements;
           <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.profession)}</div>
         </td>
         <td style="padding: 12px; font-size: 13px;">${p.phone ? `<a href="tel:+229${p.phone}" style="color:#2563eb; text-decoration:none;">${escapeHtml(p.phone)}</a>` : '-'}</td>
-        <td style="padding: 12px; font-size: 13px;">
-          ${expiryDate ? expiryDate.toLocaleDateString("fr-FR") : "Non défini"}
-        </td>
+        <td style="padding: 12px; font-size: 13px;">${expiryDate ? expiryDate.toLocaleDateString("fr-FR") : "Non défini"}</td>
         <td style="padding: 12px;">
-          <span class="badge" style="background:${badgeColor}20; color:${badgeColor}; padding:6px 10px; border-radius:12px; font-weight:bold;">
-            ${badgeText}
-          </span>
+          <span class="badge" style="background:${badgeColor}20; color:${badgeColor}; padding:6px 10px; border-radius:12px; font-weight:bold;">${badgeText}</span>
         </td>
-        <td style="padding: 12px; font-size: 13px;">
-          ${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}
-        </td>
+        <td style="padding: 12px; font-size: 13px;">${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}</td>
         <td style="padding: 12px;">
           <div style="display:flex; gap:5px;">
             <form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
@@ -728,26 +734,36 @@ const totalGeneral = totalInscriptions + totalAbonnements;
   res.send(page("Abonnements", `
     <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
     ${await customAdminMenu("/admin/abonnements", csrf)}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
-  <div class="card" style="text-align: center; border-top: 4px solid #3b82f6; margin: 0;">
-    <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Inscriptions du mois</h3>
-    <div style="font-size: 32px; font-weight: 900; color: #1e3a8a; margin: 10px 0;">${totalInscriptions} FCFA</div>
-    <p style="font-size: 13px; color: #94a3b8;">${countInscriptions} inscription(s) validée(s)</p>
-  </div>
-  
-  <div class="card" style="text-align: center; border-top: 4px solid #10b981; margin: 0;">
-    <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Abonnements du mois</h3>
-    <div style="font-size: 32px; font-weight: 900; color: #065f46; margin: 10px 0;">${totalAbonnements} FCFA</div>
-    <p style="font-size: 13px; color: #94a3b8;">${countAbonnements} abonnement(s) payé(s)</p>
-  </div>
-
-  <div class="card" style="text-align: center; border-top: 4px solid #f59e0b; margin: 0; background: #fffbeb;">
-    <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
-    <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
-    <p style="font-size: 13px; color: #d97706;">Mois en cours</p>
-  </div>
-</div>
     
+    <!-- ✅ SÉLECTEUR DE MOIS ET BOUTON EXPORT -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
+      <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
+        <label style="font-weight:bold; font-size:14px; color:#374151;">📅 Sélectionner le mois :</label>
+        <input type="month" name="month" value="${selectedMonth}" onchange="this.form.submit()" style="padding:8px; border-radius:8px; border:1px solid #cbd5e1; margin:0; width:auto;">
+      </form>
+      <a href="/admin/abonnements/export?month=${selectedMonth}" class="button success" style="margin:0; padding:10px 20px; font-size:14px;">📥 Télécharger le rapport (CSV)</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+      <div class="card" style="text-align: center; border-top: 4px solid #3b82f6; margin: 0;">
+        <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Inscriptions (${selectedMonth})</h3>
+        <div style="font-size: 32px; font-weight: 900; color: #1e3a8a; margin: 10px 0;">${totalInscriptions} FCFA</div>
+        <p style="font-size: 13px; color: #94a3b8;">${countInscriptions} inscription(s) validée(s)</p>
+      </div>
+      
+      <div class="card" style="text-align: center; border-top: 4px solid #10b981; margin: 0;">
+        <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Abonnements (${selectedMonth})</h3>
+        <div style="font-size: 32px; font-weight: 900; color: #065f46; margin: 10px 0;">${totalAbonnements} FCFA</div>
+        <p style="font-size: 13px; color: #94a3b8;">${countAbonnements} abonnement(s) payé(s)</p>
+      </div>
+
+      <div class="card" style="text-align: center; border-top: 4px solid #f59e0b; margin: 0; background: #fffbeb;">
+        <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
+        <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
+        <p style="font-size: 13px; color: #d97706;">Mois sélectionné</p>
+      </div>
+    </div>
+
     <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
       💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
     </div>
