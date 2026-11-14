@@ -197,6 +197,7 @@ if (c.status === 'approved') {
             <div style="flex:1; min-width:0;">
               <div style="font-size:15px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.full_name)}</div>
               <div style="font-size:12px; color:#64748b;">${escapeHtml(c.profession)} • ${escapeHtml(c.city)}</div>
+              ${c.status === 'approved' && c.subscription_expires_at ? `<div style="font-size:11px; color:#64748b;">Expire le : ${new Date(c.subscription_expires_at).toLocaleDateString("fr-FR")}</div>` : ""}
             </div>
             <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${statusLabel}</span>
             <div style="color:#94a3b8; font-size:18px; margin-left:5px;">▼</div>
@@ -714,6 +715,24 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
       </section>
     `, null));
   });
+  // Action : Ajouter 1 mois d'abonnement manuellement
+router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await pool.query(`
+      UPDATE professional_applications 
+      SET subscription_status = 'active', 
+          subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+          last_payment_at = NOW() 
+      WHERE id = $1
+    `, [id]);
+    await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
+    res.redirect(303, "/admin/candidatures");
+  } catch (e) {
+    console.error(e);
+    res.redirect(303, "/admin/candidatures");
+  }
+});
 
   return router;
 };
