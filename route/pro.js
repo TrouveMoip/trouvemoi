@@ -106,7 +106,17 @@ unreadMessagesCount = Number(unreadRes.rows[0]?.count || 0);
     const pendingDeletion = gdprRequests.some(r => r.request_type === "deletion" && r.status === "pending");
     const isOnLeave = proConnected.pro.unavailable_until && new Date(proConnected.pro.unavailable_until) > new Date();
     const leaveStatus = isOnLeave ? `<span class="badge" style="background:#fee2e2;color:#991b1b;">En congés jusqu'au ${new Date(proConnected.pro.unavailable_until).toLocaleDateString("fr-FR")}</span>` : `<span class="badge" style="background:#d1fae5;color:#065f46;">Actif</span>`;
-
+${proConnected.pro.subscription_status === 'expired' ? `
+  <div class="alert alert-animated" style="text-align:center; margin-bottom:20px;">
+    ⚠️ Votre abonnement a expiré. Votre profil n'est plus visible.
+    <br><a href="/mon-espace-pro/payer-abonnement" class="button danger" style="margin-top:10px;">Payer 600 FCFA pour réactiver</a>
+  </div>
+` : `
+  <div class="alert alert-success" style="text-align:center; margin-bottom:20px;">
+    ✅ Abonnement actif jusqu'au ${proConnected.pro.subscription_expires_at ? new Date(proConnected.pro.subscription_expires_at).toLocaleDateString("fr-FR") : "prochain paiement"}.
+  </div>
+`}
+    
     res.send(page("Espace pro", `
       <div class="card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
         <div><h2 style="color:white; margin:0;">Bonjour ${escapeHtml(proConnected.pro.company_name || proConnected.pro.full_name)} 👋</h2></div>
