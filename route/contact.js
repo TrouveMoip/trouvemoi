@@ -67,13 +67,11 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
       );
       
       // Envoi du SMS à l'admin (uniquement si la variable d'environnement est définie)
-      if (process.env.ADMIN_PHONE) {
-        try {
-          sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
-        } catch (smsError) {
-          console.error("Erreur envoi SMS admin:", smsError);
-        }
-      }
+      if (process.env.ADMIN_PHONE && !proId) {
+  try {
+    sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
+  } catch (smsError) { console.error("Erreur envoi SMS admin:", smsError); }
+}
       
       res.redirect(303, "/contact?success=1");
     } catch (e) { 
