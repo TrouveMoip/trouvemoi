@@ -757,6 +757,72 @@ router.post("/mes-messages/:id/supprimer", async (req, res) => {
       res.status(500).send(page("Erreur", "<h2>Erreur lors de la demande de retrait.</h2><a href='/mon-espace-pro'>Retour</a>", proConnected));
     }
   });
+  router.get("/payer-abonnement", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+  res.send(page("Payer mon abonnement", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
+      <h1>💳 Abonnement Mensuel</h1>
+      <p>Réglez vos 600 FCFA pour réactiver votre profil pour 30 jours supplémentaires.</p>
+      <button onclick="payer()" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px; margin-top:20px;">
+        Payer 600 FCFA
+      </button>
+      <p style="margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+    </section>
+    
+    <script src="https://cdn.kkiapay.me/k.js"></script>
+    <script>
+      function payer() {
+        openKkiapayWidget({ 
+          amount: 600, 
+          api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
+          sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
+          callback: "${APP_URL}/mon-espace-pro/abonnement/verifier", 
+          data: "ABO-${proConnected.pro.id}" 
+        });
+      }
+      addSuccessListener(function(response) {
+        if (response && response.transactionId) {
+          window.location.href = "/mon-espace-pro/abonnement/verifier?transaction_id=" + response.transactionId;
+        }
+      });
+    </script>
+  `, proConnected));
+});
+
+// Vérification du paiement Kkiapay
+router.get("/abonnement/verifier", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const transactionId = String(req.query.transaction_id || "").trim();
+  if (!proConnected || !transactionId) return res.redirect(303, "/mon-espace-pro");
+
+  try {
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success) {
+      await pool.query(`
+        UPDATE professional_applications 
+        SET subscription_status = 'active', 
+            subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+            last_payment_at = NOW() 
+        WHERE id = $1
+      `, [proConnected.pro.id]);
+      
+      return res.send(page("Succès", `
+        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+          <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
+          <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
+          <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+        </section>
+      `, proConnected));
+    }
+    res.redirect(303, "/mon-espace-pro");
+  } catch (e) {
+    console.error("Erreur abonnement:", e);
+    res.redirect(303, "/mon-espace-pro");
+  }
+});
 
   return router;
 };
