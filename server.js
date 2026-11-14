@@ -1078,6 +1078,7 @@ async function startServer() {
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_id INTEGER`);
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS report_id INTEGER`);
     await pool.query(`ALTER TABLE contact_messages ALTER COLUMN subject DROP NOT NULL`);
+    await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_is_read BOOLEAN DEFAULT false`);
     
     console.log("✅ Base de données connectée");
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
