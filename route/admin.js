@@ -628,6 +628,99 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
     res.redirect(303, "/admin/emplois");
   });
 
+// GESTION DES ABONNEMENTS
+router.get("/abonnements", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  
+  // On récupère tous les pros approuvés
+  const result = await pool.query(`
+    SELECT id, full_name, company_name, phone, profession, subscription_status, subscription_expires_at, last_payment_at
+    FROM professional_applications 
+    WHERE status = 'approved'
+    ORDER BY 
+      CASE WHEN subscription_status = 'expired' THEN 0 ELSE 1 END,
+      subscription_expires_at ASC
+  `);
+
+  const rows = result.rows.map(p => {
+    const isExpired = p.subscription_status === 'expired';
+    const expiryDate = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
+    
+    // Calcul des jours restants
+    let daysLeft = 0;
+    if (expiryDate) {
+      const diffTime = expiryDate - new Date();
+      daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // Couleur du badge
+    let badgeColor = "#10b981"; // Vert
+    let badgeText = `Actif (${daysLeft} j)`;
+    if (isExpired || daysLeft <= 0) { badgeColor = "#ef4444"; badgeText = "Expiré"; }
+    else if (daysLeft <= 7) { badgeColor = "#f59e0b"; badgeText = `Bientôt expiré (${daysLeft} j)`; }
+
+    // Lien WhatsApp pour relancer
+    const waNumber = p.phone ? p.phone.replace(/\D/g, "").replace(/^(00229|229)/, "") : "";
+    const waMessage = encodeURIComponent(`Bonjour ${p.full_name}, votre abonnement TrouveMoi ${isExpired ? 'a expiré' : 'arrive à échéance'}. Merci de régler vos 600 FCFA pour rester visible sur la plateforme.`);
+
+    return `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px;">
+          <div style="font-weight: 700; color: #111827;">${escapeHtml(p.company_name || p.full_name)}</div>
+          <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.profession)}</div>
+        </td>
+        <td style="padding: 12px; font-size: 13px;">${p.phone ? `<a href="tel:+229${p.phone}" style="color:#2563eb; text-decoration:none;">${escapeHtml(p.phone)}</a>` : '-'}</td>
+        <td style="padding: 12px; font-size: 13px;">
+          ${expiryDate ? expiryDate.toLocaleDateString("fr-FR") : "Non défini"}
+        </td>
+        <td style="padding: 12px;">
+          <span class="badge" style="background:${badgeColor}20; color:${badgeColor}; padding:6px 10px; border-radius:12px; font-weight:bold;">
+            ${badgeText}
+          </span>
+        </td>
+        <td style="padding: 12px; font-size: 13px;">
+          ${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}
+        </td>
+        <td style="padding: 12px;">
+          <div style="display:flex; gap:5px;">
+            <form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="success" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">+ 1 mois</button>
+            </form>
+            ${p.phone ? `<a href="https://wa.me/229${waNumber}?text=${waMessage}" target="_blank" class="button whatsapp" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">💬 Relancer</a>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  res.send(page("Abonnements", `
+    <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
+    ${await customAdminMenu("/admin/abonnements", csrf)}
+    
+    <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
+      💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
+    </div>
+
+    <section class="card" style="margin-top: 20px; overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Professionnel</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Téléphone</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date d'expiration</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Statut</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Dernier paiement</th>
+            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280;">Aucun professionnel enregistré.</td></tr>`}
+        </tbody>
+      </table>
+    </section>
+  `, null));
+});
   router.get("/dons", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
