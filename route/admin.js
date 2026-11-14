@@ -262,8 +262,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const referralCode = crypto.randomBytes(3).toString('hex');
     
     // ✅ On enregistre les deux
-    await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true WHERE id = $4`, [status, newCode, referralCode, id]);
-    
+await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months' WHERE id = $4`, [status, newCode, referralCode, id]);    
     if (current.rows.length > 0) {
       const pro = current.rows[0];
       const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
