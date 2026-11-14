@@ -787,6 +787,59 @@ router.get("/abonnements", requireAdmin, async (req, res) => {
     </section>
   `, null));
 });
+  router.get("/abonnements/export", requireAdmin, async (req, res) => {
+  try {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const selectedMonth = String(req.query.month || currentMonth);
+    const startDate = `${selectedMonth}-01`;
+
+    // 1. Récupérer les inscriptions payées ce mois-là
+    const inscriptions = await pool.query(`
+      SELECT full_name, company_name, payment_amount, payment_date, payment_ref 
+      FROM professional_applications 
+      WHERE payment_status = 'paid' 
+        AND payment_date >= $1::date 
+        AND payment_date < ($1::date + INTERVAL '1 month')
+    `, [startDate]);
+
+    // 2. Récupérer les abonnements payés ce mois-là
+    const abonnements = await pool.query(`
+      SELECT full_name, company_name, last_payment_at 
+      FROM professional_applications 
+      WHERE last_payment_at >= $1::date 
+        AND last_payment_at < ($1::date + INTERVAL '1 month')
+    `, [startDate]);
+
+    let csv = `RAPPORT FINANCIER - ${selectedMonth}\n\n`;
+    
+    csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
+    csv += `Date;Nom;Entreprise;Montant;Reference\n`;
+    let totalInscr = 0;
+    inscriptions.rows.forEach(i => {
+      csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};"${i.full_name}";"${i.company_name || ''}";${i.payment_amount};"${i.payment_ref || ''}"\n`;
+      totalInscr += Number(i.payment_amount);
+    });
+    csv += `Total Inscriptions;;;${totalInscr};\n\n`;
+
+    csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
+    csv += `Date;Nom;Entreprise;Montant\n`;
+    let totalAbo = 0;
+    abonnements.rows.forEach(a => {
+      csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};"${a.full_name}";"${a.company_name || ''}";600\n`;
+      totalAbo += 600;
+    });
+    csv += `Total Abonnements;;;${totalAbo};\n\n`;
+    
+    csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="rapport_trouvemoi_${selectedMonth}.csv"`);
+    res.send("\uFEFF" + csv); // \uFEFF pour que Excel reconnaisse les accents
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Erreur lors de l'export.");
+  }
+});
   router.get("/dons", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
