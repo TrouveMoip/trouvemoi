@@ -599,6 +599,8 @@ unreadMessagesCount = Number(unreadRes.rows[0]?.count || 0);
 router.get("/mes-messages", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  // ✅ On marque les messages comme lus dès que le pro ouvre la page
+await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
 
   // On récupère les messages destinés à ce pro
   const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id]);
