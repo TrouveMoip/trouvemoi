@@ -113,7 +113,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
 
       if (isSearching) {
         let whereClause = ` WHERE p.status = 'approved'`; const values = [];
-if (profession) { values.push(%${profession}%); whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category ILIKE $${values.length}))`; }
+        if (profession) { values.push(`%${profession}%`); whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category ILIKE $${values.length}))`; }
         if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
         if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
         if (category) { values.push(category); whereClause += ` AND (p.profession_category = $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category = $${values.length}))`; }
