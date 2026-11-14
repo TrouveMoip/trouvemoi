@@ -328,7 +328,24 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
     }
   });
 
-  // Action : Supprimer définitivement
+  // Action : Ajouter 1 mois d'abonnement manuellement
+router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await pool.query(`
+      UPDATE professional_applications 
+      SET subscription_status = 'active', 
+          subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+          last_payment_at = NOW() 
+      WHERE id = $1
+    `, [id]);
+    await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
+    res.redirect(303, "/admin/abonnements"); // Redirection vers la nouvelle page
+  } catch (e) {
+    console.error(e);
+    res.redirect(303, "/admin/abonnements");
+  }
+});
   router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
