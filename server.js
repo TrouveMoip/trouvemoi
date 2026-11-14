@@ -1106,6 +1106,14 @@ await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS
     await pool.query(`ALTER TABLE contact_messages ALTER COLUMN subject DROP NOT NULL`);
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_is_read BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false`);
+    // ✅ CRÉATION DES INDEX POUR ACCÉLÉRER LA BASE DE DONNÉES
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_status ON professional_applications(status)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_city ON professional_applications(city)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_profession ON professional_applications(profession)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_sub_status ON professional_applications(subscription_status)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_visitor ON client_favorites(visitor_id)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_pro_id ON contact_messages(pro_id)`);
     
     console.log("✅ Base de données connectée");
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
