@@ -1157,7 +1157,7 @@ const check = await pool.query(`SELECT id FROM professional_applications WHERE i
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
     
-    const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved'`, [id]);
+const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [id]);
     if (!proResult.rows.length) return res.redirect(303, "/");
     const person = proResult.rows[0];
     const displayName = person.company_name?.trim() || person.full_name;
