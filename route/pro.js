@@ -599,40 +599,72 @@ unreadMessagesCount = Number(unreadRes.rows[0]?.count || 0);
 router.get("/mes-messages", async (req, res) => {
   const proConnected = await getConnectedPro(req);
   if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  // ✅ On marque les messages comme lus dès que le pro ouvre la page
-await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
 
-  // On récupère les messages destinés à ce pro
-  const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id = $1 ORDER BY created_at DESC`, [proConnected.pro.id]);
+  const showArchived = req.query.archives === "1";
+
+  if (!showArchived) {
+    await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
+  }
+
+  let whereClause = showArchived 
+    ? `WHERE pro_id = $1 AND is_archived = true` 
+    : `WHERE pro_id = $1 AND (is_archived = false OR is_archived IS NULL)`;
+
+  const result = await pool.query(`SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC`, [proConnected.pro.id]);
   
+  // ✅ DESIGN BULLE DE CHAT (Compact)
   const messagesHtml = result.rows.map(m => `
-    <article class="card" style="margin-bottom:16px; border-left:4px solid #3b82f6;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-        <strong style="color:#1e293b;">${escapeHtml(m.name)}</strong>
-        <span style="font-size:12px; color:#64748b;">${new Date(m.created_at).toLocaleDateString("fr-FR")}</span>
+    <div style="background:#f8fafc; padding:12px; border-radius:12px; margin-bottom:12px; border-left:3px solid #3b82f6;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+        <div>
+          <strong style="font-size:14px; color:#1e293b;">${escapeHtml(m.name)}</strong>
+          <span style="font-size:11px; color:#64748b; margin-left:8px;">${new Date(m.created_at).toLocaleDateString("fr-FR")}</span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <a href="mailto:${escapeHtml(m.email)}" title="Répondre par email" style="text-decoration:none; font-size:16px;">✉️</a>
+          ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" title="Répondre sur WhatsApp" style="text-decoration:none; font-size:16px;">💬</a>` : ''}
+          ${!showArchived ? `<form action="/mon-espace-pro/mes-messages/${m.id}/archiver" method="POST" style="margin:0;"><button type="submit" title="Archiver" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">📁</button></form>` : ''}
+          <form action="/mon-espace-pro/mes-messages/${m.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Voulez-vous supprimer DÉFINITIVEMENT ce message ? Cette action est irréversible.');">
+            <button type="submit" title="Supprimer" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">🗑️</button>
+          </form>
+        </div>
       </div>
-      <p style="font-size:13px; color:#64748b; margin-bottom:10px;">
-        📧 ${escapeHtml(m.email)} | 📞 ${escapeHtml(m.phone || "Non renseigné")}
-      </p>
-      <div style="background:#f8fafc; padding:15px; border-radius:8px; font-size:14px; color:#374151;">
+      <div style="font-size:13px; color:#374151; background:white; padding:8px 12px; border-radius:8px;">
         ${escapeHtml(m.message)}
       </div>
-      <div style="margin-top:15px; display:flex; gap:10px;">
-        ${m.email ? `<a href="mailto:${escapeHtml(m.email)}?subject=Réponse à votre message TrouveMoi" class="button" style="font-size:12px; padding:8px 16px;">✉️ Répondre par Email</a>` : ''}
-        ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" class="button whatsapp" style="font-size:12px; padding:8px 16px;">💬 Répondre sur WhatsApp</a>` : ''}
-      </div>
-    </article>
+    </div>
   `).join("");
 
   res.send(page("Mes Messages", `
-    <div style="max-width: 800px; margin: 0 auto;">
+    <div style="max-width: 700px; margin: 0 auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h1>📩 Mes Messages</h1>
-        <a href="/mon-espace-pro" class="button secondary" style="margin:0;">← Retour</a>
+        <div style="display:flex; gap:10px;">
+          <a href="/mon-espace-pro/mes-messages${showArchived ? '' : '?archives=1'}" class="button secondary" style="margin:0; font-size:13px;">
+            ${showArchived ? '👈 Boîte de réception' : '📁 Voir les archives'}
+          </a>
+          <a href="/mon-espace-pro" class="button secondary" style="margin:0; font-size:13px;">← Retour</a>
+        </div>
       </div>
-      ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Vous n'avez pas encore reçu de message.</p></div>"}
+      ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Aucun message ici.</p></div>"}
     </div>
   `, proConnected));
+});
+
+// Action : Archiver
+router.post("/mes-messages/:id/archiver", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  await pool.query(`UPDATE contact_messages SET is_archived = true WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
+  res.redirect(303, "/mon-espace-pro/mes-messages");
+});
+
+// Action : Supprimer définitivement
+router.post("/mes-messages/:id/supprimer", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  await pool.query(`DELETE FROM contact_messages WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
+  res.redirect(303, "/mon-espace-pro/mes-messages");
 });
 
   router.get("/mes-avis", async (req, res) => {
