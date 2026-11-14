@@ -494,13 +494,15 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     } catch (error) { res.redirect(303, "/admin/avis"); }
   });
 
-  router.get("/messages", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT * FROM contact_messages ORDER BY created_at DESC`);
-    const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
-    await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false`);
-    res.send(page("Messages", `<h1>Messages</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs}`, null));
-  });
+ router.get("/messages", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  // ✅ On ne récupère QUE les messages qui ne sont pas destinés à un pro
+  const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id IS NULL ORDER BY created_at DESC`);
+  const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
+  
+  await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
+  res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs || "<p>Aucun message général.</p>"}`, null));
+});
 
   router.get("/retraits", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
