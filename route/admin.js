@@ -153,6 +153,10 @@ if (c.status === 'approved') {
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🔄 Nouveau code</button>
             </form>
+            <form action="/admin/candidatures/${c.id}/abonnement" method="POST" style="margin:0;">
+  <input type="hidden" name="csrfToken" value="${csrf}">
+  <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
+</form>
             <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
               <input type="hidden" name="csrfToken" value="${csrf}">
               <input type="hidden" name="status" value="suspended"> 
