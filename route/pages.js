@@ -145,7 +145,7 @@ const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_a
 
       if (isSearching) {
         // ✅ CORRECTION : Filtrer les abonnements expirés
-        let whereClause = ` WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`; 
+let whereClause = ` WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`;
         const values = [];
         if (profession) { values.push(`%${profession}%`); whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category ILIKE $${values.length}))`; }
         if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
