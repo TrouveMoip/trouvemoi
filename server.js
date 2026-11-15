@@ -1068,7 +1068,15 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
-    
+
+    // ✅ CRÉATION DE LA TABLE POUR LES PAIEMENTS D'ABONNEMENT
+await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
+    id SERIAL PRIMARY KEY, 
+    pro_id INTEGER REFERENCES professional_applications(id), 
+    transaction_id VARCHAR(255) UNIQUE NOT NULL, 
+    amount INTEGER, 
+    created_at TIMESTAMP DEFAULT NOW()
+)`);
     // --- CRÉATION DE LA TABLE POUR LES DONS ---
     await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
         id SERIAL PRIMARY KEY, 
