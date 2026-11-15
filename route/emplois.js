@@ -100,9 +100,9 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     // ✅ CORRECTION : Si le pro est expiré, on le redirige vers la page de paiement
-    if (proConnected.pro.subscription_status === 'expired') {
-      return res.redirect(303, "/mon-espace-pro/payer-abonnement");
-    }
+    if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
+  return res.redirect(303, "/mon-espace-pro/payer-abonnement");
+}
     
     const contractOptions = JOB_CONTRACT_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
     
@@ -147,8 +147,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     // ✅ CORRECTION : Sécurité supplémentaire pour le POST
-    if (proConnected.pro.subscription_status === 'expired') {
-      return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas publier d'offre.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
+    if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
+    return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas publier d'offre.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
     }
 
     if (!JOB_CONTRACT_TYPES.includes(req.body.contract_type)) return res.status(400).send(page("Erreur", "<h2>Type invalide.</h2>", proConnected));
