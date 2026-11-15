@@ -933,14 +933,36 @@ app.get("/don/verifier", async (req, res) => {
   const transactionId = String(req.query.transaction_id || req.query.transactionId || "").trim();
   if (!transactionId) return res.redirect(303, "/");
 
+  const client = await pool.connect();
   try {
+    await client.query("BEGIN");
+    // 🔒 Le verrou : on bloque ce numéro de transaction
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
+
+    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
+    const alreadyDonated = await client.query(`SELECT id FROM global_donations WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
+    if (alreadyDonated.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.send(page("Merci !", `
+        <section class="card" style="text-align:center; margin:60px auto; max-width:500px;">
+          <h1 style="color:#10b981;">❤️ Merci infiniment !</h1>
+          <p>Ce don a déjà été pris en compte. Merci pour votre soutien !</p>
+          <a href="/" class="button success" style="margin-top:20px; width:100%;">Retour à l'accueil</a>
+        </section>
+      `, null));
+    }
+
+    // 2️⃣ On vérifie auprès de Kkiapay
     const verification = await verifyKkiapayTransaction(transactionId);
     
     if (verification.success) {
-      await pool.query(
-        `INSERT INTO global_donations (amount, donor_name, transaction_id) VALUES ($1, $2, $3) ON CONFLICT (transaction_id) DO NOTHING`,
+      // 3️⃣ On poinçonne le ticket
+      await client.query(
+        `INSERT INTO global_donations (amount, donor_name, transaction_id) VALUES ($1, $2, $3)`,
         [verification.amount, "Donateur TrouveMoi", transactionId]
       );
+      
+      await client.query("COMMIT");
 
       return res.send(page("Merci !", `
         <section class="card" style="text-align:center; margin:60px auto; max-width:500px;">
@@ -952,13 +974,16 @@ app.get("/don/verifier", async (req, res) => {
       `, null));
     }
     
+    await client.query("ROLLBACK");
     res.redirect(303, "/");
   } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("Erreur don :", e.message);
     res.redirect(303, "/");
+  } finally {
+    client.release();
   }
 });
-
 // --- IMPORTATION DES ROUTES ---
 const pagesRoutes = require('./route/pages');
 const contactRoutes = require('./route/contact');
