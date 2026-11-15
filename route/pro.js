@@ -3,6 +3,23 @@ const crypto = require('crypto');
 
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord, verifyKkiapayTransaction) {
   const router = express.Router();
+  // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
+async function verifyProCsrf(req, res, next) {
+  // On ignore la route de login et logout (pas encore de jeton à ce moment-là)
+  if (req.path === '/login' || req.path === '/logout') return next();
+
+  let cookieToken = null;
+  for (const item of (req.headers.cookie || "").split(";")) {
+    const [key, ...val] = item.trim().split("=");
+    if (key === "tm_pro_csrf") cookieToken = val.join("=");
+  }
+  
+  // On vérifie que le jeton du cookie correspond à celui du formulaire (req.body.csrfToken)
+  if (!cookieToken || !req.body.csrfToken || cookieToken !== req.body.csrfToken) {
+    return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
+  }
+  next();
+}
 
   router.post("/login", async (req, res) => {
     const ip = req.ip || "unknown"; const ipKey = `pro_login:ip:${ip}`;
@@ -43,8 +60,15 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       }
 
       await clearRateLimit(codeKey); 
-      setProCookie(res, code); 
-      res.redirect(303, "/mon-espace-pro");
+
+// ✅ CRÉATION DU JETON CSRF (valable 24h)
+const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
+
+// On le met dans un cookie sécurisé pour que les formulaires puissent le lire
+res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; HttpOnly${process.env.NODE_ENV === "production" ? "; Secure" : ""}; SameSite=Strict; Path=/; Max-Age=86400`);
+
+setProCookie(res, code); 
+res.redirect(303, "/mon-espace-pro");
       
     } catch (error) { 
       res.redirect(303, "/mon-espace-pro"); 
@@ -850,5 +874,9 @@ router.post("/mes-messages/:id/supprimer", async (req, res) => {
     client.release();
   }
 });
+  // ✅ On applique le vigile à TOUTES les routes de ce fichier
+router.use(verifyProCsrf);
+
+return router;
   return router;
 };
