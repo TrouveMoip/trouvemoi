@@ -1180,7 +1180,7 @@ const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHE
     const id = Number(req.params.id);
     
     // ✅ CORRECTION : Vérifier que le pro n'est pas expiré
-    const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [id]);
+    const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active') AND (subscription_expires_at IS NULL OR subscription_expires_at > NOW())`, [id]);
     if (!proResult.rows.length) return res.redirect(303, "/");
     const person = proResult.rows[0];
     const displayName = person.company_name?.trim() || person.full_name;
