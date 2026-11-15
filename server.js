@@ -675,6 +675,33 @@ function page(title, content, proConnected, meta = {}) {
     }, 1500);
   }
 </script>
+<script>
+  // ✅ SCRIPT ANTI-CSRF : Ajoute le jeton secret à tous les formulaires POST
+  document.addEventListener("DOMContentLoaded", function() {
+    // On cherche le cookie du jeton
+    const cookies = document.cookie.split(";");
+    let csrfToken = null;
+    for (let c of cookies) {
+      const [key, val] = c.trim().split("=");
+      if (key === "tm_pro_csrf") csrfToken = val;
+    }
+    
+    // Si on a trouvé le jeton, on l'ajoute à tous les formulaires POST
+    if (csrfToken) {
+      const forms = document.querySelectorAll('form[method="POST"], form[method="post"]');
+      forms.forEach(form => {
+        // On évite de l'ajouter 2 fois
+        if (!form.querySelector('input[name="csrfToken"]')) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "csrfToken";
+          input.value = csrfToken;
+          form.appendChild(input);
+        }
+      });
+    }
+  });
+</script>
     </body>
     </html>
   `;
