@@ -65,8 +65,7 @@ async function verifyProCsrf(req, res, next) {
 const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
 
 // On le met dans un cookie sécurisé pour que les formulaires puissent le lire
-res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; HttpOnly${process.env.NODE_ENV === "production" ? "; Secure" : ""}; SameSite=Strict; Path=/; Max-Age=86400`);
-
+res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
 setProCookie(res, code); 
 res.redirect(303, "/mon-espace-pro");
       
