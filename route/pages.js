@@ -31,7 +31,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
 
       const currentPage = Math.max(1, parseInt(req.query.page) || 1);
       const limit = 6; const offset = (currentPage - 1) * limit;
-      const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'");
+const totalAllProsResult = await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active') AND (subscription_expires_at IS NULL OR subscription_expires_at > NOW())");
       const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
       const totalPages = Math.ceil(totalAllPros / limit);
 
@@ -52,7 +52,8 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
           FROM agencies WHERE status = 'approved' GROUP BY parent_pro_id
         ) agc ON agc.parent_pro_id = p.id
         WHERE p.status = 'approved' 
-          AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
+  AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
+  AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())
         ORDER BY p.created_at DESC 
         LIMIT $1 OFFSET $2
       `;
