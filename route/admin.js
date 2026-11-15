@@ -39,46 +39,81 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   }
 
   router.get("/", async (req, res) => {
-    const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
-    if (session?.jti) {
-      const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]);
-      if (active.rows.length) return res.redirect(303, "/admin/dashboard");
-    }
-    clearSessionCookie(res);
-    
-    res.send(page("Admin", `
-      <section class="card" style="max-width: 400px; margin: 60px auto;">
-        <h1 style="text-align:center;">Admin</h1>
-        <form action="/admin/login" method="POST">
-          <label>Mot de passe</label>
-          <div style="position:relative; margin-bottom:15px;">
-            <input type="password" name="password" id="pass-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
-            <span onclick="document.getElementById('pass-input').type = document.getElementById('pass-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
-          </div>
-          
-          <label>Code de validation (6 chiffres)</label>
-          <div style="position:relative; margin-bottom:20px;">
-            <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" required style="text-align:center; font-size:20px; letter-spacing:4px; padding-right: 40px;">
-            <span onclick="document.getElementById('totp-input').type = document.getElementById('totp-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
-          </div>
-          
-          <button style="width:100%; margin-top:10px;">Connexion</button>
-        </form>
-      </section>
-    `, null));
-  });
+  const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
+  if (session?.jti) {
+    const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]);
+    if (active.rows.length) return res.redirect(303, "/admin/dashboard");
+  }
+  clearSessionCookie(res);
+  
+  res.send(page("Admin", `
+    <section class="card" style="max-width: 400px; margin: 60px auto;">
+      <h1 style="text-align:center;">Admin</h1>
+      <form action="/admin/login" method="POST">
+        
+        <label>Adresse Email</label>
+        <input type="email" name="email" required placeholder="admin@trouvemoi.bj" style="text-align:center; font-size:16px; margin-bottom:15px;">
+
+        <label>Mot de passe</label>
+        <div style="position:relative; margin-bottom:15px;">
+          <input type="password" name="password" id="pass-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
+          <span onclick="document.getElementById('pass-input').type = document.getElementById('pass-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
+        </div>
+        
+        <!-- Le TOTP n'est demandé que pour le Super Admin -->
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:20px; border:1px dashed #cbd5e1;">
+          <label style="font-size:12px; color:#64748b; margin-bottom:5px; display:block;">Code de validation (Super Admin uniquement)</label>
+          <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" style="text-align:center; font-size:20px; letter-spacing:4px; padding: 12px;">
+        </div>
+        
+        <button style="width:100%; margin-top:10px; padding:14px; font-size:16px;">Connexion</button>
+      </form>
+    </section>
+  `, null));
+});
 
   router.post("/login", async (req, res) => {
-    if (!safeEqual(req.body.password || "", ADMIN_PASSWORD)) return res.status(401).send(page("Refuse", "<h2>Mot de passe incorrect.</h2>", null));
-    if (!verifyTotp(ADMIN_TOTP_SECRET, req.body.totp)) return res.status(401).send(page("Refuse", "<h2>Code de validation incorrect.</h2>", null));
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  const totpCode = String(req.body.totp || "").trim();
+
+  if (!email || !password) return res.status(401).send(page("Refuse", "<h2>Email et mot de passe requis.</h2><a href='/admin'>Retour</a>", null));
+
+  try {
+    // 1. On cherche l'utilisateur par son email
+    const userResult = await pool.query(`SELECT * FROM admin_users WHERE email = $1 AND is_active = true`, [email]);
+    if (!userResult.rows.length) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
     
+    const user = userResult.rows[0];
+
+    // 2. On vérifie le mot de passe (chiffré avec bcrypt)
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
+
+    // 3. Si c'est le Super Admin, on exige et vérifie le TOTP
+    if (user.role === 'super_admin') {
+      if (!verifyTotp(ADMIN_TOTP_SECRET, totpCode)) {
+        return res.status(401).send(page("Refuse", "<h2>Code TOTP invalide ou manquant.</h2><a href='/admin'>Retour</a>", null));
+      }
+    }
+
+    // 4. On met à jour la date de dernière connexion
+    await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [user.id]);
+
+    // 5. On crée la session
     const expiresAt = Date.now() + SESSION_DURATION;
     const jti = crypto.randomBytes(16).toString("hex");
-    const session = { jti, expiresAt, csrf: crypto.randomBytes(32).toString("hex") };
+    const session = { jti, expiresAt, csrf: crypto.randomBytes(32).toString("hex"), adminId: user.id, role: user.role, email: user.email };
+    
     await pool.query(`INSERT INTO admin_sessions (jti, expires_at) VALUES ($1, to_timestamp($2 / 1000.0))`, [jti, expiresAt]);
     setSessionCookie(res, createSessionToken(session));
+    
     res.redirect(303, "/admin/dashboard");
-  });
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(page("Erreur", "<h2>Erreur de connexion.</h2>", null));
+  }
+});
 
   router.get("/dashboard", requireAdmin, async (req, res) => {
     const stats = {
