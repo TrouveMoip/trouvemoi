@@ -18,7 +18,9 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     return html;
   }
 
+  // ==========================================
   // 1. PAGE D'ACCUEIL
+  // ==========================================
   router.get("/", async (req, res) => {
     try {
       const proConnected = await getConnectedPro(req);
@@ -33,27 +35,27 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const totalAllPros = parseInt(totalAllProsResult.rows[0].count);
       const totalPages = Math.ceil(totalAllPros / limit);
 
-const query = `
-  SELECT 
-    p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified,
-    COALESCE(rev.reviews_count, 0) AS reviews_count,
-    COALESCE(rev.avg_rating, 0) AS avg_rating,
-    COALESCE(agc.agencies_count, 0) AS agencies_count,
-    EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite
-  FROM professional_applications p
-  LEFT JOIN (
-    SELECT pro_id, COUNT(*) AS reviews_count, AVG(rating) AS avg_rating 
-    FROM reviews WHERE status = 'approved' GROUP BY pro_id
-  ) rev ON rev.pro_id = p.id
-  LEFT JOIN (
-    SELECT parent_pro_id, COUNT(*) AS agencies_count 
-    FROM agencies WHERE status = 'approved' GROUP BY parent_pro_id
-  ) agc ON agc.parent_pro_id = p.id
-  WHERE p.status = 'approved' 
-    AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
-  ORDER BY p.created_at DESC 
-  LIMIT $1 OFFSET $2
-`;
+      const query = `
+        SELECT 
+          p.id, p.full_name, p.company_name, p.phone, p.phone_public, p.whatsapp_number, p.city, p.profession, p.service_description, p.latitude, p.longitude, p.kyc_verified,
+          COALESCE(rev.reviews_count, 0) AS reviews_count,
+          COALESCE(rev.avg_rating, 0) AS avg_rating,
+          COALESCE(agc.agencies_count, 0) AS agencies_count,
+          EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $3) AS is_favorite
+        FROM professional_applications p
+        LEFT JOIN (
+          SELECT pro_id, COUNT(*) AS reviews_count, AVG(rating) AS avg_rating 
+          FROM reviews WHERE status = 'approved' GROUP BY pro_id
+        ) rev ON rev.pro_id = p.id
+        LEFT JOIN (
+          SELECT parent_pro_id, COUNT(*) AS agencies_count 
+          FROM agencies WHERE status = 'approved' GROUP BY parent_pro_id
+        ) agc ON agc.parent_pro_id = p.id
+        WHERE p.status = 'approved' 
+          AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
+        ORDER BY p.created_at DESC 
+        LIMIT $1 OFFSET $2
+      `;
       const result = await pool.query(query, [limit, offset, visitorId]);
 
       const palettes = ["#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777", "#2563eb", "#059669", "#ca8a04"];
@@ -64,8 +66,17 @@ const query = `
         let hash = 0; const key = String(person.profession); for (let i = 0; i < key.length; i++) { hash = ((hash << 5) - hash) + key.charCodeAt(i); hash = hash & hash; }
         const borderColor = palettes[Math.abs(hash) % palettes.length];
         
-        let rawPhone = (person.phone || "").replace(/\D/g, ""); if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
-        const cleanPhone = rawPhone; const waNumber = /^\d{8,10}$/.test(rawPhone) ? "229" + rawPhone : null;
+        let rawPhone = (person.phone || "").replace(/\D/g, ""); 
+        if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); 
+        if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
+        const cleanPhone = rawPhone;
+
+        // ✅ CORRECTION : Logique WhatsApp
+        let rawWa = (person.whatsapp_number || person.phone || "").replace(/\D/g, "");
+        if (rawWa.startsWith("00229")) rawWa = rawWa.substring(5);
+        if (rawWa.startsWith("229")) rawWa = rawWa.substring(3);
+        const waNumber = /^\d{8,10}$/.test(rawWa) ? "229" + rawWa : null;
+
         let actionButtons = person.phone_public && cleanPhone ? `<a href="tel:+229${escapeHtml(cleanPhone)}" class="button" style="background:#e0e7ff; color:#1e3a8a;">📞 Appeler</a>${waNumber ? `<a href="https://wa.me/${waNumber}" target="_blank" class="button whatsapp">💬 WhatsApp</a>` : ""}` : `<a href="/contact?pro=${person.id}" class="button" style="background:#e0e7ff; color:#1e3a8a; grid-column: span 2;">📩 Contacter</a>`;
 
         return `
@@ -132,7 +143,9 @@ const query = `
       let result = { rows: [] }; let totalPros = 0; let totalPages = 0; let prosSection = ""; let paginationHtml = ""; let agencesSearchHtml = "";
 
       if (isSearching) {
-        let whereClause = ` WHERE p.status = 'approved'`; const values = [];
+        // ✅ CORRECTION : Filtrer les abonnements expirés
+        let whereClause = ` WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`; 
+        const values = [];
         if (profession) { values.push(`%${profession}%`); whereClause += ` AND (p.profession ILIKE $${values.length} OR p.company_name ILIKE $${values.length} OR p.full_name ILIKE $${values.length} OR p.profession IN (SELECT name FROM professions WHERE category ILIKE $${values.length}))`; }
         if (city) { values.push(`%${city}%`); whereClause += ` AND p.city ILIKE $${values.length}`; }
         if (neighborhood) { values.push(`%${neighborhood}%`); whereClause += ` AND p.neighborhood ILIKE $${values.length}`; }
@@ -195,265 +208,282 @@ const query = `
       res.send(page("Recherche", content, proConnected));
     } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur technique</h2>", null)); }
   });
+
   // ==========================================
-// 3. PAGE PROFIL PUBLIC
-// ==========================================
-router.get("/pro/:id", async (req, res) => { 
-  try {
-    const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-    const visitorId = getOrCreateVisitorId(req, res);
-    pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
+  // 3. PAGE PROFIL PUBLIC
+  // ==========================================
+  router.get("/pro/:id", async (req, res) => { 
+    try {
+      const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+      const visitorId = getOrCreateVisitorId(req, res);
+      pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
 
-    const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved'`, [id, visitorId]);
-    if (!result.rows.length) return res.redirect(303, "/");
-    const person = result.rows[0];
-    const displayName = getDisplayName(person);
+      // ✅ CORRECTION : Filtrer les expirés
+      const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`, [id, visitorId]);
+      if (!result.rows.length) return res.redirect(303, "/");
+      const person = result.rows[0];
+      const displayName = getDisplayName(person);
 
-const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
-    const similarHtml = similarResult.rows.map(sim => `<a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;"><div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div><div style="font-size:13px; color:#6b7280;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div></a>`).join("");
+      // ✅ CORRECTION : Filtrer les expirés dans les profils similaires
+      const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
+      const similarHtml = similarResult.rows.map(sim => `<a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;"><div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div><div style="font-size:13px; color:#6b7280;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div></a>`).join("");
 
-    let rawPhone = (person.phone || "").replace(/\D/g, ""); if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
-    const phoneClean = rawPhone; const whatsappNumber = /^\d{8,10}$/.test(rawPhone) ? "229" + rawPhone : null;
+      let rawPhone = (person.phone || "").replace(/\D/g, ""); 
+      if (rawPhone.startsWith("00229")) rawPhone = rawPhone.substring(5); 
+      if (rawPhone.startsWith("229")) rawPhone = rawPhone.substring(3);
+      const phoneClean = rawPhone;
 
-    let contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
-    const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
-    
-    let horairesHtml = "";
-    if (person.horaires_json) {
-      let h = {}; try { h = JSON.parse(person.horaires_json); } catch (e) { h = {}; }
-      const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
-      let rows = "";
-      jours.forEach(j => {
-        if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
-        else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
-      });
-      horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
-    }
+      // ✅ CORRECTION : Logique WhatsApp
+      let rawWa = (person.whatsapp_number || person.phone || "").replace(/\D/g, "");
+      if (rawWa.startsWith("00229")) rawWa = rawWa.substring(5);
+      if (rawWa.startsWith("229")) rawWa = rawWa.substring(3);
+      const whatsappNumber = /^\d{8,10}$/.test(rawWa) ? "229" + rawWa : null;
 
-    const galerieData = [{ url: person.photo_galerie_1, desc: person.photo_galerie_1_desc }, { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc }, { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }].filter(item => item.url);
-    let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; gap:10px;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">${item.desc ? `<p style="font-size:12px; margin-top:4px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
+      let contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
+      
+      const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
+      
+      let horairesHtml = "";
+      if (person.horaires_json) {
+        let h = {}; try { h = JSON.parse(person.horaires_json); } catch (e) { h = {}; }
+        const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+        let rows = "";
+        jours.forEach(j => {
+          if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
+          else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:4px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
+        });
+        horairesHtml = `<div style="margin-top:12px; background:white; padding:12px; border-radius:8px;">${rows}</div>`;
+      }
 
-    const content = `
-      <div style="max-width: 800px; margin: 0 auto;">
-        <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
-          <div style="margin-bottom:12px;">
-            <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
-              ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
-            </a>
+      const galerieData = [{ url: person.photo_galerie_1, desc: person.photo_galerie_1_desc }, { url: person.photo_galerie_2, desc: person.photo_galerie_2_desc }, { url: person.photo_galerie_3, desc: person.photo_galerie_3_desc }].filter(item => item.url);
+      let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; gap:10px;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">${item.desc ? `<p style="font-size:12px; margin-top:4px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
+
+      const content = `
+        <div style="max-width: 800px; margin: 0 auto;">
+          <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
+            <div style="margin-bottom:12px;">
+              <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
+                ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
+              </a>
+            </div>
+            ${openStatusBadge}
+            <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
+            <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
+            <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
+            <div style="font-size: 22px; color: #f59e0b; margin-top: 12px;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size:15px; color:#6b7280;">(${person.reviews_count} avis)</span></div>
           </div>
-          ${openStatusBadge}
-          <h1 style="color: #111827; font-size: 28px; margin-bottom: 6px;">${escapeHtml(displayName)} ${renderKycBadge(person, "lg")}</h1>
-          <div style="color: #2563eb; font-size: 16px; font-weight: 700; text-transform: uppercase;">${escapeHtml(person.profession)}</div>
-          <div style="color: #6b7280; margin-top: 8px;">📍 ${escapeHtml(person.city)}${person.neighborhood ? ` - ${escapeHtml(person.neighborhood)}` : ""}</div>
-          <div style="font-size: 22px; color: #f59e0b; margin-top: 12px;">${renderStars(Number(person.avg_rating || 0))} <span style="font-size:15px; color:#6b7280;">(${person.reviews_count} avis)</span></div>
-        </div>
-        
-        <div class="card">
-          <h2>À propos</h2>
-          <p style="white-space: pre-line;">${escapeHtml(person.service_description)}</p>
-          ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire</a>` : ""}</div>` : ""}
-          <div style="margin-top: 24px;">${contactButtons}</div>
           
-          <div style="text-align: center; margin-top: 16px;">
-            <button onclick="partagerProfil('${escapeHtml(displayName)}', '${escapeHtml(person.profession)}', '${escapeHtml(person.city)}', '${APP_URL}/pro/${person.id}')" style="display:inline-flex; align-items:center; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding:10px 24px; border-radius:30px; text-decoration:none; font-weight:bold; font-size:14px; cursor:pointer; margin:0;">
-              📤 Partager ce profil
-            </button>
+          <div class="card">
+            <h2>À propos</h2>
+            <p style="white-space: pre-line;">${escapeHtml(person.service_description)}</p>
+            ${person.type_lieu === 'fixe' ? `<div style="margin-top: 24px; background: #eff6ff; padding: 20px; border-radius: 12px;"><h3 style="font-size: 16px; margin-bottom: 8px; color: #1e3a8a;">📍 Localisation</h3><p>${person.adresse_exacte ? escapeHtml(person.adresse_exacte) : "Non spécifiée"}</p>${horairesHtml}${person.latitude && person.longitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${escapeHtml(String(person.latitude))},${escapeHtml(String(person.longitude))}" target="_blank" class="button" style="background: #2563eb; width: 100%; border-radius: 8px; margin-top:12px;">🗺️ Voir l'itinéraire</a>` : ""}</div>` : ""}
+            <div style="margin-top: 24px;">${contactButtons}</div>
+            
+            <div style="text-align: center; margin-top: 16px;">
+              <button onclick="partagerProfil('${escapeHtml(displayName)}', '${escapeHtml(person.profession)}', '${escapeHtml(person.city)}', '${APP_URL}/pro/${person.id}')" style="display:inline-flex; align-items:center; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; padding:10px 24px; border-radius:30px; text-decoration:none; font-weight:bold; font-size:14px; cursor:pointer; margin:0;">
+                📤 Partager ce profil
+              </button>
+            </div>
+
+            ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
+            <div class="card" id="section-agences" style="margin-top:20px;">
+              <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+              ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
+                  <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
+                    <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
+                    <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
+                    <div style="font-size:12px; color:#2563eb; font-weight:600;">Voir l'agence →</div>
+                  </a>
+                `).join("")}
+              </div>
+            </div>
+            ` : ""}
+            
+            <script>
+              function partagerProfil(nom, metier, ville, lien) {
+                const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' + metier + ') à ' + ville + '. Voici son profil : ' + lien;
+                if (navigator.share) {
+                  navigator.share({ title: 'TrouveMoi - ' + nom, text: texte, url: lien }).catch((error) => console.log('Erreur de partage', error));
+                } else {
+                  navigator.clipboard.writeText(texte).then(() => {
+                    alert("✅ Le lien et le texte ont été copiés ! Vous pouvez les coller dans WhatsApp, Facebook, SMS, etc.");
+                  }).catch(() => { prompt("Copiez ce lien pour partager :", texte); });
+                }
+              }
+              async function handleFavorite(e, id, isFav) {
+                e.preventDefault();
+                const btn = document.getElementById('fav-btn-' + id);
+                if (isFav) { btn.innerHTML = '🤍 Ajouter aux favoris'; } else { btn.innerHTML = '❤️ Retirer des favoris'; }
+                try {
+                    const res = await fetch('/api/favorite/' + id, { method: 'POST' });
+                    const data = await res.json();
+                    if (!data.ok) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
+                } catch(err) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
+              }
+            </script>
           </div>
 
-          ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
-          <div class="card" id="section-agences" style="margin-top:20px;">
-            <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
-            ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
-                <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
-                  <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
-                  <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
-                  <div style="font-size:12px; color:#2563eb; font-weight:600;">Voir l'agence →</div>
-                </a>
+          ${galerieHtml}
+
+          <div class="card" style="background: #f9fafb;">
+            <h2>Avis des clients (${person.reviews_count})</h2>
+            ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
+            
+            <div style="margin-top: 20px;">
+              ${(await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [person.id])).rows.map(r => `
+                <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
+                  <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <strong>${escapeHtml(r.author_name)}</strong>
+                    <a href="/contact?report=${r.id}" style="font-size:11px; color:#ef4444; text-decoration:none; margin-left:10px; font-weight:bold;">🚩 Signaler</a>
+                    <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
+                  </div>
+                  <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
+                  
+                  ${r.pro_reply ? `
+                    <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px; margin-top:12px; border-radius:4px;">
+                      <strong style="color:#065f46; font-size:12px; text-transform:uppercase;">Réponse du professionnel :</strong>
+                      <p style="font-size:14px; margin:4px 0 0 0; color:#374151;">${escapeHtml(r.pro_reply)}</p>
+                    </div>
+                  ` : ""}
+                </div>
               `).join("")}
             </div>
-          </div>
-          ` : ""}
-          
-          <script>
-            function partagerProfil(nom, metier, ville, lien) {
-              const texte = 'Salut ! Regarde ce professionnel sur TrouveMoi : ' + nom + ' (' + metier + ') à ' + ville + '. Voici son profil : ' + lien;
-              if (navigator.share) {
-                navigator.share({ title: 'TrouveMoi - ' + nom, text: texte, url: lien }).catch((error) => console.log('Erreur de partage', error));
-              } else {
-                navigator.clipboard.writeText(texte).then(() => {
-                  alert("✅ Le lien et le texte ont été copiés ! Vous pouvez les coller dans WhatsApp, Facebook, SMS, etc.");
-                }).catch(() => { prompt("Copiez ce lien pour partager :", texte); });
-              }
-            }
-            async function handleFavorite(e, id, isFav) {
-              e.preventDefault();
-              const btn = document.getElementById('fav-btn-' + id);
-              if (isFav) { btn.innerHTML = '🤍 Ajouter aux favoris'; } else { btn.innerHTML = '❤️ Retirer des favoris'; }
-              try {
-                  const res = await fetch('/api/favorite/' + id, { method: 'POST' });
-                  const data = await res.json();
-                  if (!data.ok) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
-              } catch(err) { btn.innerHTML = isFav ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'; }
-            }
-          </script>
-        </div>
 
-        ${galerieHtml}
-
-        <div class="card" style="background: #f9fafb;">
-          <h2>Avis des clients (${person.reviews_count})</h2>
-          ${Number(person.reviews_count) > 0 ? `<div class="alert alert-info">${renderStars(Number(person.avg_rating))} Note moyenne</div>` : `<p>Aucun avis pour le moment.</p>`}
-          
-          <div style="margin-top: 20px;">
-            ${(await pool.query(`SELECT * FROM reviews WHERE pro_id = $1 AND status = 'approved' ORDER BY created_at DESC`, [person.id])).rows.map(r => `
-              <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #e5e7eb;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                  <strong>${escapeHtml(r.author_name)}</strong>
-                  <a href="/contact?report=${r.id}" style="font-size:11px; color:#ef4444; text-decoration:none; margin-left:10px; font-weight:bold;">🚩 Signaler</a>
-                  <span style="color:#f59e0b;">${renderStars(r.rating)}</span>
-                </div>
-                <p style="font-size:14px; color:#4b5563; margin:0;">"${escapeHtml(r.comment || 'Pas de commentaire')}"</p>
-                
-                ${r.pro_reply ? `
-                  <div style="background:#f0fdf4; border-left:4px solid #10b981; padding:10px; margin-top:12px; border-radius:4px;">
-                    <strong style="color:#065f46; font-size:12px; text-transform:uppercase;">Réponse du professionnel :</strong>
-                    <p style="font-size:14px; margin:4px 0 0 0; color:#374151;">${escapeHtml(r.pro_reply)}</p>
-                  </div>
-                ` : ""}
-              </div>
-            `).join("")}
+            <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
           </div>
 
-          <a href="/pro/${person.id}/avis" class="button warning" style="width: 100%; margin-top: 10px;">⭐ Laisser un avis</a>
+          ${similarHtml ? `<div style="margin-top: 24px;"><h2>Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
+        </div>`;
+      res.send(page(displayName, content, proConnected, { title: `${displayName} - ${person.profession}` }));
+    } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+  });
+
+  // ==========================================
+  // 4. PAGE AGENCE PUBLIQUE
+  // ==========================================
+  router.get("/agence/:id", async (req, res) => {
+    try {
+      const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+      // ✅ CORRECTION : Vérifier que le pro parent n'est pas expiré
+      const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`, [id]);
+      if (!result.rows.length) return res.redirect(303, "/");
+      const agency = result.rows[0]; const parentName = getDisplayName(agency);
+      
+      const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
+      let contactButtons = "";
+      if (agency.phone_public && displayPhone) {
+        const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
+        const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
+        contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+          <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
+          ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
+        </div>`;
+      }
+
+      pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
+      res.send(page(agency.name, `<div style="max-width: 800px; margin: 0 auto;"><div class="card" style="text-align:center;"><span class="badge" style="background:#8b5cf6; color:white;">🏢 Agence officielle</span><h1>${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1><div style="color: #2563eb; font-weight: bold;">Réseau : ${escapeHtml(parentName)}</div><div style="margin-top:20px; background:#eff6ff; padding:20px; border-radius:12px;"><p>${escapeHtml(agency.address)}</p>${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}</div>${contactButtons}</div><div style="text-align:center; margin-top:24px;"><a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a></div></div>`, proConnected, { title: agency.name }));
+    } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
+  });
+
+  // ==========================================
+  // 5. PAGES STATIQUES
+  // ==========================================
+  router.get("/a-propos", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    res.send(page("À propos", `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;">
+        <h1 style="color: #1e3a8a; margin-bottom: 20px;">À propos de TrouveMoi</h1>
+        
+        <p style="margin-bottom: 15px;">TrouveMoi est la première plateforme béninoise de mise en relation directe entre les clients et les professionnels vérifiés de leur quartier. Notre mission est simple : valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p>
+
+        <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les clients ?</h2>
+        <p style="margin-bottom: 15px;">Trouver un professionnel n'a jamais été aussi simple. Un client se connecte, tape le métier recherché (ex: Plombier, Auto-école) et sa ville. Grâce à la géolocalisation, il voit instantanément les professionnels les plus proches. Il peut consulter leurs profils, leurs photos, leurs horaires et leurs avis, puis les contacter en un clic via Appeler ou WhatsApp. Ce service est entièrement gratuit pour les clients.</p>
+
+        <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les professionnels ?</h2>
+        <p style="margin-bottom: 15px;">Chaque professionnel passe par un processus d'inscription et de vérification d'identité (KYC) rigoureux. Une fois son dossier validé, il obtient un code Pro unique pour accéder à son espace personnel et gérer sa visibilité.</p>
+
+        <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Notre modèle économique</h2>
+        <p style="margin-bottom: 15px;">Pour garantir la qualité et le fonctionnement de nos serveurs, la plateforme fonctionne avec un système d'abonnement :</p>
+        <ul style="margin-left: 20px; margin-bottom: 15px; color: #4b5563;">
+          <li><strong>Inscription unique :</strong> 1500 FCFA pour l'étude de dossier et la création du profil vérifié.</li>
+          <li><strong>Période de grâce :</strong> Les 6 premiers mois sont offerts après la validation du dossier, pour permettre au professionnel de se faire connaître.</li>
+          <li><strong>Abonnement mensuel :</strong> Après ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil visible dans les recherches.</li>
+        </ul>
+        <p style="margin-bottom: 15px;">Si un professionnel ne renouvelle pas son abonnement, son profil n'est plus visible dans les résultats de recherche, mais ses données restent en sécurité sur la plateforme.</p>
+
+        <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">La confiance au cœur du système</h2>
+        <p style="margin-bottom: 15px;">La modération est notre priorité. Les avis sont vérifiés avant publication, et les professionnels ne respectant pas nos règles peuvent être suspendus. Nous rappelons également aux clients de ne jamais payer un professionnel avant de l'avoir rencontré.</p>
+
+        <div style="margin-top: 40px; text-align: center;">
+          <a href="/" class="button" style="background: #2563eb;">Découvrir les professionnels</a>
         </div>
+      </section>
+    `, proConnected));
+  });
 
-        ${similarHtml ? `<div style="margin-top: 24px;"><h2>Vous aimerez aussi...</h2>${similarHtml}</div>` : ""}
-      </div>`;
-    res.send(page(displayName, content, proConnected, { title: `${displayName} - ${person.profession}` }));
-  } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-});
+  router.get("/partenariats", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à <strong>contact@trouvemoi.bj</strong>.</p></section>`, proConnected));
+  });
 
-// ==========================================
-// 4. PAGE AGENCE PUBLIQUE
-// ==========================================
-router.get("/agence/:id", async (req, res) => {
-  try {
-    const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
-    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-    const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved'`, [id]);
-    if (!result.rows.length) return res.redirect(303, "/");
-    const agency = result.rows[0]; const parentName = getDisplayName(agency);
-    
-    const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
-    let contactButtons = "";
-    if (agency.phone_public && displayPhone) {
-      const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
-      const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
-      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-        <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
-        ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
-      </div>`;
-    }
+  router.get("/conditions", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const content = `
+      <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
+        <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
+        <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Site web : www.trouvemoi.bj<br>Structure : ADK Services<br>Dernière mise à jour : 14/11/2026</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 1 : Objet</h2>
+        <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme TrouveMoi. TrouveMoi est une plateforme numérique de mise en relation entre des clients et des professionnels au Bénin. TrouveMoi agit en tant qu'intermédiaire technique et ne fournit pas directement les services proposés par les professionnels.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 2 : Accès au service</h2>
+        <p>L'accès à la plateforme est gratuit pour les clients. Pour les professionnels, l'inscription est soumise au paiement de frais de dossier unique et à la validation de leur dossier (KYC) par l'équipe d'ADK Services. L'inscription ne devient effective qu'après validation du profil par l'administrateur.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 3 : Modèle économique et Abonnement Pro</h2>
+        <p>Pour assurer le fonctionnement de la plateforme, les professionnels sont soumis aux conditions suivantes :</p>
+        <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
+          <li><strong>Frais d'inscription :</strong> 1500 FCFA (paiement unique pour l'étude de dossier).</li>
+          <li><strong>Période de grâce :</strong> Une période de 6 mois gratuits est accordée à compter de la validation du dossier.</li>
+          <li><strong>Abonnement mensuel :</strong> À l'issue de ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil du professionnel visible sur la plateforme.</li>
+        </ul>
+        <p>En cas de non-renouvellement de l'abonnement, le profil du professionnel n'est plus visible dans les résultats de recherche. Le compte n'est ni suspendu ni supprimé, et le professionnel peut retrouver sa visibilité dès régularisation de son abonnement.</p>
 
-    pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
-    res.send(page(agency.name, `<div style="max-width: 800px; margin: 0 auto;"><div class="card" style="text-align:center;"><span class="badge" style="background:#8b5cf6; color:white;">🏢 Agence officielle</span><h1>${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1><div style="color: #2563eb; font-weight: bold;">Réseau : ${escapeHtml(parentName)}</div><div style="margin-top:20px; background:#eff6ff; padding:20px; border-radius:12px;"><p>${escapeHtml(agency.address)}</p>${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}</div>${contactButtons}</div><div style="text-align:center; margin-top:24px;"><a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a></div></div>`, proConnected, { title: agency.name }));
-  } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-});
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 4 : Obligations des Utilisateurs (Clients)</h2>
+        <p>En utilisant le site, le client s'engage à :</p>
+        <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Ne pas utiliser la plateforme à des fins frauduleuses ou illégales.</li><li>Ne pas usurper l'identité d'un tiers.</li><li>Faire preuve de prudence : TrouveMoi rappelle qu'il est fortement déconseillé de payer un professionnel avant de l'avoir rencontré physiquement.</li></ul>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 5 : Obligations des Professionnels</h2>
+        <p>En s'inscrivant, le professionnel s'engage à :</p>
+        <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Fournir des informations exactes et véridiques (nom légal, NPI, téléphone, adresse).</li><li>Fournir des documents d'identité authentiques pour la vérification KYC. Toute tentative de fraude entraînera le rejet définitif du dossier sans remboursement.</li><li>Réaliser les prestations promises auprès des clients avec professionnalisme et dans le respect des lois béninoises.</li></ul>
 
-// 5. PAGES STATIQUES (À PROPOS, CGU, CONFIDENTIALITE, ETC.)
-router.get("/a-propos", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  res.send(page("À propos", `
-    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;">
-      <h1 style="color: #1e3a8a; margin-bottom: 20px;">À propos de TrouveMoi</h1>
-      
-      <p style="margin-bottom: 15px;">TrouveMoi est la première plateforme béninoise de mise en relation directe entre les clients et les professionnels vérifiés de leur quartier. Notre mission est simple : valoriser le savoir-faire local tout en garantissant aux clients des prestations de qualité, en toute confiance.</p>
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 6 : Responsabilité de la plateforme</h2>
+        <p>ADK Services met tout en œuvre pour vérifier l'identité des professionnels via le processus KYC. Cependant, TrouveMoi ne peut être tenu responsable :</p>
+        <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>De la qualité ou de la sécurité des services fournis par les professionnels.</li><li>Des litiges financiers ou commerciaux entre un client et un professionnel.</li></ul>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 7 : Avis des clients</h2>
+        <p>Les clients ayant contacté un professionnel via la plateforme peuvent laisser un avis. ADK Services se réserve le droit de modérer ou de supprimer tout avis contenant des propos injurieux ou ne respectant pas la charte.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 8 : Propriété Intellectuelle</h2>
+        <p>Le code source, la structure, les logos, les textes et les graphismes de la plateforme TrouveMoi sont la propriété exclusive d'ADK Services. Toute reproduction non autorisée est strictement interdite.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 9 : Protection des Données Personnelles</h2>
+        <p>Dans le cadre de l'utilisation de la plateforme, des données personnelles sont collectées (Nom, Téléphone, NPI, Photos). Le traitement de ces données est détaillé dans notre Politique de Confidentialité, conforme au Code du Numérique en République du Bénin et aux directives de l'APDP.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 10 : Suspension et Résiliation</h2>
+        <p>ADK Services se réserve le droit de suspendre ou de supprimer définitivement le compte d'un utilisateur en cas de non-respect des présentes CGU, de comportement frauduleux ou de fausses déclarations.</p>
+        
+        <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 11 : Droit applicable et Juridiction</h2>
+        <p>Les présentes CGU sont soumises au droit béninois. En cas de litige, et à défaut de résolution amiable, les tribunaux de Cotonou (Bénin) seront seuls compétents.</p>
+        
+        <div style="margin-top: 40px; text-align: center;"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
+      </section>
+    `;
+    res.send(page("Conditions Générales", content, proConnected));
+  });
 
-      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les clients ?</h2>
-      <p style="margin-bottom: 15px;">Trouver un professionnel n'a jamais été aussi simple. Un client se connecte, tape le métier recherché (ex: Plombier, Auto-école) et sa ville. Grâce à la géolocalisation, il voit instantanément les professionnels les plus proches. Il peut consulter leurs profils, leurs photos, leurs horaires et leurs avis, puis les contacter en un clic via Appeler ou WhatsApp. Ce service est entièrement gratuit pour les clients.</p>
-
-      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Comment ça marche pour les professionnels ?</h2>
-      <p style="margin-bottom: 15px;">Chaque professionnel passe par un processus d'inscription et de vérification d'identité (KYC) rigoureux. Une fois son dossier validé, il obtient un code Pro unique pour accéder à son espace personnel et gérer sa visibilité.</p>
-
-      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">Notre modèle économique</h2>
-      <p style="margin-bottom: 15px;">Pour garantir la qualité et le fonctionnement de nos serveurs, la plateforme fonctionne avec un système d'abonnement :</p>
-      <ul style="margin-left: 20px; margin-bottom: 15px; color: #4b5563;">
-        <li><strong>Inscription unique :</strong> 1500 FCFA pour l'étude de dossier et la création du profil vérifié.</li>
-        <li><strong>Période de grâce :</strong> Les 6 premiers mois sont offerts après la validation du dossier, pour permettre au professionnel de se faire connaître.</li>
-        <li><strong>Abonnement mensuel :</strong> Après ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil visible dans les recherches.</li>
-      </ul>
-      <p style="margin-bottom: 15px;">Si un professionnel ne renouvelle pas son abonnement, son profil n'est plus visible dans les résultats de recherche, mais ses données restent en sécurité sur la plateforme.</p>
-
-      <h2 style="color: #1e40af; margin-top: 30px; margin-bottom: 15px; font-size: 20px;">La confiance au cœur du système</h2>
-      <p style="margin-bottom: 15px;">La modération est notre priorité. Les avis sont vérifiés avant publication, et les professionnels ne respectant pas nos règles peuvent être suspendus. Nous rappelons également aux clients de ne jamais payer un professionnel avant de l'avoir rencontré.</p>
-
-      <div style="margin-top: 40px; text-align: center;">
-        <a href="/" class="button" style="background: #2563eb;">Découvrir les professionnels</a>
-      </div>
-    </section>
-  `, proConnected));
-});
-router.get("/partenariats", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à <strong>contact@trouvemoi.bj</strong>.</p></section>`, proConnected));
-});
-
-router.get("/conditions", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const content = `
-    <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
-      <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
-      <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Site web : www.trouvemoi.bj<br>Structure : ADK Services<br>Dernière mise à jour : 14/11/2026</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 1 : Objet</h2>
-      <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme TrouveMoi. TrouveMoi est une plateforme numérique de mise en relation entre des clients et des professionnels au Bénin. TrouveMoi agit en tant qu'intermédiaire technique et ne fournit pas directement les services proposés par les professionnels.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 2 : Accès au service</h2>
-      <p>L'accès à la plateforme est gratuit pour les clients. Pour les professionnels, l'inscription est soumise au paiement de frais de dossier unique et à la validation de leur dossier (KYC) par l'équipe d'ADK Services. L'inscription ne devient effective qu'après validation du profil par l'administrateur.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 3 : Modèle économique et Abonnement Pro</h2>
-      <p>Pour assurer le fonctionnement de la plateforme, les professionnels sont soumis aux conditions suivantes :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
-        <li><strong>Frais d'inscription :</strong> 1500 FCFA (paiement unique pour l'étude de dossier).</li>
-        <li><strong>Période de grâce :</strong> Une période de 6 mois gratuits est accordée à compter de la validation du dossier.</li>
-        <li><strong>Abonnement mensuel :</strong> À l'issue de ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil du professionnel visible sur la plateforme.</li>
-      </ul>
-      <p>En cas de non-renouvellement de l'abonnement, le profil du professionnel n'est plus visible dans les résultats de recherche. Le compte n'est ni suspendu ni supprimé, et le professionnel peut retrouver sa visibilité dès régularisation de son abonnement.</p>
-
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 4 : Obligations des Utilisateurs (Clients)</h2>
-      <p>En utilisant le site, le client s'engage à :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Ne pas utiliser la plateforme à des fins frauduleuses ou illégales.</li><li>Ne pas usurper l'identité d'un tiers.</li><li>Faire preuve de prudence : TrouveMoi rappelle qu'il est fortement déconseillé de payer un professionnel avant de l'avoir rencontré physiquement.</li></ul>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 5 : Obligations des Professionnels</h2>
-      <p>En s'inscrivant, le professionnel s'engage à :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Fournir des informations exactes et véridiques (nom légal, NPI, téléphone, adresse).</li><li>Fournir des documents d'identité authentiques pour la vérification KYC. Toute tentative de fraude entraînera le rejet définitif du dossier sans remboursement.</li><li>Réaliser les prestations promises auprès des clients avec professionnalisme et dans le respect des lois béninoises.</li></ul>
-
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 6 : Responsabilité de la plateforme</h2>
-      <p>ADK Services met tout en œuvre pour vérifier l'identité des professionnels via le processus KYC. Cependant, TrouveMoi ne peut être tenu responsable :</p>
-      <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>De la qualité ou de la sécurité des services fournis par les professionnels.</li><li>Des litiges financiers ou commerciaux entre un client et un professionnel.</li></ul>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 7 : Avis des clients</h2>
-      <p>Les clients ayant contacté un professionnel via la plateforme peuvent laisser un avis. ADK Services se réserve le droit de modérer ou de supprimer tout avis contenant des propos injurieux ou ne respectant pas la charte.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 8 : Propriété Intellectuelle</h2>
-      <p>Le code source, la structure, les logos, les textes et les graphismes de la plateforme TrouveMoi sont la propriété exclusive d'ADK Services. Toute reproduction non autorisée est strictement interdite.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 9 : Protection des Données Personnelles</h2>
-      <p>Dans le cadre de l'utilisation de la plateforme, des données personnelles sont collectées (Nom, Téléphone, NPI, Photos). Le traitement de ces données est détaillé dans notre Politique de Confidentialité, conforme au Code du Numérique en République du Bénin et aux directives de l'APDP.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 10 : Suspension et Résiliation</h2>
-      <p>ADK Services se réserve le droit de suspendre ou de supprimer définitivement le compte d'un utilisateur en cas de non-respect des présentes CGU, de comportement frauduleux ou de fausses déclarations.</p>
-      
-      <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 11 : Droit applicable et Juridiction</h2>
-      <p>Les présentes CGU sont soumises au droit béninois. En cas de litige, et à défaut de résolution amiable, les tribunaux de Cotonou (Bénin) seront seuls compétents.</p>
-      
-      <div style="margin-top: 40px; text-align: center;"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
-    </section>
-  `;
-  res.send(page("Conditions Générales", content, proConnected));
-});
   router.get("/mentions-legales", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const content = `
@@ -519,7 +549,6 @@ router.get("/conditions", async (req, res) => {
     `;
     res.send(page("Politique de Confidentialité", content, proConnected));
   });
-
   // ==========================================
   // 6. BLOG
   // ==========================================
@@ -566,13 +595,14 @@ router.get("/conditions", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const visitorId = getOrCreateVisitorId(req, res);
     
+    // ✅ CORRECTION : On filtre les pros expirés
     const result = await pool.query(`
       SELECT p.*, 
       (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
       (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating 
       FROM professional_applications p 
       JOIN client_favorites cf ON p.id = cf.pro_id 
-      WHERE cf.visitor_id = $1 AND p.status = 'approved'
+      WHERE cf.visitor_id = $1 AND p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
       ORDER BY cf.created_at DESC
     `, [visitorId]);
 
@@ -650,7 +680,6 @@ router.get("/conditions", async (req, res) => {
       content = `
         <div style="max-width: 450px; margin: 0 auto;">
           
-          <!-- FORMULAIRE DE CONNEXION -->
           <div id="box-login">
             <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">🔑 Se connecter</h2>
             <form action="/mon-compte/connexion-code" method="POST">
@@ -670,7 +699,6 @@ router.get("/conditions", async (req, res) => {
             </p>
           </div>
 
-          <!-- FORMULAIRE D'INSCRIPTION (Caché au début) -->
           <div id="box-register" style="display:none;">
             <h2 style="text-align:center; font-size:22px; margin-bottom:20px;">✨ Créer un compte</h2>
             <form action="/mon-compte/enregistrer" method="POST">
@@ -866,7 +894,8 @@ router.get("/conditions", async (req, res) => {
       const visitorId = getOrCreateVisitorId(req, res);
       if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
       
-const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [proId]);
+      // ✅ CORRECTION : Filtrer les pros expirés pour les avis
+      const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [proId]);
       if (!check.rows.length) return res.redirect(303, "/");
 
       const contactProof = await pool.query(`
@@ -1009,7 +1038,6 @@ const check = await pool.query(`SELECT id FROM professional_applications WHERE i
              source: 'redirect'
            });
            
-           // ✅ PAGE DE SUCCÈS AVEC NUMÉRO DE SUIVI CLAIR
            return res.send(page("Succès", `
              <section class="card" style="text-align:center; max-width: 600px; margin: 40px auto;">
                <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
@@ -1157,7 +1185,8 @@ const check = await pool.query(`SELECT id FROM professional_applications WHERE i
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
     
-const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [id]);
+    // ✅ CORRECTION : Vérifier que le pro n'est pas expiré
+    const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active')`, [id]);
     if (!proResult.rows.length) return res.redirect(303, "/");
     const person = proResult.rows[0];
     const displayName = person.company_name?.trim() || person.full_name;
@@ -1194,7 +1223,6 @@ const proResult = await pool.query(`SELECT id, full_name, company_name FROM prof
     const city = String(req.query.city || "").trim();
     if (!city) return res.json({ neighborhoods: [] });
 
-    // ✅ Utilise la liste complète passée par server.js
     const quartiers = QUARTIERS_BENIN[city] ? [...QUARTIERS_BENIN[city]] : []; 
     
     quartiers.push("Autre");
