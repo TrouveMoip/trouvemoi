@@ -59,6 +59,22 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
               <div><label>Téléphone (optionnel)</label><input name="agency_phone" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
               <div><label>WhatsApp (optionnel)</label><input name="agency_whatsapp" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
             </div>
+            <label style="margin-top:15px; display:block;">Fermeture temporaire (optionnel)</label>
+<input type="date" name="unavailable_until" style="margin-bottom:15px;" title="Si l'agence est fermée pour une période">
+
+<div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
+  <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture (laisser vide si fermé ce jour-là)</label>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+    ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => `
+      <div style="display:flex; align-items:center; gap:5px;">
+        <span style="width:60px; text-transform:capitalize;">${j}</span>
+        <input type="time" name="h_${j}_o" style="padding:5px; margin:0; width:80px;">
+        <span>à</span>
+        <input type="time" name="h_${j}_f" style="padding:5px; margin:0; width:80px;">
+      </div>
+    `).join('')}
+  </div>
+</div>
             <input type="hidden" name="latitude" id="agency-lat"><input type="hidden" name="longitude" id="agency-lng">
             <button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
             <p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
