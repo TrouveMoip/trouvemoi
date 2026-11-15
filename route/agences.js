@@ -129,7 +129,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
 const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
 const unavailable_until = req.body.unavailable_until || null;
       const insertResult = await pool.query(
-        `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}) RETURNING id`,
+       `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status, horaires_json, unavailable_until) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}, $14, $15) RETURNING id`,
         [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null]
       );
       const agencyId = insertResult.rows[0].id;
