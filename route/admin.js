@@ -573,7 +573,7 @@ function requireSuperAdmin(req, res, next) {
     res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs || "<p>Aucun message général.</p>"}`, null));
   });
 
-  router.get("/retraits", requireAdmin, async (req, res) => {
+  router.get("/retraits", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT w.*, p.full_name, p.pro_code FROM withdrawal_requests w JOIN professional_applications p ON p.id = w.pro_id ORDER BY CASE WHEN w.status = 'pending' THEN 0 ELSE 1 END, w.created_at DESC`);
     const rows = result.rows.map(w => `
@@ -588,7 +588,7 @@ function requireSuperAdmin(req, res, next) {
     res.send(page("Retraits", `<h1>Retraits</h1>${await customAdminMenu("/admin/retraits", csrf)}${rows || "<p>Aucune demande.</p>"}`, null));
   });
 
-  router.post("/retraits/:id/approuver", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/retraits/:id/approuver", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
     await pool.query(`UPDATE withdrawal_requests SET status = 'processed' WHERE id = $1 AND status = 'pending'`, [Number(req.params.id)]);
     res.redirect(303, "/admin/retraits");
   });
@@ -1095,7 +1095,7 @@ router.post("/admins/:id/toggle", requireAdmin, requireSuperAdmin, verifyCsrf, a
     res.redirect(303, "/admin/admins");
   }
 });
-  router.get("/parametres", requireAdmin, async (req, res) => {
+  router.get("/parametres", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
       <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
@@ -1122,7 +1122,7 @@ router.post("/admins/:id/toggle", requireAdmin, requireSuperAdmin, verifyCsrf, a
     `, null));
   });
 
-  router.post("/parametres/mot-de-passe", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/parametres/mot-de-passe", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
     if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
       return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
     }
