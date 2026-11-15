@@ -42,10 +42,9 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     // ✅ CORRECTION : Si le pro est expiré, on le redirige vers le paiement
-    if (proConnected.pro.subscription_status === 'expired') {
-      return res.redirect(303, "/mon-espace-pro/payer-abonnement");
-    }
-
+    if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
+  return res.redirect(303, "/mon-espace-pro/payer-abonnement");
+}
     res.send(page("Ajouter une agence", `
       <section class="card" style="max-width: 700px; margin: 40px auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -90,8 +89,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     // ✅ CORRECTION : Sécurité supplémentaire pour le POST
-    if (proConnected.pro.subscription_status === 'expired') {
-      return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas créer d'agence.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
+     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
+    return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas créer d'agence.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
     }
 
     const { name, address, latitude, longitude, agency_phone, agency_whatsapp } = req.body;
