@@ -225,6 +225,8 @@ const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHE
       if (!result.rows.length) return res.redirect(303, "/");
       const person = result.rows[0];
       const displayName = getDisplayName(person);
+      // ✅ VÉRIFICATION DES CONGÉS
+const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
 
       // ✅ CORRECTION : Filtrer les expirés dans les profils similaires
       const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW()) AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
@@ -241,8 +243,20 @@ const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHE
       if (rawWa.startsWith("229")) rawWa = rawWa.substring(3);
       const whatsappNumber = /^\d{8,10}$/.test(rawWa) ? "229" + rawWa : null;
 
-      let contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
-      
+      let contactButtons = "";
+
+// ✅ Si le pro est en congé, on remplace les boutons par un avertissement
+if (isOnLeave) {
+  contactButtons = `
+    <div class="alert alert-warning" style="text-align:center; border: 2px dashed #f59e0b; background:#fffbeb; padding: 20px; border-radius: 12px; margin-top: 16px;">
+      <h3 style="color:#b45309; margin-bottom: 8px;">🌴 En congés actuellement</h3>
+      <p style="color:#92400e; font-size:14px; margin:0;">Ce professionnel est absent et sera de retour le <strong>${new Date(person.unavailable_until).toLocaleDateString("fr-FR")}</strong>.</p>
+    </div>
+  `;
+} else {
+  // Le code normal pour les boutons Appeler/WhatsApp
+  contactButtons = person.phone_public && phoneClean ? `<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:16px;"><a class="button" href="tel:+229${escapeHtml(phoneClean)}" onclick="fetch('/api/track/${person.id}/phone', {method:'POST', keepalive:true})" style="margin:0; background: #e0e7ff; color: #1e3a8a; font-size: 16px;">📞 Appeler</a>${whatsappNumber ? `<a class="button whatsapp" href="https://wa.me/${whatsappNumber}" onclick="fetch('/api/track/${person.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin:0; font-size: 16px;">💬 WhatsApp</a>` : `<a class="button secondary" href="/contact?pro=${person.id}" style="margin:0; font-size:16px;">📩 Contacter</a>`}</div>` : `<div class="alert alert-info">Ce professionnel a choisi de ne pas afficher son numéro.</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"><a class="button" href="/contact?pro=${person.id}" style="margin:0; background: #e0e7ff; color: #1e3a8a;">📩 Contacter</a></div>`;
+}      
       const openStatusBadge = (person.type_lieu === 'fixe' && person.est_ouvert) ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
       
       let horairesHtml = "";
