@@ -4,6 +4,28 @@ const bcrypt = require('bcrypt');
 
 module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN) {
   const router = express.Router();
+  // ✅ FONCTION POUR SAVOIR SI LE PRO EST OUVERT
+function isProOpenNow(horairesJson) {
+  if (!horairesJson) return false;
+  try {
+    const horaires = JSON.parse(horairesJson);
+    const jours = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+    
+    // On récupère l'heure actuelle au Bénin (UTC+1)
+    const now = new Date();
+    const beninTime = new Date(now.getTime() + (1 * 60 * 60 * 1000)); // +1h
+    
+    const jourActuel = jours[beninTime.getUTCDay()];
+    const heureActuelle = beninTime.getUTCHours().toString().padStart(2, '0') + ':' + beninTime.getUTCMinutes().toString().padStart(2, '0');
+    
+    const horaireDuJour = horaires[jourActuel];
+    if (!horaireDuJour || !horaireDuJour.o || !horaireDuJour.f) return false;
+    
+    return heureActuelle >= horaireDuJour.o && heureActuelle <= horaireDuJour.f;
+  } catch (e) {
+    return false;
+  }
+}
 
   function renderPagination(currentPage, totalPages, baseUrl, queryParams = {}) {
     if (totalPages <= 1) return "";
