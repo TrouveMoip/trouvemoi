@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT) {
+module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction) {
   const router = express.Router();
 
   // --- 1. LISTE DES AGENCES DU PRO ---
@@ -40,6 +40,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
   router.get("/mon-espace-pro/agences/nouvelle", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    // ✅ CORRECTION : Si le pro est expiré, on le redirige vers le paiement
+    if (proConnected.pro.subscription_status === 'expired') {
+      return res.redirect(303, "/mon-espace-pro/payer-abonnement");
+    }
 
     res.send(page("Ajouter une agence", `
       <section class="card" style="max-width: 700px; margin: 40px auto;">
@@ -83,6 +88,12 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
   router.post("/mon-espace-pro/agences/nouvelle", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    // ✅ CORRECTION : Sécurité supplémentaire pour le POST
+    if (proConnected.pro.subscription_status === 'expired') {
+      return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas créer d'agence.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
+    }
+
     const { name, address, latitude, longitude, agency_phone, agency_whatsapp } = req.body;
     const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
     const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
@@ -122,7 +133,17 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     if (!proConnected || !agencyId) return res.redirect(303, "/mon-espace-pro");
 
     try {
-      // On marque l'agence comme validée (en attente de validation admin)
+      // ✅ CORRECTION : On vérifie VRAIMENT le paiement Kkiapay
+      let isPaymentValid = BYPASS_PAYMENT;
+      if (!BYPASS_PAYMENT && transactionId) {
+        const verification = await verifyKkiapayTransaction(transactionId);
+        isPaymentValid = verification.success && verification.amount >= 1500;
+      }
+
+      if (!isPaymentValid) {
+        return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
+      }
+
       await pool.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
       
       res.send(page("Succès", `
@@ -224,20 +245,20 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     res.json({ ok: true });
   });
 
- router.post("/mon-espace-pro/agences/:id/supprimer", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  const id = Number(req.params.id);
-  try {
-    // 1. On supprime les statistiques liées à cette agence
-    await pool.query(`DELETE FROM agency_stats WHERE agency_id = $1`, [id]);
-    // 2. On supprime l'agence elle-même
-    await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
-  } catch(e) {
-    console.error("Erreur suppression agence:", e);
-  }
-  res.redirect(303, "/mon-espace-pro/agences");
-});
+  router.post("/mon-espace-pro/agences/:id/supprimer", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    const id = Number(req.params.id);
+    try {
+      // 1. On supprime les statistiques liées à cette agence
+      await pool.query(`DELETE FROM agency_stats WHERE agency_id = $1`, [id]);
+      // 2. On supprime l'agence elle-même
+      await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+    } catch(e) {
+      console.error("Erreur suppression agence:", e);
+    }
+    res.redirect(303, "/mon-espace-pro/agences");
+  });
 
   return router;
 };
