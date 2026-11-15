@@ -28,17 +28,18 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const currentPage = Math.max(1, parseInt(req.query.page) || 1); 
       const limit = 10; const offset = (currentPage - 1) * limit;
 
-      let whereClause = ` WHERE status = 'approved' AND (expires_at IS NULL OR expires_at > NOW())`; 
+      // ✅ CORRECTION : On ne montre que les offres des pros actifs
+      let whereClause = ` WHERE j.status = 'approved' AND (j.expires_at IS NULL OR j.expires_at > NOW()) AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`; 
       const values = [];
-      if (keyword) { values.push(`%${keyword}%`); whereClause += ` AND (job_title ILIKE $${values.length} OR company_name ILIKE $${values.length})`; }
-      if (city) { values.push(`%${city}%`); whereClause += ` AND city ILIKE $${values.length}`; }
+      if (keyword) { values.push(`%${keyword}%`); whereClause += ` AND (j.job_title ILIKE $${values.length} OR j.company_name ILIKE $${values.length})`; }
+      if (city) { values.push(`%${city}%`); whereClause += ` AND j.city ILIKE $${values.length}`; }
 
-      const countResult = await pool.query(`SELECT COUNT(*) FROM job_offers ${whereClause}`, values);
+      const countResult = await pool.query(`SELECT COUNT(*) FROM job_offers j LEFT JOIN professional_applications p ON j.pro_id = p.id ${whereClause}`, values);
       const totalJobs = parseInt(countResult.rows[0].count); 
       const totalPages = Math.ceil(totalJobs / limit);
 
       const queryValues = [...values, limit, offset];
-      const query = `SELECT * FROM job_offers ${whereClause} ORDER BY created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
+      const query = `SELECT j.* FROM job_offers j LEFT JOIN professional_applications p ON j.pro_id = p.id ${whereClause} ORDER BY j.created_at DESC LIMIT $${queryValues.length - 1} OFFSET $${queryValues.length}`;
       const result = await pool.query(query, queryValues);
 
       const jobs = result.rows.map((job) => {
@@ -97,6 +98,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
   router.get("/publier-emploi", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    // ✅ CORRECTION : Si le pro est expiré, on le redirige vers la page de paiement
+    if (proConnected.pro.subscription_status === 'expired') {
+      return res.redirect(303, "/mon-espace-pro/payer-abonnement");
+    }
     
     const contractOptions = JOB_CONTRACT_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
     
@@ -139,6 +145,12 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
   router.post("/offres-emploi", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+
+    // ✅ CORRECTION : Sécurité supplémentaire pour le POST
+    if (proConnected.pro.subscription_status === 'expired') {
+      return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas publier d'offre.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
+    }
+
     if (!JOB_CONTRACT_TYPES.includes(req.body.contract_type)) return res.status(400).send(page("Erreur", "<h2>Type invalide.</h2>", proConnected));
 
     const rawPhone = String(req.body.contact_phone || "").trim();
@@ -243,7 +255,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const proConnected = await getConnectedPro(req);
       const id = Number(req.params.id);
       
-      const result = await pool.query(`SELECT * FROM job_offers WHERE id = $1 AND status = 'approved'`, [id]);
+      // ✅ CORRECTION : On vérifie que le pro parent n'est pas expiré
+      const result = await pool.query(`
+        SELECT j.* FROM job_offers j 
+        LEFT JOIN professional_applications p ON j.pro_id = p.id 
+        WHERE j.id = $1 AND j.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')
+      `, [id]);
+      
       if (!result.rows.length) return res.redirect(303, "/emplois");
       const job = result.rows[0];
 
