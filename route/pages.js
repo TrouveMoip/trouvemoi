@@ -397,33 +397,81 @@ const openStatusBadge = isOpen ? `<div style="margin-bottom: 16px;"><span class=
     } catch (error) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
   });
 
-  // ==========================================
   // 4. PAGE AGENCE PUBLIQUE
-  // ==========================================
   router.get("/agence/:id", async (req, res) => {
-    try {
-      const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
-      if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
-      // ✅ CORRECTION : Vérifier que le pro parent n'est pas expiré
-      const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`, [id]);
-      if (!result.rows.length) return res.redirect(303, "/");
-      const agency = result.rows[0]; const parentName = getDisplayName(agency);
-      
-      const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
-      let contactButtons = "";
-      if (agency.phone_public && displayPhone) {
-        const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
-        const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
-        contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-          <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
-          ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
-        </div>`;
-      }
+  try {
+    const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
+    
+    // ✅ CORRECTION : Vérifier que le pro parent n'est pas expiré
+    const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`, [id]);
+    if (!result.rows.length) return res.redirect(303, "/");
+    const agency = result.rows[0]; const parentName = getDisplayName(agency);
 
-      pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
-      res.send(page(agency.name, `<div style="max-width: 800px; margin: 0 auto;"><div class="card" style="text-align:center;"><span class="badge" style="background:#8b5cf6; color:white;">🏢 Agence officielle</span><h1>${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1><div style="color: #2563eb; font-weight: bold;">Réseau : ${escapeHtml(parentName)}</div><div style="margin-top:20px; background:#eff6ff; padding:20px; border-radius:12px;"><p>${escapeHtml(agency.address)}</p>${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}</div>${contactButtons}</div><div style="text-align:center; margin-top:24px;"><a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a></div></div>`, proConnected, { title: agency.name }));
-    } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); }
-  });
+    // ✅ VÉRIFICATION DES CONGÉS DE L'AGENCE
+    const isAgencyOnLeave = agency.unavailable_until && new Date(agency.unavailable_until) > new Date();
+    
+    const displayPhone = agency.phone || agency.parent_phone; const displayWa = agency.whatsapp_number || agency.parent_wa;
+    let contactButtons = "";
+    
+    if (agency.phone_public && displayPhone) {
+      const cleanPhone = displayPhone.replace(/\D/g, "").replace(/^(?:00229|229)/, ""); const cleanWa = displayWa ? displayWa.replace(/\D/g, "").replace(/^(?:00229|229)/, "") : "";
+      const waNumber = /^\d{8,10}$/.test(cleanWa) ? "229" + cleanWa : null;
+      contactButtons = `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+        <a class="button" href="tel:+229${escapeHtml(cleanPhone)}" onclick="fetch('/api/track-agency/${agency.id}/phone', {method:'POST', keepalive:true})" style="margin: 0; background: #e0e7ff; color: #1e3a8a;">📞 Appeler</a>
+        ${waNumber ? `<a class="button whatsapp" href="https://wa.me/${waNumber}" onclick="fetch('/api/track-agency/${agency.id}/wa', {method:'POST', keepalive:true})" target="_blank" style="margin: 0;">💬 WhatsApp</a>` : ""}
+      </div>`;
+    }
+
+    pool.query(`INSERT INTO agency_stats (agency_id, date, views, last_visitor_id) VALUES ($1, CURRENT_DATE, 1, $2) ON CONFLICT (agency_id, date) DO UPDATE SET views = CASE WHEN agency_stats.last_visitor_id = $2 THEN agency_stats.views ELSE agency_stats.views + 1 END, last_visitor_id = $2`, [id, getOrCreateVisitorId(req, res)]).catch(() => {});
+
+    // ✅ AFFICHAGE DES HORAIRES ET CONGÉS
+    let horairesHtml = "";
+    if (agency.horaires_json) {
+      try {
+        const h = JSON.parse(agency.horaires_json);
+        const jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+        let rows = "";
+        jours.forEach(j => {
+          if (h[j]) rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:6px 0;"><span style="text-transform:capitalize;">${j}</span><span style="font-weight:600;">${h[j].o} - ${h[j].f}</span></div>`;
+          else rows += `<div style="display:flex; justify-content:space-between; font-size:13px; border-bottom:1px solid #e5e7eb; padding:6px 0;"><span style="text-transform:capitalize;">${j}</span><span style="color:#ef4444; font-weight:600;">Fermé</span></div>`;
+        });
+        horairesHtml = `<div style="margin-top:16px; background:white; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-align:left;"><h3 style="font-size:14px; color:#1e40af; margin-bottom:8px;">🕒 Horaires d'ouverture</h3>${rows}</div>`;
+      } catch(e) {}
+    }
+
+    res.send(page(agency.name, `
+      <div style="max-width: 800px; margin: 0 auto;">
+        <div class="card" style="text-align:center;">
+          <span class="badge" style="background:#8b5cf6; color:white;">🏢 Agence officielle</span>
+          <h1 style="margin-top:10px;">${escapeHtml(agency.name)} ${renderKycBadge(agency, "lg")}</h1>
+          <div style="color: #2563eb; font-weight: bold;">Réseau : ${escapeHtml(parentName)}</div>
+          
+          ${isAgencyOnLeave ? `
+            <div class="alert alert-warning" style="margin-top:20px; border:2px dashed #f59e0b; text-align:center;">
+              <h3 style="color:#b45309; margin-bottom:5px;">🌴 Agence fermée temporairement</h3>
+              <p style="color:#92400e; font-size:14px; margin:0;">Réouverture prévue le <strong>${new Date(agency.unavailable_until).toLocaleDateString("fr-FR")}</strong>.</p>
+            </div>
+          ` : ""}
+
+          <div style="margin-top:20px; background:#eff6ff; padding:20px; border-radius:12px;">
+            <p>📍 ${escapeHtml(agency.address)}</p>
+            ${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}
+          </div>
+          
+          ${horairesHtml}
+          ${contactButtons}
+        </div>
+        
+        <div style="text-align:center; margin-top:24px;">
+          <a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a>
+        </div>
+      </div>
+    `, proConnected, { title: agency.name }));
+  } catch (e) { 
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
+  }
+});
 
   // ==========================================
   // 5. PAGES STATIQUES
