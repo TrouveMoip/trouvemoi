@@ -584,13 +584,33 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   router.post("/candidatures/:id/supprimer", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
-      const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
-      if (proResult.rows.length) {
-        const pro = proResult.rows[0];
-        for (let p of [pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url]) {
-          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
-        }
-      }
+      // ✅ Récupérer TOUTES les photos du pro (y compris galerie)
+const proResult = await pool.query(
+  `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
+          photo_galerie_1, photo_galerie_2, photo_galerie_3
+   FROM professional_applications WHERE id = $1`,
+  [id]
+);
+if (proResult.rows.length) {
+  const pro = proResult.rows[0];
+  const photosToDelete = [
+    pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
+    pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
+  ];
+  for (let p of photosToDelete) {
+    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+  }
+}
+// ✅ Récupérer et supprimer les photos des agences
+const agenciesResult = await pool.query(
+  `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
+  [id]
+);
+for (const ag of agenciesResult.rows) {
+  for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
+    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+  }
+}
       await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
       await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [id]);
       await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
