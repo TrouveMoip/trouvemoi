@@ -921,7 +921,72 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${escapeHtml(n.status)}</span></td></tr>`).join("");
     res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
+// ==========================================
+// MON PROFIL (Changement de mot de passe)
+// ==========================================
+router.get("/mon-profil", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  
+  // On récupère les infos de l'admin connecté
+  const user = (await pool.query(`SELECT email, role FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
+  
+  res.send(page("Mon Profil", `
+    <h1 style="text-align:center; margin-bottom:20px;">👤 Mon Profil</h1>
+    ${await customAdminMenu("/admin/mon-profil", csrf)}
+    
+    <section class="card" style="max-width: 500px; margin: 40px auto;">
+      <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:16px; font-weight:bold; color:#1e3a8a;">${escapeHtml(user.email)}</div>
+        <div style="font-size:12px; color:#64748b;">Rôle : ${user.role === 'super_admin' ? 'Super Administrateur' : 'Modérateur'}</div>
+      </div>
 
+      <h2 style="font-size: 18px; margin-bottom: 16px; border-top:1px solid #e5e7eb; padding-top:20px;">🔒 Changer mon mot de passe</h2>
+      <form action="/admin/mon-profil" method="POST">
+        <input type="hidden" name="csrfToken" value="${csrf}">
+        <label>Ancien mot de passe</label>
+        <input type="password" name="old_password" required>
+        <label>Nouveau mot de passe (min. 8 caractères)</label>
+        <input type="password" name="new_password" required minlength="8">
+        <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer</button>
+      </form>
+    </section>
+  `, null));
+});
+
+router.post("/mon-profil", requireAdmin, verifyCsrf, async (req, res) => {
+  const oldPassword = String(req.body.old_password || "");
+  const newPassword = String(req.body.new_password || "");
+
+  if (newPassword.length < 8) {
+    return res.status(400).send(page("Erreur", "<h2>Le nouveau mot de passe doit faire au moins 8 caractères.</h2>", null));
+  }
+
+  try {
+    const user = (await pool.query(`SELECT password_hash FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
+    
+    // On vérifie l'ancien mot de passe
+    const match = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!match) return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
+
+    // On hache le nouveau et on met à jour
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await pool.query(`UPDATE admin_users SET password_hash = $1 WHERE id = $2`, [newHash, req.adminSession.adminId]);
+    
+    // On déconnecte l'utilisateur pour qu'il se reconnecte avec le nouveau mot de passe
+    clearSessionCookie(res);
+    res.send(page("Succès", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+        <h1>✅ Mot de passe modifié</h1>
+        <p>Veuillez vous reconnecter avec votre nouveau mot de passe.</p>
+        <a href="/admin" class="button" style="margin-top:20px;">Se connecter</a>
+      </section>
+    `, null));
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
+  }
+});
   router.get("/parametres", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
