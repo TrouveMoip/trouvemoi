@@ -261,6 +261,26 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
           <label>Nom de l'agence *</label><input name="name" required value="${escapeHtml(agency.name)}">
           <label>Adresse exacte *</label><input name="address" required value="${escapeHtml(agency.address)}">
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div><label>Téléphone</label><input name="agency_phone" value="${escapeHtml(agency.phone || '')}"></div><div><label>WhatsApp</label><input name="agency_whatsapp" value="${escapeHtml(agency.whatsapp_number || '')}"></div></div>
+          <label style="margin-top:15px; display:block;">Fermeture temporaire (optionnel)</label>
+<input type="date" name="unavailable_until" value="${agency.unavailable_until ? new Date(agency.unavailable_until).toISOString().split('T')[0] : ''}" style="margin-bottom:15px;">
+
+<div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
+  <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture</label>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+    ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => {
+      let h = {}; try { h = JSON.parse(agency.horaires_json || '{}'); } catch(e){}
+      const horaire = h[j] || {};
+      return `
+        <div style="display:flex; align-items:center; gap:5px;">
+          <span style="width:60px; text-transform:capitalize;">${j}</span>
+          <input type="time" name="h_${j}_o" value="${horaire.o || ''}" style="padding:5px; margin:0; width:80px;">
+          <span>à</span>
+          <input type="time" name="h_${j}_f" value="${horaire.f || ''}" style="padding:5px; margin:0; width:80px;">
+        </div>
+      `;
+    }).join('')}
+  </div>
+</div>
           <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
         </form>
       </section>`, proConnected));
