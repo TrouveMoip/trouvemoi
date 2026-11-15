@@ -1,17 +1,18 @@
 const express = require('express');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt'); // ✅ Importation ajoutée pour la sécurité des admins
 
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
-  
-// ✅ Middleware pour restreindre l'accès au Super Admin uniquement
-function requireSuperAdmin(req, res, next) {
-  if (req.adminSession?.role !== 'super_admin') {
-    return res.status(403).send(page("Accès refusé", "<h2>Accès refusé. Seul le Super Administrateur peut voir cette page.</h2><a href='/admin/dashboard' class='button'>Retour au dashboard</a>", null));
+
+  // ✅ Middleware pour restreindre l'accès au Super Admin uniquement
+  function requireSuperAdmin(req, res, next) {
+    if (req.adminSession?.role !== 'super_admin') {
+      return res.status(403).send(page("Accès refusé", "<h2>Accès refusé. Seul le Super Administrateur peut voir cette page.</h2><a href='/admin/dashboard' class='button'>Retour au dashboard</a>", null));
+    }
+    next();
   }
-  next();
-}
+
   async function customAdminMenu(current, csrf) {
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     try {
@@ -48,83 +49,238 @@ function requireSuperAdmin(req, res, next) {
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
 
+  // ==========================================
+  // CONNEXION (Mixte : Email/MDP + TOTP pour Super Admin)
+  // ==========================================
   router.get("/", async (req, res) => {
-  const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
-  if (session?.jti) {
-    const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]);
-    if (active.rows.length) return res.redirect(303, "/admin/dashboard");
-  }
-  clearSessionCookie(res);
-  
-  res.send(page("Admin", `
-    <section class="card" style="max-width: 400px; margin: 60px auto;">
-      <h1 style="text-align:center;">Admin</h1>
-      <form action="/admin/login" method="POST">
-        
-        <label>Adresse Email</label>
-        <input type="email" name="email" required placeholder="admin@trouvemoi.bj" style="text-align:center; font-size:16px; margin-bottom:15px;">
+    const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
+    if (session?.jti) {
+      const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]);
+      if (active.rows.length) return res.redirect(303, "/admin/dashboard");
+    }
+    clearSessionCookie(res);
+    
+    res.send(page("Admin", `
+      <section class="card" style="max-width: 400px; margin: 60px auto;">
+        <h1 style="text-align:center;">Admin</h1>
+        <form action="/admin/login" method="POST">
+          
+          <label>Adresse Email</label>
+          <input type="email" name="email" required placeholder="admin@trouvemoi.bj" style="text-align:center; font-size:16px; margin-bottom:15px;">
 
-        <label>Mot de passe</label>
-        <div style="position:relative; margin-bottom:15px;">
-          <input type="password" name="password" id="pass-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
-          <span onclick="document.getElementById('pass-input').type = document.getElementById('pass-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
-        </div>
-        
-        <!-- Le TOTP n'est demandé que pour le Super Admin -->
-        <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:20px; border:1px dashed #cbd5e1;">
-          <label style="font-size:12px; color:#64748b; margin-bottom:5px; display:block;">Code de validation (Super Admin uniquement)</label>
-          <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" style="text-align:center; font-size:20px; letter-spacing:4px; padding: 12px;">
-        </div>
-        
-        <button style="width:100%; margin-top:10px; padding:14px; font-size:16px;">Connexion</button>
-      </form>
-    </section>
-  `, null));
-});
+          <label>Mot de passe</label>
+          <div style="position:relative; margin-bottom:15px;">
+            <input type="password" name="password" id="pass-input" required style="text-align:center; font-size:20px; padding-right: 40px;">
+            <span onclick="document.getElementById('pass-input').type = document.getElementById('pass-input').type === 'password' ? 'text' : 'password'" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); cursor:pointer; color:#6b7280; font-size:20px;">👁️</span>
+          </div>
+          
+          <div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:20px; border:1px dashed #cbd5e1;">
+            <label style="font-size:12px; color:#64748b; margin-bottom:5px; display:block;">Code de validation (Super Admin uniquement)</label>
+            <input type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" id="totp-input" style="text-align:center; font-size:20px; letter-spacing:4px; padding: 12px;">
+          </div>
+          
+          <button style="width:100%; margin-top:10px; padding:14px; font-size:16px;">Connexion</button>
+        </form>
+      </section>
+    `, null));
+  });
 
   router.post("/login", async (req, res) => {
-  const email = String(req.body.email || "").trim().toLowerCase();
-  const password = String(req.body.password || "");
-  const totpCode = String(req.body.totp || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const totpCode = String(req.body.totp || "").trim();
 
-  if (!email || !password) return res.status(401).send(page("Refuse", "<h2>Email et mot de passe requis.</h2><a href='/admin'>Retour</a>", null));
+    if (!email || !password) return res.status(401).send(page("Refuse", "<h2>Email et mot de passe requis.</h2><a href='/admin'>Retour</a>", null));
 
-  try {
-    // 1. On cherche l'utilisateur par son email
-    const userResult = await pool.query(`SELECT * FROM admin_users WHERE email = $1 AND is_active = true`, [email]);
-    if (!userResult.rows.length) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
-    
-    const user = userResult.rows[0];
+    try {
+      const userResult = await pool.query(`SELECT * FROM admin_users WHERE email = $1 AND is_active = true`, [email]);
+      if (!userResult.rows.length) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
+      
+      const user = userResult.rows[0];
+      const match = await bcrypt.compare(password, user.password_hash);
+      if (!match) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
 
-    // 2. On vérifie le mot de passe (chiffré avec bcrypt)
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) return res.status(401).send(page("Refuse", "<h2>Identifiants incorrects.</h2><a href='/admin'>Retour</a>", null));
-
-    // 3. Si c'est le Super Admin, on exige et vérifie le TOTP
-    if (user.role === 'super_admin') {
-      if (!verifyTotp(ADMIN_TOTP_SECRET, totpCode)) {
-        return res.status(401).send(page("Refuse", "<h2>Code TOTP invalide ou manquant.</h2><a href='/admin'>Retour</a>", null));
+      if (user.role === 'super_admin') {
+        if (!verifyTotp(ADMIN_TOTP_SECRET, totpCode)) {
+          return res.status(401).send(page("Refuse", "<h2>Code TOTP invalide ou manquant.</h2><a href='/admin'>Retour</a>", null));
+        }
       }
+
+      await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [user.id]);
+
+      const expiresAt = Date.now() + SESSION_DURATION;
+      const jti = crypto.randomBytes(16).toString("hex");
+      const session = { jti, expiresAt, csrf: crypto.randomBytes(32).toString("hex"), adminId: user.id, role: user.role, email: user.email };
+      
+      await pool.query(`INSERT INTO admin_sessions (jti, expires_at) VALUES ($1, to_timestamp($2 / 1000.0))`, [jti, expiresAt]);
+      setSessionCookie(res, createSessionToken(session));
+      
+      res.redirect(303, "/admin/dashboard");
+    } catch (e) {
+      console.error(e);
+      res.status(500).send(page("Erreur", "<h2>Erreur de connexion.</h2>", null));
+    }
+  });
+
+  // ==========================================
+  // MON PROFIL
+  // ==========================================
+  router.get("/mon-profil", requireAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
+    const user = (await pool.query(`SELECT email, role FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
+    
+    res.send(page("Mon Profil", `
+      <h1 style="text-align:center; margin-bottom:20px;">👤 Mon Profil</h1>
+      ${await customAdminMenu("/admin/mon-profil", csrf)}
+      
+      <section class="card" style="max-width: 500px; margin: 40px auto;">
+        <div style="text-align:center; margin-bottom:20px;">
+          <div style="font-size:16px; font-weight:bold; color:#1e3a8a;">${escapeHtml(user.email)}</div>
+          <div style="font-size:12px; color:#64748b;">Rôle : ${user.role === 'super_admin' ? 'Super Administrateur' : 'Modérateur'}</div>
+        </div>
+        <h2 style="font-size: 18px; margin-bottom: 16px; border-top:1px solid #e5e7eb; padding-top:20px;">🔒 Changer mon mot de passe</h2>
+        <form action="/admin/mon-profil" method="POST">
+          <input type="hidden" name="csrfToken" value="${csrf}">
+          <label>Ancien mot de passe</label>
+          <input type="password" name="old_password" required>
+          <label>Nouveau mot de passe (min. 8 caractères)</label>
+          <input type="password" name="new_password" required minlength="8">
+          <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer</button>
+        </form>
+      </section>
+    `, null));
+  });
+
+  router.post("/mon-profil", requireAdmin, verifyCsrf, async (req, res) => {
+    const oldPassword = String(req.body.old_password || "");
+    const newPassword = String(req.body.new_password || "");
+
+    if (newPassword.length < 8) {
+      return res.status(400).send(page("Erreur", "<h2>Le nouveau mot de passe doit faire au moins 8 caractères.</h2>", null));
     }
 
-    // 4. On met à jour la date de dernière connexion
-    await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [user.id]);
+    try {
+      const user = (await pool.query(`SELECT password_hash FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
+      const match = await bcrypt.compare(oldPassword, user.password_hash);
+      if (!match) return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
 
-    // 5. On crée la session
-    const expiresAt = Date.now() + SESSION_DURATION;
-    const jti = crypto.randomBytes(16).toString("hex");
-    const session = { jti, expiresAt, csrf: crypto.randomBytes(32).toString("hex"), adminId: user.id, role: user.role, email: user.email };
-    
-    await pool.query(`INSERT INTO admin_sessions (jti, expires_at) VALUES ($1, to_timestamp($2 / 1000.0))`, [jti, expiresAt]);
-    setSessionCookie(res, createSessionToken(session));
-    
-    res.redirect(303, "/admin/dashboard");
-  } catch (e) {
-    console.error(e);
-    res.status(500).send(page("Erreur", "<h2>Erreur de connexion.</h2>", null));
-  }
-});
+      const newHash = await bcrypt.hash(newPassword, 12);
+      await pool.query(`UPDATE admin_users SET password_hash = $1 WHERE id = $2`, [newHash, req.adminSession.adminId]);
+      
+      clearSessionCookie(res);
+      res.send(page("Succès", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1>✅ Mot de passe modifié</h1>
+          <p>Veuillez vous reconnecter avec votre nouveau mot de passe.</p>
+          <a href="/admin" class="button" style="margin-top:20px;">Se connecter</a>
+        </section>
+      `, null));
+    } catch (e) {
+      res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
+    }
+  });
 
+  // ==========================================
+  // GESTION DES ADMINS (Super Admin uniquement)
+  // ==========================================
+  router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
+    const admins = (await pool.query(`SELECT id, email, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC`)).rows;
+    
+    const listHtml = admins.map(a => `
+      <tr style="border-bottom: 1px solid #e5e7eb;">
+        <td style="padding: 12px; font-weight: bold;">${escapeHtml(a.email)}</td>
+        <td style="padding: 12px;">
+          ${a.role === 'super_admin' ? '<span class="badge" style="background:#fef3c7;color:#92400e;">👑 Super Admin</span>' : '<span class="badge" style="background:#dbeafe;color:#1e40af;">Modérateur</span>'}
+        </td>
+        <td style="padding: 12px;">
+          ${a.is_active ? '<span class="badge" style="background:#d1fae5;color:#065f46;">Actif</span>' : '<span class="badge" style="background:#fee2e2;color:#991b1b;">Désactivé</span>'}
+        </td>
+        <td style="padding: 12px; font-size: 13px;">${a.last_login ? new Date(a.last_login).toLocaleString("fr-FR") : "Jamais"}</td>
+        <td style="padding: 12px;">
+          ${a.role !== 'super_admin' ? `
+            <form action="/admin/admins/${a.id}/toggle" method="POST" style="margin:0;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="${a.is_active ? 'danger' : 'success'}" style="padding:6px 12px; font-size:12px; margin:0;">
+                ${a.is_active ? '⏸️ Désactiver' : '▶️ Réactiver'}
+              </button>
+            </form>
+          ` : '<span style="font-size:12px; color:#9ca3af;">-</span>'}
+        </td>
+      </tr>
+    `).join("");
+
+    res.send(page("Gestion des Admins", `
+      <h1 style="text-align:center; margin-bottom:20px;">👑 Gestion des Administrateurs</h1>
+      ${await customAdminMenu("/admin/admins", csrf)}
+
+      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-top:20px;">
+        
+        <section class="card" style="margin:0;">
+          <h2 style="font-size:18px; margin-bottom:16px;">➕ Ajouter un modérateur</h2>
+          <form action="/admin/admins/nouveau" method="POST">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <label>Adresse Email</label>
+            <input type="email" name="email" required placeholder="employe@trouvemoi.bj">
+            
+            <label>Mot de passe provisoire</label>
+            <input type="password" name="password" required minlength="8" placeholder="Min. 8 caractères">
+            
+            <button type="submit" class="success" style="width:100%; margin-top:10px;">Créer le compte</button>
+          </form>
+        </section>
+
+        <section class="card" style="margin:0;">
+          <h2 style="font-size:18px; margin-bottom:16px;">Liste des administrateurs</h2>
+          <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+              <tr style="background:#f9fafb; border-bottom:2px solid #e5e7eb;">
+                <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Email</th>
+                <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Rôle</th>
+                <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Statut</th>
+                <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Dernière connexion</th>
+                <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Action</th>
+              </tr>
+            </thead>
+            <tbody>${listHtml}</tbody>
+          </table>
+        </section>
+
+      </div>
+    `, null));
+  });
+
+  router.post("/admins/nouveau", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+
+    if (!email || password.length < 8) return res.redirect(303, "/admin/admins");
+
+    try {
+      const existing = await pool.query(`SELECT id FROM admin_users WHERE email = $1`, [email]);
+      if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Cet email est déjà utilisé.</h2><a href='/admin/admins'>Retour</a>", null));
+
+      const hash = await bcrypt.hash(password, 12);
+      await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'moderator')`, [email, hash]);
+      await logAdminAction("admin_created", "admin", null, `[Par: ${req.adminSession.email}] Nouveau modérateur : ${email}`);
+      
+      res.redirect(303, "/admin/admins");
+    } catch (e) {
+      res.redirect(303, "/admin/admins");
+    }
+  });
+
+  router.post("/admins/:id/toggle", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
+    try {
+      await pool.query(`UPDATE admin_users SET is_active = NOT is_active WHERE id = $1 AND role = 'moderator'`, [Number(req.params.id)]);
+      res.redirect(303, "/admin/admins");
+    } catch (e) {
+      res.redirect(303, "/admin/admins");
+    }
+  });
+  // ==========================================
+  // DASHBOARD
+  // ==========================================
   router.get("/dashboard", requireAdmin, async (req, res) => {
     const stats = {
       pros: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'")).rows[0].count),
@@ -138,7 +294,7 @@ function requireSuperAdmin(req, res, next) {
   });
 
   // ==========================================
-  // GESTION DES CANDIDATURES
+  // GESTION DES CANDIDATURES (Verrouillage & Traçabilité)
   // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
@@ -149,16 +305,16 @@ function requireSuperAdmin(req, res, next) {
       : `WHERE p.status IN ('pending', 'under_review', 'approved')`;
 
     const result = await pool.query(`
-  SELECT p.*, pr.category AS profession_category, 
-         a_assign.email AS assigned_email, 
-         a_process.email AS processed_email
-  FROM professional_applications p
-  LEFT JOIN professions pr ON p.profession = pr.name
-  LEFT JOIN admin_users a_assign ON p.assigned_to = a_assign.id
-  LEFT JOIN admin_users a_process ON p.processed_by = a_process.id
-  ${whereClause}
-  ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
-`);
+      SELECT p.*, pr.category AS profession_category, 
+             a_assign.email AS assigned_email, 
+             a_process.email AS processed_email
+      FROM professional_applications p
+      LEFT JOIN professions pr ON p.profession = pr.name
+      LEFT JOIN admin_users a_assign ON p.assigned_to = a_assign.id
+      LEFT JOIN admin_users a_process ON p.processed_by = a_process.id
+      ${whereClause}
+      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
+    `);
     
     const apps = result.rows.map(c => {
       let statusColor = "#f59e0b", statusLabel = "En attente";
@@ -173,24 +329,44 @@ function requireSuperAdmin(req, res, next) {
       else if (c.status === 'rejected') { statusColor = "#ef4444"; statusLabel = "Rejeté"; }
       else if (c.status === 'suspended') { statusColor = "#f97316"; statusLabel = "Suspendu"; }
 
+      const currentAdminId = req.adminSession.adminId;
+      const isAssignedToMe = c.assigned_to === currentAdminId;
+      const isAssignedToOther = c.assigned_to && c.assigned_to !== currentAdminId;
+
       let actionButtons = "";
-      if (c.status === 'pending' || c.status === 'under_review') {
+      
+      if (isAssignedToOther) {
         actionButtons = `
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="approved">
-              <button class="success" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">✅ Approuver</button>
-            </form>
-            <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <input type="hidden" name="status" value="rejected">
-              <div style="display:flex; gap:5px;">
-                <input name="rejection_reason" placeholder="Motif du rejet..." required style="margin:0; padding:6px; font-size:12px; flex:1; border-radius:6px;">
-                <button class="danger" style="padding:6px 10px; font-size:12px; margin:0; border-radius:6px;">❌ Rejeter</button>
-              </div>
-            </form>
+          <div style="background:#fef2f2; padding:12px; border-radius:8px; border:1px solid #fecaca; text-align:center;">
+            <strong style="color:#991b1b;">🔒 En cours de traitement</strong>
+            <p style="font-size:12px; color:#7f1d1d; margin-top:4px;">Par : ${escapeHtml(c.assigned_email)}</p>
           </div>`;
+      } else if (c.status === 'pending' || c.status === 'under_review') {
+        if (!c.assigned_to) {
+          actionButtons = `
+            <form action="/admin/candidatures/${c.id}/assign" method="POST" style="margin:0;">
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="button" style="width:100%; padding:10px; font-size:14px; background:#3b82f6; border-radius:8px;">🔓 Prendre en charge ce dossier</button>
+            </form>`;
+        } else if (isAssignedToMe) {
+          actionButtons = `
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="background:#eff6ff; padding:8px; border-radius:8px; text-align:center; font-size:12px; color:#1e40af; font-weight:bold;">Vous traitez ce dossier</div>
+              <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+                <input type="hidden" name="csrfToken" value="${csrf}">
+                <input type="hidden" name="status" value="approved">
+                <button class="success" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">✅ Approuver</button>
+              </form>
+              <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
+                <input type="hidden" name="csrfToken" value="${csrf}">
+                <input type="hidden" name="status" value="rejected">
+                <div style="display:flex; gap:5px;">
+                  <input name="rejection_reason" placeholder="Motif du rejet..." required style="margin:0; padding:6px; font-size:12px; flex:1; border-radius:6px;">
+                  <button class="danger" style="padding:6px 10px; font-size:12px; margin:0; border-radius:6px;">❌ Rejeter</button>
+                </div>
+              </form>
+            </div>`;
+        }
       } else if (c.status === 'approved') {
         actionButtons = `
           <div style="display:flex; flex-direction:column; gap:8px;">
@@ -206,6 +382,7 @@ function requireSuperAdmin(req, res, next) {
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
             </form>
+            ${req.adminSession.role === 'super_admin' ? `
             <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
               <input type="hidden" name="csrfToken" value="${csrf}">
               <input type="hidden" name="status" value="suspended"> 
@@ -215,10 +392,12 @@ function requireSuperAdmin(req, res, next) {
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="danger" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🗑️ Supprimer</button>
             </form>
+            ` : ''}
           </div>`;
       } else if (c.status === 'suspended') {
         actionButtons = `
           <div style="display:flex; flex-direction:column; gap:8px;">
+            ${req.adminSession.role === 'super_admin' ? `
             <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
               <input type="hidden" name="csrfToken" value="${csrf}">
               <input type="hidden" name="status" value="approved">
@@ -228,6 +407,7 @@ function requireSuperAdmin(req, res, next) {
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="danger" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">🗑️ Supprimer</button>
             </form>
+            ` : '<p style="text-align:center; font-size:12px; color:#9ca3af;">Action réservée au Super Admin</p>'}
           </div>`;
       } else if (c.status === 'rejected') {
         actionButtons = `
@@ -235,10 +415,12 @@ function requireSuperAdmin(req, res, next) {
             <div style="background:#fee2e2; padding:8px; border-radius:8px; font-size:12px; color:#991b1b;">
               <strong>Motif :</strong> ${escapeHtml(c.rejection_reason || 'Non précisé')}
             </div>
+            ${req.adminSession.role === 'super_admin' ? `
             <form action="/admin/candidatures/${c.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Supprimer définitivement ?');">
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="danger" style="width:100%; padding:8px; font-size:13px; border-radius:8px;">🗑️ Supprimer</button>
             </form>
+            ` : ''}
           </div>`;
       }
 
@@ -250,14 +432,14 @@ function requireSuperAdmin(req, res, next) {
             <div style="flex:1; min-width:0;">
               <div style="font-size:15px; font-weight:700; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(c.full_name)}</div>
               <div style="font-size:12px; color:#64748b;">${escapeHtml(c.profession)} • ${escapeHtml(c.city)}</div>
-              ${c.status === 'approved' && c.subscription_expires_at ? `<div style="font-size:11px; color:#64748b;">Expire le : ${new Date(c.subscription_expires_at).toLocaleDateString("fr-FR")}</div>` : ""}
+              ${c.processed_email ? `<div style="font-size:11px; color:#059669; font-weight:bold; margin-top:2px;">✅ Traité par : ${escapeHtml(c.processed_email)}</div>` : ""}
+              ${c.assigned_email && !c.processed_email ? `<div style="font-size:11px; color:#d97706; font-weight:bold; margin-top:2px;">⏳ En cours par : ${escapeHtml(c.assigned_email)}</div>` : ""}
             </div>
             <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:800; text-transform:uppercase; white-space:nowrap;">${statusLabel}</span>
             <div style="color:#94a3b8; font-size:18px; margin-left:5px;">▼</div>
           </summary>
 
           <div style="padding:15px; border-top:1px solid #f1f5f9; background:#fafafa;">
-            <!-- Infos -->
             <div style="font-size:13px; display:flex; flex-direction:column; gap:6px;">
               <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Téléphone</span><strong>${escapeHtml(c.phone)}</strong></div>
               <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">NPI</span><strong>${escapeHtml(c.npi)}</strong></div>
@@ -272,7 +454,6 @@ function requireSuperAdmin(req, res, next) {
               </div>
             </div>
 
-            <!-- Actions -->
             <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #e2e8f0;">
               ${actionButtons}
             </div>
@@ -303,11 +484,25 @@ function requireSuperAdmin(req, res, next) {
     `, null));
   });
 
-  // Action : Changer le statut (Approuver, Rejeter, Suspendre)
+  router.post("/candidatures/:id/assign", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      await pool.query(
+        `UPDATE professional_applications SET assigned_to = $1 WHERE id = $2 AND (assigned_to IS NULL OR assigned_to = $1)`,
+        [req.adminSession.adminId, id]
+      );
+      res.redirect(303, "/admin/candidatures");
+    } catch (e) {
+      res.redirect(303, "/admin/candidatures");
+    }
+  });
+
   router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id); 
     const status = req.body.status; 
     const reason = req.body.rejection_reason || null;
+    const adminId = req.adminSession.adminId;
+    const adminEmail = req.adminSession.email;
     
     try {
       if (status === "approved") {
@@ -315,12 +510,12 @@ function requireSuperAdmin(req, res, next) {
         const isReactivation = current.rows[0]?.status === 'suspended';
         
         if (isReactivation) {
-          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+          await pool.query(`UPDATE professional_applications SET status = 'approved', processed_by = $1, assigned_to = NULL WHERE id = $2`, [adminId, id]);
         } else {
           const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
           const referralCode = crypto.randomBytes(3).toString('hex');
           
-          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months' WHERE id = $4`, [status, newCode, referralCode, id]);    
+          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months', processed_by = $4, assigned_to = NULL WHERE id = $5`, [status, newCode, referralCode, adminId, id]);    
           
           if (current.rows.length > 0) {
             const pro = current.rows[0];
@@ -329,9 +524,10 @@ function requireSuperAdmin(req, res, next) {
           }
         }
       } else {
-        await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
+        await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2, processed_by = $3, assigned_to = NULL WHERE id = $4`, [status, reason, adminId, id]);
         if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
       }
+      await logAdminAction(`status_${status}`, "pro", id, `[Par: ${adminEmail}] ${reason || ''}`);
       res.redirect(303, "/admin/candidatures");
     } catch (e) {
       console.error("Erreur changement statut:", e);
@@ -339,7 +535,6 @@ function requireSuperAdmin(req, res, next) {
     }
   });
 
-  // Action : Régénérer le code
   router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
@@ -358,7 +553,7 @@ function requireSuperAdmin(req, res, next) {
         try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
       }
       
-      await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
+      await logAdminAction("pro_code_regenerated", "pro", id, `[Par: ${req.adminSession.email}] Nouveau code : ${newCode}`);
       res.redirect(303, "/admin/candidatures");
     } catch (e) {
       console.error("❌ ERREUR CRITIQUE REGENERATION CODE:", e.message);
@@ -366,7 +561,6 @@ function requireSuperAdmin(req, res, next) {
     }
   });
 
-  // Action : Ajouter 1 mois d'abonnement manuellement
   router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
@@ -377,7 +571,7 @@ function requireSuperAdmin(req, res, next) {
             last_payment_at = NOW() 
         WHERE id = $1
       `, [id]);
-      await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
+      await logAdminAction("subscription_manual_renewal", "pro", id, `[Par: ${req.adminSession.email}] Abonnement renouvelé manuellement`);
       res.redirect(303, "/admin/candidatures"); 
     } catch (e) {
       console.error(e);
@@ -385,8 +579,7 @@ function requireSuperAdmin(req, res, next) {
     }
   });
 
-  // Action : Supprimer définitivement
-  router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => { 
+  router.post("/candidatures/:id/supprimer", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
       const proResult = await pool.query(`SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url FROM professional_applications WHERE id = $1`, [id]);
@@ -404,7 +597,7 @@ function requireSuperAdmin(req, res, next) {
       await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [id]);
       await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [id]);
       
-      await logAdminAction("pro_deleted_by_admin", "pro", id, "Compte supprimé définitivement par admin");
+      await logAdminAction("pro_deleted_by_admin", "pro", id, `[Par: ${req.adminSession.email}] Compte supprimé définitivement`);
       res.redirect(303, "/admin/candidatures");
     } catch (e) {
       res.redirect(303, "/admin/candidatures");
@@ -539,7 +732,7 @@ function requireSuperAdmin(req, res, next) {
     try {
       if (["approved", "rejected"].includes(req.body.status)) {
         await pool.query(`UPDATE agencies SET status = $1, updated_at = NOW() WHERE id = $2`, [req.body.status, Number(req.params.id)]);
-        await logAdminAction(`agency_${req.body.status}`, "agency", Number(req.params.id), null);
+        await logAdminAction(`agency_${req.body.status}`, "agency", Number(req.params.id), `[Par: ${req.adminSession.email}]`);
       }
     } catch (e) { console.error("Erreur agence admin:", e); }
     res.redirect(303, "/admin/agences");
@@ -561,7 +754,7 @@ function requireSuperAdmin(req, res, next) {
       const status = String(req.body.status || "");
       if (["pending", "approved", "rejected"].includes(status)) {
         await pool.query(`UPDATE reviews SET status = $1, processed_at = NOW() WHERE id = $2`, [status, id]);
-        await logAdminAction(`review_${status}`, "review", id, null);
+        await logAdminAction(`review_${status}`, "review", id, `[Par: ${req.adminSession.email}]`);
       }
       res.redirect(303, "/admin/avis");
     } catch (error) { res.redirect(303, "/admin/avis"); }
@@ -569,7 +762,6 @@ function requireSuperAdmin(req, res, next) {
 
   router.get("/messages", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
-    // ✅ On ne récupère QUE les messages qui ne sont pas destinés à un pro
     const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id IS NULL ORDER BY created_at DESC`);
     const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
     
@@ -597,7 +789,7 @@ function requireSuperAdmin(req, res, next) {
     res.redirect(303, "/admin/retraits");
   });
 
-  router.post("/retraits/:id/rejeter", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/retraits/:id/rejeter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
       const result = await pool.query(`SELECT pro_id, amount FROM withdrawal_requests WHERE id = $1 AND status = 'pending'`, [id]);
@@ -605,7 +797,7 @@ function requireSuperAdmin(req, res, next) {
         const withdrawal = result.rows[0];
         await pool.query(`UPDATE professional_applications SET referral_balance = referral_balance + $1 WHERE id = $2`, [withdrawal.amount, withdrawal.pro_id]);
         await pool.query(`UPDATE withdrawal_requests SET status = 'rejected', processed_at = NOW() WHERE id = $1`, [id]);
-        await logAdminAction("withdrawal_rejected", "pro", withdrawal.pro_id, `Retrait de ${withdrawal.amount} FCFA rejeté. Solde recrédité.`);
+        await logAdminAction("withdrawal_rejected", "pro", withdrawal.pro_id, `[Par: ${req.adminSession.email}] Retrait de ${withdrawal.amount} FCFA rejeté. Solde recrédité.`);
       }
       res.redirect(303, "/admin/retraits");
     } catch (error) { res.redirect(303, "/admin/retraits"); }
@@ -614,14 +806,14 @@ function requireSuperAdmin(req, res, next) {
   // ==========================================
   // RGPD & SIGNALEMENTS & EMPLOIS
   // ==========================================
-  router.get("/rgpd", requireAdmin, async (req, res) => {
+  router.get("/rgpd", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY g.created_at DESC`);
     const rows = result.rows.map(r => `<article class="card"><h2>${escapeHtml(r.request_type)} - ${escapeHtml(r.pro_name || "Inconnu")}</h2><p>Statut: ${escapeHtml(r.status)}</p>${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Traiter</button></form>` : ""}</article>`).join("");
     res.send(page("RGPD", `<h1>RGPD</h1>${await customAdminMenu("/admin/rgpd", csrf)}${rows}`, null));
   });
 
-  router.post("/rgpd/:id/traiter", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/rgpd/:id/traiter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
       const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
@@ -642,7 +834,7 @@ function requireSuperAdmin(req, res, next) {
         await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
-        await logAdminAction("gdpr_deleted_pro", "pro", proId, "Compte professionnel supprimé définitivement (DB + Cloudinary)");
+        await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte professionnel supprimé définitivement (DB + Cloudinary)`);
       } else {
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
       }
@@ -886,7 +1078,7 @@ function requireSuperAdmin(req, res, next) {
   // ==========================================
   // AUTRES ROUTES (Dons, Blog, Logs, etc.)
   // ==========================================
-  router.get("/dons", requireAdmin, async (req, res) => {
+  router.get("/dons", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
     const rows = result.rows.map(d => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:12px;">${new Date(d.created_at).toLocaleString("fr-FR")}</td><td style="padding:12px; font-weight:bold; color:#10b981;">${d.amount} FCFA</td><td style="padding:12px;">${escapeHtml(d.donor_name)}</td></tr>`).join("");
@@ -935,170 +1127,7 @@ function requireSuperAdmin(req, res, next) {
     const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${escapeHtml(n.status)}</span></td></tr>`).join("");
     res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
-// ==========================================
-// MON PROFIL (Changement de mot de passe)
-// ==========================================
-router.get("/mon-profil", requireAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  
-  // On récupère les infos de l'admin connecté
-  const user = (await pool.query(`SELECT email, role FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
-  
-  res.send(page("Mon Profil", `
-    <h1 style="text-align:center; margin-bottom:20px;">👤 Mon Profil</h1>
-    ${await customAdminMenu("/admin/mon-profil", csrf)}
-    
-    <section class="card" style="max-width: 500px; margin: 40px auto;">
-      <div style="text-align:center; margin-bottom:20px;">
-        <div style="font-size:16px; font-weight:bold; color:#1e3a8a;">${escapeHtml(user.email)}</div>
-        <div style="font-size:12px; color:#64748b;">Rôle : ${user.role === 'super_admin' ? 'Super Administrateur' : 'Modérateur'}</div>
-      </div>
 
-      <h2 style="font-size: 18px; margin-bottom: 16px; border-top:1px solid #e5e7eb; padding-top:20px;">🔒 Changer mon mot de passe</h2>
-      <form action="/admin/mon-profil" method="POST">
-        <input type="hidden" name="csrfToken" value="${csrf}">
-        <label>Ancien mot de passe</label>
-        <input type="password" name="old_password" required>
-        <label>Nouveau mot de passe (min. 8 caractères)</label>
-        <input type="password" name="new_password" required minlength="8">
-        <button type="submit" class="success" style="width:100%; margin-top:10px;">💾 Enregistrer</button>
-      </form>
-    </section>
-  `, null));
-});
-
-router.post("/mon-profil", requireAdmin, verifyCsrf, async (req, res) => {
-  const oldPassword = String(req.body.old_password || "");
-  const newPassword = String(req.body.new_password || "");
-
-  if (newPassword.length < 8) {
-    return res.status(400).send(page("Erreur", "<h2>Le nouveau mot de passe doit faire au moins 8 caractères.</h2>", null));
-  }
-
-  try {
-    const user = (await pool.query(`SELECT password_hash FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
-    
-    // On vérifie l'ancien mot de passe
-    const match = await bcrypt.compare(oldPassword, user.password_hash);
-    if (!match) return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
-
-    // On hache le nouveau et on met à jour
-    const newHash = await bcrypt.hash(newPassword, 12);
-    await pool.query(`UPDATE admin_users SET password_hash = $1 WHERE id = $2`, [newHash, req.adminSession.adminId]);
-    
-    // On déconnecte l'utilisateur pour qu'il se reconnecte avec le nouveau mot de passe
-    clearSessionCookie(res);
-    res.send(page("Succès", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Mot de passe modifié</h1>
-        <p>Veuillez vous reconnecter avec votre nouveau mot de passe.</p>
-        <a href="/admin" class="button" style="margin-top:20px;">Se connecter</a>
-      </section>
-    `, null));
-
-  } catch (e) {
-    console.error(e);
-    res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
-  }
-});
-  // ==========================================
-// GESTION DES ADMINS (Réservé au Super Admin)
-// ==========================================
-router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  const admins = (await pool.query(`SELECT id, email, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC`)).rows;
-  
-  const listHtml = admins.map(a => `
-    <tr style="border-bottom: 1px solid #e5e7eb;">
-      <td style="padding: 12px; font-weight: bold;">${escapeHtml(a.email)}</td>
-      <td style="padding: 12px;">
-        ${a.role === 'super_admin' ? '<span class="badge" style="background:#fef3c7;color:#92400e;">👑 Super Admin</span>' : '<span class="badge" style="background:#dbeafe;color:#1e40af;">Modérateur</span>'}
-      </td>
-      <td style="padding: 12px;">
-        ${a.is_active ? '<span class="badge" style="background:#d1fae5;color:#065f46;">Actif</span>' : '<span class="badge" style="background:#fee2e2;color:#991b1b;">Désactivé</span>'}
-      </td>
-      <td style="padding: 12px; font-size: 13px;">${a.last_login ? new Date(a.last_login).toLocaleString("fr-FR") : "Jamais"}</td>
-      <td style="padding: 12px;">
-        ${a.role !== 'super_admin' ? `
-          <form action="/admin/admins/${a.id}/toggle" method="POST" style="margin:0;">
-            <input type="hidden" name="csrfToken" value="${csrf}">
-            <button class="${a.is_active ? 'danger' : 'success'}" style="padding:6px 12px; font-size:12px; margin:0;">
-              ${a.is_active ? '⏸️ Désactiver' : '▶️ Réactiver'}
-            </button>
-          </form>
-        ` : '<span style="font-size:12px; color:#9ca3af;">-</span>'}
-      </td>
-    </tr>
-  `).join("");
-
-  res.send(page("Gestion des Admins", `
-    <h1 style="text-align:center; margin-bottom:20px;">👑 Gestion des Administrateurs</h1>
-    ${await customAdminMenu("/admin/admins", csrf)}
-
-    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-top:20px;">
-      
-      <section class="card" style="margin:0;">
-        <h2 style="font-size:18px; margin-bottom:16px;">➕ Ajouter un modérateur</h2>
-        <form action="/admin/admins/nouveau" method="POST">
-          <input type="hidden" name="csrfToken" value="${csrf}">
-          <label>Adresse Email</label>
-          <input type="email" name="email" required placeholder="employe@trouvemoi.bj">
-          
-          <label>Mot de passe provisoire</label>
-          <input type="password" name="password" required minlength="8" placeholder="Min. 8 caractères">
-          
-          <button type="submit" class="success" style="width:100%; margin-top:10px;">Créer le compte</button>
-        </form>
-      </section>
-
-      <section class="card" style="margin:0;">
-        <h2 style="font-size:18px; margin-bottom:16px;">Liste des administrateurs</h2>
-        <table style="width:100%; border-collapse:collapse; text-align:left;">
-          <thead>
-            <tr style="background:#f9fafb; border-bottom:2px solid #e5e7eb;">
-              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Email</th>
-              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Rôle</th>
-              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Statut</th>
-              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Dernière connexion</th>
-              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Action</th>
-            </tr>
-          </thead>
-          <tbody>${listHtml}</tbody>
-        </table>
-      </section>
-
-    </div>
-  `, null));
-});
-
-router.post("/admins/nouveau", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
-  const email = String(req.body.email || "").trim().toLowerCase();
-  const password = String(req.body.password || "");
-
-  if (!email || password.length < 8) return res.redirect(303, "/admin/admins");
-
-  try {
-    const existing = await pool.query(`SELECT id FROM admin_users WHERE email = $1`, [email]);
-    if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Cet email est déjà utilisé.</h2><a href='/admin/admins'>Retour</a>", null));
-
-    const hash = await bcrypt.hash(password, 12);
-    await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'moderator')`, [email, hash]);
-    await logAdminAction("admin_created", "admin", null, `Nouveau modérateur : ${email}`);
-    
-    res.redirect(303, "/admin/admins");
-  } catch (e) {
-    res.redirect(303, "/admin/admins");
-  }
-});
-
-router.post("/admins/:id/toggle", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
-  try {
-    await pool.query(`UPDATE admin_users SET is_active = NOT is_active WHERE id = $1 AND role = 'moderator'`, [Number(req.params.id)]);
-    res.redirect(303, "/admin/admins");
-  } catch (e) {
-    res.redirect(303, "/admin/admins");
-  }
-});
   router.get("/parametres", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
