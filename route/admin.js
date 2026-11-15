@@ -829,58 +829,59 @@ for (const ag of agenciesResult.rows) {
   // ==========================================
   // RGPD (Super Admin)
   // ==========================================
-  router.get("/rgpd", requireAdmin, requireSuperAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY g.created_at DESC`);
-    const rows = result.rows.map(r => `<article class="card"><h2>${escapeHtml(r.request_type)} - ${escapeHtml(r.pro_name || "Inconnu")}</h2><p>Statut: ${escapeHtml(r.status)}</p>${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Traiter</button></form>` : ""}</article>`).join("");
-    res.send(page("RGPD", `<h1>RGPD</h1>${await customAdminMenu("/admin/rgpd", csrf, req.adminSession.role)}${rows}`, null));
-  });
-
   router.post("/rgpd/:id/traiter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
-    const id = Number(req.params.id);
-    try {
+  const id = Number(req.params.id);
+  try {
+    const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
+    if (requestResult.rows.length && requestResult.rows[0].pro_id) {
+      const proId = requestResult.rows[0].pro_id;
+      
       // ✅ Récupérer TOUTES les photos du pro (y compris galerie)
-const proResult = await pool.query(
-  `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
-          photo_galerie_1, photo_galerie_2, photo_galerie_3
-   FROM professional_applications WHERE id = $1`,
-  [proId]
-);
-if (proResult.rows.length) {
-  const pro = proResult.rows[0];
-  const photosToDelete = [
-    pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
-    pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
-  ];
-  for (let p of photosToDelete) {
-    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
-  }
-}
-// ✅ Récupérer et supprimer les photos des agences
-const agenciesResult = await pool.query(
-  `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
-  [proId]
-);
-for (const ag of agenciesResult.rows) {
-  for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
-    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
-  }
-}
-        await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
-        await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
-        await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
-        await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte supprimé définitivement (DB + Cloudinary)`);
-      } else {
-        await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+      const proResult = await pool.query(
+        `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
+                photo_galerie_1, photo_galerie_2, photo_galerie_3
+         FROM professional_applications WHERE id = $1`,
+        [proId]
+      );
+      if (proResult.rows.length) {
+        const pro = proResult.rows[0];
+        const photosToDelete = [
+          pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
+          pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
+        ];
+        for (let p of photosToDelete) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
       }
-      res.redirect(303, "/admin/rgpd");
-    } catch (error) { res.status(500).send("Erreur lors de la suppression."); }
-  });
+      
+      // ✅ Récupérer et supprimer les photos des agences
+      const agenciesResult = await pool.query(
+        `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
+        [proId]
+      );
+      for (const ag of agenciesResult.rows) {
+        for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
+      }
+
+      await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
+      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
+      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+      await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte supprimé définitivement (DB + Cloudinary)`);
+    } else {
+      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+    }
+    res.redirect(303, "/admin/rgpd");
+  } catch (error) { 
+    res.status(500).send("Erreur lors de la suppression."); 
+  }
+});
 
   router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
     await pool.query(`UPDATE admin_sessions SET revoked_at = NOW() WHERE jti = $1`, [req.adminSession.jti]).catch(() => {});
