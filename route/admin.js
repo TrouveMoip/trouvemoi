@@ -997,6 +997,104 @@ router.post("/mon-profil", requireAdmin, verifyCsrf, async (req, res) => {
     res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null));
   }
 });
+  // ==========================================
+// GESTION DES ADMINS (Réservé au Super Admin)
+// ==========================================
+router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const admins = (await pool.query(`SELECT id, email, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC`)).rows;
+  
+  const listHtml = admins.map(a => `
+    <tr style="border-bottom: 1px solid #e5e7eb;">
+      <td style="padding: 12px; font-weight: bold;">${escapeHtml(a.email)}</td>
+      <td style="padding: 12px;">
+        ${a.role === 'super_admin' ? '<span class="badge" style="background:#fef3c7;color:#92400e;">👑 Super Admin</span>' : '<span class="badge" style="background:#dbeafe;color:#1e40af;">Modérateur</span>'}
+      </td>
+      <td style="padding: 12px;">
+        ${a.is_active ? '<span class="badge" style="background:#d1fae5;color:#065f46;">Actif</span>' : '<span class="badge" style="background:#fee2e2;color:#991b1b;">Désactivé</span>'}
+      </td>
+      <td style="padding: 12px; font-size: 13px;">${a.last_login ? new Date(a.last_login).toLocaleString("fr-FR") : "Jamais"}</td>
+      <td style="padding: 12px;">
+        ${a.role !== 'super_admin' ? `
+          <form action="/admin/admins/${a.id}/toggle" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="${a.is_active ? 'danger' : 'success'}" style="padding:6px 12px; font-size:12px; margin:0;">
+              ${a.is_active ? '⏸️ Désactiver' : '▶️ Réactiver'}
+            </button>
+          </form>
+        ` : '<span style="font-size:12px; color:#9ca3af;">-</span>'}
+      </td>
+    </tr>
+  `).join("");
+
+  res.send(page("Gestion des Admins", `
+    <h1 style="text-align:center; margin-bottom:20px;">👑 Gestion des Administrateurs</h1>
+    ${await customAdminMenu("/admin/admins", csrf)}
+
+    <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-top:20px;">
+      
+      <section class="card" style="margin:0;">
+        <h2 style="font-size:18px; margin-bottom:16px;">➕ Ajouter un modérateur</h2>
+        <form action="/admin/admins/nouveau" method="POST">
+          <input type="hidden" name="csrfToken" value="${csrf}">
+          <label>Adresse Email</label>
+          <input type="email" name="email" required placeholder="employe@trouvemoi.bj">
+          
+          <label>Mot de passe provisoire</label>
+          <input type="password" name="password" required minlength="8" placeholder="Min. 8 caractères">
+          
+          <button type="submit" class="success" style="width:100%; margin-top:10px;">Créer le compte</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin:0;">
+        <h2 style="font-size:18px; margin-bottom:16px;">Liste des administrateurs</h2>
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+          <thead>
+            <tr style="background:#f9fafb; border-bottom:2px solid #e5e7eb;">
+              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Email</th>
+              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Rôle</th>
+              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Statut</th>
+              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Dernière connexion</th>
+              <th style="padding:12px; font-size:12px; color:#6b7280; text-transform:uppercase;">Action</th>
+            </tr>
+          </thead>
+          <tbody>${listHtml}</tbody>
+        </table>
+      </section>
+
+    </div>
+  `, null));
+});
+
+router.post("/admins/nouveau", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+
+  if (!email || password.length < 8) return res.redirect(303, "/admin/admins");
+
+  try {
+    const existing = await pool.query(`SELECT id FROM admin_users WHERE email = $1`, [email]);
+    if (existing.rows.length) return res.status(400).send(page("Erreur", "<h2>Cet email est déjà utilisé.</h2><a href='/admin/admins'>Retour</a>", null));
+
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'moderator')`, [email, hash]);
+    await logAdminAction("admin_created", "admin", null, `Nouveau modérateur : ${email}`);
+    
+    res.redirect(303, "/admin/admins");
+  } catch (e) {
+    res.redirect(303, "/admin/admins");
+  }
+});
+
+router.post("/admins/:id/toggle", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
+  try {
+    await pool.query(`UPDATE admin_users SET is_active = NOT is_active WHERE id = $1 AND role = 'moderator'`, [Number(req.params.id)]);
+    res.redirect(303, "/admin/admins");
+  } catch (e) {
+    res.redirect(303, "/admin/admins");
+  }
+});
   router.get("/parametres", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
