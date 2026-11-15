@@ -1,6 +1,6 @@
 const express = require('express');
 
-module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction) {
+module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, deleteFromCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction) {
   const router = express.Router();
 
   // --- 1. LISTE DES AGENCES DU PRO ---
@@ -41,10 +41,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    // ✅ CORRECTION : Si le pro est expiré, on le redirige vers le paiement
+    // ✅ Si le pro est expiré, on le redirige vers le paiement
     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
-  return res.redirect(303, "/mon-espace-pro/payer-abonnement");
-}
+      return res.redirect(303, "/mon-espace-pro/payer-abonnement");
+    }
+    
     res.send(page("Ajouter une agence", `
       <section class="card" style="max-width: 700px; margin: 40px auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -59,22 +60,24 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
               <div><label>Téléphone (optionnel)</label><input name="agency_phone" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
               <div><label>WhatsApp (optionnel)</label><input name="agency_whatsapp" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
             </div>
+            
             <label style="margin-top:15px; display:block;">Fermeture temporaire (optionnel)</label>
-<input type="date" name="unavailable_until" style="margin-bottom:15px;" title="Si l'agence est fermée pour une période">
+            <input type="date" name="unavailable_until" style="margin-bottom:15px;" title="Si l'agence est fermée pour une période">
 
-<div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
-  <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture (laisser vide si fermé ce jour-là)</label>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
-    ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => `
-      <div style="display:flex; align-items:center; gap:5px;">
-        <span style="width:60px; text-transform:capitalize;">${j}</span>
-        <input type="time" name="h_${j}_o" style="padding:5px; margin:0; width:80px;">
-        <span>à</span>
-        <input type="time" name="h_${j}_f" style="padding:5px; margin:0; width:80px;">
-      </div>
-    `).join('')}
-  </div>
-</div>
+            <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
+              <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture (laisser vide si fermé ce jour-là)</label>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+                ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => `
+                  <div style="display:flex; align-items:center; gap:5px;">
+                    <span style="width:60px; text-transform:capitalize;">${j}</span>
+                    <input type="time" name="h_${j}_o" style="padding:5px; margin:0; width:80px;">
+                    <span>à</span>
+                    <input type="time" name="h_${j}_f" style="padding:5px; margin:0; width:80px;">
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
             <input type="hidden" name="latitude" id="agency-lat"><input type="hidden" name="longitude" id="agency-lng">
             <button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
             <p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
@@ -104,9 +107,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    // ✅ CORRECTION : Sécurité supplémentaire pour le POST
-     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
-    return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas créer d'agence.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
+    if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
+      return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas créer d'agence.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
     }
 
     const { name, address, latitude, longitude, agency_phone, agency_whatsapp } = req.body;
@@ -122,15 +124,16 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
       if (files.photo_3?.[0]) { const r = await uploadToCloudinary(files.photo_3[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_3`); p3url = r.secure_url; }
 
       const horaires = {};
-['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j => {
-  const o = req.body[`h_${j}_o`]; const f = req.body[`h_${j}_f`];
-  if (o && f) horaires[j] = { o, f };
-});
-const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
-const unavailable_until = req.body.unavailable_until || null;
+      ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j => {
+        const o = req.body[`h_${j}_o`]; const f = req.body[`h_${j}_f`];
+        if (o && f) horaires[j] = { o, f };
+      });
+      const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+      const unavailable_until = req.body.unavailable_until || null;
+
       const insertResult = await pool.query(
-       `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status, horaires_json, unavailable_until) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}, $14, $15) RETURNING id`,
-        [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null]
+        `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status, horaires_json, unavailable_until) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}, $14, $15) RETURNING id`,
+        [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until]
       );
       const agencyId = insertResult.rows[0].id;
 
@@ -143,76 +146,80 @@ const unavailable_until = req.body.unavailable_until || null;
           <button onclick="openKkiapayWidget({ amount: 1500, api_key: '${process.env.KKIAPAY_PUBLIC_KEY}', sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, callback: '${process.env.APP_URL}/mon-espace-pro/agences/verifier?agency_id=${agencyId}', data: 'AGENCE-${agencyId}' })" style="padding:16px; background:#10b981; width:100%; margin-top:20px; color:white; border:none; border-radius:12px; font-weight:bold; font-size:16px;">Payer 1500 FCFA</button>
         </section>
         <script src="https://cdn.kkiapay.me/k.js"></script>`, proConnected));
-    } catch (e) { res.status(500).send(page("Erreur", "<h2>Erreur upload.</h2>", proConnected)); }
+    } catch (e) { 
+      console.error(e);
+      res.status(500).send(page("Erreur", "<h2>Erreur upload.</h2>", proConnected)); 
+    }
   });
 
   // --- 4. VERIFICATION DU PAIEMENT DE L'AGENCE ---
- router.get("/mon-espace-pro/agences/verifier", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const agencyId = Number(req.query.agency_id);
-  const transactionId = String(req.query.transaction_id || "");
+  router.get("/mon-espace-pro/agences/verifier", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    const agencyId = Number(req.query.agency_id);
+    const transactionId = String(req.query.transaction_id || "");
 
-  if (!proConnected || !agencyId || !transactionId) return res.redirect(303, "/mon-espace-pro");
+    if (!proConnected || !agencyId || !transactionId) return res.redirect(303, "/mon-espace-pro");
 
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    // 🔒 Le verrou : on bloque ce numéro de transaction
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // 🔒 Le verrou : on bloque ce numéro de transaction
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
-    const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
-    if (alreadyUsed.rows.length > 0) {
-      await client.query("ROLLBACK");
-      return res.send(page("Déjà traité", `
+      // 1️⃣ On vérifie si le ticket a déjà été poinçonné
+      const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
+      if (alreadyUsed.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return res.send(page("Déjà traité", `
+          <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+            <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
+            <p>Cette transaction a déjà été validée. Votre agence a bien été prise en compte.</p>
+            <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px;">Retour à mes agences</a>
+          </section>
+        `, proConnected));
+      }
+
+      // 2️⃣ On vérifie auprès de Kkiapay
+      let isPaymentValid = BYPASS_PAYMENT;
+      if (!BYPASS_PAYMENT) {
+        const verification = await verifyKkiapayTransaction(transactionId);
+        isPaymentValid = verification.success && verification.amount >= 1500;
+      }
+
+      if (!isPaymentValid) {
+        await client.query("ROLLBACK");
+        return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
+      }
+
+      // 3️⃣ On poinçonne le ticket
+      await client.query(
+        `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
+        [proConnected.pro.id, transactionId, 1500]
+      );
+
+      // 4️⃣ On active l'agence
+      await client.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
+      
+      await client.query("COMMIT");
+      
+      res.send(page("Succès", `
         <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-          <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
-          <p>Cette transaction a déjà été validée. Votre agence a bien été prise en compte.</p>
-          <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px;">Retour à mes agences</a>
+          <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
+          <p>Votre agence a bien été enregistrée.</p>
+          <p style="margin-top:10px; color:#6b7280; font-size:14px;">Elle sera visible en ligne dès que notre équipe l'aura validée.</p>
+          <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px; width:100%;">Retour à mes agences</a>
         </section>
       `, proConnected));
+
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      console.error("Erreur verif agence:", e);
+      res.redirect(303, "/mon-espace-pro/agences");
+    } finally {
+      client.release();
     }
+  });
 
-    // 2️⃣ On vérifie auprès de Kkiapay
-    let isPaymentValid = BYPASS_PAYMENT;
-    if (!BYPASS_PAYMENT) {
-      const verification = await verifyKkiapayTransaction(transactionId);
-      isPaymentValid = verification.success && verification.amount >= 1500;
-    }
-
-    if (!isPaymentValid) {
-      await client.query("ROLLBACK");
-      return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
-    }
-
-    // 3️⃣ On poinçonne le ticket
-    await client.query(
-      `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
-      [proConnected.pro.id, transactionId, 1500]
-    );
-
-    // 4️⃣ On active l'agence
-    await client.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
-    
-    await client.query("COMMIT");
-    
-    res.send(page("Succès", `
-      <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-        <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
-        <p>Votre agence a bien été enregistrée.</p>
-        <p style="margin-top:10px; color:#6b7280; font-size:14px;">Elle sera visible en ligne dès que notre équipe l'aura validée.</p>
-        <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px; width:100%;">Retour à mes agences</a>
-      </section>
-    `, proConnected));
-
-  } catch (e) {
-    await client.query("ROLLBACK").catch(() => {});
-    console.error("Erreur verif agence:", e);
-    res.redirect(303, "/mon-espace-pro/agences");
-  } finally {
-    client.release();
-  }
-});
   // --- 5. DETAILS D'UNE AGENCE (PRIVÉ) ---
   router.get("/mon-espace-pro/agences/:id", async (req, res) => {
     const proConnected = await getConnectedPro(req);
@@ -268,26 +275,27 @@ const unavailable_until = req.body.unavailable_until || null;
           <label>Nom de l'agence *</label><input name="name" required value="${escapeHtml(agency.name)}">
           <label>Adresse exacte *</label><input name="address" required value="${escapeHtml(agency.address)}">
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div><label>Téléphone</label><input name="agency_phone" value="${escapeHtml(agency.phone || '')}"></div><div><label>WhatsApp</label><input name="agency_whatsapp" value="${escapeHtml(agency.whatsapp_number || '')}"></div></div>
+          
           <label style="margin-top:15px; display:block;">Fermeture temporaire (optionnel)</label>
-<input type="date" name="unavailable_until" value="${agency.unavailable_until ? new Date(agency.unavailable_until).toISOString().split('T')[0] : ''}" style="margin-bottom:15px;">
+          <input type="date" name="unavailable_until" value="${agency.unavailable_until ? new Date(agency.unavailable_until).toISOString().split('T')[0] : ''}" style="margin-bottom:15px;">
 
-<div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
-  <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture</label>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
-    ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => {
-      let h = {}; try { h = JSON.parse(agency.horaires_json || '{}'); } catch(e){}
-      const horaire = h[j] || {};
-      return `
-        <div style="display:flex; align-items:center; gap:5px;">
-          <span style="width:60px; text-transform:capitalize;">${j}</span>
-          <input type="time" name="h_${j}_o" value="${horaire.o || ''}" style="padding:5px; margin:0; width:80px;">
-          <span>à</span>
-          <input type="time" name="h_${j}_f" value="${horaire.f || ''}" style="padding:5px; margin:0; width:80px;">
-        </div>
-      `;
-    }).join('')}
-  </div>
-</div>
+          <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
+            <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+              ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => {
+                let h = {}; try { h = JSON.parse(agency.horaires_json || '{}'); } catch(e){}
+                const horaire = h[j] || {};
+                return `
+                  <div style="display:flex; align-items:center; gap:5px;">
+                    <span style="width:60px; text-transform:capitalize;">${j}</span>
+                    <input type="time" name="h_${j}_o" value="${horaire.o || ''}" style="padding:5px; margin:0; width:80px;">
+                    <span>à</span>
+                    <input type="time" name="h_${j}_f" value="${horaire.f || ''}" style="padding:5px; margin:0; width:80px;">
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
           <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
         </form>
       </section>`, proConnected));
@@ -305,8 +313,19 @@ const unavailable_until = req.body.unavailable_until || null;
     let p1 = current.rows[0].photo_1; let p2 = current.rows[0].photo_2; let p3 = current.rows[0].photo_3;
     if (files.photo_1?.[0]) { const r = await uploadToCloudinary(files.photo_1[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_1`); p1 = r.secure_url; }
     
-    await pool.query(`UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, latitude = $6, longitude = $7, phone = $8, whatsapp_number = $9, status = 'pending_validation' WHERE id = $10 AND parent_pro_id = $11`, 
-    [name, address, p1, p2, p3, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, id, proConnected.pro.id]);
+    // ✅ 1. On prépare les horaires et les congés
+    const horaires = {};
+    ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j => {
+      const o = req.body[`h_${j}_o`]; const f = req.body[`h_${j}_f`];
+      if (o && f) horaires[j] = { o, f };
+    });
+    const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+    const unavailable_until = req.body.unavailable_until || null;
+
+    // ✅ 2. On met à jour en base de données
+    await pool.query(`UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, latitude = $6, longitude = $7, phone = $8, whatsapp_number = $9, horaires_json = $10, unavailable_until = $11, status = 'pending_validation' WHERE id = $12 AND parent_pro_id = $13`, 
+    [name, address, p1, p2, p3, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until, id, proConnected.pro.id]);
+    
     res.redirect(303, `/mon-espace-pro/agences/${id}`);
   });
 
@@ -324,9 +343,18 @@ const unavailable_until = req.body.unavailable_until || null;
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
     const id = Number(req.params.id);
     try {
-      // 1. On supprime les statistiques liées à cette agence
+      // ✅ 1. On récupère les photos pour les supprimer de Cloudinary
+      const current = await pool.query(`SELECT photo_1, photo_2, photo_3 FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+      if (current.rows.length) {
+        const ag = current.rows[0];
+        for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
+      }
+
+      // 2. On supprime les statistiques liées à cette agence
       await pool.query(`DELETE FROM agency_stats WHERE agency_id = $1`, [id]);
-      // 2. On supprime l'agence elle-même
+      // 3. On supprime l'agence elle-même
       await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
     } catch(e) {
       console.error("Erreur suppression agence:", e);
