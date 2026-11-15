@@ -125,40 +125,72 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
   });
 
   // --- 4. VERIFICATION DU PAIEMENT DE L'AGENCE ---
-  router.get("/mon-espace-pro/agences/verifier", async (req, res) => {
-    const proConnected = await getConnectedPro(req);
-    const agencyId = Number(req.query.agency_id);
-    const transactionId = String(req.query.transaction_id || "");
+ router.get("/mon-espace-pro/agences/verifier", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  const agencyId = Number(req.query.agency_id);
+  const transactionId = String(req.query.transaction_id || "");
 
-    if (!proConnected || !agencyId) return res.redirect(303, "/mon-espace-pro");
+  if (!proConnected || !agencyId || !transactionId) return res.redirect(303, "/mon-espace-pro");
 
-    try {
-      // ✅ CORRECTION : On vérifie VRAIMENT le paiement Kkiapay
-      let isPaymentValid = BYPASS_PAYMENT;
-      if (!BYPASS_PAYMENT && transactionId) {
-        const verification = await verifyKkiapayTransaction(transactionId);
-        isPaymentValid = verification.success && verification.amount >= 1500;
-      }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // 🔒 Le verrou : on bloque ce numéro de transaction
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-      if (!isPaymentValid) {
-        return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
-      }
-
-      await pool.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
-      
-      res.send(page("Succès", `
+    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
+    const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
+    if (alreadyUsed.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.send(page("Déjà traité", `
         <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-          <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
-          <p>Votre agence a bien été enregistrée.</p>
-          <p style="margin-top:10px; color:#6b7280; font-size:14px;">Elle sera visible en ligne dès que notre équipe l'aura validée.</p>
-          <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px; width:100%;">Retour à mes agences</a>
+          <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
+          <p>Cette transaction a déjà été validée. Votre agence a bien été prise en compte.</p>
+          <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px;">Retour à mes agences</a>
         </section>
       `, proConnected));
-    } catch (e) {
-      res.redirect(303, "/mon-espace-pro/agences");
     }
-  });
 
+    // 2️⃣ On vérifie auprès de Kkiapay
+    let isPaymentValid = BYPASS_PAYMENT;
+    if (!BYPASS_PAYMENT) {
+      const verification = await verifyKkiapayTransaction(transactionId);
+      isPaymentValid = verification.success && verification.amount >= 1500;
+    }
+
+    if (!isPaymentValid) {
+      await client.query("ROLLBACK");
+      return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
+    }
+
+    // 3️⃣ On poinçonne le ticket
+    await client.query(
+      `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
+      [proConnected.pro.id, transactionId, 1500]
+    );
+
+    // 4️⃣ On active l'agence
+    await client.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
+    
+    await client.query("COMMIT");
+    
+    res.send(page("Succès", `
+      <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+        <h1 style="color:#10b981; margin-bottom:10px;">🎉 Paiement réussi !</h1>
+        <p>Votre agence a bien été enregistrée.</p>
+        <p style="margin-top:10px; color:#6b7280; font-size:14px;">Elle sera visible en ligne dès que notre équipe l'aura validée.</p>
+        <a href="/mon-espace-pro/agences" class="button" style="margin-top:20px; width:100%;">Retour à mes agences</a>
+      </section>
+    `, proConnected));
+
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Erreur verif agence:", e);
+    res.redirect(303, "/mon-espace-pro/agences");
+  } finally {
+    client.release();
+  }
+});
   // --- 5. DETAILS D'UNE AGENCE (PRIVÉ) ---
   router.get("/mon-espace-pro/agences/:id", async (req, res) => {
     const proConnected = await getConnectedPro(req);
