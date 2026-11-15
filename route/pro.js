@@ -5,8 +5,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
   const router = express.Router();
   // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
 async function verifyProCsrf(req, res, next) {
-  // On ignore la route de login et logout (pas encore de jeton à ce moment-là)
-// On ignore les routes publiques (connexion, déconnexion, récupération de code)
+ // ✅ On ne vérifie QUE les formulaires POST (pas les simples liens)
+if (req.method !== 'POST') return next();
 if (req.path === '/login' || req.path === '/logout' || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
   let cookieToken = null;
   for (const item of (req.headers.cookie || "").split(";")) {
