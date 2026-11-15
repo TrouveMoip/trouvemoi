@@ -369,7 +369,7 @@ const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHE
       const proConnected = await getConnectedPro(req); const id = Number(req.params.id);
       if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
       // ✅ CORRECTION : Vérifier que le pro parent n'est pas expiré
-      const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active')`, [id]);
+      const result = await pool.query(`SELECT a.*, p.full_name, p.company_name, p.phone AS parent_phone, p.whatsapp_number AS parent_wa, p.phone_public, p.kyc_verified, p.profession FROM agencies a JOIN professional_applications p ON a.parent_pro_id = p.id WHERE a.id = $1 AND a.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`, [id]);
       if (!result.rows.length) return res.redirect(303, "/");
       const agency = result.rows[0]; const parentName = getDisplayName(agency);
       
