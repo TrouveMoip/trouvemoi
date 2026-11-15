@@ -834,13 +834,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     } catch (error) { res.redirect(303, "/mon-compte"); }
   });
 
-  router.post("/mon-compte/reinitialiser", async (req, res) => {
-    const phone = cleanBeninPhone(req.body.phone);
-    if (!phone) return res.redirect(303, "/mon-compte");
-    
-    res.send(page("Information", `<section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"><h1>📩 Information</h1><p>La récupération automatique par SMS est en cours de configuration. Veuillez contacter notre support pour récupérer votre compte.</p><a href="/contact" class="button">Contacter le support</a></section>`, null));
-  });
-    
   router.get("/pro/:id/avis", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
