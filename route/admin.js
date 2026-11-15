@@ -149,12 +149,16 @@ function requireSuperAdmin(req, res, next) {
       : `WHERE p.status IN ('pending', 'under_review', 'approved')`;
 
     const result = await pool.query(`
-      SELECT p.*, pr.category AS profession_category 
-      FROM professional_applications p
-      LEFT JOIN professions pr ON p.profession = pr.name
-      ${whereClause}
-      ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
-    `);
+  SELECT p.*, pr.category AS profession_category, 
+         a_assign.email AS assigned_email, 
+         a_process.email AS processed_email
+  FROM professional_applications p
+  LEFT JOIN professions pr ON p.profession = pr.name
+  LEFT JOIN admin_users a_assign ON p.assigned_to = a_assign.id
+  LEFT JOIN admin_users a_process ON p.processed_by = a_process.id
+  ${whereClause}
+  ORDER BY CASE WHEN p.status = 'pending' THEN 0 ELSE 1 END, p.created_at DESC
+`);
     
     const apps = result.rows.map(c => {
       let statusColor = "#f59e0b", statusLabel = "En attente";
