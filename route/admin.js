@@ -10,7 +10,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
       prosPendingCount = Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')")).rows[0].count); 
       reviewsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count);
-      msgsCount = Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false")).rows[0].count);
+      msgsCount = Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL")).rows[0].count);
       withdrawalsCount = Number((await pool.query("SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'")).rows[0].count);
       reportsCount = Number((await pool.query("SELECT COUNT(*) FROM review_reports WHERE status = 'pending'")).rows[0].count);
       notificationsFailed = Number((await pool.query("SELECT COUNT(*) FROM notifications WHERE status = 'failed'")).rows[0].count);
@@ -85,7 +85,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       pros: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'")).rows[0].count),
       prosPending: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')")).rows[0].count),
       reviews: Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count),
-      messages: Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false")).rows[0].count),
+      messages: Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL")).rows[0].count),
       prosToday: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE")).rows[0].count)
     };
     const menu = await customAdminMenu("/admin/dashboard", getCsrf(req));
@@ -93,7 +93,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // GESTION DES CANDIDATURES (SYSTÈME ACCORDÉON)
+  // GESTION DES CANDIDATURES
   // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
@@ -112,16 +112,15 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     `);
     
     const apps = result.rows.map(c => {
-     let statusColor = "#f59e0b", statusLabel = "En attente";
-if (c.status === 'approved') { 
-  statusColor = "#10b981"; 
-  statusLabel = "Approuvé"; 
-  // ✅ On vérifie l'abonnement
-  if (c.subscription_status === 'expired') {
-    statusColor = "#ef4444"; 
-    statusLabel = "Abonnement expiré";
-  }
-}
+      let statusColor = "#f59e0b", statusLabel = "En attente";
+      if (c.status === 'approved') { 
+        statusColor = "#10b981"; 
+        statusLabel = "Approuvé"; 
+        if (c.subscription_status === 'expired') {
+          statusColor = "#ef4444"; 
+          statusLabel = "Abonnement expiré";
+        }
+      }
       else if (c.status === 'rejected') { statusColor = "#ef4444"; statusLabel = "Rejeté"; }
       else if (c.status === 'suspended') { statusColor = "#f97316"; statusLabel = "Suspendu"; }
 
@@ -155,9 +154,9 @@ if (c.status === 'approved') {
               <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🔄 Nouveau code</button>
             </form>
             <form action="/admin/candidatures/${c.id}/abonnement" method="POST" style="margin:0;">
-  <input type="hidden" name="csrfToken" value="${csrf}">
-  <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
-</form>
+              <input type="hidden" name="csrfToken" value="${csrf}">
+              <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
+            </form>
             <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
               <input type="hidden" name="csrfToken" value="${csrf}">
               <input type="hidden" name="status" value="suspended"> 
@@ -263,27 +262,24 @@ if (c.status === 'approved') {
     
     try {
       if (status === "approved") {
-  const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
-  const isReactivation = current.rows[0]?.status === 'suspended';
-  
-  if (isReactivation) {
-    await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
-  } else {
-    // ✅ Générer le code Pro
-    const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
-    
-    // ✅ Générer le code de parrainage (ex: a1b2c3)
-    const referralCode = crypto.randomBytes(3).toString('hex');
-    
-    // ✅ On enregistre les deux
-await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months' WHERE id = $4`, [status, newCode, referralCode, id]);    
-    if (current.rows.length > 0) {
-      const pro = current.rows[0];
-      const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
-      try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
-    }
-  }
-} else {
+        const current = await pool.query(`SELECT status, pro_code, full_name, phone FROM professional_applications WHERE id = $1`, [id]);
+        const isReactivation = current.rows[0]?.status === 'suspended';
+        
+        if (isReactivation) {
+          await pool.query(`UPDATE professional_applications SET status = 'approved' WHERE id = $1`, [id]);
+        } else {
+          const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
+          const referralCode = crypto.randomBytes(3).toString('hex');
+          
+          await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months' WHERE id = $4`, [status, newCode, referralCode, id]);    
+          
+          if (current.rows.length > 0) {
+            const pro = current.rows[0];
+            const messageSMS = `Félicitations ${pro.full_name} ! Votre compte TrouveMoi est validé. Votre code de connexion est : ${newCode}. Gardez-le précieusement.`;
+            try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.error("Erreur SMS:", e); }
+          }
+        }
+      } else {
         await pool.query(`UPDATE professional_applications SET status = $1, rejection_reason = $2 WHERE id = $3`, [status, reason, id]);
         if (status === "rejected") await pool.query(`UPDATE job_offers SET status = 'closed' WHERE pro_id = $1`, [id]);
       }
@@ -298,13 +294,10 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
   router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
-      // ✅ CORRECTION : Générer le code directement ici
       const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
-
       const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
       
       if (updateResult.rowCount === 0) {
-        console.log("❌ ERREUR: Aucune ligne mise à jour. L'ID n'existe pas ?");
         return res.redirect(303, "/admin/candidatures");
       }
 
@@ -313,11 +306,7 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
       if (proResult.rows.length > 0) {
         const pro = proResult.rows[0];
         const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
-        try { 
-          await sendSMS(pro.phone, messageSMS); 
-        } catch(e) { 
-          console.log("Erreur SMS ignorée (mode test)"); 
-        }
+        try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
       }
       
       await logAdminAction("pro_code_regenerated", "pro", id, "Code régénéré par admin");
@@ -329,23 +318,25 @@ await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $
   });
 
   // Action : Ajouter 1 mois d'abonnement manuellement
-router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    await pool.query(`
-      UPDATE professional_applications 
-      SET subscription_status = 'active', 
-          subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
-          last_payment_at = NOW() 
-      WHERE id = $1
-    `, [id]);
-    await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
-    res.redirect(303, "/admin/abonnements"); // Redirection vers la nouvelle page
-  } catch (e) {
-    console.error(e);
-    res.redirect(303, "/admin/abonnements");
-  }
-});
+  router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      await pool.query(`
+        UPDATE professional_applications 
+        SET subscription_status = 'active', 
+            subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+            last_payment_at = NOW() 
+        WHERE id = $1
+      `, [id]);
+      await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
+      res.redirect(303, "/admin/candidatures"); 
+    } catch (e) {
+      console.error(e);
+      res.redirect(303, "/admin/candidatures");
+    }
+  });
+
+  // Action : Supprimer définitivement
   router.post("/candidatures/:id/supprimer", requireAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
@@ -479,7 +470,7 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
   });
 
   // ==========================================
-  // AUTRES ROUTES (Agences, Avis, Retraits, etc.)
+  // GESTION DES AGENCES
   // ==========================================
   router.get("/agences", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
@@ -505,6 +496,9 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
     res.redirect(303, "/admin/agences");
   });
 
+  // ==========================================
+  // AVIS & MESSAGES & RETRAITS
+  // ==========================================
   router.get("/avis", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 50`);
@@ -524,15 +518,15 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
     } catch (error) { res.redirect(303, "/admin/avis"); }
   });
 
- router.get("/messages", requireAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  // ✅ On ne récupère QUE les messages qui ne sont pas destinés à un pro
-  const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id IS NULL ORDER BY created_at DESC`);
-  const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
-  
-  await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
-  res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs || "<p>Aucun message général.</p>"}`, null));
-});
+  router.get("/messages", requireAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
+    // ✅ On ne récupère QUE les messages qui ne sont pas destinés à un pro
+    const result = await pool.query(`SELECT * FROM contact_messages WHERE pro_id IS NULL ORDER BY created_at DESC`);
+    const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
+    
+    await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
+    res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs || "<p>Aucun message général.</p>"}`, null));
+  });
 
   router.get("/retraits", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
@@ -568,6 +562,9 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
     } catch (error) { res.redirect(303, "/admin/retraits"); }
   });
 
+  // ==========================================
+  // RGPD & SIGNALEMENTS & EMPLOIS
+  // ==========================================
   router.get("/rgpd", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY g.created_at DESC`);
@@ -645,201 +642,201 @@ router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req
     res.redirect(303, "/admin/emplois");
   });
 
-// GESTION DES ABONNEMENTS
-router.get("/abonnements", requireAdmin, async (req, res) => {
-  const csrf = getCsrf(req);
-  
-  // ✅ On récupère le mois sélectionné (par défaut, le mois en cours)
-  const currentMonth = new Date().toISOString().slice(0, 7); // ex: "2026-11"
-  const selectedMonth = String(req.query.month || currentMonth);
-  const startDate = `${selectedMonth}-01`;
-  const endDate = `${selectedMonth}-31`; // Approximation simple pour le SQL
-
-  // ✅ CALCUL DU BILAN DU MOIS SÉLECTIONNÉ
-  const inscriptionsRes = await pool.query(`
-    SELECT COUNT(*) as count, SUM(payment_amount) as total 
-    FROM professional_applications 
-    WHERE payment_status = 'paid' 
-      AND payment_date >= $1::date 
-      AND payment_date < ($1::date + INTERVAL '1 month')
-  `, [startDate]);
-  const totalInscriptions = Number(inscriptionsRes.rows[0].total || 0);
-  const countInscriptions = Number(inscriptionsRes.rows[0].count || 0);
-
-  const abonnementsRes = await pool.query(`
-    SELECT COUNT(*) as count, SUM(600) as total 
-    FROM professional_applications 
-    WHERE last_payment_at >= $1::date 
-      AND last_payment_at < ($1::date + INTERVAL '1 month')
-  `, [startDate]);
-  const totalAbonnements = Number(abonnementsRes.rows[0].total || 0);
-  const countAbonnements = Number(abonnementsRes.rows[0].count || 0);
-
-  const totalGeneral = totalInscriptions + totalAbonnements;
-
-  // On récupère la liste des pros (comme avant)
-  const result = await pool.query(`
-    SELECT id, full_name, company_name, phone, profession, subscription_status, subscription_expires_at, last_payment_at
-    FROM professional_applications 
-    WHERE status = 'approved'
-    ORDER BY 
-      CASE WHEN subscription_status = 'expired' THEN 0 ELSE 1 END,
-      subscription_expires_at ASC
-  `);
-
-  const rows = result.rows.map(p => {
-    const isExpired = p.subscription_status === 'expired' && p.subscription_expires_at != null;
-    const expiryDate = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
+  // ==========================================
+  // GESTION DES ABONNEMENTS
+  // ==========================================
+  router.get("/abonnements", requireAdmin, async (req, res) => {
+    const csrf = getCsrf(req);
     
-    let daysLeft = 0;
-    if (expiryDate) {
-      const diffTime = expiryDate - new Date();
-      daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-
-    let badgeColor = "#10b981"; // Vert
-    let badgeText = `Actif (${daysLeft} j)`;
-    if (p.subscription_expires_at == null) { badgeText = "Actif (Legacy)"; }
-    else if (isExpired || daysLeft <= 0) { badgeColor = "#ef4444"; badgeText = "Expiré"; }
-    else if (daysLeft <= 7) { badgeColor = "#f59e0b"; badgeText = `Bientôt expiré (${daysLeft} j)`; }
-
-    const waNumber = p.phone ? p.phone.replace(/\D/g, "").replace(/^(00229|229)/, "") : "";
-    const waMessage = encodeURIComponent(`Bonjour ${p.full_name}, votre abonnement TrouveMoi ${isExpired ? 'a expiré' : 'arrive à échéance'}. Merci de régler vos 600 FCFA pour rester visible sur la plateforme.`);
-
-    return `
-      <tr style="border-bottom: 1px solid #e5e7eb;">
-        <td style="padding: 12px;">
-          <div style="font-weight: 700; color: #111827;">${escapeHtml(p.company_name || p.full_name)}</div>
-          <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.profession)}</div>
-        </td>
-        <td style="padding: 12px; font-size: 13px;">${p.phone ? `<a href="tel:+229${p.phone}" style="color:#2563eb; text-decoration:none;">${escapeHtml(p.phone)}</a>` : '-'}</td>
-        <td style="padding: 12px; font-size: 13px;">${expiryDate ? expiryDate.toLocaleDateString("fr-FR") : "Non défini"}</td>
-        <td style="padding: 12px;">
-          <span class="badge" style="background:${badgeColor}20; color:${badgeColor}; padding:6px 10px; border-radius:12px; font-weight:bold;">${badgeText}</span>
-        </td>
-        <td style="padding: 12px; font-size: 13px;">${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}</td>
-        <td style="padding: 12px;">
-          <div style="display:flex; gap:5px;">
-            <form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <button class="success" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">+ 1 mois</button>
-            </form>
-            ${p.phone ? `<a href="https://wa.me/229${waNumber}?text=${waMessage}" target="_blank" class="button whatsapp" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">💬 Relancer</a>` : ''}
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  res.send(page("Abonnements", `
-    <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
-    ${await customAdminMenu("/admin/abonnements", csrf)}
-    
-    <!-- ✅ SÉLECTEUR DE MOIS ET BOUTON EXPORT -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
-      <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
-        <label style="font-weight:bold; font-size:14px; color:#374151;">📅 Sélectionner le mois :</label>
-        <input type="month" name="month" value="${selectedMonth}" onchange="this.form.submit()" style="padding:8px; border-radius:8px; border:1px solid #cbd5e1; margin:0; width:auto;">
-      </form>
-      <a href="/admin/abonnements/export?month=${selectedMonth}" class="button success" style="margin:0; padding:10px 20px; font-size:14px;">📥 Télécharger le rapport (CSV)</a>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
-      <div class="card" style="text-align: center; border-top: 4px solid #3b82f6; margin: 0;">
-        <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Inscriptions (${selectedMonth})</h3>
-        <div style="font-size: 32px; font-weight: 900; color: #1e3a8a; margin: 10px 0;">${totalInscriptions} FCFA</div>
-        <p style="font-size: 13px; color: #94a3b8;">${countInscriptions} inscription(s) validée(s)</p>
-      </div>
-      
-      <div class="card" style="text-align: center; border-top: 4px solid #10b981; margin: 0;">
-        <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Abonnements (${selectedMonth})</h3>
-        <div style="font-size: 32px; font-weight: 900; color: #065f46; margin: 10px 0;">${totalAbonnements} FCFA</div>
-        <p style="font-size: 13px; color: #94a3b8;">${countAbonnements} abonnement(s) payé(s)</p>
-      </div>
-
-      <div class="card" style="text-align: center; border-top: 4px solid #f59e0b; margin: 0; background: #fffbeb;">
-        <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
-        <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
-        <p style="font-size: 13px; color: #d97706;">Mois sélectionné</p>
-      </div>
-    </div>
-
-    <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
-      💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
-    </div>
-
-    <section class="card" style="margin-top: 20px; overflow-x: auto;">
-      <table style="width: 100%; border-collapse: collapse; text-align: left;">
-        <thead>
-          <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Professionnel</th>
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Téléphone</th>
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date d'expiration</th>
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Statut</th>
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Dernier paiement</th>
-            <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows || `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280;">Aucun professionnel enregistré.</td></tr>`}
-        </tbody>
-      </table>
-    </section>
-  `, null));
-});
-  router.get("/abonnements/export", requireAdmin, async (req, res) => {
-  try {
     const currentMonth = new Date().toISOString().slice(0, 7);
     const selectedMonth = String(req.query.month || currentMonth);
     const startDate = `${selectedMonth}-01`;
 
-    // 1. Récupérer les inscriptions payées ce mois-là
-    const inscriptions = await pool.query(`
-      SELECT full_name, company_name, payment_amount, payment_date, payment_ref 
+    const inscriptionsRes = await pool.query(`
+      SELECT COUNT(*) as count, SUM(payment_amount) as total 
       FROM professional_applications 
       WHERE payment_status = 'paid' 
         AND payment_date >= $1::date 
         AND payment_date < ($1::date + INTERVAL '1 month')
     `, [startDate]);
+    const totalInscriptions = Number(inscriptionsRes.rows[0].total || 0);
+    const countInscriptions = Number(inscriptionsRes.rows[0].count || 0);
 
-    // 2. Récupérer les abonnements payés ce mois-là
-    const abonnements = await pool.query(`
-      SELECT full_name, company_name, last_payment_at 
+    const abonnementsRes = await pool.query(`
+      SELECT COUNT(*) as count, SUM(600) as total 
       FROM professional_applications 
       WHERE last_payment_at >= $1::date 
         AND last_payment_at < ($1::date + INTERVAL '1 month')
     `, [startDate]);
+    const totalAbonnements = Number(abonnementsRes.rows[0].total || 0);
+    const countAbonnements = Number(abonnementsRes.rows[0].count || 0);
 
-    let csv = `RAPPORT FINANCIER - ${selectedMonth}\n\n`;
-    
-    csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
-    csv += `Date;Nom;Entreprise;Montant;Reference\n`;
-    let totalInscr = 0;
-    inscriptions.rows.forEach(i => {
-      csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};"${i.full_name}";"${i.company_name || ''}";${i.payment_amount};"${i.payment_ref || ''}"\n`;
-      totalInscr += Number(i.payment_amount);
-    });
-    csv += `Total Inscriptions;;;${totalInscr};\n\n`;
+    const totalGeneral = totalInscriptions + totalAbonnements;
 
-    csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
-    csv += `Date;Nom;Entreprise;Montant\n`;
-    let totalAbo = 0;
-    abonnements.rows.forEach(a => {
-      csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};"${a.full_name}";"${a.company_name || ''}";600\n`;
-      totalAbo += 600;
-    });
-    csv += `Total Abonnements;;;${totalAbo};\n\n`;
-    
-    csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
+    const result = await pool.query(`
+      SELECT id, full_name, company_name, phone, profession, subscription_status, subscription_expires_at, last_payment_at
+      FROM professional_applications 
+      WHERE status = 'approved'
+      ORDER BY 
+        CASE WHEN subscription_status = 'expired' THEN 0 ELSE 1 END,
+        subscription_expires_at ASC
+    `);
 
-    res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="rapport_trouvemoi_${selectedMonth}.csv"`);
-    res.send("\uFEFF" + csv); // \uFEFF pour que Excel reconnaisse les accents
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("Erreur lors de l'export.");
-  }
-});
+    const rows = result.rows.map(p => {
+      const isExpired = p.subscription_status === 'expired' && p.subscription_expires_at != null;
+      const expiryDate = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
+      
+      let daysLeft = 0;
+      if (expiryDate) {
+        const diffTime = expiryDate - new Date();
+        daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+
+      let badgeColor = "#10b981";
+      let badgeText = `Actif (${daysLeft} j)`;
+      if (p.subscription_expires_at == null) { badgeText = "Actif (Legacy)"; }
+      else if (isExpired || daysLeft <= 0) { badgeColor = "#ef4444"; badgeText = "Expiré"; }
+      else if (daysLeft <= 7) { badgeColor = "#f59e0b"; badgeText = `Bientôt expiré (${daysLeft} j)`; }
+
+      const waNumber = p.phone ? p.phone.replace(/\D/g, "").replace(/^(00229|229)/, "") : "";
+      const waMessage = encodeURIComponent(`Bonjour ${p.full_name}, votre abonnement TrouveMoi ${isExpired ? 'a expiré' : 'arrive à échéance'}. Merci de régler vos 600 FCFA pour rester visible sur la plateforme.`);
+
+      return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 12px;">
+            <div style="font-weight: 700; color: #111827;">${escapeHtml(p.company_name || p.full_name)}</div>
+            <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.profession)}</div>
+          </td>
+          <td style="padding: 12px; font-size: 13px;">${p.phone ? `<a href="tel:+229${p.phone}" style="color:#2563eb; text-decoration:none;">${escapeHtml(p.phone)}</a>` : '-'}</td>
+          <td style="padding: 12px; font-size: 13px;">${expiryDate ? expiryDate.toLocaleDateString("fr-FR") : "Non défini"}</td>
+          <td style="padding: 12px;">
+            <span class="badge" style="background:${badgeColor}20; color:${badgeColor}; padding:6px 10px; border-radius:12px; font-weight:bold;">${badgeText}</span>
+          </td>
+          <td style="padding: 12px; font-size: 13px;">${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}</td>
+          <td style="padding: 12px;">
+            <div style="display:flex; gap:5px;">
+              <form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
+                <input type="hidden" name="csrfToken" value="${csrf}">
+                <button class="success" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">+ 1 mois</button>
+              </form>
+              ${p.phone ? `<a href="https://wa.me/229${waNumber}?text=${waMessage}" target="_blank" class="button whatsapp" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">💬 Relancer</a>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    res.send(page("Abonnements", `
+      <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
+      ${await customAdminMenu("/admin/abonnements", csrf)}
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
+        <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
+          <label style="font-weight:bold; font-size:14px; color:#374151;">📅 Sélectionner le mois :</label>
+          <input type="month" name="month" value="${selectedMonth}" onchange="this.form.submit()" style="padding:8px; border-radius:8px; border:1px solid #cbd5e1; margin:0; width:auto;">
+        </form>
+        <a href="/admin/abonnements/export?month=${selectedMonth}" class="button success" style="margin:0; padding:10px 20px; font-size:14px;">📥 Télécharger le rapport (CSV)</a>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+        <div class="card" style="text-align: center; border-top: 4px solid #3b82f6; margin: 0;">
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Inscriptions (${selectedMonth})</h3>
+          <div style="font-size: 32px; font-weight: 900; color: #1e3a8a; margin: 10px 0;">${totalInscriptions} FCFA</div>
+          <p style="font-size: 13px; color: #94a3b8;">${countInscriptions} inscription(s) validée(s)</p>
+        </div>
+        
+        <div class="card" style="text-align: center; border-top: 4px solid #10b981; margin: 0;">
+          <h3 style="font-size: 14px; color: #64748b; text-transform: uppercase;">Abonnements (${selectedMonth})</h3>
+          <div style="font-size: 32px; font-weight: 900; color: #065f46; margin: 10px 0;">${totalAbonnements} FCFA</div>
+          <p style="font-size: 13px; color: #94a3b8;">${countAbonnements} abonnement(s) payé(s)</p>
+        </div>
+
+        <div class="card" style="text-align: center; border-top: 4px solid #f59e0b; margin: 0; background: #fffbeb;">
+          <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
+          <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
+          <p style="font-size: 13px; color: #d97706;">Mois sélectionné</p>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
+        💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
+      </div>
+
+      <section class="card" style="margin-top: 20px; overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+          <thead>
+            <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Professionnel</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Téléphone</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Date d'expiration</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Statut</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Dernier paiement</th>
+              <th style="padding: 12px; font-size: 12px; color: #6b7280; text-transform: uppercase;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="6" style="text-align: center; padding: 20px; color: #6b7280;">Aucun professionnel enregistré.</td></tr>`}
+          </tbody>
+        </table>
+      </section>
+    `, null));
+  });
+
+  router.get("/abonnements/export", requireAdmin, async (req, res) => {
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const selectedMonth = String(req.query.month || currentMonth);
+      const startDate = `${selectedMonth}-01`;
+
+      const inscriptions = await pool.query(`
+        SELECT full_name, company_name, payment_amount, payment_date, payment_ref 
+        FROM professional_applications 
+        WHERE payment_status = 'paid' 
+          AND payment_date >= $1::date 
+          AND payment_date < ($1::date + INTERVAL '1 month')
+      `, [startDate]);
+
+      const abonnements = await pool.query(`
+        SELECT full_name, company_name, last_payment_at 
+        FROM professional_applications 
+        WHERE last_payment_at >= $1::date 
+          AND last_payment_at < ($1::date + INTERVAL '1 month')
+      `, [startDate]);
+
+      let csv = `RAPPORT FINANCIER - ${selectedMonth}\n\n`;
+      
+      csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
+      csv += `Date;Nom;Entreprise;Montant;Reference\n`;
+      let totalInscr = 0;
+      inscriptions.rows.forEach(i => {
+        csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};"${i.full_name}";"${i.company_name || ''}";${i.payment_amount};"${i.payment_ref || ''}"\n`;
+        totalInscr += Number(i.payment_amount);
+      });
+      csv += `Total Inscriptions;;;${totalInscr};\n\n`;
+
+      csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
+      csv += `Date;Nom;Entreprise;Montant\n`;
+      let totalAbo = 0;
+      abonnements.rows.forEach(a => {
+        csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};"${a.full_name}";"${a.company_name || ''}";600\n`;
+        totalAbo += 600;
+      });
+      csv += `Total Abonnements;;;${totalAbo};\n\n`;
+      
+      csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="rapport_trouvemoi_${selectedMonth}.csv"`);
+      res.send("\uFEFF" + csv);
+    } catch (e) {
+      console.error(e);
+      res.status(500).send("Erreur lors de l'export.");
+    }
+  });
+
+  // ==========================================
+  // AUTRES ROUTES (Dons, Blog, Logs, etc.)
+  // ==========================================
   router.get("/dons", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
@@ -932,24 +929,6 @@ router.get("/abonnements", requireAdmin, async (req, res) => {
       </section>
     `, null));
   });
-  // Action : Ajouter 1 mois d'abonnement manuellement
-router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    await pool.query(`
-      UPDATE professional_applications 
-      SET subscription_status = 'active', 
-          subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
-          last_payment_at = NOW() 
-      WHERE id = $1
-    `, [id]);
-    await logAdminAction("subscription_manual_renewal", "pro", id, "Abonnement renouvelé manuellement par l'admin");
-    res.redirect(303, "/admin/candidatures");
-  } catch (e) {
-    console.error(e);
-    res.redirect(303, "/admin/candidatures");
-  }
-});
 
   return router;
 };
