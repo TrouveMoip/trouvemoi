@@ -734,9 +734,9 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
   
-  // 🛠️ CODE MAGIQUE POUR LES TESTS (À SUPPRIMER APRÈS)
-  if (code === "123456") {
-    if (!IS_PRODUCTION) console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
+  // 🛠️ CODE DE TEST (fonctionne UNIQUEMENT en développement)
+  if (code === "123456" && !IS_PRODUCTION) {
+    console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
     return true;
   }
   
