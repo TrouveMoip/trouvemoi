@@ -1113,6 +1113,37 @@ await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_i
 await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_visitor ON client_favorites(visitor_id)`);
 await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_pro_id ON contact_messages(pro_id)`);
     
+// ✅ GESTION DES ADMINISTRATEURS (SUPER ADMIN & MODÉRATEURS)
+// 1. Création de la table pour les comptes employés
+await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  role VARCHAR(50) DEFAULT 'moderator',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  last_login TIMESTAMP
+)`);
+
+// 2. Création automatique de TON compte Super Admin (si la table est vide)
+const adminCheck = await pool.query(`SELECT COUNT(*) FROM admin_users WHERE role = 'super_admin'`);
+if (Number(adminCheck.rows[0].count) === 0) {
+  if (process.env.ADMIN_PASSWORD) {
+    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+    await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'super_admin')`, ['admin@trouvemoi.bj', hashedPassword]);
+    console.log("👑 Compte Super Admin initialisé (admin@trouvemoi.bj)");
+  } else {
+    console.log("⚠️ ADMIN_PASSWORD non défini. Impossible de créer le Super Admin.");
+  }
+}
+
+// 3. Ajout des colonnes pour le verrouillage des dossiers (Candidatures)
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS assigned_to INTEGER REFERENCES admin_users(id)`);
+await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS processed_by INTEGER REFERENCES admin_users(id)`);
+
+// 4. Ajout de la colonne pour la traçabilité dans le journal
+await pool.query(`ALTER TABLE admin_logs ADD COLUMN IF NOT EXISTS admin_email VARCHAR(255)`);
+    
     console.log("✅ Base de données connectée");
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
