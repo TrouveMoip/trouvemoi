@@ -121,6 +121,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
       if (files.photo_2?.[0]) { const r = await uploadToCloudinary(files.photo_2[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_2`); p2url = r.secure_url; }
       if (files.photo_3?.[0]) { const r = await uploadToCloudinary(files.photo_3[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_3`); p3url = r.secure_url; }
 
+      const horaires = {};
+['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j => {
+  const o = req.body[`h_${j}_o`]; const f = req.body[`h_${j}_f`];
+  if (o && f) horaires[j] = { o, f };
+});
+const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+const unavailable_until = req.body.unavailable_until || null;
       const insertResult = await pool.query(
         `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}) RETURNING id`,
         [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null]
