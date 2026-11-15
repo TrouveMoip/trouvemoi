@@ -4,7 +4,14 @@ const bcrypt = require('bcrypt');
 
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
-
+  
+// ✅ Middleware pour restreindre l'accès au Super Admin uniquement
+function requireSuperAdmin(req, res, next) {
+  if (req.adminSession?.role !== 'super_admin') {
+    return res.status(403).send(page("Accès refusé", "<h2>Accès refusé. Seul le Super Administrateur peut voir cette page.</h2><a href='/admin/dashboard' class='button'>Retour au dashboard</a>", null));
+  }
+  next();
+}
   async function customAdminMenu(current, csrf) {
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     try {
@@ -35,7 +42,8 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
       { href: "/admin/qrcode", label: "📱 QR Code", badge: 0 },
       { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed },
-      { href: "/admin/mon-profil", label: "👤 Mon Profil", badge: 0 }
+      { href: "/admin/mon-profil", label: "👤 Mon Profil", badge: 0 },
+      { href: "/admin/admins", label: "👑 Gestion Admins", badge: 0 }
     ];
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
