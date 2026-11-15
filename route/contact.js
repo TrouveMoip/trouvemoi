@@ -28,14 +28,20 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
           <form action="/contact" method="POST">
             <input type="hidden" name="pro_id" value="${proId || ""}">
             <input type="hidden" name="report_id" value="${reportId || ""}">
+            
             <label>Votre nom *</label>
             <input name="name" required maxlength="100">
+            
             <label>Votre email *</label>
             <input name="email" type="email" required maxlength="254">
-            <label>Votre téléphone (optionnel)</label>
-            <input name="phone" type="tel" maxlength="30">
+            
+            <!-- ✅ CORRECTION : Le téléphone est maintenant obligatoire -->
+            <label>Votre téléphone *</label>
+            <input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" placeholder="Ex: 01XXXXXXXX">
+            
             <label>Message *</label>
             <textarea name="message" required rows="5" maxlength="3000"></textarea>
+            
             <button type="submit" style="width:100%; margin-top:10px;">Envoyer le message</button>
           </form>
         </section>
@@ -58,7 +64,8 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
     const proId = req.body.pro_id ? Number(req.body.pro_id) : null;
     const reportId = req.body.report_id ? Number(req.body.report_id) : null;
 
-    if (!name || !email || !message) return res.redirect(303, "/contact");
+    // ✅ CORRECTION : On vérifie aussi que le téléphone est présent
+    if (!name || !email || !phone || !message) return res.redirect(303, "/contact");
 
     try {
       await pool.query( 
@@ -66,12 +73,12 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
         [name, email, phone || null, message, proId || null, reportId || null]
       );
       
-      // Envoi du SMS à l'admin (uniquement si la variable d'environnement est définie)
+      // ✅ Confidentialité : SMS à l'admin SEULEMENT si ce n'est pas pour un pro
       if (process.env.ADMIN_PHONE && !proId) {
-  try {
-    sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
-  } catch (smsError) { console.error("Erreur envoi SMS admin:", smsError); }
-}
+        try {
+          sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
+        } catch (smsError) { console.error("Erreur envoi SMS admin:", smsError); }
+      }
       
       res.redirect(303, "/contact?success=1");
     } catch (e) { 
