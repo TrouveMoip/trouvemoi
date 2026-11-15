@@ -485,15 +485,18 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const otpCode = String(req.body.otp_code || "").trim();
     const neighborhood = req.body.neighborhood === 'Autre' ? req.body.neighborhood_other : req.body.neighborhood;
 
-    const horaires = {};
-    ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
-      if (req.body[`h_${j}_open`]) {
-        const o = req.body[`h_${j}_o`];
-        const f = req.body[`h_${j}_f`];
-        if (o && f) horaires[j] = { o, f };
-      }
-    });
-    const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
+   const horaires = {};
+// ✅ On ne récupère les horaires QUE si c'est un local fixe
+if (req.body.type_lieu === 'fixe') {
+  ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
+    if (req.body[`h_${j}_open`]) {
+      const o = req.body[`h_${j}_o`];
+      const f = req.body[`h_${j}_f`];
+      if (o && f) horaires[j] = { o, f };
+    }
+  });
+}
+const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
     const lat = Number(latitude) || null;
     const lng = Number(longitude) || null;
 
