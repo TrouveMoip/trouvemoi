@@ -787,36 +787,68 @@ router.post("/mes-messages/:id/supprimer", async (req, res) => {
   });
 
   router.get("/abonnement/verifier", async (req, res) => {
-    const proConnected = await getConnectedPro(req);
-    const transactionId = String(req.query.transaction_id || "").trim();
-    if (!proConnected || !transactionId) return res.redirect(303, "/mon-espace-pro");
+  const proConnected = await getConnectedPro(req);
+  const transactionId = String(req.query.transaction_id || "").trim();
+  if (!proConnected || !transactionId) return res.redirect(303, "/mon-espace-pro");
 
-    try {
-      const verification = await verifyKkiapayTransaction(transactionId);
-      
-      if (verification.success) {
-        await pool.query(`
-          UPDATE professional_applications 
-          SET subscription_status = 'active', 
-              subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
-              last_payment_at = NOW() 
-          WHERE id = $1
-        `, [proConnected.pro.id]);
-        
-        return res.send(page("Succès", `
-          <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-            <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
-            <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
-            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
-          </section>
-        `, proConnected));
-      }
-      res.redirect(303, "/mon-espace-pro");
-    } catch (e) {
-      console.error("Erreur abonnement:", e);
-      res.redirect(303, "/mon-espace-pro");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // 🔒 Le verrou : on bloque ce numéro de transaction pour être sûr que personne d'autre ne l'utilise en même temps
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
+
+    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
+    const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
+    if (alreadyUsed.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.send(page("Déjà traité", `
+        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+          <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
+          <p>Cette transaction a déjà été validée. Votre abonnement a bien été pris en compte.</p>
+          <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+        </section>
+      `, proConnected));
     }
-  });
 
+    // 2️⃣ On vérifie auprès de Kkiapay que le paiement est réel
+    const verification = await verifyKkiapayTransaction(transactionId);
+    
+    if (verification.success) {
+      // 3️⃣ On poinçonne le ticket dans la base
+      await client.query(
+        `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
+        [proConnected.pro.id, transactionId, verification.amount]
+      );
+
+      // 4️⃣ On ajoute les 30 jours
+      await client.query(`
+        UPDATE professional_applications 
+        SET subscription_status = 'active', 
+            subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+            last_payment_at = NOW() 
+        WHERE id = $1
+      `, [proConnected.pro.id]);
+      
+      await client.query("COMMIT");
+      
+      return res.send(page("Succès", `
+        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+          <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
+          <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
+          <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+        </section>
+      `, proConnected));
+    }
+    
+    await client.query("ROLLBACK");
+    res.redirect(303, "/mon-espace-pro");
+  } catch (e) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("Erreur abonnement:", e);
+    res.redirect(303, "/mon-espace-pro");
+  } finally {
+    client.release();
+  }
+});
   return router;
 };
