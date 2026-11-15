@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt'); // ✅ Importation ajoutée pour la sécurité des admins
+const bcrypt = require('bcrypt'); // ✅ Importation ajoutée
 
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
@@ -13,7 +13,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     next();
   }
 
-  async function customAdminMenu(current, csrf) {
+  async function customAdminMenu(current, csrf, role = 'super_admin') {
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     try {
       gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
@@ -26,7 +26,8 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       jobsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'")).rows[0].count);
     } catch (e) {}
 
-    const links = [
+    // ✅ Liste de base (accessible à tous les admins)
+    let links = [
       { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
       { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, 
       { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
@@ -35,18 +36,26 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       { href: "/admin/signalisations", label: "🚩 Signalements", badge: reportsCount }, 
       { href: "/admin/emplois", label: "💼 Offres", badge: jobsPendingCount }, 
       { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
-      { href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount },
-      { href: "/admin/retraits", label: "💸 Retraits", badge: withdrawalsCount },
       { href: "/admin/abonnements", label: "💳 Abonnements", badge: 0 },
-      { href: "/admin/dons", label: "❤️ Dons", badge: 0 },
       { href: "/admin/blog", label: "📝 Blog", badge: 0 },
       { href: "/admin/logs", label: "🗂️ Journal", badge: 0 },
       { href: "/admin/qrcode", label: "📱 QR Code", badge: 0 },
       { href: "/admin/notifications", label: "📨 Notifications", badge: notificationsFailed },
-      { href: "/admin/mon-profil", label: "👤 Mon Profil", badge: 0 },
-      { href: "/admin/admins", label: "👑 Gestion Admins", badge: 0 }
+      { href: "/admin/mon-profil", label: "👤 Mon Profil", badge: 0 }
     ];
-    return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
+
+    // ✅ Si c'est un Super Admin, on ajoute les liens sensibles
+    if (role === 'super_admin') {
+      links.push({ href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount });
+      links.push({ href: "/admin/retraits", label: "💸 Retraits", badge: withdrawalsCount });
+      links.push({ href: "/admin/dons", label: "❤️ Dons", badge: 0 });
+      links.push({ href: "/admin/admins", label: "👑 Gestion Admins", badge: 0 });
+      links.push({ href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 });
+    }
+
+    const roleLabel = role === 'super_admin' ? '👑 Super Admin' : '🛡️ Modérateur';
+
+    return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#4b5563;">Connecté en tant que : ${roleLabel}</div><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
 
   // ==========================================
@@ -131,7 +140,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     
     res.send(page("Mon Profil", `
       <h1 style="text-align:center; margin-bottom:20px;">👤 Mon Profil</h1>
-      ${await customAdminMenu("/admin/mon-profil", csrf)}
+      ${await customAdminMenu("/admin/mon-profil", csrf, req.adminSession.role)}
       
       <section class="card" style="max-width: 500px; margin: 40px auto;">
         <div style="text-align:center; margin-bottom:20px;">
@@ -212,7 +221,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
 
     res.send(page("Gestion des Admins", `
       <h1 style="text-align:center; margin-bottom:20px;">👑 Gestion des Administrateurs</h1>
-      ${await customAdminMenu("/admin/admins", csrf)}
+      ${await customAdminMenu("/admin/admins", csrf, req.adminSession.role)}
 
       <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-top:20px;">
         
@@ -289,12 +298,12 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       messages: Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL")).rows[0].count),
       prosToday: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE")).rows[0].count)
     };
-    const menu = await customAdminMenu("/admin/dashboard", getCsrf(req));
+    const menu = await customAdminMenu("/admin/dashboard", getCsrf(req), req.adminSession.role);
     res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>`, null));
   });
 
   // ==========================================
-  // GESTION DES CANDIDATURES (Verrouillage & Traçabilité)
+  // GESTION DES CANDIDATURES
   // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
@@ -321,10 +330,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       if (c.status === 'approved') { 
         statusColor = "#10b981"; 
         statusLabel = "Approuvé"; 
-        if (c.subscription_status === 'expired') {
-          statusColor = "#ef4444"; 
-          statusLabel = "Abonnement expiré";
-        }
+        if (c.subscription_status === 'expired') { statusColor = "#ef4444"; statusLabel = "Abonnement expiré"; }
       }
       else if (c.status === 'rejected') { statusColor = "#ef4444"; statusLabel = "Rejeté"; }
       else if (c.status === 'suspended') { statusColor = "#f97316"; statusLabel = "Suspendu"; }
@@ -470,7 +476,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         </a>
       </div>
       
-      ${await customAdminMenu("/admin/candidatures", csrf)}
+      ${await customAdminMenu("/admin/candidatures", csrf, req.adminSession.role)}
       
       <style>
         details summary::-webkit-details-marker { display: none; }
@@ -492,9 +498,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         [req.adminSession.adminId, id]
       );
       res.redirect(303, "/admin/candidatures");
-    } catch (e) {
-      res.redirect(303, "/admin/candidatures");
-    }
+    } catch (e) { res.redirect(303, "/admin/candidatures"); }
   });
 
   router.post("/candidatures/:id/status", requireAdmin, verifyCsrf, async (req, res) => {
@@ -541,16 +545,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
       const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
       
-      if (updateResult.rowCount === 0) {
-        return res.redirect(303, "/admin/candidatures");
-      }
+      if (updateResult.rowCount === 0) return res.redirect(303, "/admin/candidatures");
 
       const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
       
       if (proResult.rows.length > 0) {
         const pro = proResult.rows[0];
         const messageSMS = `Bonjour ${pro.full_name}, voici votre nouveau code de connexion TrouveMoi : ${newCode}. Gardez-le précieusement.`;
-        try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée (mode test)"); }
+        try { await sendSMS(pro.phone, messageSMS); } catch(e) { console.log("Erreur SMS ignorée"); }
       }
       
       await logAdminAction("pro_code_regenerated", "pro", id, `[Par: ${req.adminSession.email}] Nouveau code : ${newCode}`);
@@ -599,9 +601,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       
       await logAdminAction("pro_deleted_by_admin", "pro", id, `[Par: ${req.adminSession.email}] Compte supprimé définitivement`);
       res.redirect(303, "/admin/candidatures");
-    } catch (e) {
-      res.redirect(303, "/admin/candidatures");
-    }
+    } catch (e) { res.redirect(303, "/admin/candidatures"); }
   });
 
   // ==========================================
@@ -642,7 +642,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       `;
     }).join("");
 
-    const menu = await customAdminMenu("/admin/suivi", csrf);
+    const menu = await customAdminMenu("/admin/suivi", csrf, req.adminSession.role);
     
     res.send(page("Suivi des Pros", `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
@@ -725,7 +725,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         </div>
         ${a.status === 'pending_validation' ? `<div style="margin-top:15px; display:flex; gap:10px;"><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/agences/${a.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Refuser</button></form></div>` : ""}
       </article>`).join("");
-    res.send(page("Agences", `<h1 style="text-align:center; margin-bottom:20px;">Gestion des Agences</h1>${await customAdminMenu("/admin/agences", csrf)}${rows || "<p>Aucune agence.</p>"}`, null));
+    res.send(page("Agences", `<h1 style="text-align:center; margin-bottom:20px;">Gestion des Agences</h1>${await customAdminMenu("/admin/agences", csrf, req.adminSession.role)}${rows || "<p>Aucune agence.</p>"}`, null));
   });
 
   router.post("/agences/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
@@ -739,13 +739,13 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // AVIS & MESSAGES & RETRAITS
+  // AVIS & MESSAGES
   // ==========================================
   router.get("/avis", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, p.full_name AS pro_name FROM reviews r LEFT JOIN professional_applications p ON p.id = r.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC LIMIT 50`);
     const rows = result.rows.map(r => `<article class="card"><h2>${escapeHtml(r.author_name)}</h2><p>Avis sur : ${escapeHtml(r.pro_name)}</p><p>"${escapeHtml(r.comment || "")}"</p><form action="/admin/avis/${r.id}/statut" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button> <button name="status" value="rejected" class="danger">Rejeter</button></form></article>`).join("");
-    res.send(page("Avis", `<h1>Avis</h1>${await customAdminMenu("/admin/avis", csrf)}${rows}`, null));
+    res.send(page("Avis", `<h1>Avis</h1>${await customAdminMenu("/admin/avis", csrf, req.adminSession.role)}${rows}`, null));
   });
 
   router.post("/avis/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
@@ -766,9 +766,12 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const msgs = result.rows.map(m => `<article class="card"><h2>${escapeHtml(m.name)}</h2><p>Email: ${escapeHtml(m.email)} | Tel: ${escapeHtml(m.phone || "-")}</p><p style="background:#f9fafb; padding:10px;">${escapeHtml(m.message)}</p></article>`).join("");
     
     await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
-    res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf)}${msgs || "<p>Aucun message général.</p>"}`, null));
+    res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf, req.adminSession.role)}${msgs || "<p>Aucun message général.</p>"}`, null));
   });
 
+  // ==========================================
+  // RETRAITS (Super Admin)
+  // ==========================================
   router.get("/retraits", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT w.*, p.full_name, p.pro_code FROM withdrawal_requests w JOIN professional_applications p ON p.id = w.pro_id ORDER BY CASE WHEN w.status = 'pending' THEN 0 ELSE 1 END, w.created_at DESC`);
@@ -781,7 +784,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         ${w.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/retraits/${w.id}/approuver" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Approuver</button></form><form action="/admin/retraits/${w.id}/rejeter" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Rejeter</button></form></div>` : ""}
       </article>
     `).join("");
-    res.send(page("Retraits", `<h1>Retraits</h1>${await customAdminMenu("/admin/retraits", csrf)}${rows || "<p>Aucune demande.</p>"}`, null));
+    res.send(page("Retraits", `<h1>Retraits</h1>${await customAdminMenu("/admin/retraits", csrf, req.adminSession.role)}${rows || "<p>Aucune demande.</p>"}`, null));
   });
 
   router.post("/retraits/:id/approuver", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
@@ -804,13 +807,13 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // RGPD & SIGNALEMENTS & EMPLOIS
+  // RGPD (Super Admin)
   // ==========================================
   router.get("/rgpd", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT g.*, p.full_name AS pro_name FROM gdpr_requests g LEFT JOIN professional_applications p ON p.id = g.pro_id ORDER BY g.created_at DESC`);
     const rows = result.rows.map(r => `<article class="card"><h2>${escapeHtml(r.request_type)} - ${escapeHtml(r.pro_name || "Inconnu")}</h2><p>Statut: ${escapeHtml(r.status)}</p>${r.status === "pending" ? `<form action="/admin/rgpd/${r.id}/traiter" method="POST"><input type="hidden" name="csrfToken" value="${csrf}"><button class="success">Traiter</button></form>` : ""}</article>`).join("");
-    res.send(page("RGPD", `<h1>RGPD</h1>${await customAdminMenu("/admin/rgpd", csrf)}${rows}`, null));
+    res.send(page("RGPD", `<h1>RGPD</h1>${await customAdminMenu("/admin/rgpd", csrf, req.adminSession.role)}${rows}`, null));
   });
 
   router.post("/rgpd/:id/traiter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
@@ -834,7 +837,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
         await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
         await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
-        await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte professionnel supprimé définitivement (DB + Cloudinary)`);
+        await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte supprimé définitivement (DB + Cloudinary)`);
       } else {
         await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
       }
@@ -847,11 +850,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     clearSessionCookie(res); res.redirect(303, "/admin");
   });
 
+  // ==========================================
+  // SIGNALEMENTS
+  // ==========================================
   router.get("/signalisations", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT r.*, v.comment AS review_comment, v.author_name, p.full_name AS pro_name FROM review_reports r JOIN reviews v ON v.id = r.review_id JOIN professional_applications p ON p.id = v.pro_id ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC`);
     const reports = result.rows.map(r => `<article class="card"><h2>Signalement de ${escapeHtml(r.pro_name)}</h2><p><strong>Motif :</strong> ${escapeHtml(r.reason)}</p><p><strong>Avis concerné :</strong> "${escapeHtml(r.review_comment)}" par ${escapeHtml(r.author_name)}</p>${r.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/signalisations/${r.id}/supprimer-avis" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Supprimer l'avis</button></form><form action="/admin/signalisations/${r.id}/rejeter" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="secondary">Rejeter le signalement</button></form></div>` : `<span class="badge">${escapeHtml(r.status)}</span>`}</article>`).join("");
-    res.send(page("Signalements", `<h1>Signalements</h1>${await customAdminMenu("/admin/signalisations", csrf)}${reports || "<p>Aucun signalement.</p>"}`, null));
+    res.send(page("Signalements", `<h1>Signalements</h1>${await customAdminMenu("/admin/signalisations", csrf, req.adminSession.role)}${reports || "<p>Aucun signalement.</p>"}`, null));
   });
 
   router.post("/signalisations/:id/supprimer-avis", requireAdmin, verifyCsrf, async (req, res) => {
@@ -871,11 +877,14 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     res.redirect(303, "/admin/signalisations");
   });
 
+  // ==========================================
+  // EMPLOIS
+  // ==========================================
   router.get("/emplois", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT j.*, p.full_name AS pro_name FROM job_offers j LEFT JOIN professional_applications p ON p.id = j.pro_id ORDER BY CASE WHEN j.status = 'pending' THEN 0 ELSE 1 END, j.created_at DESC`);
     const offers = result.rows.map(j => `<article class="card"><h2>${escapeHtml(j.job_title)}</h2><p>Par : ${escapeHtml(j.pro_name || "Inconnu")}</p><p>${escapeHtml(j.description)}</p>${j.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="approved" class="success">Approuver</button></form><form action="/admin/emplois/${j.id}/statut" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button name="status" value="rejected" class="danger">Rejeter</button></form></div>` : `<span class="badge">${escapeHtml(j.status)}</span>`}</article>`).join("");
-    res.send(page("Offres d'emploi", `<h1>Offres d'emploi</h1>${await customAdminMenu("/admin/emplois", csrf)}${offers || "<p>Aucune offre.</p>"}`, null));
+    res.send(page("Offres d'emploi", `<h1>Offres d'emploi</h1>${await customAdminMenu("/admin/emplois", csrf, req.adminSession.role)}${offers || "<p>Aucune offre.</p>"}`, null));
   });
 
   router.post("/emplois/:id/statut", requireAdmin, verifyCsrf, async (req, res) => {
@@ -969,7 +978,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
 
     res.send(page("Abonnements", `
       <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
-      ${await customAdminMenu("/admin/abonnements", csrf)}
+      ${await customAdminMenu("/admin/abonnements", csrf, req.adminSession.role)}
       
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
         <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
@@ -1076,20 +1085,23 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
-  // AUTRES ROUTES (Dons, Blog, Logs, etc.)
+  // DONS (Super Admin)
   // ==========================================
   router.get("/dons", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const result = await pool.query(`SELECT * FROM global_donations ORDER BY created_at DESC`);
     const rows = result.rows.map(d => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:12px;">${new Date(d.created_at).toLocaleString("fr-FR")}</td><td style="padding:12px; font-weight:bold; color:#10b981;">${d.amount} FCFA</td><td style="padding:12px;">${escapeHtml(d.donor_name)}</td></tr>`).join("");
-    res.send(page("Dons", `<h1>Dons reçus</h1>${await customAdminMenu("/admin/dons", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Montant</th><th>Donateur</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+    res.send(page("Dons", `<h1>Dons reçus</h1>${await customAdminMenu("/admin/dons", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Montant</th><th>Donateur</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
 
+  // ==========================================
+  // BLOG & LOGS & QRCODE & NOTIFICATIONS
+  // ==========================================
   router.get("/blog", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const articles = (await pool.query(`SELECT * FROM blog_posts ORDER BY created_at DESC`)).rows;
     const list = articles.map(a => `<article class="card"><h2>${escapeHtml(a.title)}</h2><p>${a.published ? 'En ligne' : 'Brouillon'}</p><form action="/admin/blog/${a.id}/supprimer" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Supprimer</button></form></article>`).join("");
-    res.send(page("Blog", `<h1>Blog</h1>${await customAdminMenu("/admin/blog", csrf)}<a href="/admin/blog/nouveau" class="button" style="margin-bottom:20px;">➕ Nouvel article</a>${list || "<p>Aucun article.</p>"}`, null));
+    res.send(page("Blog", `<h1>Blog</h1>${await customAdminMenu("/admin/blog", csrf, req.adminSession.role)}<a href="/admin/blog/nouveau" class="button" style="margin-bottom:20px;">➕ Nouvel article</a>${list || "<p>Aucun article.</p>"}`, null));
   });
 
   router.get("/blog/nouveau", requireAdmin, (req, res) => {
@@ -1112,27 +1124,30 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const csrf = getCsrf(req);
     const logs = (await pool.query(`SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 100`)).rows;
     const rows = logs.map(l => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`).join("");
-    res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+    res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
 
   router.get("/qrcode", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(process.env.APP_URL || "https://trouvemoi.bj")}`;
-    res.send(page("QR Code", `<h1>QR Code Officiel</h1>${await customAdminMenu("/admin/qrcode", csrf)}<section class="card" style="text-align:center;"><img src="${qrUrl}" style="width:250px; border-radius:8px;"><p>Scannez pour visiter le site.</p></section>`, null));
+    res.send(page("QR Code", `<h1>QR Code Officiel</h1>${await customAdminMenu("/admin/qrcode", csrf, req.adminSession.role)}<section class="card" style="text-align:center;"><img src="${qrUrl}" style="width:250px; border-radius:8px;"><p>Scannez pour visiter le site.</p></section>`, null));
   });
 
   router.get("/notifications", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const notifs = (await pool.query(`SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100`)).rows;
     const rows = notifs.map(n => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(n.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px;">${escapeHtml(n.recipient)}</td><td style="padding:10px;">${escapeHtml(n.body)}</td><td style="padding:10px;"><span class="badge">${escapeHtml(n.status)}</span></td></tr>`).join("");
-    res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+    res.send(page("Notifications", `<h1>Notifications</h1>${await customAdminMenu("/admin/notifications", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Destinataire</th><th>Message</th><th>Statut</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
   });
 
+  // ==========================================
+  // PARAMETRES (Super Admin)
+  // ==========================================
   router.get("/parametres", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     res.send(page("Paramètres", `
       <h1 style="text-align:center; margin-bottom:20px;">⚙️ Paramètres Administrateur</h1>
-      ${await customAdminMenu("/admin/parametres", csrf)}
+      ${await customAdminMenu("/admin/parametres", csrf, req.adminSession.role)}
       
       <section class="card" style="max-width: 500px; margin: 40px auto;">
         <h2 style="font-size: 18px; margin-bottom: 16px;">🔒 Changer le mot de passe</h2>
