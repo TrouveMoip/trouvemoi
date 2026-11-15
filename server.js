@@ -1120,6 +1120,9 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
 await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
+    // ✅ Nouvelles colonnes pour les agences
+await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS horaires_json TEXT`);
+await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
 
     // ✅ CRÉATION DE LA TABLE POUR LES PAIEMENTS D'ABONNEMENT
 await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
