@@ -1035,7 +1035,43 @@ router.get("/rgpd", requireAdmin, requireSuperAdmin, async (req, res) => {
     const reports = result.rows.map(r => `<article class="card"><h2>Signalement de ${escapeHtml(r.pro_name)}</h2><p><strong>Motif :</strong> ${escapeHtml(r.reason)}</p><p><strong>Avis concerné :</strong> "${escapeHtml(r.review_comment)}" par ${escapeHtml(r.author_name)}</p>${r.status === 'pending' ? `<div style="display:flex; gap:10px;"><form action="/admin/signalisations/${r.id}/supprimer-avis" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="danger">Supprimer l'avis</button></form><form action="/admin/signalisations/${r.id}/rejeter" method="POST" style="margin:0;"><input type="hidden" name="csrfToken" value="${csrf}"><button class="secondary">Rejeter le signalement</button></form></div>` : `<span class="badge">${escapeHtml(r.status)}</span>`}</article>`).join("");
     res.send(page("Signalements", `<h1>Signalements</h1>${await customAdminMenu("/admin/signalisations", csrf, req.adminSession.role)}${reports || "<p>Aucun signalement.</p>"}`, null));
   });
-
+// ==========================================
+// SIGNALEMENTS (Affichage)
+// ==========================================
+router.get("/signalisations", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`
+    SELECT r.*, v.comment AS review_comment, v.author_name, p.full_name AS pro_name 
+    FROM review_reports r 
+    JOIN reviews v ON v.id = r.review_id 
+    JOIN professional_applications p ON p.id = v.pro_id 
+    ORDER BY CASE WHEN r.status = 'pending' THEN 0 ELSE 1 END, r.created_at DESC
+  `);
+  const reports = result.rows.map(r => `
+    <article class="card">
+      <h2>Signalement de ${escapeHtml(r.pro_name)}</h2>
+      <p><strong>Motif :</strong> ${escapeHtml(r.reason)}</p>
+      <p><strong>Avis concerné :</strong> "${escapeHtml(r.review_comment)}" par ${escapeHtml(r.author_name)}</p>
+      ${r.status === 'pending' ? `
+        <div style="display:flex; gap:10px;">
+          <form action="/admin/signalisations/${r.id}/supprimer-avis" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="danger">Supprimer l'avis</button>
+          </form>
+          <form action="/admin/signalisations/${r.id}/rejeter" method="POST" style="margin:0;">
+            <input type="hidden" name="csrfToken" value="${csrf}">
+            <button class="secondary">Rejeter le signalement</button>
+          </form>
+        </div>
+      ` : `<span class="badge">${escapeHtml(r.status)}</span>`}
+    </article>
+  `).join("");
+  res.send(page("Signalements", `
+    <h1>🚩 Signalements</h1>
+    ${await customAdminMenu("/admin/signalisations", csrf, req.adminSession.role)}
+    ${reports || "<p style='text-align:center; padding:40px;'>Aucun signalement en attente.</p>"}
+  `, null));
+});
   router.post("/signalisations/:id/supprimer-avis", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
