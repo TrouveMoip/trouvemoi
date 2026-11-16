@@ -5,7 +5,6 @@ const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const compression = require("compression");
 const fetch = require("node-fetch");
-const admin = require("firebase-admin");
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcrypt");
 const helmet = require("helmet");
@@ -183,19 +182,9 @@ async function sendSMS(telephone, message) {
   }
 }
 
-// --- FONCTION D'ENVOI DE NOTIFICATIONS PUSH ---
+// --- FONCTION D'ENVOI DE NOTIFICATIONS PUSH (Désactivée) ---
 async function sendPushNotification(title, body) {
-  if (!process.env.FIREBASE_PROJECT_ID) return;
-  try {
-    const result = await pool.query("SELECT token FROM push_tokens");
-    const tokens = result.rows.map(r => r.token);
-    if (tokens.length === 0) return;
-    const message = { notification: { title: title, body: body }, tokens: tokens };
-    const response = await admin.messaging().sendEachForMulticast(message);
-    console.log(`📡 Push envoyées : ${response.successCount} succès, ${response.failureCount} échecs`);
-  } catch (error) {
-    console.error("❌ Erreur envoi push:", error);
-  }
+  return; // ✅ Firebase retiré
 }
 
 function getDisplayName(person) { return (person?.company_name?.trim() || person?.full_name || ""); }
