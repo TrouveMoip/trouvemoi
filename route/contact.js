@@ -35,7 +35,6 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
             <label>Votre email *</label>
             <input name="email" type="email" required maxlength="254">
             
-            <!-- ✅ CORRECTION : Le téléphone est maintenant obligatoire -->
             <label>Votre téléphone *</label>
             <input name="phone" type="tel" required maxlength="30" pattern="01[0-9]{8}" placeholder="Ex: 01XXXXXXXX">
             
@@ -64,7 +63,6 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
     const proId = req.body.pro_id ? Number(req.body.pro_id) : null;
     const reportId = req.body.report_id ? Number(req.body.report_id) : null;
 
-    // ✅ CORRECTION : On vérifie aussi que le téléphone est présent
     if (!name || !email || !phone || !message) return res.redirect(303, "/contact");
 
     try {
@@ -76,7 +74,8 @@ module.exports = function(pool, page, getConnectedPro, takeRateLimit, escapeHtml
       // ✅ Confidentialité : SMS à l'admin SEULEMENT si ce n'est pas pour un pro
       if (process.env.ADMIN_PHONE && !proId) {
         try {
-          sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
+          // ✅ CORRECTION : Ajout du await pour attraper les erreurs asynchrones
+          await sendSMS(process.env.ADMIN_PHONE, `🔔 TrouveMoi - Nouveau message de ${name} : ${message.substring(0, 50)}...`);
         } catch (smsError) { console.error("Erreur envoi SMS admin:", smsError); }
       }
       
