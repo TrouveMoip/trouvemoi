@@ -301,9 +301,29 @@ async function settlePayment({ dossierId, transactionId, amount, method, source 
     client.release();
   }
 }
+
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
+
+// ✅ Fonction mise à jour : Nettoyage + Relance SMS automatique
 async function cleanupExpiredDossiers() {
   try {
+    // 1. On récupère les pros dont l'abonnement expire dans 5 jours (pour les relancer)
+    const soonExpiring = await pool.query(`
+      SELECT id, full_name, phone FROM professional_applications 
+      WHERE status = 'approved' 
+        AND subscription_status = 'active'
+        AND subscription_expires_at IS NOT NULL 
+        AND subscription_expires_at <= NOW() + INTERVAL '5 days'
+        AND subscription_expires_at > NOW()
+    `);
+
+    // 2. On envoie un SMS de rappel (5 jours avant)
+    for (const pro of soonExpiring.rows) {
+      const message = `Bonjour ${pro.full_name}, votre abonnement TrouveMoi expire dans 5 jours. Pensez à régler vos 600 FCFA pour rester visible sur la plateforme.`;
+      try { await sendSMS(pro.phone, message); } catch(e) { console.error("Erreur SMS rappel:", e); }
+    }
+
+    // 3. On passe en "expired" les abonnements déjà échus
     const expiredResult = await pool.query(`
       UPDATE professional_applications 
       SET subscription_status = 'expired' 
@@ -311,12 +331,29 @@ async function cleanupExpiredDossiers() {
         AND subscription_expires_at IS NOT NULL 
         AND subscription_expires_at < NOW()
     `);
+
+    // 4. On envoie un SMS aux pros qui viennent d'expirer
+    const justExpired = await pool.query(`
+      SELECT id, full_name, phone FROM professional_applications 
+      WHERE status = 'approved' 
+        AND subscription_status = 'expired'
+        AND subscription_expires_at >= NOW() - INTERVAL '1 day'
+        AND subscription_expires_at < NOW()
+    `);
+
+    for (const pro of justExpired.rows) {
+      const message = `Bonjour ${pro.full_name}, votre abonnement TrouveMoi a expiré. Votre profil et vos agences sont masqués. Réglez 600 FCFA pour réactiver.`;
+      try { await sendSMS(pro.phone, message); } catch(e) { console.error("Erreur SMS expiration:", e); }
+    }
+    
+    // 5. On réactive ceux qui ont payé
     await pool.query(`
       UPDATE professional_applications 
       SET subscription_status = 'active' 
       WHERE subscription_status = 'expired' 
         AND subscription_expires_at > NOW()
     `);
+
     return expiredResult.rowCount || 0;
   } catch (e) {
     console.error("Erreur cleanup:", e);
@@ -587,77 +624,74 @@ function page(title, content, proConnected, meta = {}) {
   }
 </script>
 
-<script type="module" style="display:none;">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js";
+<script>
+  // ✅ Chargement de Firebase uniquement au clic sur la cloche
+  window.initialiserFirebase = async function() {
+    if (window.firebaseInitialized) return;
+    window.firebaseInitialized = true;
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
-    authDomain: "trouvemoi-c1b01.firebaseapp.com",
-    projectId: "trouvemoi-c1b01",
-    storageBucket: "trouvemoi-c1b01.appspot.com",
-    messagingSenderId: "317041094178",
-    appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
-  };
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+    const { getMessaging, getToken } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js");
 
-  const app = initializeApp(firebaseConfig);
-  let messaging = null;
+    const firebaseConfig = {
+      apiKey: "AIzaSyAX6ooPWJb2LWbWop-YxAcCjpgtoMzkIDA",
+      authDomain: "trouvemoi-c1b01.firebaseapp.com",
+      projectId: "trouvemoi-c1b01",
+      storageBucket: "trouvemoi-c1b01.appspot.com",
+      messagingSenderId: "317041094178",
+      appId: "1:317041094178:web:8c5fce11bc259b4d3d647b"
+    };
 
-  if ('serviceWorker' in navigator && 'Notification' in window) {
-    navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    .then((registration) => {
+    const app = initializeApp(firebaseConfig);
+    let messaging = null;
+
+    if ('serviceWorker' in navigator && 'Notification' in window) {
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
       messaging = getMessaging(app);
       window.swRegistration = registration;
-    })
-    .catch((err) => console.error("Erreur ServiceWorker:", err));
-  }
+    }
 
-  window.demanderNotifications = async function() {
     const btn = document.getElementById('btn-notif');
-    if(btn) btn.innerText = "⏳ Chargement...";
+    if(btn) btn.innerText = "⏳ Demande de permission...";
 
-    setTimeout(async () => {
-      try {
-        const permission = await Notification.requestPermission();
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        if(btn) btn.innerText = "⏳ Récupération...";
         
-        if (permission === 'granted') {
-          if(btn) btn.innerText = "⏳ Récupération...";
-          
-          getToken(messaging, { 
-            serviceWorkerRegistration: window.swRegistration,
-            vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
-          })
-          .then((currentToken) => {
-            if (currentToken) {
-              if(btn) {
-                btn.innerText = "✅ Alertes OK";
-                btn.style.background = "#10b981"; 
-              }
-              fetch('/api/save-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: currentToken })
-              }).then(() => console.log('Token sauvegardé !'));
-            }
-          }).catch((err) => {
-            console.error('Erreur token :', err);
-            if(btn) {
-                btn.innerText = "❌ Erreur";
-                btn.style.background = "#ef4444";
-            }
-            alert("Détail de l'erreur Firebase : " + err.message);
-          });
-        } else {
-          alert("Vous avez refusé les notifications.");
-          if(btn) btn.innerText = "🔔 Activer les alertes";
+        const currentToken = await getToken(messaging, { 
+          serviceWorkerRegistration: window.swRegistration,
+          vapidKey: "BJrlYFSaouHz6rqkvtplC7PQLlyowVXVRaZ4EC-b3t6ddShMBm7-qNMEg4o8XVKlkxDawBFO8GVfkavlAXOAe7o"
+        });
+        
+        if (currentToken) {
+          if(btn) { btn.innerText = "✅ Alertes OK"; btn.style.background = "#10b981"; }
+          fetch('/api/save-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: currentToken })
+          }).then(() => console.log('Token sauvegardé !'));
         }
-      } catch (e) {
-        console.error(e);
+      } else {
+        alert("Vous avez refusé les notifications.");
         if(btn) btn.innerText = "🔔 Activer les alertes";
       }
-    }, 1500);
-  }
+    } catch (err) {
+      console.error('Erreur Firebase :', err);
+      if(btn) { btn.innerText = "❌ Erreur"; btn.style.background = "#ef4444"; }
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", function() {
+    const btn = document.getElementById('btn-notif');
+    if(btn) {
+      btn.style.display = "inline-block";
+      btn.innerText = "🔔 Activer les alertes";
+      btn.onclick = window.initialiserFirebase;
+    }
+  });
 </script>
+
 <script>
   // ✅ SCRIPT ANTI-CSRF : Ajoute le jeton secret à tous les formulaires POST
   document.addEventListener("DOMContentLoaded", function() {
@@ -880,6 +914,7 @@ app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res)
   }
 });
 
+// ✅ Le cron job qui déclenche le nettoyage + relance SMS
 app.get("/cron/cleanup", async (req, res) => {
   const token = req.query.token || req.headers["x-cron-secret"];
   if (!safeEqual(token || "", process.env.CRON_SECRET || "")) return res.status(401).send("Unauthorized");
@@ -1273,10 +1308,9 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
     
-    // ✅ Nouvelles colonnes pour les agences
+    // ✅ Nouvelles colonnes pour les agences (dont billing_starts_at pour multi-agences)
     await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS horaires_json TEXT`);
     await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
-    // ✅ Colonne pour la période de grâce (facturation multi-agences)
     await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS billing_starts_at TIMESTAMP`);
 
     // ✅ CRÉATION DE LA TABLE POUR LES PAIEMENTS D'ABONNEMENT
