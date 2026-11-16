@@ -708,7 +708,11 @@ for (const ag of agenciesResult.rows) {
       for (const p of result.rows) {
         const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
         const payment = p.payment_status === 'paid' ? 'Payé' : p.payment_status === 'refunded' ? 'Remboursé' : 'Impayé';
-        const clean = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+        const clean = (val) => {
+  let str = String(val ?? "");
+  if (str.match(/^[=+\-@]/)) str = "'" + str; // Bloque les formules Excel
+  return `"${str.replace(/"/g, '""')}"`;
+};
         csv += `${dateStr};${clean(p.full_name)};${clean(p.company_name)};${clean(p.phone)};${clean(p.npi)};${clean(p.city)};${clean(p.profession)};${clean(p.status)};${payment};${clean(p.tracking_code)};${clean(p.pro_code)}\n`;
       }
 
