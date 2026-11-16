@@ -1031,8 +1031,7 @@ app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, up
 app.use('/', emploisRoutes(pool, page, getConnectedPro, escapeHtml, cleanBeninPhone, ["CDI", "CDD"], logAdminAction, 15));
 
 app.use('/', agencesRoutes(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, deleteFromCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction));
-app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, deleteFromCloudinary, sendSMS));
-
+app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, deleteFromCloudinary, sendSMS));
 // --- GESTION DES ERREURS ---
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
