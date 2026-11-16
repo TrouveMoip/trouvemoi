@@ -3,23 +3,26 @@ const crypto = require('crypto');
 
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord, verifyKkiapayTransaction) {
   const router = express.Router();
-  // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
-async function verifyProCsrf(req, res, next) {
- // ✅ On ne vérifie QUE les formulaires POST (pas les simples liens)
-if (req.method !== 'POST') return next();
-if (req.path === '/login' || req.path === '/logout' || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
-  let cookieToken = null;
-  for (const item of (req.headers.cookie || "").split(";")) {
-    const [key, ...val] = item.trim().split("=");
-    if (key === "tm_pro_csrf") cookieToken = val.join("=");
-  }
   
-  // On vérifie que le jeton du cookie correspond à celui du formulaire (req.body.csrfToken)
-  if (!cookieToken || !req.body.csrfToken || cookieToken !== req.body.csrfToken) {
-    return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
+  // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
+  async function verifyProCsrf(req, res, next) {
+    // ✅ On ne vérifie QUE les formulaires POST (pas les simples liens)
+    if (req.method !== 'POST') return next();
+    // On ignore les routes publiques et la déconnexion
+    if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
+    
+    let cookieToken = null;
+    for (const item of (req.headers.cookie || "").split(";")) {
+      const [key, ...val] = item.trim().split("=");
+      if (key === "tm_pro_csrf") cookieToken = val.join("=");
+    }
+    
+    // On vérifie que le jeton du cookie correspond à celui du formulaire (req.body.csrfToken)
+    if (!cookieToken || !req.body.csrfToken || cookieToken !== req.body.csrfToken) {
+      return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
+    }
+    next();
   }
-  next();
-}
 
   router.post("/login", async (req, res) => {
     const ip = req.ip || "unknown"; const ipKey = `pro_login:ip:${ip}`;
@@ -61,13 +64,13 @@ if (req.path === '/login' || req.path === '/logout' || req.path === '/reinitiali
 
       await clearRateLimit(codeKey); 
 
-// ✅ CRÉATION DU JETON CSRF (valable 24h)
-const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
+      // ✅ CRÉATION DU JETON CSRF (valable 24h)
+      const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
 
-// On le met dans un cookie sécurisé pour que les formulaires puissent le lire
-res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
-setProCookie(res, code); 
-res.redirect(303, "/mon-espace-pro");
+      // On le met dans un cookie sécurisé pour que les formulaires puissent le lire
+      res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
+      setProCookie(res, code); 
+      res.redirect(303, "/mon-espace-pro");
       
     } catch (error) { 
       res.redirect(303, "/mon-espace-pro"); 
@@ -254,9 +257,19 @@ res.redirect(303, "/mon-espace-pro");
         <h2 style="font-size:20px; margin-bottom:16px;">RGPD & Confidentialité</h2>
         <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
           <a class="button secondary" href="/mon-espace-pro/mes-donnees">📥 Télécharger mes données</a>
-          <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
-            <button class="danger" type="submit" onclick="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')">🗑️ Supprimer mon compte</button>
-          </form>
+          
+          ${pendingDeletion ? `
+            <div class="alert alert-warning" style="width:100%; margin:0 0 10px 0; text-align:left;">
+              <strong>⚠️ Suppression en attente :</strong> Votre compte est en cours de suppression. Vous pouvez encore annuler.
+            </div>
+            <form action="/mon-espace-pro/annuler-suppression" method="POST" style="display:inline; margin:0;">
+              <button class="warning" type="submit">↩️ Annuler la suppression</button>
+            </form>
+          ` : `
+            <form action="/mon-espace-pro/demande-suppression" method="POST" style="display:inline; margin:0;">
+              <button class="danger" type="submit" onclick="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer définitivement votre compte ?')">🗑️ Supprimer mon compte</button>
+            </form>
+          `}
         </div>
       </section>
 
@@ -459,37 +472,37 @@ res.redirect(303, "/mon-espace-pro");
     res.send(page("Galerie", `<section class="card" style="max-width: 600px; margin: 40px auto;"><h1>📸 Galerie</h1><form action="/mon-espace-pro/modifier-galerie" method="POST" enctype="multipart/form-data"><input type="file" name="photo1"><input type="text" name="desc1" placeholder="Description"><input type="file" name="photo2"><input type="text" name="desc2" placeholder="Description"><button type="submit" style="width:100%;">Enregistrer</button></form><p style="text-align:center; margin-top:24px;"><a href="/mon-espace-pro">← Retour</a></p></section>`, proConnected));
   });
 
- router.post("/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }]), async (req, res) => {
-  const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  const galleryKey = `gallery_limit:${proConnected.pro.id}`;
-  if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
+  router.post("/modifier-galerie", upload.fields([{ name: 'photo1', maxCount: 1 }, { name: 'photo2', maxCount: 1 }]), async (req, res) => {
+    const proConnected = await getConnectedPro(req); if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    const galleryKey = `gallery_limit:${proConnected.pro.id}`;
+    if (!(await takeRateLimit(galleryKey, 1, 7 * 24 * 60 * 60 * 1000))) return res.status(429).send(page("Limite atteinte", "<h1>⏳ 1 fois par semaine.</h1>", proConnected));
 
-  try {
-    const files = req.files || {};
-    let url1 = proConnected.pro.photo_galerie_1;
-    let url2 = proConnected.pro.photo_galerie_2;
-    const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
-    const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
+    try {
+      const files = req.files || {};
+      let url1 = proConnected.pro.photo_galerie_1;
+      let url2 = proConnected.pro.photo_galerie_2;
+      const desc1 = String(req.body.desc1 || "").trim().slice(0, 150);
+      const desc2 = String(req.body.desc2 || "").trim().slice(0, 150);
 
-    if (files.photo1?.[0]) {
-      const r = await uploadToCloudinary(files.photo1[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_1_${Date.now()}`);
-      url1 = r.secure_url;
+      if (files.photo1?.[0]) {
+        const r = await uploadToCloudinary(files.photo1[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_1_${Date.now()}`);
+        url1 = r.secure_url;
+      }
+      if (files.photo2?.[0]) {
+        const r = await uploadToCloudinary(files.photo2[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_2_${Date.now()}`);
+        url2 = r.secure_url;
+      }
+
+      await pool.query(`UPDATE professional_applications SET photo_galerie_1 = $1, photo_galerie_1_desc = $2, photo_galerie_2 = $3, photo_galerie_2_desc = $4 WHERE id = $5`,
+        [url1, desc1 || null, url2, desc2 || null, proConnected.pro.id]);
+      
+      res.redirect(303, "/mon-espace-pro");
+    } catch (e) {
+      console.error("Erreur upload galerie:", e);
+      await clearRateLimit(galleryKey);
+      res.redirect(303, "/mon-espace-pro/modifier-galerie");
     }
-    if (files.photo2?.[0]) {
-      const r = await uploadToCloudinary(files.photo2[0].buffer, "trouvemoi/galeries", `galerie_${proConnected.pro.id}_2_${Date.now()}`);
-      url2 = r.secure_url;
-    }
-
-    await pool.query(`UPDATE professional_applications SET photo_galerie_1 = $1, photo_galerie_1_desc = $2, photo_galerie_2 = $3, photo_galerie_2_desc = $4 WHERE id = $5`,
-      [url1, desc1 || null, url2, desc2 || null, proConnected.pro.id]);
-    
-    res.redirect(303, "/mon-espace-pro");
-  } catch (e) {
-    console.error("Erreur upload galerie:", e);
-    await clearRateLimit(galleryKey);
-    res.redirect(303, "/mon-espace-pro/modifier-galerie");
-  }
-});
+  });
 
   router.get("/modifier-telephone", async (req, res) => {
     const proConnected = await getConnectedPro(req);
@@ -626,76 +639,76 @@ res.redirect(303, "/mon-espace-pro");
     }
   });
  
-// MES MESSAGES (Boîte de réception du Pro)
-router.get("/mes-messages", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+  // MES MESSAGES (Boîte de réception du Pro)
+  router.get("/mes-messages", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-  const showArchived = req.query.archives === "1";
+    const showArchived = req.query.archives === "1";
 
-  if (!showArchived) {
-    await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
-  }
+    if (!showArchived) {
+      await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
+    }
 
-  let whereClause = showArchived 
-    ? `WHERE pro_id = $1 AND is_archived = true` 
-    : `WHERE pro_id = $1 AND (is_archived = false OR is_archived IS NULL)`;
+    let whereClause = showArchived 
+      ? `WHERE pro_id = $1 AND is_archived = true` 
+      : `WHERE pro_id = $1 AND (is_archived = false OR is_archived IS NULL)`;
 
-  const result = await pool.query(`SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC`, [proConnected.pro.id]);
-  
-  const messagesHtml = result.rows.map(m => `
-    <div style="background:#f8fafc; padding:12px; border-radius:12px; margin-bottom:12px; border-left:3px solid #3b82f6;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-        <div>
-          <strong style="font-size:14px; color:#1e293b;">${escapeHtml(m.name)}</strong>
-          <span style="font-size:11px; color:#64748b; margin-left:8px;">${new Date(m.created_at).toLocaleDateString("fr-FR")}</span>
+    const result = await pool.query(`SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC`, [proConnected.pro.id]);
+    
+    const messagesHtml = result.rows.map(m => `
+      <div style="background:#f8fafc; padding:12px; border-radius:12px; margin-bottom:12px; border-left:3px solid #3b82f6;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+          <div>
+            <strong style="font-size:14px; color:#1e293b;">${escapeHtml(m.name)}</strong>
+            <span style="font-size:11px; color:#64748b; margin-left:8px;">${new Date(m.created_at).toLocaleDateString("fr-FR")}</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <a href="mailto:${escapeHtml(m.email)}" title="Répondre par email" style="text-decoration:none; font-size:16px;">✉️</a>
+            ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" title="Répondre sur WhatsApp" style="text-decoration:none; font-size:16px;">💬</a>` : ''}
+            ${!showArchived ? `<form action="/mon-espace-pro/mes-messages/${m.id}/archiver" method="POST" style="margin:0;"><button type="submit" title="Archiver" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">📁</button></form>` : ''}
+            <form action="/mon-espace-pro/mes-messages/${m.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Voulez-vous supprimer DÉFINITIVEMENT ce message ? Cette action est irréversible.');">
+              <button type="submit" title="Supprimer" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">🗑️</button>
+            </form>
+          </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <a href="mailto:${escapeHtml(m.email)}" title="Répondre par email" style="text-decoration:none; font-size:16px;">✉️</a>
-          ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" title="Répondre sur WhatsApp" style="text-decoration:none; font-size:16px;">💬</a>` : ''}
-          ${!showArchived ? `<form action="/mon-espace-pro/mes-messages/${m.id}/archiver" method="POST" style="margin:0;"><button type="submit" title="Archiver" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">📁</button></form>` : ''}
-          <form action="/mon-espace-pro/mes-messages/${m.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Voulez-vous supprimer DÉFINITIVEMENT ce message ? Cette action est irréversible.');">
-            <button type="submit" title="Supprimer" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">🗑️</button>
-          </form>
-        </div>
-      </div>
-      <div style="font-size:13px; color:#374151; background:white; padding:8px 12px; border-radius:8px;">
-        ${escapeHtml(m.message)}
-      </div>
-    </div>
-  `).join("");
-
-  res.send(page("Mes Messages", `
-    <div style="max-width: 700px; margin: 0 auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-        <h1>📩 Mes Messages</h1>
-        <div style="display:flex; gap:10px;">
-          <a href="/mon-espace-pro/mes-messages${showArchived ? '' : '?archives=1'}" class="button secondary" style="margin:0; font-size:13px;">
-            ${showArchived ? '👈 Boîte de réception' : '📁 Voir les archives'}
-          </a>
-          <a href="/mon-espace-pro" class="button secondary" style="margin:0; font-size:13px;">← Retour</a>
+        <div style="font-size:13px; color:#374151; background:white; padding:8px 12px; border-radius:8px;">
+          ${escapeHtml(m.message)}
         </div>
       </div>
-      ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Aucun message ici.</p></div>"}
-    </div>
-  `, proConnected));
-});
+    `).join("");
 
-// Action : Archiver
-router.post("/mes-messages/:id/archiver", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  await pool.query(`UPDATE contact_messages SET is_archived = true WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
-  res.redirect(303, "/mon-espace-pro/mes-messages");
-});
+    res.send(page("Mes Messages", `
+      <div style="max-width: 700px; margin: 0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h1>📩 Mes Messages</h1>
+          <div style="display:flex; gap:10px;">
+            <a href="/mon-espace-pro/mes-messages${showArchived ? '' : '?archives=1'}" class="button secondary" style="margin:0; font-size:13px;">
+              ${showArchived ? '👈 Boîte de réception' : '📁 Voir les archives'}
+            </a>
+            <a href="/mon-espace-pro" class="button secondary" style="margin:0; font-size:13px;">← Retour</a>
+          </div>
+        </div>
+        ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Aucun message ici.</p></div>"}
+      </div>
+    `, proConnected));
+  });
 
-// Action : Supprimer définitivement
-router.post("/mes-messages/:id/supprimer", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  if (!proConnected) return res.redirect(303, "/mon-espace-pro");
-  await pool.query(`DELETE FROM contact_messages WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
-  res.redirect(303, "/mon-espace-pro/mes-messages");
-});
+  // Action : Archiver
+  router.post("/mes-messages/:id/archiver", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    await pool.query(`UPDATE contact_messages SET is_archived = true WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
+    res.redirect(303, "/mon-espace-pro/mes-messages");
+  });
+
+  // Action : Supprimer définitivement
+  router.post("/mes-messages/:id/supprimer", async (req, res) => {
+    const proConnected = await getConnectedPro(req);
+    if (!proConnected) return res.redirect(303, "/mon-espace-pro");
+    await pool.query(`DELETE FROM contact_messages WHERE id = $1 AND pro_id = $2`, [Number(req.params.id), proConnected.pro.id]);
+    res.redirect(303, "/mon-espace-pro/mes-messages");
+  });
 
   router.get("/mes-avis", async (req, res) => {
     const proConnected = await getConnectedPro(req);
@@ -810,72 +823,72 @@ router.post("/mes-messages/:id/supprimer", async (req, res) => {
   });
 
   router.get("/abonnement/verifier", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  const transactionId = String(req.query.transaction_id || "").trim();
-  if (!proConnected || !transactionId) return res.redirect(303, "/mon-espace-pro");
+    const proConnected = await getConnectedPro(req);
+    const transactionId = String(req.query.transaction_id || "").trim();
+    if (!proConnected || !transactionId) return res.redirect(303, "/mon-espace-pro");
 
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    // 🔒 Le verrou : on bloque ce numéro de transaction pour être sûr que personne d'autre ne l'utilise en même temps
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      // 🔒 Le verrou : on bloque ce numéro de transaction pour être sûr que personne d'autre ne l'utilise en même temps
+      await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
-    const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
-    if (alreadyUsed.rows.length > 0) {
+      // 1️⃣ On vérifie si le ticket a déjà été poinçonné
+      const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
+      if (alreadyUsed.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return res.send(page("Déjà traité", `
+          <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+            <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
+            <p>Cette transaction a déjà été validée. Votre abonnement a bien été pris en compte.</p>
+            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+          </section>
+        `, proConnected));
+      }
+
+      // 2️⃣ On vérifie auprès de Kkiapay que le paiement est réel
+      const verification = await verifyKkiapayTransaction(transactionId);
+      
+      if (verification.success) {
+        // 3️⃣ On poinçonne le ticket dans la base
+        await client.query(
+          `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
+          [proConnected.pro.id, transactionId, verification.amount]
+        );
+
+        // 4️⃣ On ajoute les 30 jours
+        await client.query(`
+          UPDATE professional_applications 
+          SET subscription_status = 'active', 
+              subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
+              last_payment_at = NOW() 
+          WHERE id = $1
+        `, [proConnected.pro.id]);
+        
+        await client.query("COMMIT");
+        
+        return res.send(page("Succès", `
+          <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
+            <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
+            <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
+            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+          </section>
+        `, proConnected));
+      }
+      
       await client.query("ROLLBACK");
-      return res.send(page("Déjà traité", `
-        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-          <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
-          <p>Cette transaction a déjà été validée. Votre abonnement a bien été pris en compte.</p>
-          <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
-        </section>
-      `, proConnected));
+      res.redirect(303, "/mon-espace-pro");
+    } catch (e) {
+      await client.query("ROLLBACK").catch(() => {});
+      console.error("Erreur abonnement:", e);
+      res.redirect(303, "/mon-espace-pro");
+    } finally {
+      client.release();
     }
+  });
 
-    // 2️⃣ On vérifie auprès de Kkiapay que le paiement est réel
-    const verification = await verifyKkiapayTransaction(transactionId);
-    
-    if (verification.success) {
-      // 3️⃣ On poinçonne le ticket dans la base
-      await client.query(
-        `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
-        [proConnected.pro.id, transactionId, verification.amount]
-      );
-
-      // 4️⃣ On ajoute les 30 jours
-      await client.query(`
-        UPDATE professional_applications 
-        SET subscription_status = 'active', 
-            subscription_expires_at = GREATEST(NOW(), COALESCE(subscription_expires_at, NOW())) + INTERVAL '30 days',
-            last_payment_at = NOW() 
-        WHERE id = $1
-      `, [proConnected.pro.id]);
-      
-      await client.query("COMMIT");
-      
-      return res.send(page("Succès", `
-        <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
-          <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
-          <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
-          <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
-        </section>
-      `, proConnected));
-    }
-    
-    await client.query("ROLLBACK");
-    res.redirect(303, "/mon-espace-pro");
-  } catch (e) {
-    await client.query("ROLLBACK").catch(() => {});
-    console.error("Erreur abonnement:", e);
-    res.redirect(303, "/mon-espace-pro");
-  } finally {
-    client.release();
-  }
-});
   // ✅ On applique le vigile à TOUTES les routes de ce fichier
-router.use(verifyProCsrf);
+  router.use(verifyProCsrf);
 
-return router;
   return router;
 };
