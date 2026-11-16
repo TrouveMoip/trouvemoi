@@ -227,7 +227,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
   });
 
   // ==========================================
-  // 3. PAGE PROFIL PUBLIC
+  // 3. PAGE PROFIL PUBLIC (avec SQL optimisé)
   // ==========================================
   router.get("/pro/:id", async (req, res) => { 
     try {
@@ -236,16 +236,17 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const visitorId = getOrCreateVisitorId(req, res);
       pool.query(`INSERT INTO pro_stats (pro_id, date, views) VALUES ($1, CURRENT_DATE, 1) ON CONFLICT (pro_id, date) DO UPDATE SET views = pro_stats.views + 1`, [id]).catch(() => {});
 
+      // ✅ 1 seule requête pour le pro
       const result = await pool.query(`SELECT p.*, (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS avg_rating, EXISTS(SELECT 1 FROM client_favorites cf WHERE cf.pro_id = p.id AND cf.visitor_id = $2) AS is_favorite FROM professional_applications p WHERE p.id = $1 AND p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`, [id, visitorId]);
       if (!result.rows.length) return res.redirect(303, "/");
       const person = result.rows[0];
       const displayName = getDisplayName(person);
-      
-      const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
-      const isOpen = person.type_lieu === 'fixe' && isProOpenNow(person.horaires_json);
-      const openStatusBadge = isOpen ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
 
-      const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW()) AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY RANDOM() LIMIT 3`, [id, person.city, person.profession]);
+      // ✅ 1 seule requête pour les agences (au lieu de 2)
+      const agenciesList = (await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows;
+
+      // ✅ Profils similaires : ORDER BY created_at (plus léger que RANDOM)
+      const similarResult = await pool.query(`SELECT p.id, p.full_name, p.company_name, p.city, p.profession, (SELECT COALESCE(AVG(rating), 0) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') as avg_rating FROM professional_applications p WHERE p.status = 'approved' AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW()) AND p.id != $1 AND (p.city = $2 OR p.profession = $3) ORDER BY p.created_at DESC LIMIT 3`, [id, person.city, person.profession]);
       const similarHtml = similarResult.rows.map(sim => `<a href="/pro/${sim.id}" class="card" style="display:block; padding:16px; text-decoration:none; margin-bottom:10px; border-left:4px solid #2563eb;"><div style="font-weight:700; color:#111827;">${escapeHtml(sim.company_name || sim.full_name)}</div><div style="font-size:13px; color:#6b7280;">${escapeHtml(sim.profession)} à ${escapeHtml(sim.city)} • ${Number(sim.avg_rating).toFixed(1)} ⭐</div></a>`).join("");
 
       let rawPhone = (person.phone || "").replace(/\D/g, ""); 
@@ -257,6 +258,10 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       if (rawWa.startsWith("00229")) rawWa = rawWa.substring(5);
       if (rawWa.startsWith("229")) rawWa = rawWa.substring(3);
       const whatsappNumber = /^\d{8,10}$/.test(rawWa) ? "229" + rawWa : null;
+
+      const isOnLeave = person.unavailable_until && new Date(person.unavailable_until) > new Date();
+      const isOpen = person.type_lieu === 'fixe' && isProOpenNow(person.horaires_json);
+      const openStatusBadge = isOpen ? `<div style="margin-bottom: 16px;"><span class="badge" style="background:#d1fae5; color:#065f46; font-size: 14px; padding: 8px 16px;">🟢 Ouvert actuellement</span></div>` : "";
 
       let contactButtons = "";
       if (isOnLeave) {
@@ -312,11 +317,11 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               </button>
             </div>
 
-            ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.length > 0 ? `
+            ${agenciesList.length > 0 ? `
             <div class="card" id="section-agences" style="margin-top:20px;">
               <h2 style="font-size:20px; margin-bottom:16px;">📍 Agences de ce professionnel</h2>
               <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
-              ${(await pool.query(`SELECT * FROM agencies WHERE parent_pro_id = $1 AND status = 'approved'`, [person.id])).rows.map(ag => `
+              ${agenciesList.map(ag => `
                   <a href="/agence/${ag.id}" style="display:block; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; text-decoration:none; transition:all 0.2s;" onmouseover="this.style.borderColor='#3b82f6'; this.style.background='#eff6ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
                     <div style="font-weight:700; color:#1e293b; font-size:14px; margin-bottom:4px;">${escapeHtml(ag.name)}</div>
                     <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📍 ${escapeHtml(ag.address)}</div>
@@ -493,17 +498,22 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     const proConnected = await getConnectedPro(req);
     res.send(page("Partenariats", `<section class="card" style="max-width: 800px; margin: 40px auto; padding: 40px; line-height: 1.8;"><h1>Partenariats</h1><p>Vous souhaitez collaborer avec TrouveMoi ? Contactez-nous à <strong>contact@trouvemoi.bj</strong>.</p></section>`, proConnected));
   });
-
+  // ==========================================
+  // 5. PAGES STATIQUES (SUITE)
+  // ==========================================
   router.get("/conditions", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const content = `
       <section class="card" style="max-width: 800px; margin: 40px auto; padding: 30px;">
         <h1 style="font-size: 28px; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 20px;">Conditions Générales d'Utilisation (CGU)</h1>
         <p style="font-size: 14px; color: #6b7280; margin-bottom: 20px;">Site web : www.trouvemoi.bj<br>Structure : ADK Services<br>Dernière mise à jour : 14/11/2026</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 1 : Objet</h2>
         <p>Les présentes Conditions Générales d'Utilisation (CGU) ont pour objet de définir les modalités d'accès et d'utilisation de la plateforme TrouveMoi. TrouveMoi est une plateforme numérique de mise en relation entre des clients et des professionnels au Bénin. TrouveMoi agit en tant qu'intermédiaire technique et ne fournit pas directement les services proposés par les professionnels.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 2 : Accès au service</h2>
         <p>L'accès à la plateforme est gratuit pour les clients. Pour les professionnels, l'inscription est soumise au paiement de frais de dossier unique et à la validation de leur dossier (KYC) par l'équipe d'ADK Services. L'inscription ne devient effective qu'après validation du profil par l'administrateur.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 3 : Modèle économique et Abonnement Pro</h2>
         <p>Pour assurer le fonctionnement de la plateforme, les professionnels sont soumis aux conditions suivantes :</p>
         <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;">
@@ -512,25 +522,34 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
           <li><strong>Abonnement mensuel :</strong> À l'issue de ces 6 mois, un abonnement de 600 FCFA par mois est requis pour maintenir le profil du professionnel visible sur la plateforme.</li>
         </ul>
         <p>En cas de non-renouvellement de l'abonnement, le profil du professionnel n'est plus visible dans les résultats de recherche. Le compte n'est ni suspendu ni supprimé, et le professionnel peut retrouver sa visibilité dès régularisation de son abonnement.</p>
+
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 4 : Obligations des Utilisateurs (Clients)</h2>
         <p>En utilisant le site, le client s'engage à :</p>
         <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Ne pas utiliser la plateforme à des fins frauduleuses ou illégales.</li><li>Ne pas usurper l'identité d'un tiers.</li><li>Faire preuve de prudence : TrouveMoi rappelle qu'il est fortement déconseillé de payer un professionnel avant de l'avoir rencontré physiquement.</li></ul>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 5 : Obligations des Professionnels</h2>
         <p>En s'inscrivant, le professionnel s'engage à :</p>
         <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>Fournir des informations exactes et véridiques (nom légal, NPI, téléphone, adresse).</li><li>Fournir des documents d'identité authentiques pour la vérification KYC. Toute tentative de fraude entraînera le rejet définitif du dossier sans remboursement.</li><li>Réaliser les prestations promises auprès des clients avec professionnalisme et dans le respect des lois béninoises.</li></ul>
+
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 6 : Responsabilité de la plateforme</h2>
         <p>ADK Services met tout en œuvre pour vérifier l'identité des professionnels via le processus KYC. Cependant, TrouveMoi ne peut être tenu responsable :</p>
         <ul style="margin-left: 20px; color: #4b5563; line-height: 1.6;"><li>De la qualité ou de la sécurité des services fournis par les professionnels.</li><li>Des litiges financiers ou commerciaux entre un client et un professionnel.</li></ul>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 7 : Avis des clients</h2>
         <p>Les clients ayant contacté un professionnel via la plateforme peuvent laisser un avis. ADK Services se réserve le droit de modérer ou de supprimer tout avis contenant des propos injurieux ou ne respectant pas la charte.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 8 : Propriété Intellectuelle</h2>
         <p>Le code source, la structure, les logos, les textes et les graphismes de la plateforme TrouveMoi sont la propriété exclusive d'ADK Services. Toute reproduction non autorisée est strictement interdite.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 9 : Protection des Données Personnelles</h2>
         <p>Dans le cadre de l'utilisation de la plateforme, des données personnelles sont collectées (Nom, Téléphone, NPI, Photos). Le traitement de ces données est détaillé dans notre Politique de Confidentialité, conforme au Code du Numérique en République du Bénin et aux directives de l'APDP.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 10 : Suspension et Résiliation</h2>
         <p>ADK Services se réserve le droit de suspendre ou de supprimer définitivement le compte d'un utilisateur en cas de non-respect des présentes CGU, de comportement frauduleux ou de fausses déclarations.</p>
+        
         <h2 style="font-size: 20px; color: #1e40af; margin-top: 24px;">Article 11 : Droit applicable et Juridiction</h2>
         <p>Les présentes CGU sont soumises au droit béninois. En cas de litige, et à défaut de résolution amiable, les tribunaux de Cotonou (Bénin) seront seuls compétents.</p>
+        
         <div style="margin-top: 40px; text-align: center;"><button onclick="window.print()" class="button no-print" style="background: #2563eb; margin-bottom: 10px;">🖨️ Imprimer cette page</button><br><a href="/" class="button secondary">← Retour à l'accueil</a></div>
       </section>
     `;
@@ -602,6 +621,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     `;
     res.send(page("Politique de Confidentialité", content, proConnected));
   });
+
   // ==========================================
   // 6. BLOG
   // ==========================================
@@ -648,7 +668,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     const proConnected = await getConnectedPro(req);
     const visitorId = getOrCreateVisitorId(req, res);
     
-    // ✅ CORRECTION : On filtre les pros expirés (statut ET date)
     const result = await pool.query(`
       SELECT p.*, 
       (SELECT COUNT(*) FROM reviews r WHERE r.pro_id = p.id AND r.status = 'approved') AS reviews_count, 
@@ -892,7 +911,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     const id = Number(req.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return res.redirect(303, "/");
 
-    // ✅ CORRECTION : Filtrer les pros expirés pour les avis
     const result = await pool.query(`SELECT id, full_name, company_name, profession FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active') AND (subscription_expires_at IS NULL OR subscription_expires_at > NOW())`, [id]);
     if (!result.rows.length) return res.redirect(303, "/");
     const person = result.rows[0];
@@ -941,7 +959,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       const visitorId = getOrCreateVisitorId(req, res);
       if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
       
-      // ✅ CORRECTION : Filtrer les pros expirés pour les avis
       const check = await pool.query(`SELECT id FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active') AND (subscription_expires_at IS NULL OR subscription_expires_at > NOW())`, [proId]);
       if (!check.rows.length) return res.redirect(303, "/");
 
@@ -1232,7 +1249,6 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     const proConnected = await getConnectedPro(req);
     const id = Number(req.params.id);
     
-    // ✅ CORRECTION : Vérifier que le pro n'est pas expiré
     const proResult = await pool.query(`SELECT id, full_name, company_name FROM professional_applications WHERE id = $1 AND status = 'approved' AND (subscription_status IS NULL OR subscription_status = 'active') AND (subscription_expires_at IS NULL OR subscription_expires_at > NOW())`, [id]);
     if (!proResult.rows.length) return res.redirect(303, "/");
     const person = proResult.rows[0];
