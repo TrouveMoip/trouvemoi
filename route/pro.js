@@ -557,7 +557,7 @@ res.redirect(303, "/mon-espace-pro");
         return res.status(429).send(page("Limite atteinte", "<section class='card' style='text-align:center; padding:40px;'><h1 style='color:#f59e0b;'>⚠️ Limite atteinte</h1><p>Vous avez atteint la limite de 5 demandes par mois. Veuillez contacter l'administrateur.</p><a href='/contact' class='button'>Contacter l'admin</a></section>", null));
       }
 
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const code = crypto.randomInt(100000, 999999).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
       await pool.query(
