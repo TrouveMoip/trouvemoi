@@ -491,7 +491,7 @@ function page(title, content, proConnected, meta = {}) {
               <a href="/mon-compte">Mon compte</a>
               <a href="/contact">Contact</a> 
               <a href="/suivi">Suivi</a>  
-              <button id="btn-notif" style="display: none;"></button>
+              <!-- Notifications retirées -->
             </div>
             <div class="mobile-menu">
               <div class="main-links">
