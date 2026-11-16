@@ -45,7 +45,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
       { href: "/admin/agences", label: "🏢 Agences", badge: 0 },
       { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
-      { href: "/admin/signalements", label: "🚩 Signalements", badge: reportsCount }, 
+      { href: "/admin/signalisations", label: "🚩 Signalements", badge: reportsCount }, 
       { href: "/admin/emplois", label: "💼 Offres", badge: jobsPendingCount }, 
       { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
       { href: "/admin/abonnements", label: "💳 Abonnements", badge: 0 },
