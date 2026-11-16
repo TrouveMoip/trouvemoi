@@ -1147,6 +1147,12 @@ await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
         code VARCHAR(10), 
         expires_at TIMESTAMP
     )`);
+    // ✅ CRÉATION DE LA TABLE POUR LES LIMITES DE REQUÊTES (RATE LIMIT)
+await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
+    limit_key VARCHAR(255) PRIMARY KEY,
+    count INTEGER DEFAULT 1,
+    window_start TIMESTAMP DEFAULT NOW()
+)`);
 
     // --- CRÉATION DES TABLES MANQUANTES ---
     await pool.query(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
