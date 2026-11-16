@@ -138,12 +138,9 @@ cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: proc
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false } });
 const upload = multer({ 
   storage: multer.memoryStorage(), 
-  // On réduit à 5 Mo max par fichier et 3 fichiers max
   limits: { fileSize: 5 * 1024 * 1024, files: 3 },
   fileFilter: (req, file, cb) => {
-    // ✅ On n'accepte QUE les vraies images (pas de SVG qui peut contenir du code)
     const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
-    
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -164,7 +161,6 @@ async function sendSMS(telephone, message) {
   try {
     const cleanPhone = String(telephone).replace(/\D/g, "").replace(/^(?:00229|229)/, "");
     const finalPhone = "+229" + cleanPhone;
-
     const response = await fetch("https://sms.esmsafrica.io/api/v1/messages", {
       method: "POST",
       headers: {
@@ -178,7 +174,6 @@ async function sendSMS(telephone, message) {
         message: message
       })
     });
-    
     const data = await response.json();
     if (!IS_PRODUCTION) console.log("📱 Résultat envoi SMS eSMS :", data);
     return data;
@@ -195,12 +190,7 @@ async function sendPushNotification(title, body) {
     const result = await pool.query("SELECT token FROM push_tokens");
     const tokens = result.rows.map(r => r.token);
     if (tokens.length === 0) return;
-
-    const message = {
-      notification: { title: title, body: body },
-      tokens: tokens
-    };
-
+    const message = { notification: { title: title, body: body }, tokens: tokens };
     const response = await admin.messaging().sendEachForMulticast(message);
     console.log(`📡 Push envoyées : ${response.successCount} succès, ${response.failureCount} échecs`);
   } catch (error) {
@@ -227,15 +217,10 @@ async function clearRateLimit(key) { try { await pool.query("DELETE FROM rate_li
 async function uploadToCloudinary(buffer, folder, publicId) { 
   return new Promise((resolve, reject) => { 
     const stream = cloudinary.uploader.upload_stream({ 
-      folder, 
-      public_id: publicId, 
-      resource_type: "image",
+      folder, public_id: publicId, resource_type: "image",
       incoming_transformation: [ { width: 1000, height: 1000, crop: "limit" }, { quality: "auto:good" }, { fetch_format: "auto" } ],
       transformation: [ { width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" } ]
-    }, (error, result) => { 
-      if (error) return reject(error); 
-      resolve(result); 
-    }); 
+    }, (error, result) => { if (error) return reject(error); resolve(result); }); 
     stream.end(buffer); 
   }); 
 }
@@ -269,17 +254,10 @@ function verifyTotp(secret, token) {
     hmac.update(buffer);
     const hmacResult = hmac.digest();
     const offset = hmacResult[hmacResult.length - 1] & 0xf;
-    const code = (
-      ((hmacResult[offset] & 0x7f) << 24) |
-      ((hmacResult[offset + 1] & 0xff) << 16) |
-      ((hmacResult[offset + 2] & 0xff) << 8) |
-      (hmacResult[offset + 3] & 0xff)
-    ) % 1000000;
+    const code = (((hmacResult[offset] & 0x7f) << 24) | ((hmacResult[offset + 1] & 0xff) << 16) | ((hmacResult[offset + 2] & 0xff) << 8) | (hmacResult[offset + 3] & 0xff)) % 1000000;
     const validCode = code.toString().padStart(6, "0");
     return safeEqual(validCode, token);
-  } catch (e) {
-    return false;
-  }
+  } catch (e) { return false; }
 }
 
 async function verifyKkiapayTransaction(transactionId) { 
@@ -291,7 +269,6 @@ async function verifyKkiapayTransaction(transactionId) {
     }); 
     if (!res.ok) return { success: false }; 
     const data = await res.json(); 
-    // ✅ On utilise uniquement data.reference
     return { success: data.status === "SUCCESS" && Number(data.amount) >= PAYMENT_AMOUNT, amount: Number(data.amount || 0), reference: data.reference }; 
   } catch (e) { return { success: false }; } 
 }
@@ -327,7 +304,6 @@ async function settlePayment({ dossierId, transactionId, amount, method, source 
 async function processNotifications(limit = 10) { return { sent: 0, total: 0 }; }
 async function cleanupExpiredDossiers() {
   try {
-    // ✅ 1. Passer en "expired" les abonnements échus
     const expiredResult = await pool.query(`
       UPDATE professional_applications 
       SET subscription_status = 'expired' 
@@ -335,22 +311,20 @@ async function cleanupExpiredDossiers() {
         AND subscription_expires_at IS NOT NULL 
         AND subscription_expires_at < NOW()
     `);
-    
-    // ✅ 2. Remettre en "active" ceux qui ont payé et dont la date a été repoussée
     await pool.query(`
       UPDATE professional_applications 
       SET subscription_status = 'active' 
       WHERE subscription_status = 'expired' 
         AND subscription_expires_at > NOW()
     `);
-
     return expiredResult.rowCount || 0;
   } catch (e) {
     console.error("Erreur cleanup:", e);
     return 0;
   }
 }
-// --- FONCTION DE RENDU HTML (DESIGN PREMIUM & DOUX) ---
+
+// --- FONCTION DE RENDU HTML ---
 function page(title, content, proConnected, meta = {}) {
   const pageTitle = `${meta.title || title} - TrouveMoi`;
   const canonicalUrl = meta.canonical ? `${APP_URL}${meta.canonical}` : null;
@@ -687,7 +661,6 @@ function page(title, content, proConnected, meta = {}) {
 <script>
   // ✅ SCRIPT ANTI-CSRF : Ajoute le jeton secret à tous les formulaires POST
   document.addEventListener("DOMContentLoaded", function() {
-    // On cherche le cookie du jeton
     const cookies = document.cookie.split(";");
     let csrfToken = null;
     for (let c of cookies) {
@@ -695,11 +668,9 @@ function page(title, content, proConnected, meta = {}) {
       if (key === "tm_pro_csrf") csrfToken = val;
     }
     
-    // Si on a trouvé le jeton, on l'ajoute à tous les formulaires POST
     if (csrfToken) {
       const forms = document.querySelectorAll('form[method="POST"], form[method="post"]');
       forms.forEach(form => {
-        // On évite de l'ajouter 2 fois
         if (!form.querySelector('input[name="csrfToken"]')) {
           const input = document.createElement("input");
           input.type = "hidden";
@@ -715,12 +686,13 @@ function page(title, content, proConnected, meta = {}) {
     </html>
   `;
 }
+
 // --- MIDDLEWARES GLOBAUX ---
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
-
+app.use(compression());
 // 🛡️ CASQUE DE SÉCURITÉ HELMET
 app.use(helmet({
   contentSecurityPolicy: {
@@ -738,7 +710,6 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(compression());
 
 // Limite globale : max 100 requêtes par minute par IP (sauf pour les webhooks)
 const globalLimiter = rateLimit({
@@ -750,21 +721,19 @@ const globalLimiter = rateLimit({
 });
 
 app.use((req, res, next) => {
-  // On ignore le rate limit pour le webhook Kkiapay pour ne pas bloquer les paiements
   if (req.path.startsWith("/webhooks/")) return next();
   return globalLimiter(req, res, next);
 });
-
 // --- ROUTES SYSTEME ---
 // 1. Route pour ENVOYER le code par SMS
 app.post("/api/send-otp", express.json(), async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
   if (!phone) return res.status(400).json({ ok: false, error: "Numéro invalide (01XXXXXXXX)" });
-  // 🛡️ VIGILE ANTI-SMS BOMBING (Max 5 demandes par IP toutes les 15 min)
-const ipKey = `otp_ip:${req.ip || 'unknown'}`;
-if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
-  return res.status(429).json({ ok: false, error: "Trop de demandes de SMS depuis votre réseau. Patientez 15 minutes." });
-}
+  
+  const ipKey = `otp_ip:${req.ip || 'unknown'}`;
+  if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
+    return res.status(429).json({ ok: false, error: "Trop de demandes de SMS depuis votre réseau. Patientez 15 minutes." });
+  }
 
   if (!(await takeRateLimit(`otp:send:${phone}`, 1, 60 * 1000))) {
     return res.status(429).json({ ok: false, error: "Patientez 1 minute avant de redemander." });
@@ -780,7 +749,6 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
       [phone, code, expiresAt]
     );
 
-    // 🛠️ MODE TEST (À passer en vrai quand eSMS sera validé)
     console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
     res.json({ ok: true, message: "SMS simulé ! Regardez les logs Render." });
     
@@ -793,7 +761,6 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
   
-  // 🛠️ CODE DE TEST (fonctionne UNIQUEMENT en développement)
   if (code === "123456" && !IS_PRODUCTION) {
     console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
     return true;
@@ -995,10 +962,8 @@ app.get("/don/verifier", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    // 🔒 Le verrou : on bloque ce numéro de transaction
     await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-    // 1️⃣ On vérifie si le ticket a déjà été poinçonné
     const alreadyDonated = await client.query(`SELECT id FROM global_donations WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
     if (alreadyDonated.rows.length > 0) {
       await client.query("ROLLBACK");
@@ -1011,11 +976,9 @@ app.get("/don/verifier", async (req, res) => {
       `, null));
     }
 
-    // 2️⃣ On vérifie auprès de Kkiapay
     const verification = await verifyKkiapayTransaction(transactionId);
     
     if (verification.success) {
-      // 3️⃣ On poinçonne le ticket
       await client.query(
         `INSERT INTO global_donations (amount, donor_name, transaction_id) VALUES ($1, $2, $3)`,
         [verification.amount, "Donateur TrouveMoi", transactionId]
@@ -1043,6 +1006,161 @@ app.get("/don/verifier", async (req, res) => {
     client.release();
   }
 });
+
+app.get("/suivi", async (req, res) => {
+  const proConnected = await getConnectedPro(req);
+  res.send(page("Suivi de dossier", `
+    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+      <h1>📋 Suivre mon dossier</h1>
+      <p style="color:#64748b; margin-bottom:20px;">Entrez votre code de suivi reçu lors de l'inscription.</p>
+      
+      <form action="/suivi" method="POST">
+        <input name="tracking_code" required placeholder="Ex: SUIVI-12345678" style="text-align:center; font-size:18px; text-transform:uppercase;">
+        <button type="submit" style="width:100%;">Vérifier mon dossier</button>
+      </form>
+    </section>
+  `, proConnected));
+});
+
+app.post("/suivi", async (req, res) => {
+  const code = String(req.body.tracking_code || "").trim().toUpperCase();
+  const proConnected = await getConnectedPro(req);
+  
+  if (!code) return res.redirect(303, "/suivi");
+
+  try {
+    const result = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [code]);
+    
+    if (!result.rows.length) {
+      return res.status(404).send(page("Erreur", `<h2>Code de suivi introuvable.</h2><a href="/suivi">Réessayer</a>`, proConnected));
+    }
+
+    const dossier = result.rows[0];
+    let statutMessage = "";
+    let actionHtml = "";
+
+    if (dossier.payment_status === 'unpaid') {
+      statutMessage = "⏳ En attente de paiement";
+      actionHtml = `<a href="/paiement/${dossier.tracking_code}" class="button success" style="margin-top:20px;">Payer mon inscription (1500 FCFA)</a>`;
+    } 
+    else if (dossier.status === 'payment_pending' || dossier.status === 'pending') {
+      statutMessage = "⏳ En cours d'examen par l'équipe";
+    } 
+    else if (dossier.status === 'approved') {
+      statutMessage = "✅ Dossier approuvé ! Voici votre code de connexion :";
+      actionHtml = `
+        <div style="background:#f0fdf4; border:2px dashed #10b981; padding:24px; border-radius:12px; margin:20px 0;">
+          <p style="margin:0 0 10px 0; font-weight:bold; color:#065f46;">⚠️ Ce code est très important. Il vous permettra de vous connecter à votre Espace Pro chaque fois.</p>
+          <div style="font-size:32px; font-weight:900; font-family:monospace; color:#047857; letter-spacing:3px;" id="pro-code-value">${escapeHtml(dossier.pro_code || "Génération en cours...")}</div>
+          <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(dossier.pro_code || "")}').then(() => alert('✅ Code copié !'))" style="margin-top:15px; padding:10px 20px; font-size:16px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer;">📋 Copier le code</button>
+        </div>
+        <a href="/mon-espace-pro" class="button" style="margin-top:10px;">Aller sur mon espace pro</a>
+      `;
+    } 
+    else if (dossier.status === 'rejected') {
+      statutMessage = `❌ Dossier refusé : <span style="color:#ef4444; font-weight:bold;">${escapeHtml(dossier.rejection_reason || "Motif non précisé")}</span>`;
+      
+      actionHtml = `
+        <div style="background:#fef2f2; border:1px solid #fecaca; padding:20px; border-radius:12px; margin-top:20px; text-align:left;">
+          <h3 style="color:#991b1b; font-size:16px; margin-bottom:10px;">🛠️ Corriger mon dossier</h3>
+          <p style="font-size:13px; color:#7f1d1d; margin-bottom:15px;">Modifiez uniquement les informations qui posent problème et renvoyez votre dossier.</p>
+          
+          <form action="/suivi/corriger" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="tracking_code" value="${escapeHtml(dossier.tracking_code)}">
+            
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nom complet *</label>
+            <input type="text" name="full_name" value="${escapeHtml(dossier.full_name)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">NPI *</label>
+            <input type="text" name="npi" value="${escapeHtml(dossier.npi)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Téléphone *</label>
+            <input type="tel" name="phone" value="${escapeHtml(dossier.phone)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Ville *</label>
+            <input type="text" name="city" value="${escapeHtml(dossier.city)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo visage (optionnel)</label>
+            <input type="file" name="photo_profil" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px; background:white;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo Pièce d'identité (optionnel)</label>
+            <input type="file" name="photo_identite" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo KYC - Visage + Pièce (optionnel)</label>
+            <input type="file" name="photo_kyc" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
+
+            <button type="submit" class="warning" style="width:100%; padding:12px; font-weight:bold; border-radius:8px; border:none; color:white; background:#f59e0b; cursor:pointer;">Renvoyer mon dossier pour vérification</button>
+          </form>
+        </div>
+      `;
+    }
+
+    res.send(page("Résultat du suivi", `
+      <section class="card" style="max-width: 550px; margin: 40px auto; text-align:center;">
+        <h1>Dossier de ${escapeHtml(dossier.full_name)}</h1>
+        <div style="font-size:18px; font-weight:bold; margin:20px 0; padding:16px; background:#f1f5f9; border-radius:12px;">
+          ${statutMessage}
+        </div>
+        ${actionHtml}
+        <p style="margin-top:20px;"><a href="/suivi" style="color:#6b7280;">← Vérifier un autre code</a></p>
+      </section>
+    `, proConnected));
+  } catch (e) {
+    res.redirect(303, "/suivi");
+  }
+});
+
+app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
+  const trackingCode = String(req.body.tracking_code || "").trim();
+  const full_name = String(req.body.full_name || "").trim();
+  const npi = String(req.body.npi || "").trim();
+  const phone = cleanBeninPhone(req.body.phone);
+  const city = String(req.body.city || "").trim();
+  const files = req.files || {};
+
+  if (!trackingCode) return res.redirect(303, "/suivi");
+
+  try {
+    const dossierResult = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
+    if (!dossierResult.rows.length) return res.redirect(303, "/suivi");
+    const dossierId = dossierResult.rows[0].id;
+
+    let updateQuery = `UPDATE professional_applications SET full_name = $1, npi = $2, phone = $3, city = $4, status = 'pending', rejection_reason = null, updated_at = NOW()`;
+    let values = [full_name, npi, phone, city];
+
+    if (files.photo_profil && files.photo_profil[0]) {
+      const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_fix_${Date.now()}`);
+      values.push(p1.secure_url);
+      updateQuery += `, photo_profil_url = $${values.length}`;
+    }
+    if (files.photo_identite && files.photo_identite[0]) {
+      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_fix_${Date.now()}`);
+      values.push(p2.secure_url);
+      updateQuery += `, photo_identite_url = $${values.length}`;
+    }
+    if (files.photo_kyc && files.photo_kyc[0]) {
+      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_fix_${Date.now()}`);
+      values.push(p3.secure_url);
+      updateQuery += `, photo_kyc_url = $${values.length}`;
+    }
+    values.push(dossierId);
+    updateQuery += ` WHERE id = $${values.length}`;
+
+    await pool.query(updateQuery, values);
+
+    res.send(page("Correction envoyée", `
+      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"> 
+        <h1 style="color:#10b981;">✅ Correction bien reçue !</h1>
+        <p>Votre dossier a été mis à jour et repasse en cours d'examen par notre équipe.</p>
+        <p style="margin-top:20px;"><a href="/suivi" class="button">Retour au suivi</a></p>
+      </section>
+    `, null));
+
+  } catch (e) {
+    console.error("Erreur correction:", e);
+    res.status(500).send(page("Erreur", "<h2>Erreur lors de la correction.</h2><a href='/suivi'>Retour</a>", null));
+  }
+});
 // --- IMPORTATION DES ROUTES ---
 const pagesRoutes = require('./route/pages');
 const contactRoutes = require('./route/contact');
@@ -1052,7 +1170,7 @@ const proRoutes = require('./route/pro');
 const emploisRoutes = require('./route/emplois');
 const adminRoutes = require('./route/admin');
 
-// --- BRANCHEMENT DES ROUTES (CORRIGÉ) ---
+// --- BRANCHEMENT DES ROUTES ---
 app.use('/', pagesRoutes(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN));
 
 app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, escapeHtml, sendSMS));
@@ -1060,15 +1178,18 @@ app.use('/contact', contactRoutes(pool, page, getConnectedPro, takeRateLimit, es
 app.use('/', candidaturesRoutes(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, process.env.KKIAPAY_PUBLIC_KEY, process.env.KKIAPAY_SANDBOX === "true", APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN, QUARTIERS_BENIN));
 
 app.use('/mon-espace-pro', proRoutes(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, 15, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord, verifyKkiapayTransaction));
+
 app.use('/', emploisRoutes(pool, page, getConnectedPro, escapeHtml, cleanBeninPhone, ["CDI", "CDD"], logAdminAction, 15));
 
 app.use('/', agencesRoutes(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, deleteFromCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction));
-app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, deleteFromCloudinary, sendSMS));
+
+app.use('/admin', adminRoutes(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, null, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, process.env.ADMIN_PASSWORD, verifyTotp, process.env.ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, clearRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS));
+
 // --- GESTION DES ERREURS ---
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).send(page("Erreur", "<h2>Une des photos est trop lourde (max 10 Mo).</h2><a href='/devenir-professionnel'>Réessayer</a>", null)); 
+      return res.status(400).send(page("Erreur", "<h2>Une des photos est trop lourde (max 5 Mo).</h2><a href='/devenir-professionnel'>Réessayer</a>", null)); 
     }
   }
   console.error("Erreur serveur :", err);
@@ -1149,20 +1270,24 @@ async function startServer() {
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply TEXT`);
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply_date TIMESTAMP`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_expires_at TIMESTAMP`);
-await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
-await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'active'`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS last_payment_at TIMESTAMP`);
+    
     // ✅ Nouvelles colonnes pour les agences
-await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS horaires_json TEXT`);
-await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
+    await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS horaires_json TEXT`);
+    await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
+    // ✅ Colonne pour la période de grâce (facturation multi-agences)
+    await pool.query(`ALTER TABLE agencies ADD COLUMN IF NOT EXISTS billing_starts_at TIMESTAMP`);
 
     // ✅ CRÉATION DE LA TABLE POUR LES PAIEMENTS D'ABONNEMENT
-await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
-    id SERIAL PRIMARY KEY, 
-    pro_id INTEGER REFERENCES professional_applications(id), 
-    transaction_id VARCHAR(255) UNIQUE NOT NULL, 
-    amount INTEGER, 
-    created_at TIMESTAMP DEFAULT NOW()
-)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
+        id SERIAL PRIMARY KEY, 
+        pro_id INTEGER REFERENCES professional_applications(id), 
+        transaction_id VARCHAR(255) UNIQUE NOT NULL, 
+        amount INTEGER, 
+        created_at TIMESTAMP DEFAULT NOW()
+    )`);
+
     // --- CRÉATION DE LA TABLE POUR LES DONS ---
     await pool.query(`CREATE TABLE IF NOT EXISTS global_donations (
         id SERIAL PRIMARY KEY, 
@@ -1178,12 +1303,13 @@ await pool.query(`CREATE TABLE IF NOT EXISTS subscription_payments (
         code VARCHAR(10), 
         expires_at TIMESTAMP
     )`);
+    
     // ✅ CRÉATION DE LA TABLE POUR LES LIMITES DE REQUÊTES (RATE LIMIT)
-await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
-    limit_key VARCHAR(255) PRIMARY KEY,
-    count INTEGER DEFAULT 1,
-    window_start TIMESTAMP DEFAULT NOW()
-)`);
+    await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
+        limit_key VARCHAR(255) PRIMARY KEY,
+        count INTEGER DEFAULT 1,
+        window_start TIMESTAMP DEFAULT NOW()
+    )`);
 
     // --- CRÉATION DES TABLES MANQUANTES ---
     await pool.query(`CREATE TABLE IF NOT EXISTS withdrawal_requests (
@@ -1204,206 +1330,48 @@ await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
     await pool.query(`ALTER TABLE contact_messages ALTER COLUMN subject DROP NOT NULL`);
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS pro_is_read BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT false`);
-    // ✅ CRÉATION DES INDEX POUR ACCÉLÉRER LA BASE DE DONNÉES
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_status ON professional_applications(status)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_city ON professional_applications(city)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_profession ON professional_applications(profession)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_sub_status ON professional_applications(subscription_status)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_visitor ON client_favorites(visitor_id)`);
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_pro_id ON contact_messages(pro_id)`);
     
-// ✅ GESTION DES ADMINISTRATEURS (SUPER ADMIN & MODÉRATEURS)
-// 1. Création de la table pour les comptes employés
-await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
-  id SERIAL PRIMARY KEY,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role VARCHAR(50) DEFAULT 'moderator',
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP DEFAULT NOW(),
-  last_login TIMESTAMP
-)`);
+    // ✅ CRÉATION DES INDEX POUR ACCÉLÉRER LA BASE DE DONNÉES
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_status ON professional_applications(status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_city ON professional_applications(city)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_profession ON professional_applications(profession)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_sub_status ON professional_applications(subscription_status)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_visitor ON client_favorites(visitor_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_pro_id ON contact_messages(pro_id)`);
+    
+    // ✅ GESTION DES ADMINISTRATEURS (SUPER ADMIN & MODÉRATEURS)
+    await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      role VARCHAR(50) DEFAULT 'moderator',
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW(),
+      last_login TIMESTAMP
+    )`);
 
-// 2. Création automatique de TON compte Super Admin (si la table est vide)
-const adminCheck = await pool.query(`SELECT COUNT(*) FROM admin_users WHERE role = 'super_admin'`);
-if (Number(adminCheck.rows[0].count) === 0) {
-  if (process.env.ADMIN_PASSWORD) {
-    const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
-    await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'super_admin')`, ['admin@trouvemoi.bj', hashedPassword]);
-    console.log("👑 Compte Super Admin initialisé (admin@trouvemoi.bj)");
-  } else {
-    console.log("⚠️ ADMIN_PASSWORD non défini. Impossible de créer le Super Admin.");
-  }
-}
+    const adminCheck = await pool.query(`SELECT COUNT(*) FROM admin_users WHERE role = 'super_admin'`);
+    if (Number(adminCheck.rows[0].count) === 0) {
+      if (process.env.ADMIN_PASSWORD) {
+        const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 12);
+        await pool.query(`INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, 'super_admin')`, ['admin@trouvemoi.bj', hashedPassword]);
+        console.log("👑 Compte Super Admin initialisé (admin@trouvemoi.bj)");
+      } else {
+        console.log("⚠️ ADMIN_PASSWORD non défini. Impossible de créer le Super Admin.");
+      }
+    }
 
-// 3. Ajout des colonnes pour le verrouillage des dossiers (Candidatures)
-await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS assigned_to INTEGER REFERENCES admin_users(id)`);
-await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS processed_by INTEGER REFERENCES admin_users(id)`);
+    // 3. Ajout des colonnes pour le verrouillage des dossiers (Candidatures)
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS assigned_to INTEGER REFERENCES admin_users(id)`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS processed_by INTEGER REFERENCES admin_users(id)`);
 
-// 4. Ajout de la colonne pour la traçabilité dans le journal
-await pool.query(`ALTER TABLE admin_logs ADD COLUMN IF NOT EXISTS admin_email VARCHAR(255)`);
+    // 4. Ajout de la colonne pour la traçabilité dans le journal
+    await pool.query(`ALTER TABLE admin_logs ADD COLUMN IF NOT EXISTS admin_email VARCHAR(255)`);
     
     console.log("✅ Base de données connectée");
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
-
-app.get("/suivi", async (req, res) => {
-  const proConnected = await getConnectedPro(req);
-  res.send(page("Suivi de dossier", `
-    <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-      <h1>📋 Suivre mon dossier</h1>
-      <p style="color:#64748b; margin-bottom:20px;">Entrez votre code de suivi reçu lors de l'inscription.</p>
-      
-      <form action="/suivi" method="POST">
-        <input name="tracking_code" required placeholder="Ex: SUIVI-12345678" style="text-align:center; font-size:18px; text-transform:uppercase;">
-        <button type="submit" style="width:100%;">Vérifier mon dossier</button>
-      </form>
-    </section>
-  `, proConnected));
-});
-
-app.post("/suivi", async (req, res) => {
-  const code = String(req.body.tracking_code || "").trim().toUpperCase();
-  const proConnected = await getConnectedPro(req);
-  
-  if (!code) return res.redirect(303, "/suivi");
-
-  try {
-    const result = await pool.query(`SELECT * FROM professional_applications WHERE tracking_code = $1`, [code]);
-    
-    if (!result.rows.length) {
-      return res.status(404).send(page("Erreur", `<h2>Code de suivi introuvable.</h2><a href="/suivi">Réessayer</a>`, proConnected));
-    }
-
-    const dossier = result.rows[0];
-    let statutMessage = "";
-    let actionHtml = "";
-
-    if (dossier.payment_status === 'unpaid') {
-      statutMessage = "⏳ En attente de paiement";
-      actionHtml = `<a href="/paiement/${dossier.tracking_code}" class="button success" style="margin-top:20px;">Payer mon inscription (1500 FCFA)</a>`;
-    } 
-    else if (dossier.status === 'payment_pending' || dossier.status === 'pending') {
-      statutMessage = "⏳ En cours d'examen par l'équipe";
-    } 
-    else if (dossier.status === 'approved') {
-      statutMessage = "✅ Dossier approuvé ! Voici votre code de connexion :";
-      // ✅ AFFICHAGE DU CODE PRO AVEC BOUTON COPIER
-      actionHtml = `
-        <div style="background:#f0fdf4; border:2px dashed #10b981; padding:24px; border-radius:12px; margin:20px 0;">
-          <p style="margin:0 0 10px 0; font-weight:bold; color:#065f46;">⚠️ Ce code est très important. Il vous permettra de vous connecter à votre Espace Pro chaque fois.</p>
-          <div style="font-size:32px; font-weight:900; font-family:monospace; color:#047857; letter-spacing:3px;" id="pro-code-value">${escapeHtml(dossier.pro_code || "Génération en cours...")}</div>
-          <button type="button" onclick="navigator.clipboard.writeText('${escapeHtml(dossier.pro_code || "")}').then(() => alert('✅ Code copié !'))" style="margin-top:15px; padding:10px 20px; font-size:16px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer;">📋 Copier le code</button>
-        </div>
-        <a href="/mon-espace-pro" class="button" style="margin-top:10px;">Aller sur mon espace pro</a>
-      `;
-    } 
-    else if (dossier.status === 'rejected') {
-  statutMessage = `❌ Dossier refusé : <span style="color:#ef4444; font-weight:bold;">${escapeHtml(dossier.rejection_reason || "Motif non précisé")}</span>`;
-  
-  // ✅ FORMULAIRE DE CORRECTION COMPLET (Pré-rempli avec ses anciennes infos)
-  actionHtml = `
-    <div style="background:#fef2f2; border:1px solid #fecaca; padding:20px; border-radius:12px; margin-top:20px; text-align:left;">
-      <h3 style="color:#991b1b; font-size:16px; margin-bottom:10px;">🛠️ Corriger mon dossier</h3>
-      <p style="font-size:13px; color:#7f1d1d; margin-bottom:15px;">Modifiez uniquement les informations qui posent problème et renvoyez votre dossier.</p>
-      
-      <form action="/suivi/corriger" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="tracking_code" value="${escapeHtml(dossier.tracking_code)}">
-        
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nom complet *</label>
-        <input type="text" name="full_name" value="${escapeHtml(dossier.full_name)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">NPI *</label>
-        <input type="text" name="npi" value="${escapeHtml(dossier.npi)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Téléphone *</label>
-        <input type="tel" name="phone" value="${escapeHtml(dossier.phone)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Ville *</label>
-        <input type="text" name="city" value="${escapeHtml(dossier.city)}" required style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo visage (optionnel)</label>
-        <input type="file" name="photo_profil" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:10px; background:white;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo Pièce d'identité (optionnel)</label>
-        <input type="file" name="photo_identite" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
-
-        <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">Nouvelle photo KYC - Visage + Pièce (optionnel)</label>
-<input type="file" name="photo_kyc" accept="image/*" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; margin-bottom:15px; background:white;">
-
-        <button type="submit" class="warning" style="width:100%; padding:12px; font-weight:bold; border-radius:8px; border:none; color:white; background:#f59e0b; cursor:pointer;">Renvoyer mon dossier pour vérification</button>
-      </form>
-    </div>
-  `;
-}
-
-    res.send(page("Résultat du suivi", `
-      <section class="card" style="max-width: 550px; margin: 40px auto; text-align:center;">
-        <h1>Dossier de ${escapeHtml(dossier.full_name)}</h1>
-        <div style="font-size:18px; font-weight:bold; margin:20px 0; padding:16px; background:#f1f5f9; border-radius:12px;">
-          ${statutMessage}
-        </div>
-        ${actionHtml}
-        <p style="margin-top:20px;"><a href="/suivi" style="color:#6b7280;">← Vérifier un autre code</a></p>
-      </section>
-    `, proConnected));
-  } catch (e) {
-    res.redirect(303, "/suivi");
-  }
-});
-app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }, { name: "photo_identite", maxCount: 1 }, { name: "photo_kyc", maxCount: 1 }]), async (req, res) => {
-const trackingCode = String(req.body.tracking_code || "").trim();
-  const full_name = String(req.body.full_name || "").trim();
-  const npi = String(req.body.npi || "").trim();
-  const phone = cleanBeninPhone(req.body.phone);
-  const city = String(req.body.city || "").trim();
-  const files = req.files || {};
-
-  if (!trackingCode) return res.redirect(303, "/suivi");
-
-  try {
-    const dossierResult = await pool.query(`SELECT id FROM professional_applications WHERE tracking_code = $1`, [trackingCode]);
-    if (!dossierResult.rows.length) return res.redirect(303, "/suivi");
-    const dossierId = dossierResult.rows[0].id;
-
-    let updateQuery = `UPDATE professional_applications SET full_name = $1, npi = $2, phone = $3, city = $4, status = 'pending', rejection_reason = null, updated_at = NOW()`;
-    let values = [full_name, npi, phone, city];
-
-    if (files.photo_profil && files.photo_profil[0]) {
-      const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_fix_${Date.now()}`);
-      values.push(p1.secure_url);
-      updateQuery += `, photo_profil_url = $${values.length}`;
-    }
-    if (files.photo_identite && files.photo_identite[0]) {
-      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_fix_${Date.now()}`);
-      values.push(p2.secure_url);
-      updateQuery += `, photo_identite_url = $${values.length}`;
-    }
-
-    if (files.photo_kyc && files.photo_kyc[0]) {
-  const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_fix_${Date.now()}`);
-  values.push(p3.secure_url);
-  updateQuery += `, photo_kyc_url = $${values.length}`;
-}
-    values.push(dossierId);
-    updateQuery += ` WHERE id = $${values.length}`;
-
-    await pool.query(updateQuery, values);
-
-    res.send(page("Correction envoyée", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;"> 
-        <h1 style="color:#10b981;">✅ Correction bien reçue !</h1>
-        <p>Votre dossier a été mis à jour et repasse en cours d'examen par notre équipe.</p>
-        <p style="margin-top:20px;"><a href="/suivi" class="button">Retour au suivi</a></p>
-      </section>
-    `, null));
-
-  } catch (e) {
-    console.error("Erreur correction:", e);
-    res.status(500).send(page("Erreur", "<h2>Erreur lors de la correction.</h2><a href='/suivi'>Retour</a>", null));
-  }
-});
 
 startServer();
