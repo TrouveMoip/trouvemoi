@@ -939,6 +939,35 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   });
 
   // ==========================================
+// PAGE RGPD (Affichage)
+// ==========================================
+router.get("/rgpd", requireAdmin, requireSuperAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const result = await pool.query(`
+    SELECT g.*, p.full_name AS pro_name 
+    FROM gdpr_requests g 
+    LEFT JOIN professional_applications p ON p.id = g.pro_id 
+    ORDER BY g.created_at DESC
+  `);
+  const rows = result.rows.map(r => `
+    <article class="card" style="margin-bottom:15px;">
+      <h2>${escapeHtml(r.request_type)} - ${escapeHtml(r.pro_name || "Inconnu")}</h2>
+      <p>Statut : <strong>${escapeHtml(r.status)}</strong></p>
+      <p>Date : ${new Date(r.created_at).toLocaleString("fr-FR")}</p>
+      ${r.status === "pending" ? `
+      <form action="/admin/rgpd/${r.id}/traiter" method="POST" style="margin:0;">
+        <input type="hidden" name="csrfToken" value="${csrf}">
+        <button class="success" onclick="return confirm('⚠️ Supprimer définitivement ce compte ?')">✅ Traiter (supprimer)</button>
+      </form>
+      ` : `<span class="badge" style="background:#d1fae5; color:#065f46;">${escapeHtml(r.status)}</span>`}
+    </article>
+  `).join("");
+  res.send(page("RGPD", `
+    <h1>🔐 Demandes RGPD</h1>
+    ${await customAdminMenu("/admin/rgpd", csrf, req.adminSession.role)}
+    ${rows || "<p style='text-align:center; padding:40px;'>Aucune demande RGPD en attente.</p>"}
+  `, null));
+});
   // RGPD (Super Admin)
   // ==========================================
   router.post("/rgpd/:id/traiter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
