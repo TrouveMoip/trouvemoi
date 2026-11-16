@@ -821,18 +821,6 @@ app.get("/manifest.json", (req, res) => {
   });
 });
 
-app.post("/api/save-token", express.json(), async (req, res) => {
-  try {
-    const token = String(req.body.token || "").trim();
-    if (!token) return res.json({ ok: false });
-    await pool.query(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, token TEXT UNIQUE, created_at TIMESTAMP DEFAULT NOW())`);
-    await pool.query(`INSERT INTO push_tokens (token) VALUES ($1) ON CONFLICT (token) DO NOTHING`, [token]);
-    res.json({ ok: true });
-  } catch (e) {
-    res.json({ ok: false });
-  }
-});
-
 app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
   if (BYPASS_PAYMENT) return res.status(200).json({ received: true });
   try {
