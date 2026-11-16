@@ -1264,13 +1264,6 @@ async function startServer() {
       await pool.query(`INSERT INTO professions (name, category) VALUES ($1, $2) ON CONFLICT (name) DO NOTHING`, [m.name, m.cat]);
     }
 
-    // --- INITIALISATION DE FIREBASE ---
-    if (process.env.FIREBASE_PROJECT_ID) {
-      admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-      });
-      console.log("🔥 Firebase connecté");
-    }
     // --- CRÉATION DES COLONNES MANQUANTES POUR LES PROS ---
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS company_name VARCHAR(255)`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS phone_public BOOLEAN DEFAULT false`);
