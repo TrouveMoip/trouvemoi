@@ -1101,26 +1101,32 @@ for (const ag of agenciesResult.rows) {
       `, [startDate]);
 
       let csv = `RAPPORT FINANCIER - ${selectedMonth}\n\n`;
-      
-      csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
-      csv += `Date;Nom;Entreprise;Montant;Reference\n`;
-      let totalInscr = 0;
-      inscriptions.rows.forEach(i => {
-        csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};"${i.full_name}";"${i.company_name || ''}";${i.payment_amount};"${i.payment_ref || ''}"\n`;
-        totalInscr += Number(i.payment_amount);
-      });
-      csv += `Total Inscriptions;;;${totalInscr};\n\n`;
 
-      csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
-      csv += `Date;Nom;Entreprise;Montant\n`;
-      let totalAbo = 0;
-      abonnements.rows.forEach(a => {
-        csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};"${a.full_name}";"${a.company_name || ''}";600\n`;
-        totalAbo += 600;
-      });
-      csv += `Total Abonnements;;;${totalAbo};\n\n`;
-      
-      csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
+const safeCsv = (val) => {
+  let str = String(val ?? "");
+  if (str.match(/^[=+\-@]/)) str = "'" + str;
+  return `"${str.replace(/"/g, '""')}"`;
+};
+
+csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
+csv += `Date;Nom;Entreprise;Montant;Reference\n`;
+let totalInscr = 0;
+inscriptions.rows.forEach(i => {
+  csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};${safeCsv(i.full_name)};${safeCsv(i.company_name || '')};${i.payment_amount};${safeCsv(i.payment_ref || '')}\n`;
+  totalInscr += Number(i.payment_amount);
+});
+csv += `Total Inscriptions;;;${totalInscr};\n\n`;
+
+csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
+csv += `Date;Nom;Entreprise;Montant\n`;
+let totalAbo = 0;
+abonnements.rows.forEach(a => {
+  csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};${safeCsv(a.full_name)};${safeCsv(a.company_name || '')};600\n`;
+  totalAbo += 600;
+});
+csv += `Total Abonnements;;;${totalAbo};\n\n`;
+
+csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
 
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="rapport_trouvemoi_${selectedMonth}.csv"`);
