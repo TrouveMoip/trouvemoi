@@ -7,8 +7,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
   // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
   async function verifyProCsrf(req, res, next) {
     if (req.method !== 'POST') return next();
-    if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
-    
+    if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/') || req.path.includes('/agences/')) return next();    
     let cookieToken = null;
     for (const item of (req.headers.cookie || "").split(";")) {
       const [key, ...val] = item.trim().split("=");
