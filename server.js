@@ -137,12 +137,16 @@ cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: proc
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false } });
 const upload = multer({ 
   storage: multer.memoryStorage(), 
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+  // On réduit à 5 Mo max par fichier et 3 fichiers max
+  limits: { fileSize: 5 * 1024 * 1024, files: 3 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
+    // ✅ On n'accepte QUE les vraies images (pas de SVG qui peut contenir du code)
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Format de fichier non supporté. Seules les images sont autorisées."));
+      cb(new Error("Format non supporté. Veuillez utiliser une image JPEG, PNG ou WEBP."));
     }
   }
 });
