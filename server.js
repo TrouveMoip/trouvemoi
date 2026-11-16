@@ -720,7 +720,7 @@ app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
-app.use(compression());
+
 // 🛡️ CASQUE DE SÉCURITÉ HELMET
 app.use(helmet({
   contentSecurityPolicy: {
