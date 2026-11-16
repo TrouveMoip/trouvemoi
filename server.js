@@ -733,6 +733,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       connectSrc: ["'self'", "https://*.googleapis.com", "https://*.kkiapay.me", "https://*.esmsafrica.io"],
       imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://www.googletagmanager.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
