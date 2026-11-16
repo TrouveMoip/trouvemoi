@@ -733,6 +733,11 @@ app.use((req, res, next) => {
 app.post("/api/send-otp", express.json(), async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
   if (!phone) return res.status(400).json({ ok: false, error: "Numéro invalide (01XXXXXXXX)" });
+  // 🛡️ VIGILE ANTI-SMS BOMBING (Max 5 demandes par IP toutes les 15 min)
+const ipKey = `otp_ip:${req.ip || 'unknown'}`;
+if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
+  return res.status(429).json({ ok: false, error: "Trop de demandes de SMS depuis votre réseau. Patientez 15 minutes." });
+}
 
   if (!(await takeRateLimit(`otp:send:${phone}`, 1, 60 * 1000))) {
     return res.status(429).json({ ok: false, error: "Patientez 1 minute avant de redemander." });
