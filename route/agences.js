@@ -3,6 +3,22 @@ const express = require('express');
 module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cleanBeninPhone, upload, uploadToCloudinary, deleteFromCloudinary, BYPASS_PAYMENT, verifyKkiapayTransaction) {
   const router = express.Router();
 
+  // ✅ CSS pour rendre le tableau des horaires joli sur mobile
+  const horairesCss = `
+    <style>
+      .horaires-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .horaire-row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+      .horaire-jour { width: 80px; font-weight: 600; text-transform: capitalize; }
+      .horaire-time { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; margin: 0; font-size: 13px; background: white; }
+      .horaire-sep { color: #94a3b8; font-size: 12px; }
+      @media (max-width: 600px) {
+        .horaires-grid { grid-template-columns: 1fr; }
+        .horaire-jour { width: 70px; font-size: 13px; }
+        .horaire-time { padding: 6px; }
+      }
+    </style>
+  `;
+
   // --- 1. LISTE DES AGENCES DU PRO ---
   router.get("/mon-espace-pro/agences", async (req, res) => {
     const proConnected = await getConnectedPro(req);
@@ -46,6 +62,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     }
     
     res.send(page("Ajouter une agence", `
+      ${horairesCss}
       <section class="card" style="max-width: 700px; margin: 40px auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
           <h1 style="margin:0;">➕ Ajouter une agence</h1>
@@ -65,13 +82,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
 
             <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
               <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture (laisser vide si fermé ce jour-là)</label>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+              <div class="horaires-grid">
                 ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => `
-                  <div style="display:flex; align-items:center; gap:5px;">
-                    <span style="width:60px; text-transform:capitalize;">${j}</span>
-                    <input type="time" name="h_${j}_o" style="padding:5px; margin:0; width:80px;">
-                    <span>à</span>
-                    <input type="time" name="h_${j}_f" style="padding:5px; margin:0; width:80px;">
+                  <div class="horaire-row">
+                    <span class="horaire-jour">${j}</span>
+                    <input type="time" name="h_${j}_o" class="horaire-time">
+                    <span class="horaire-sep">à</span>
+                    <input type="time" name="h_${j}_f" class="horaire-time">
                   </div>
                 `).join('')}
               </div>
@@ -268,6 +285,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const agency = result.rows[0];
 
     res.send(page("Modifier l'agence", `
+      ${horairesCss}
       <section class="card" style="max-width: 700px; margin: 40px auto;">
         <form action="/mon-espace-pro/agences/${agency.id}/modifier" method="POST" enctype="multipart/form-data">
           <label>Nom de l'agence *</label><input name="name" required value="${escapeHtml(agency.name)}">
@@ -279,16 +297,16 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
 
           <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0; margin-bottom:15px;">
             <label style="font-weight:bold; margin-bottom:10px; display:block; color:#1e40af;">🕒 Horaires d'ouverture</label>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
+            <div class="horaires-grid">
               ${['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].map(j => {
                 let h = {}; try { h = JSON.parse(agency.horaires_json || '{}'); } catch(e){}
                 const horaire = h[j] || {};
                 return `
-                  <div style="display:flex; align-items:center; gap:5px;">
-                    <span style="width:60px; text-transform:capitalize;">${j}</span>
-                    <input type="time" name="h_${j}_o" value="${horaire.o || ''}" style="padding:5px; margin:0; width:80px;">
-                    <span>à</span>
-                    <input type="time" name="h_${j}_f" value="${horaire.f || ''}" style="padding:5px; margin:0; width:80px;">
+                  <div class="horaire-row">
+                    <span class="horaire-jour">${j}</span>
+                    <input type="time" name="h_${j}_o" value="${horaire.o || ''}" class="horaire-time">
+                    <span class="horaire-sep">à</span>
+                    <input type="time" name="h_${j}_f" value="${horaire.f || ''}" class="horaire-time">
                   </div>
                 `;
               }).join('')}
