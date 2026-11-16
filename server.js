@@ -7,7 +7,8 @@ const compression = require("compression");
 const fetch = require("node-fetch");
 const admin = require("firebase-admin");
 const rateLimit = require("express-rate-limit");
-const bcrypt = require("bcrypt"); // ✅ Ajouté ici
+const bcrypt = require("bcrypt");
+const helmet = require("helmet");
 
 // --- CONFIGURATION ---
 const app = express(); 
