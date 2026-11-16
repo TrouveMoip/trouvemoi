@@ -1,5 +1,5 @@
 const express = require('express');
-const crypto = require('crypto'); // ✅ Importation ajoutée
+const crypto = require('crypto'); // ✅ Import ajouté pour randomInt
 
 module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinary, takeRateLimit, BYPASS_PAYMENT, KKIAPAY_PUBLIC_KEY, KKIAPAY_SANDBOX, APP_URL, escapeHtml, cleanBeninPhone, readCookie, PAYMENT_AMOUNT, METIERS_LOCAL_FIXE, METIERS_SENSIBLES, sendSMS, verifyOTP, sendPushNotification, VILLES_BENIN) {
   const router = express.Router();
@@ -239,7 +239,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       </section>
 
       <script>
-      // --- LOGIQUE DES ÉTAPES ---
       function showStep(step) {
         document.querySelectorAll('.form-page').forEach(el => el.classList.remove('active'));
         document.getElementById('step-' + step).classList.add('active');
@@ -275,7 +274,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           const prof = document.getElementById('profession').value.trim();
           if(!city || !prof) { alert("Veuillez choisir votre ville et profession."); return; }
 
-          // ✅ VÉRIFICATION DES MÉTIERS SENSIBLES (insensible à la casse)
           const metiersSensibles = ${metiersSensiblesJson};
           const isSensible = metiersSensibles.some(m => m.toLowerCase() === prof.toLowerCase());
           
@@ -288,12 +286,10 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       }
       function prevStep(step) { showStep(step - 1); }
       
-      // --- LOGIQUE LOCALISATION & GPS ---
       function toggleLocalisation(isFixe) {
         document.getElementById('localisation-block').style.display = isFixe ? 'block' : 'none';
       }
 
-      // --- LOGIQUE HORAIRES (Bouton Ouvert/Fermé) ---
       function toggleJour(jour) {
         var isOpen = document.getElementById('open_' + jour).checked;
         var btn = document.getElementById('btn_' + jour);
@@ -320,11 +316,9 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
           (position) => {
             document.getElementById('latitude').value = position.coords.latitude;
             document.getElementById('longitude').value = position.coords.longitude;
-            
             status.innerText = "✅ Position GPS enregistrée !";
             
-            const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ? Cliquez sur OK si vous êtes sur place. Cliquez sur Annuler si vous êtes ailleurs.");
-            
+            const isExactLocation = confirm("📍 Êtes-vous exactement sur le lieu de votre établissement ?");
             const adresseInput = document.querySelector('input[name="adresse_exacte"]');
             
             if (isExactLocation) {
@@ -340,13 +334,10 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               adresseInput.focus();
             }
           },
-          () => { 
-            status.innerText = "❌ Impossible de vous localiser. Veuillez autoriser le GPS ou écrire l'adresse manuellement."; 
-          }
+          () => { status.innerText = "❌ Impossible de vous localiser. Veuillez autoriser le GPS ou écrire l'adresse manuellement."; }
         );
       }
 
-      // --- LOGIQUE METIERS (BOUTON GRIS) ---
       const METIERS_LOCAL_FIXE = ${metiersLocalFixeJson};
       
       document.getElementById('profession').addEventListener('change', function() {
@@ -365,7 +356,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         }
       });
 
-      // --- LOGIQUE VILLES & QUARTIERS (Appel API) ---
       function filterCities() {
         const search = document.getElementById('search-city').value.toLowerCase();
         const select = document.getElementById('city');
@@ -398,7 +388,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         document.getElementById('neighborhood-other-block').style.display = (this.value === 'Autre') ? 'block' : 'none';
       });
 
-      // --- LOGIQUE SMS ---
       async function demanderCodePro() {
         const phone = document.getElementById('input_phone').value;
         if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
@@ -441,7 +430,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         }
       }
 
-      // --- LOGIQUE PHOTOS (FOND VERT) ---
       ['photo_profil', 'photo_identite', 'photo_kyc'].forEach(id => {
         const input = document.getElementById(id);
         if(input) {
@@ -477,7 +465,6 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       referred_by, type_lieu, adresse_exacte, latitude, longitude, phone_public
     } = req.body;
 
-    // ✅ Gestion du numéro WhatsApp
     let whatsapp_number = req.body.whatsapp_number;
     if (req.body.is_wa_same === 'yes') {
       whatsapp_number = phone;
@@ -486,8 +473,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
     const otpCode = String(req.body.otp_code || "").trim();
     const neighborhood = req.body.neighborhood === 'Autre' ? req.body.neighborhood_other : req.body.neighborhood;
 
+    // ✅ Horaires uniquement si local fixe
     const horaires = {};
-    // ✅ On ne récupère les horaires QUE si c'est un local fixe
     if (req.body.type_lieu === 'fixe') {
       ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'].forEach(j => {
         if (req.body[`h_${j}_open`]) {
