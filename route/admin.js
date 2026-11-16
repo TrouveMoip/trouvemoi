@@ -521,7 +521,7 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
         if (isReactivation) {
           await pool.query(`UPDATE professional_applications SET status = 'approved', processed_by = $1, assigned_to = NULL WHERE id = $2`, [adminId, id]);
         } else {
-          const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
+          const newCode = `TM${crypto.randomInt(10000000, 99999999)}`;
           const referralCode = crypto.randomBytes(3).toString('hex');
           
           await pool.query(`UPDATE professional_applications SET status = $1, pro_code = $2, referral_code = $3, kyc_verified = true, subscription_status = 'active', subscription_expires_at = NOW() + INTERVAL '6 months', processed_by = $4, assigned_to = NULL WHERE id = $5`, [status, newCode, referralCode, adminId, id]);    
