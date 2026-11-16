@@ -28,7 +28,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const currentPage = Math.max(1, parseInt(req.query.page) || 1); 
       const limit = 10; const offset = (currentPage - 1) * limit;
 
-      // ✅ CORRECTION : On ne montre que les offres des pros actifs (statut ET date)
+      // ✅ Filtre : offres approuvées + pro actif + non expiré
       let whereClause = ` WHERE j.status = 'approved' AND (j.expires_at IS NULL OR j.expires_at > NOW()) AND (p.subscription_status IS NULL OR p.subscription_status = 'active') AND (p.subscription_expires_at IS NULL OR p.subscription_expires_at > NOW())`; 
       const values = [];
       if (keyword) { values.push(`%${keyword}%`); whereClause += ` AND (j.job_title ILIKE $${values.length} OR j.company_name ILIKE $${values.length})`; }
@@ -99,7 +99,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    // ✅ CORRECTION : Si le pro est expiré, on le redirige vers la page de paiement
     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
       return res.redirect(303, "/mon-espace-pro/payer-abonnement");
     }
@@ -146,7 +145,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    // ✅ CORRECTION : Sécurité supplémentaire pour le POST
     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
       return res.status(403).send(page("Erreur", "<h2>Votre abonnement a expiré. Vous ne pouvez pas publier d'offre.</h2><a href='/mon-espace-pro/payer-abonnement'>Payer mon abonnement</a>", proConnected));
     }
@@ -255,7 +253,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
       const proConnected = await getConnectedPro(req);
       const id = Number(req.params.id);
       
-      // ✅ CORRECTION : On vérifie que le pro parent n'est pas expiré (statut ET date)
+      // ✅ Vérifie que le pro n'est pas expiré
       const result = await pool.query(`
         SELECT j.* FROM job_offers j 
         LEFT JOIN professional_applications p ON j.pro_id = p.id 
