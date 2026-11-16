@@ -304,12 +304,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, cleanBeninPho
               ${contactButtons}
             </div>
           </div>
-
-          <div style="text-align: center; margin-top: 20px;">
-  <a href="/contact?report_job=${job.id}" style="font-size: 13px; color: #ef4444; text-decoration: none; font-weight: bold;">
-    🚩 Signaler cette offre
-  </a>
-</div>
           <div style="text-align: center; margin-top: 20px;">
             <a href="/emplois" style="color: #6b7280; text-decoration: underline;">← Retour à toutes les offres</a>
           </div>
