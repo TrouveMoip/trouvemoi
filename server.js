@@ -17,6 +17,10 @@ const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 const REFERRAL_BONUS = 100;
+if (IS_PRODUCTION && BYPASS_PAYMENT) {
+  console.error("❌ ERREUR CRITIQUE : Le mode BYPASS_PAYMENT est interdit en production. Le serveur s'arrête par sécurité.");
+  process.exit(1);
+}
 
 // Le dictionnaire complet des quartiers
 const QUARTIERS_BENIN = {
