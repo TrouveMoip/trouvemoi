@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, clearRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
 
+  // ✅ Middleware pour restreindre l'accès au Super Admin uniquement
   function requireSuperAdmin(req, res, next) {
     if (req.adminSession?.role !== 'super_admin') {
       return res.status(403).send(page("Accès refusé", "<h2>Accès refusé. Seul le Super Administrateur peut voir cette page.</h2><a href='/admin/dashboard' class='button'>Retour au dashboard</a>", null));
@@ -12,18 +13,31 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     next();
   }
 
+  // ✅ Menu admin optimisé : 1 seule requête SQL au lieu de 8
   async function customAdminMenu(current, csrf, role = 'super_admin') {
     let gdprCount = 0, prosPendingCount = 0, reviewsPendingCount = 0, msgsCount = 0, withdrawalsCount = 0, reportsCount = 0, notificationsFailed = 0, jobsPendingCount = 0;
     try {
-      gdprCount = Number((await pool.query("SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending'")).rows[0].count);
-      prosPendingCount = Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')")).rows[0].count); 
-      reviewsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count);
-      msgsCount = Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL")).rows[0].count);
-      withdrawalsCount = Number((await pool.query("SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'")).rows[0].count);
-      reportsCount = Number((await pool.query("SELECT COUNT(*) FROM review_reports WHERE status = 'pending'")).rows[0].count);
-      notificationsFailed = Number((await pool.query("SELECT COUNT(*) FROM notifications WHERE status = 'failed'")).rows[0].count);
-      jobsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'")).rows[0].count);
-    } catch (e) {}
+      const counts = await pool.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM gdpr_requests WHERE status = 'pending') AS gdpr,
+          (SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')) AS pros,
+          (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS reviews,
+          (SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL) AS msgs,
+          (SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending') AS withdrawals,
+          (SELECT COUNT(*) FROM review_reports WHERE status = 'pending') AS reports,
+          (SELECT COUNT(*) FROM notifications WHERE status = 'failed') AS notifs,
+          (SELECT COUNT(*) FROM job_offers WHERE status = 'pending') AS jobs
+      `);
+      const c = counts.rows[0];
+      gdprCount = Number(c.gdpr);
+      prosPendingCount = Number(c.pros);
+      reviewsPendingCount = Number(c.reviews);
+      msgsCount = Number(c.msgs);
+      withdrawalsCount = Number(c.withdrawals);
+      reportsCount = Number(c.reports);
+      notificationsFailed = Number(c.notifs);
+      jobsPendingCount = Number(c.jobs);
+    } catch (e) { console.error("Erreur compteurs admin:", e); }
 
     let links = [
       { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
@@ -55,6 +69,9 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#4b5563;">Connecté en tant que : ${roleLabel}</div><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
 
+  // ==========================================
+  // CONNEXION
+  // ==========================================
   router.get("/", async (req, res) => {
     const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
     if (session?.jti) {
@@ -131,6 +148,9 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     }
   });
 
+  // ==========================================
+  // MON PROFIL
+  // ==========================================
   router.get("/mon-profil", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const user = (await pool.query(`SELECT email, role FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
@@ -186,6 +206,9 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     }
   });
 
+  // ==========================================
+  // GESTION DES ADMINS
+  // ==========================================
   router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const admins = (await pool.query(`SELECT id, email, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC`)).rows;
@@ -282,18 +305,115 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     }
   });
 
+  // ==========================================
+  // DASHBOARD AVANCÉ
+  // ==========================================
   router.get("/dashboard", requireAdmin, async (req, res) => {
-    const stats = {
-      pros: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'")).rows[0].count),
-      prosPending: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')")).rows[0].count),
-      reviews: Number((await pool.query("SELECT COUNT(*) FROM reviews WHERE status = 'pending'")).rows[0].count),
-      messages: Number((await pool.query("SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL")).rows[0].count),
-      prosToday: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE")).rows[0].count)
-    };
-    const menu = await customAdminMenu("/admin/dashboard", getCsrf(req), req.adminSession.role);
-    res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>`, null));
+    try {
+      // ✅ Stats générales (1 seule requête)
+      const stats = await pool.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM professional_applications WHERE status = 'approved') AS total_pros,
+          (SELECT COUNT(*) FROM professional_applications WHERE status IN ('pending', 'under_review', 'corrections_requested')) AS pending_pros,
+          (SELECT COUNT(*) FROM reviews WHERE status = 'pending') AS pending_reviews,
+          (SELECT COUNT(*) FROM contact_messages WHERE is_read = false AND pro_id IS NULL) AS unread_messages,
+          (SELECT COUNT(*) FROM professional_applications WHERE DATE(created_at) = CURRENT_DATE) AS pros_today,
+          (SELECT COALESCE(SUM(payment_amount), 0) FROM professional_applications WHERE payment_status = 'paid') AS total_inscriptions_revenue,
+          (SELECT COUNT(*) FROM subscription_payments) AS total_subscriptions_count,
+          (SELECT COALESCE(SUM(amount), 0) FROM subscription_payments) AS total_subscriptions_revenue
+      `);
+      const s = stats.rows[0];
+
+      // ✅ Graphique : inscriptions par mois (6 derniers mois)
+      const chartData = await pool.query(`
+        SELECT TO_CHAR(created_at, 'YYYY-MM') AS month, COUNT(*) AS count 
+        FROM professional_applications 
+        WHERE created_at >= NOW() - INTERVAL '6 months'
+        GROUP BY month ORDER BY month
+      `);
+      
+      const labels = chartData.rows.map(r => r.month);
+      const data = chartData.rows.map(r => Number(r.count));
+      const chartScript = `
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+          document.addEventListener("DOMContentLoaded", function() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: ${JSON.stringify(labels)},
+                datasets: [{
+                  label: 'Inscriptions par mois',
+                  data: ${JSON.stringify(data)},
+                  backgroundColor: '#3b82f6',
+                  borderRadius: 8
+                }]
+              },
+              options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+            });
+          });
+        </script>
+      `;
+
+      const menu = await customAdminMenu("/admin/dashboard", getCsrf(req), req.adminSession.role);
+      
+      res.send(page("Dashboard", `
+        <h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>
+        ${menu}
+        
+        <div class="stats-grid" style="margin-top:30px; display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
+          <div class="stat-card" style="background:white; padding:20px; border-radius:12px; border-left:4px solid #10b981;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a;">${s.total_pros}</div>
+            <div style="font-size:14px; color:#64748b;">Pros approuvés</div>
+          </div>
+          <div class="stat-card" style="background:white; padding:20px; border-radius:12px; border-left:4px solid #f59e0b;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a;">${s.pending_pros}</div>
+            <div style="font-size:14px; color:#64748b;">En attente</div>
+          </div>
+          <div class="stat-card" style="background:white; padding:20px; border-radius:12px; border-left:4px solid #ef4444;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a;">${s.pending_reviews}</div>
+            <div style="font-size:14px; color:#64748b;">Avis à modérer</div>
+          </div>
+          <div class="stat-card" style="background:white; padding:20px; border-radius:12px; border-left:4px solid #3b82f6;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a;">${s.unread_messages}</div>
+            <div style="font-size:14px; color:#64748b;">Messages non lus</div>
+          </div>
+          <div class="stat-card" style="background:white; padding:20px; border-radius:12px; border-left:4px solid #8b5cf6;">
+            <div style="font-size:32px; font-weight:800; color:#0f172a;">${s.pros_today}</div>
+            <div style="font-size:14px; color:#64748b;">Inscrits aujourd'hui</div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div class="card" style="background:#f0fdf4; border-left:4px solid #10b981; margin:0;">
+            <h3 style="font-size:16px; color:#065f46; margin-bottom:10px;">💰 Revenus Inscriptions</h3>
+            <div style="font-size:28px; font-weight:800; color:#10b981;">${Number(s.total_inscriptions_revenue).toLocaleString('fr-FR')} FCFA</div>
+            <p style="font-size:12px; color:#64748b; margin-top:5px;">Total des inscriptions payées</p>
+          </div>
+          <div class="card" style="background:#eff6ff; border-left:4px solid #3b82f6; margin:0;">
+            <h3 style="font-size:16px; color:#1e40af; margin-bottom:10px;">🔄 Revenus Abonnements</h3>
+            <div style="font-size:28px; font-weight:800; color:#3b82f6;">${Number(s.total_subscriptions_revenue).toLocaleString('fr-FR')} FCFA</div>
+            <p style="font-size:12px; color:#64748b; margin-top:5px;">${s.total_subscriptions_count} abonnement(s) payé(s)</p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+          <h3 style="font-size:18px; color:#1e40af; margin-bottom:15px;">📊 Inscriptions par mois (6 derniers mois)</h3>
+          <canvas id="myChart" style="max-height:300px;"></canvas>
+        </div>
+        
+        ${chartScript}
+      `, null));
+    } catch (e) {
+      console.error("Erreur dashboard:", e);
+      res.status(500).send("Erreur");
+    }
   });
 
+  // ==========================================
+  // GESTION DES CANDIDATURES
+  // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const showArchived = req.query.archives === "1";
@@ -780,6 +900,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
     res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf, req.adminSession.role)}${msgs || "<p>Aucun message général.</p>"}`, null));
   });
+
   // ==========================================
   // RETRAITS (Super Admin)
   // ==========================================
@@ -821,62 +942,61 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
   // RGPD (Super Admin)
   // ==========================================
   router.post("/rgpd/:id/traiter", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
-    if (requestResult.rows.length && requestResult.rows[0].pro_id) {
-      const proId = requestResult.rows[0].pro_id;
-      
-      const proResult = await pool.query(
-        `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
-                photo_galerie_1, photo_galerie_2, photo_galerie_3
-         FROM professional_applications WHERE id = $1`,
-        [proId]
-      );
-      if (proResult.rows.length) {
-        const pro = proResult.rows[0];
-        const photosToDelete = [
-          pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
-          pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
-        ];
-        for (let p of photosToDelete) {
-          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+    const id = Number(req.params.id);
+    try {
+      const requestResult = await pool.query(`SELECT pro_id FROM gdpr_requests WHERE id = $1`, [id]);
+      if (requestResult.rows.length && requestResult.rows[0].pro_id) {
+        const proId = requestResult.rows[0].pro_id;
+        
+        const proResult = await pool.query(
+          `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
+                  photo_galerie_1, photo_galerie_2, photo_galerie_3
+           FROM professional_applications WHERE id = $1`,
+          [proId]
+        );
+        if (proResult.rows.length) {
+          const pro = proResult.rows[0];
+          const photosToDelete = [
+            pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
+            pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
+          ];
+          for (let p of photosToDelete) {
+            if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+          }
         }
-      }
-      
-      const agenciesResult = await pool.query(
-        `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
-        [proId]
-      );
-      for (const ag of agenciesResult.rows) {
-        for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
-          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        
+        const agenciesResult = await pool.query(
+          `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
+          [proId]
+        );
+        for (const ag of agenciesResult.rows) {
+          for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
+            if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+          }
         }
-      }
 
-      await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
-      await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
-      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
-      await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte supprimé définitivement (DB + Cloudinary)`);
-    } else {
-      await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+        await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM withdrawal_requests WHERE pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM contact_events WHERE pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM pro_stats WHERE pro_id = $1`, [proId]);
+        await pool.query(`DELETE FROM professional_applications WHERE id = $1`, [proId]);
+        await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+        await logAdminAction("gdpr_deleted_pro", "pro", proId, `[Par: ${req.adminSession.email}] Compte supprimé définitivement (DB + Cloudinary)`);
+      } else {
+        await pool.query(`UPDATE gdpr_requests SET status = 'processed', processed_at = NOW() WHERE id = $1`, [id]);
+      }
+      res.redirect(303, "/admin/rgpd");
+    } catch (error) { 
+      res.status(500).send("Erreur lors de la suppression."); 
     }
-    res.redirect(303, "/admin/rgpd");
-  } catch (error) { 
-    res.status(500).send("Erreur lors de la suppression."); 
-  }
-});
+  });
 
   router.post("/logout", requireAdmin, verifyCsrf, async (req, res) => {
     await pool.query(`UPDATE admin_sessions SET revoked_at = NOW() WHERE jti = $1`, [req.adminSession.jti]).catch(() => {});
     clearSessionCookie(res); res.redirect(303, "/admin");
   });
-
   // ==========================================
   // SIGNALEMENTS
   // ==========================================
