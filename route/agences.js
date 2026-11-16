@@ -311,7 +311,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     let p1 = current.rows[0].photo_1; let p2 = current.rows[0].photo_2; let p3 = current.rows[0].photo_3;
     if (files.photo_1?.[0]) { const r = await uploadToCloudinary(files.photo_1[0].buffer, "trouvemoi/agences", `agence_${Date.now()}_1`); p1 = r.secure_url; }
     
-    // ✅ 1. On prépare les horaires et les congés
     const horaires = {};
     ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'].forEach(j => {
       const o = req.body[`h_${j}_o`]; const f = req.body[`h_${j}_f`];
@@ -320,14 +319,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
     const unavailable_until = req.body.unavailable_until || null;
 
-    // ✅ 2. On vérifie si la date de facturation existe déjà (sécurité pour les anciennes agences)
+    // ✅ Sécurité : si la date de facturation n'existe pas (anciennes agences), on la crée
     let billing_starts_at = current.rows[0].billing_starts_at;
     if (!billing_starts_at) {
       billing_starts_at = new Date();
       billing_starts_at.setMonth(billing_starts_at.getMonth() + 6);
     }
 
-    // ✅ 3. On met à jour en base de données
     await pool.query(`UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, latitude = $6, longitude = $7, phone = $8, whatsapp_number = $9, horaires_json = $10, unavailable_until = $11, billing_starts_at = $12, status = 'pending_validation' WHERE id = $13 AND parent_pro_id = $14`, 
     [name, address, p1, p2, p3, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until, billing_starts_at, id, proConnected.pro.id]);
     
