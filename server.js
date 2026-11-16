@@ -721,6 +721,24 @@ app.disable("x-powered-by");
 app.use(express.urlencoded({ extended: true, limit: "20kb" }));
 app.use(express.json({ limit: "20kb" }));
 app.use(compression());
+// 🛡️ CASQUE DE SÉCURITÉ HELMET
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me"],
+      connectSrc: ["'self'", "https://*.googleapis.com", "https://*.kkiapay.me", "https://*.esmsafrica.io"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://www.googletagmanager.com"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      frameSrc: ["'self'", "https://*.kkiapay.me"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: IS_PRODUCTION ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression());
 
 // Limite globale : max 100 requêtes par minute par IP (sauf pour les webhooks)
 const globalLimiter = rateLimit({
