@@ -1,11 +1,10 @@
 const express = require('express');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt'); // ✅ Importation ajoutée
+const bcrypt = require('bcrypt');
 
-module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
+module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, clearRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
 
-  // ✅ Middleware pour restreindre l'accès au Super Admin uniquement
   function requireSuperAdmin(req, res, next) {
     if (req.adminSession?.role !== 'super_admin') {
       return res.status(403).send(page("Accès refusé", "<h2>Accès refusé. Seul le Super Administrateur peut voir cette page.</h2><a href='/admin/dashboard' class='button'>Retour au dashboard</a>", null));
@@ -26,14 +25,13 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       jobsPendingCount = Number((await pool.query("SELECT COUNT(*) FROM job_offers WHERE status = 'pending'")).rows[0].count);
     } catch (e) {}
 
-    // ✅ Liste de base (accessible à tous les admins)
     let links = [
       { href: "/admin/dashboard", label: "📊 Dashboard", badge: 0 }, 
       { href: "/admin/suivi", label: "📈 Suivi & Export", badge: 0 }, 
       { href: "/admin/candidatures", label: "📋 Candidatures", badge: prosPendingCount }, 
       { href: "/admin/agences", label: "🏢 Agences", badge: 0 },
       { href: "/admin/avis", label: "⭐ Avis", badge: reviewsPendingCount }, 
-      { href: "/admin/signalisations", label: "🚩 Signalements", badge: reportsCount }, 
+      { href: "/admin/signalements", label: "🚩 Signalements", badge: reportsCount }, 
       { href: "/admin/emplois", label: "💼 Offres", badge: jobsPendingCount }, 
       { href: "/admin/messages", label: "📩 Messages", badge: msgsCount }, 
       { href: "/admin/abonnements", label: "💳 Abonnements", badge: 0 },
@@ -44,7 +42,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       { href: "/admin/mon-profil", label: "👤 Mon Profil", badge: 0 }
     ];
 
-    // ✅ Si c'est un Super Admin, on ajoute les liens sensibles
     if (role === 'super_admin') {
       links.push({ href: "/admin/rgpd", label: "🔐 RGPD", badge: gdprCount });
       links.push({ href: "/admin/retraits", label: "💸 Retraits", badge: withdrawalsCount });
@@ -58,9 +55,6 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#4b5563;">Connecté en tant que : ${roleLabel}</div><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
   }
 
-  // ==========================================
-  // CONNEXION (Mixte : Email/MDP + TOTP pour Super Admin)
-  // ==========================================
   router.get("/", async (req, res) => {
     const session = verifySessionToken(readCookie(req, SESSION_COOKIE));
     if (session?.jti) {
@@ -98,11 +92,11 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "");
     const totpCode = String(req.body.totp || "").trim();
-    // 🛡️ VIGILE ANTI-BRUTE FORCE
-const ipKey = `admin_login:ip:${req.ip || 'unknown'}`;
-if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
-  return res.status(429).send(page("Trop de tentatives", "<section class='card' style='text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Pour des raisons de sécurité, veuillez patienter 15 minutes avant de réessayer.</p></section>", null));
-}
+    
+    const ipKey = `admin_login:ip:${req.ip || 'unknown'}`;
+    if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
+      return res.status(429).send(page("Trop de tentatives", "<section class='card' style='text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Pour des raisons de sécurité, veuillez patienter 15 minutes avant de réessayer.</p></section>", null));
+    }
 
     if (!email || !password) return res.status(401).send(page("Refuse", "<h2>Email et mot de passe requis.</h2><a href='/admin'>Retour</a>", null));
 
@@ -121,6 +115,7 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
       }
 
       await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [user.id]);
+      await clearRateLimit(ipKey); 
 
       const expiresAt = Date.now() + SESSION_DURATION;
       const jti = crypto.randomBytes(16).toString("hex");
@@ -136,9 +131,6 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
     }
   });
 
-  // ==========================================
-  // MON PROFIL
-  // ==========================================
   router.get("/mon-profil", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const user = (await pool.query(`SELECT email, role FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
@@ -194,9 +186,6 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
     }
   });
 
-  // ==========================================
-  // GESTION DES ADMINS (Super Admin uniquement)
-  // ==========================================
   router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const admins = (await pool.query(`SELECT id, email, role, is_active, created_at, last_login FROM admin_users ORDER BY created_at DESC`)).rows;
@@ -292,9 +281,7 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
       res.redirect(303, "/admin/admins");
     }
   });
-  // ==========================================
-  // DASHBOARD
-  // ==========================================
+
   router.get("/dashboard", requireAdmin, async (req, res) => {
     const stats = {
       pros: Number((await pool.query("SELECT COUNT(*) FROM professional_applications WHERE status = 'approved'")).rows[0].count),
@@ -307,9 +294,6 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
     res.send(page("Dashboard", `<h1 style="text-align:center; margin-bottom:30px;">Tableau de bord</h1>${menu}<div class="stats-grid" style="margin-top:30px;"><div class="stat-card"><div class="stat-number">${stats.pros}</div><div class="stat-label">Approuvés</div></div><div class="stat-card warning"><div class="stat-number">${stats.prosPending}</div><div class="stat-label">En attente</div></div><div class="stat-card danger"><div class="stat-number">${stats.reviews}</div><div class="stat-label">Avis</div></div><div class="stat-card info"><div class="stat-number">${stats.messages}</div><div class="stat-label">Messages</div></div><div class="stat-card success"><div class="stat-number" style="color: #059669;">${stats.prosToday}</div><div class="stat-label">Aujourd'hui</div></div></div>`, null));
   });
 
-  // ==========================================
-  // GESTION DES CANDIDATURES
-  // ==========================================
   router.get("/candidatures", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
     const showArchived = req.query.archives === "1";
@@ -547,7 +531,7 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
   router.post("/candidatures/:id/regenerer-code", requireAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
-      const newCode = `TM${Math.floor(10000000 + Math.random() * 90000000)}`;
+      const newCode = `TM${crypto.randomInt(10000000, 99999999)}`;
       const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
       
       if (updateResult.rowCount === 0) return res.redirect(303, "/admin/candidatures");
@@ -589,33 +573,32 @@ if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
   router.post("/candidatures/:id/supprimer", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => { 
     const id = Number(req.params.id);
     try {
-      // ✅ Récupérer TOUTES les photos du pro (y compris galerie)
-const proResult = await pool.query(
-  `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
-          photo_galerie_1, photo_galerie_2, photo_galerie_3
-   FROM professional_applications WHERE id = $1`,
-  [id]
-);
-if (proResult.rows.length) {
-  const pro = proResult.rows[0];
-  const photosToDelete = [
-    pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
-    pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
-  ];
-  for (let p of photosToDelete) {
-    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
-  }
-}
-// ✅ Récupérer et supprimer les photos des agences
-const agenciesResult = await pool.query(
-  `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
-  [id]
-);
-for (const ag of agenciesResult.rows) {
-  for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
-    if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
-  }
-}
+      const proResult = await pool.query(
+        `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
+                photo_galerie_1, photo_galerie_2, photo_galerie_3
+         FROM professional_applications WHERE id = $1`,
+        [id]
+      );
+      if (proResult.rows.length) {
+        const pro = proResult.rows[0];
+        const photosToDelete = [
+          pro.photo_profil_url, pro.photo_identite_url, pro.photo_kyc_url, pro.photo_activite_url,
+          pro.photo_galerie_1, pro.photo_galerie_2, pro.photo_galerie_3
+        ];
+        for (let p of photosToDelete) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
+      }
+      const agenciesResult = await pool.query(
+        `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
+        [id]
+      );
+      for (const ag of agenciesResult.rows) {
+        for (let p of [ag.photo_1, ag.photo_2, ag.photo_3]) {
+          if (p) { try { await deleteFromCloudinary(p); } catch (e) {} }
+        }
+      }
+      
       await pool.query(`DELETE FROM job_offers WHERE pro_id = $1`, [id]);
       await pool.query(`DELETE FROM agencies WHERE parent_pro_id = $1`, [id]);
       await pool.query(`DELETE FROM reviews WHERE pro_id = $1`, [id]);
@@ -709,10 +692,10 @@ for (const ag of agenciesResult.rows) {
         const dateStr = new Date(p.created_at).toLocaleDateString("fr-FR");
         const payment = p.payment_status === 'paid' ? 'Payé' : p.payment_status === 'refunded' ? 'Remboursé' : 'Impayé';
         const clean = (val) => {
-  let str = String(val ?? "");
-  if (str.match(/^[=+\-@]/)) str = "'" + str; // Bloque les formules Excel
-  return `"${str.replace(/"/g, '""')}"`;
-};
+          let str = String(val ?? "");
+          if (str.match(/^[=+\-@]/)) str = "'" + str;
+          return `"${str.replace(/"/g, '""')}"`;
+        };
         csv += `${dateStr};${clean(p.full_name)};${clean(p.company_name)};${clean(p.phone)};${clean(p.npi)};${clean(p.city)};${clean(p.profession)};${clean(p.status)};${payment};${clean(p.tracking_code)};${clean(p.pro_code)}\n`;
       }
 
@@ -797,7 +780,6 @@ for (const ag of agenciesResult.rows) {
     await pool.query(`UPDATE contact_messages SET is_read = true WHERE is_read = false AND pro_id IS NULL`);
     res.send(page("Messages", `<h1>Messages (Support)</h1>${await customAdminMenu("/admin/messages", csrf, req.adminSession.role)}${msgs || "<p>Aucun message général.</p>"}`, null));
   });
-
   // ==========================================
   // RETRAITS (Super Admin)
   // ==========================================
@@ -845,7 +827,6 @@ for (const ag of agenciesResult.rows) {
     if (requestResult.rows.length && requestResult.rows[0].pro_id) {
       const proId = requestResult.rows[0].pro_id;
       
-      // ✅ Récupérer TOUTES les photos du pro (y compris galerie)
       const proResult = await pool.query(
         `SELECT photo_profil_url, photo_identite_url, photo_kyc_url, photo_activite_url,
                 photo_galerie_1, photo_galerie_2, photo_galerie_3
@@ -863,7 +844,6 @@ for (const ag of agenciesResult.rows) {
         }
       }
       
-      // ✅ Récupérer et supprimer les photos des agences
       const agenciesResult = await pool.query(
         `SELECT photo_1, photo_2, photo_3 FROM agencies WHERE parent_pro_id = $1`,
         [proId]
@@ -1102,31 +1082,31 @@ for (const ag of agenciesResult.rows) {
 
       let csv = `RAPPORT FINANCIER - ${selectedMonth}\n\n`;
 
-const safeCsv = (val) => {
-  let str = String(val ?? "");
-  if (str.match(/^[=+\-@]/)) str = "'" + str;
-  return `"${str.replace(/"/g, '""')}"`;
-};
+      const safeCsv = (val) => {
+        let str = String(val ?? "");
+        if (str.match(/^[=+\-@]/)) str = "'" + str;
+        return `"${str.replace(/"/g, '""')}"`;
+      };
 
-csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
-csv += `Date;Nom;Entreprise;Montant;Reference\n`;
-let totalInscr = 0;
-inscriptions.rows.forEach(i => {
-  csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};${safeCsv(i.full_name)};${safeCsv(i.company_name || '')};${i.payment_amount};${safeCsv(i.payment_ref || '')}\n`;
-  totalInscr += Number(i.payment_amount);
-});
-csv += `Total Inscriptions;;;${totalInscr};\n\n`;
+      csv += `--- INSCRIPTIONS (1500 FCFA) ---\n`;
+      csv += `Date;Nom;Entreprise;Montant;Reference\n`;
+      let totalInscr = 0;
+      inscriptions.rows.forEach(i => {
+        csv += `${new Date(i.payment_date).toLocaleDateString('fr-FR')};${safeCsv(i.full_name)};${safeCsv(i.company_name || '')};${i.payment_amount};${safeCsv(i.payment_ref || '')}\n`;
+        totalInscr += Number(i.payment_amount);
+      });
+      csv += `Total Inscriptions;;;${totalInscr};\n\n`;
 
-csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
-csv += `Date;Nom;Entreprise;Montant\n`;
-let totalAbo = 0;
-abonnements.rows.forEach(a => {
-  csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};${safeCsv(a.full_name)};${safeCsv(a.company_name || '')};600\n`;
-  totalAbo += 600;
-});
-csv += `Total Abonnements;;;${totalAbo};\n\n`;
-
-csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
+      csv += `--- ABONNEMENTS (600 FCFA) ---\n`;
+      csv += `Date;Nom;Entreprise;Montant\n`;
+      let totalAbo = 0;
+      abonnements.rows.forEach(a => {
+        csv += `${new Date(a.last_payment_at).toLocaleDateString('fr-FR')};${safeCsv(a.full_name)};${safeCsv(a.company_name || '')};600\n`;
+        totalAbo += 600;
+      });
+      csv += `Total Abonnements;;;${totalAbo};\n\n`;
+      
+      csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
 
       res.setHeader("Content-Type", "text/csv; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="rapport_trouvemoi_${selectedMonth}.csv"`);
@@ -1224,19 +1204,32 @@ csv += `TOTAL GENERAL;;;${totalInscr + totalAbo};\n`;
   });
 
   router.post("/parametres/mot-de-passe", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
-    if (req.body.old_password !== process.env.ADMIN_PASSWORD) {
-      return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
+    const oldPassword = String(req.body.old_password || "");
+    const newPassword = String(req.body.new_password || "");
+
+    if (newPassword.length < 12) {
+      return res.status(400).send(page("Erreur", "<h2>Le nouveau mot de passe doit faire au moins 12 caractères.</h2>", null));
     }
-    res.send(page("Succès", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
-        <h1>✅ Vérification réussie</h1>
-        <p style="margin-bottom:20px;">Votre ancien mot de passe est correct.</p>
-        <div class="alert alert-warning" style="text-align:left;">
-          <strong>⚠️ Important :</strong> Pour des raisons de sécurité, le mot de passe administrateur ne peut pas être modifié directement depuis cette page. Vous devez le changer dans les variables d'environnement sur Render (Variable <code>ADMIN_PASSWORD</code>).
-        </div>
-        <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
-      </section>
-    `, null));
+
+    try {
+      const user = (await pool.query(`SELECT password_hash FROM admin_users WHERE id = $1`, [req.adminSession.adminId])).rows[0];
+      const match = await bcrypt.compare(oldPassword, user.password_hash);
+      
+      if (!match) return res.status(400).send(page("Erreur", "<h2>Ancien mot de passe incorrect.</h2>", null));
+
+      const newHash = await bcrypt.hash(newPassword, 12);
+      await pool.query(`UPDATE admin_users SET password_hash = $1 WHERE id = $2`, [newHash, req.adminSession.adminId]);
+      
+      res.send(page("Succès", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align:center;">
+          <h1>✅ Mot de passe modifié</h1>
+          <p>Votre nouveau mot de passe est actif.</p>
+          <a href="/admin/parametres" class="button" style="margin-top:20px;">← Retour</a>
+        </section>
+      `, null));
+    } catch (e) {
+      res.status(500).send(page("Erreur", "<h2>Erreur technique.</h2>", null));
+    }
   });
 
   return router;
