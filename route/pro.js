@@ -4,11 +4,9 @@ const crypto = require('crypto');
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord, verifyKkiapayTransaction) {
   const router = express.Router();
   
-  // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
+  // ✅ VIGILE CSRF
   async function verifyProCsrf(req, res, next) {
-    // ✅ On ne vérifie QUE les formulaires POST (pas les simples liens)
     if (req.method !== 'POST') return next();
-    // On ignore les routes publiques et la déconnexion
     if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
     
     let cookieToken = null;
@@ -17,7 +15,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       if (key === "tm_pro_csrf") cookieToken = val.join("=");
     }
     
-    // On vérifie que le jeton du cookie correspond à celui du formulaire (req.body.csrfToken)
     if (!cookieToken || !req.body.csrfToken || cookieToken !== req.body.csrfToken) {
       return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
     }
@@ -64,10 +61,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
       await clearRateLimit(codeKey); 
 
-      // ✅ CRÉATION DU JETON CSRF (valable 24h)
       const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
-
-      // On le met dans un cookie sécurisé pour que les formulaires puissent le lire
       res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
       setProCookie(res, code); 
       res.redirect(303, "/mon-espace-pro");
@@ -89,7 +83,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           <input name="pro_code" required maxlength="10" placeholder="TM12345678" style="text-transform:uppercase; text-align:center; font-size:20px;">
           <button type="submit" style="width: 100%;">Se connecter</button>
         </form>
-        
         <div style="text-align:center; margin-top:20px;">
           <a href="/mon-espace-pro/reinitialiser" style="color:#ef4444; font-size:14px; text-decoration:none;">🔐 Code perdu ?</a>
         </div>
@@ -133,8 +126,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       
       ${proConnected.pro.subscription_status === 'expired' ? `
         <div class="alert alert-animated" style="text-align:center; margin-bottom:20px;">
-          ⚠️ Votre abonnement a expiré. Votre profil n'est plus visible.
-          <br><a href="/mon-espace-pro/payer-abonnement" class="button danger" style="margin-top:10px;">Payer 600 FCFA pour réactiver</a>
+          ⚠️ Votre abonnement a expiré. Votre profil et vos agences ne sont plus visibles.
+          <br><a href="/mon-espace-pro/payer-abonnement" class="button danger" style="margin-top:10px;">Payer mon abonnement pour réactiver</a>
         </div>
       ` : `
         <div class="alert alert-success" style="text-align:center; margin-bottom:20px;">
@@ -788,40 +781,69 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     }
   });
 
+  // ==========================================
+  // 💳 NOUVEAU : PAIEMENT DYNAMIQUE MULTI-AGENCES
+  // ==========================================
   router.get("/payer-abonnement", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    res.send(page("Payer mon abonnement", `
-      <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
-        <h1>💳 Abonnement Mensuel</h1>
-        <p>Réglez vos 600 FCFA pour réactiver votre profil pour 30 jours supplémentaires.</p>
-        <button onclick="payer()" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px; margin-top:20px;">
-          Payer 600 FCFA
-        </button>
-        <p style="margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
-      </section>
+    try {
+      // 1. On compte le compte principal (1) + les agences qui ont dépassé leurs 6 mois
+      const agenciesRes = await pool.query(
+        `SELECT COUNT(*) FROM agencies 
+         WHERE parent_pro_id = $1 AND status = 'approved' 
+         AND (billing_starts_at IS NOT NULL AND billing_starts_at <= NOW())`,
+        [proConnected.pro.id]
+      );
       
-      <script src="https://cdn.kkiapay.me/k.js"></script>
-      <script>
-        function payer() {
-          openKkiapayWidget({ 
-            amount: 600, 
-            api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
-            sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
-            callback: "${APP_URL}/mon-espace-pro/abonnement/verifier", 
-            data: "ABO-${proConnected.pro.id}" 
-          });
-        }
-        addSuccessListener(function(response) {
-          if (response && response.transactionId) {
-            window.location.href = "/mon-espace-pro/abonnement/verifier?transaction_id=" + response.transactionId;
+      const agencesPayantes = Number(agenciesRes.rows[0].count) + 1; // +1 pour le compte principal
+      const montantTotal = agencesPayantes * 600;
+
+      res.send(page("Payer mon abonnement", `
+        <section class="card" style="max-width: 500px; margin: 40px auto; text-align: center;">
+          <h1>💳 Abonnement Mensuel</h1>
+          
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:12px; margin:20px 0; text-align:left;">
+            <p><strong>Compte principal :</strong> 600 FCFA</p>
+            <p><strong>Agences facturables :</strong> ${agencesPayantes - 1} x 600 FCFA</p>
+            <hr style="border:none; border-top:1px solid #cbd5e1; margin:10px 0;">
+            <p style="font-size:18px; font-weight:bold; color:#1e3a8a;">Total à payer : ${montantTotal} FCFA</p>
+            <p style="font-size:12px; color:#64748b; margin-top:5px;">(Les agences de moins de 6 mois sont gratuites)</p>
+          </div>
+
+          <button onclick="payer(${montantTotal})" style="padding: 16px; background: #10b981; color: white; font-size: 18px; width: 100%; border-radius: 8px; margin-top:10px;">
+            Payer ${montantTotal} FCFA
+          </button>
+          <p style="margin-top:20px;"><a href="/mon-espace-pro" style="color:#6b7280;">← Retour</a></p>
+        </section>
+        
+        <script src="https://cdn.kkiapay.me/k.js"></script>
+        <script>
+          function payer(montant) {
+            openKkiapayWidget({ 
+              amount: montant, 
+              api_key: "${process.env.KKIAPAY_PUBLIC_KEY}", 
+              sandbox: ${process.env.KKIAPAY_SANDBOX === "true"}, 
+              callback: "${APP_URL}/mon-espace-pro/abonnement/verifier", 
+              data: "ABO-${proConnected.pro.id}" 
+            });
           }
-        });
-      </script>
-    `, proConnected));
+          addSuccessListener(function(response) {
+            if (response && response.transactionId) {
+              window.location.href = "/mon-espace-pro/abonnement/verifier?transaction_id=" + response.transactionId;
+            }
+          });
+        </script>
+      `, proConnected));
+    } catch (e) {
+      res.redirect(303, "/mon-espace-pro");
+    }
   });
 
+  // ==========================================
+  // 💳 NOUVEAU : VÉRIFICATION ANTI-FRAUDE
+  // ==========================================
   router.get("/abonnement/verifier", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const transactionId = String(req.query.transaction_id || "").trim();
@@ -830,33 +852,45 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      // 🔒 Le verrou : on bloque ce numéro de transaction pour être sûr que personne d'autre ne l'utilise en même temps
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-      // 1️⃣ On vérifie si le ticket a déjà été poinçonné
       const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
       if (alreadyUsed.rows.length > 0) {
         await client.query("ROLLBACK");
         return res.send(page("Déjà traité", `
           <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
             <h1 style="color:#f59e0b;">⚠️ Paiement déjà utilisé</h1>
-            <p>Cette transaction a déjà été validée. Votre abonnement a bien été pris en compte.</p>
-            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+            <p>Cette transaction a déjà été validée.</p>
+            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour</a>
           </section>
         `, proConnected));
       }
 
-      // 2️⃣ On vérifie auprès de Kkiapay que le paiement est réel
+      // ✅ Calcul du montant attendu au moment du paiement
+      const agenciesRes = await client.query(
+        `SELECT COUNT(*) FROM agencies 
+         WHERE parent_pro_id = $1 AND status = 'approved' 
+         AND (billing_starts_at IS NOT NULL AND billing_starts_at <= NOW())`,
+        [proConnected.pro.id]
+      );
+      const agencesPayantes = Number(agenciesRes.rows[0].count) + 1;
+      const montantAttendu = agencesPayantes * 600;
+
+      // ✅ Vérification Kkiapay
       const verification = await verifyKkiapayTransaction(transactionId);
       
       if (verification.success) {
-        // 3️⃣ On poinçonne le ticket dans la base
+        // ✅ On vérifie que le montant payé est suffisant
+        if (verification.amount < montantAttendu) {
+          await client.query("ROLLBACK");
+          return res.status(400).send(page("Erreur", `<h2>Paiement insuffisant. Vous devez payer ${montantAttendu} FCFA pour ${agencesPayantes} compte(s)/agence(s).</h2><a href='/contact'>Contact</a>`, proConnected));
+        }
+
         await client.query(
           `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
           [proConnected.pro.id, transactionId, verification.amount]
         );
 
-        // 4️⃣ On ajoute les 30 jours
         await client.query(`
           UPDATE professional_applications 
           SET subscription_status = 'active', 
@@ -870,8 +904,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         return res.send(page("Succès", `
           <section class="card" style="text-align:center; max-width: 500px; margin: 40px auto;">
             <h1 style="color:#10b981;">🎉 Abonnement réactivé !</h1>
-            <p>Votre profil est de nouveau visible sur la plateforme pour 30 jours.</p>
-            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour à mon espace</a>
+            <p>Votre profil et vos agences sont visibles pour 30 jours.</p>
+            <a href="/mon-espace-pro" class="button" style="margin-top:20px;">Retour</a>
           </section>
         `, proConnected));
       }
