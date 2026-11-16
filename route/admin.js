@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt'); // ✅ Importation ajoutée
 
-module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
+module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
 
   // ✅ Middleware pour restreindre l'accès au Super Admin uniquement
@@ -98,6 +98,11 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "");
     const totpCode = String(req.body.totp || "").trim();
+    // 🛡️ VIGILE ANTI-BRUTE FORCE
+const ipKey = `admin_login:ip:${req.ip || 'unknown'}`;
+if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
+  return res.status(429).send(page("Trop de tentatives", "<section class='card' style='text-align:center;'><h1>⏳ Trop de tentatives</h1><p>Pour des raisons de sécurité, veuillez patienter 15 minutes avant de réessayer.</p></section>", null));
+}
 
     if (!email || !password) return res.status(401).send(page("Refuse", "<h2>Email et mot de passe requis.</h2><a href='/admin'>Retour</a>", null));
 
