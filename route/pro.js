@@ -3,8 +3,8 @@ const crypto = require('crypto');
 
 module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploadToCloudinary, clearRateLimit, takeRateLimit, setProCookie, clearProCookie, generateUniqueProCode, logAdminAction, OFFER_DURATION_DAYS, deleteFromCloudinary, cleanBeninPhone, APP_URL, sendSMS, verifyOTP, safeCoord, verifyKkiapayTransaction) {
   const router = express.Router();
-  
-  // ✅ VIGILE CSRF
+
+  // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
   async function verifyProCsrf(req, res, next) {
     if (req.method !== 'POST') return next();
     if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
@@ -631,13 +631,17 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       res.redirect(303, "/mon-espace-pro/reinitialiser");
     }
   });
- 
-  // MES MESSAGES (Boîte de réception du Pro)
+  // ==========================================
+  // MES MESSAGES (avec pagination intégrée)
+  // ==========================================
   router.get("/mes-messages", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     const showArchived = req.query.archives === "1";
+    const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = 10;
+    const offset = (currentPage - 1) * limit;
 
     if (!showArchived) {
       await pool.query(`UPDATE contact_messages SET pro_is_read = true WHERE pro_id = $1`, [proConnected.pro.id]);
@@ -647,7 +651,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       ? `WHERE pro_id = $1 AND is_archived = true` 
       : `WHERE pro_id = $1 AND (is_archived = false OR is_archived IS NULL)`;
 
-    const result = await pool.query(`SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC`, [proConnected.pro.id]);
+    const countResult = await pool.query(`SELECT COUNT(*) FROM contact_messages ${whereClause}`, [proConnected.pro.id]);
+    const totalMessages = parseInt(countResult.rows[0].count);
+    const totalPages = Math.ceil(totalMessages / limit);
+
+    const result = await pool.query(`SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC LIMIT $2 OFFSET $3`, [proConnected.pro.id, limit, offset]);
     
     const messagesHtml = result.rows.map(m => `
       <div style="background:#f8fafc; padding:12px; border-radius:12px; margin-bottom:12px; border-left:3px solid #3b82f6;">
@@ -660,7 +668,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
             <a href="mailto:${escapeHtml(m.email)}" title="Répondre par email" style="text-decoration:none; font-size:16px;">✉️</a>
             ${m.phone ? `<a href="https://wa.me/229${escapeHtml(m.phone.replace(/\D/g, '').replace(/^(00229|229)/, ''))}" target="_blank" title="Répondre sur WhatsApp" style="text-decoration:none; font-size:16px;">💬</a>` : ''}
             ${!showArchived ? `<form action="/mon-espace-pro/mes-messages/${m.id}/archiver" method="POST" style="margin:0;"><button type="submit" title="Archiver" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">📁</button></form>` : ''}
-            <form action="/mon-espace-pro/mes-messages/${m.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Voulez-vous supprimer DÉFINITIVEMENT ce message ? Cette action est irréversible.');">
+            <form action="/mon-espace-pro/mes-messages/${m.id}/supprimer" method="POST" style="margin:0;" onsubmit="return confirm('⚠️ Voulez-vous supprimer DÉFINITIVEMENT ce message ?');">
               <button type="submit" title="Supprimer" style="background:none; border:none; cursor:pointer; font-size:16px; padding:0;">🗑️</button>
             </form>
           </div>
@@ -670,6 +678,15 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         </div>
       </div>
     `).join("");
+
+    let paginationHtml = "";
+    if (totalPages > 1) {
+      paginationHtml = `<div style="display:flex; justify-content:center; gap:10px; margin-top:20px;">`;
+      if (currentPage > 1) paginationHtml += `<a href="?page=${currentPage - 1}${showArchived ? '&archives=1' : ''}" class="button secondary" style="margin:0;">← Précédent</a>`;
+      paginationHtml += `<span style="padding:10px;">Page ${currentPage} / ${totalPages}</span>`;
+      if (currentPage < totalPages) paginationHtml += `<a href="?page=${currentPage + 1}${showArchived ? '&archives=1' : ''}" class="button secondary" style="margin:0;">Suivant →</a>`;
+      paginationHtml += `</div>`;
+    }
 
     res.send(page("Mes Messages", `
       <div style="max-width: 700px; margin: 0 auto;">
@@ -683,11 +700,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
           </div>
         </div>
         ${messagesHtml || "<div class='card' style='text-align:center; padding:40px;'><p style='color:#64748b;'>Aucun message ici.</p></div>"}
+        ${paginationHtml}
       </div>
     `, proConnected));
   });
 
-  // Action : Archiver
   router.post("/mes-messages/:id/archiver", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -695,7 +712,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     res.redirect(303, "/mon-espace-pro/mes-messages");
   });
 
-  // Action : Supprimer définitivement
   router.post("/mes-messages/:id/supprimer", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
@@ -782,14 +798,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
   });
 
   // ==========================================
-  // 💳 NOUVEAU : PAIEMENT DYNAMIQUE MULTI-AGENCES
+  // 💳 PAIEMENT MULTI-AGENCES
   // ==========================================
   router.get("/payer-abonnement", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
     try {
-      // 1. On compte le compte principal (1) + les agences qui ont dépassé leurs 6 mois
       const agenciesRes = await pool.query(
         `SELECT COUNT(*) FROM agencies 
          WHERE parent_pro_id = $1 AND status = 'approved' 
@@ -797,7 +812,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         [proConnected.pro.id]
       );
       
-      const agencesPayantes = Number(agenciesRes.rows[0].count) + 1; // +1 pour le compte principal
+      const agencesPayantes = Number(agenciesRes.rows[0].count) + 1;
       const montantTotal = agencesPayantes * 600;
 
       res.send(page("Payer mon abonnement", `
@@ -841,9 +856,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     }
   });
 
-  // ==========================================
-  // 💳 NOUVEAU : VÉRIFICATION ANTI-FRAUDE
-  // ==========================================
   router.get("/abonnement/verifier", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     const transactionId = String(req.query.transaction_id || "").trim();
@@ -866,7 +878,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
         `, proConnected));
       }
 
-      // ✅ Calcul du montant attendu au moment du paiement
       const agenciesRes = await client.query(
         `SELECT COUNT(*) FROM agencies 
          WHERE parent_pro_id = $1 AND status = 'approved' 
@@ -876,11 +887,9 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
       const agencesPayantes = Number(agenciesRes.rows[0].count) + 1;
       const montantAttendu = agencesPayantes * 600;
 
-      // ✅ Vérification Kkiapay
       const verification = await verifyKkiapayTransaction(transactionId);
       
       if (verification.success) {
-        // ✅ On vérifie que le montant payé est suffisant
         if (verification.amount < montantAttendu) {
           await client.query("ROLLBACK");
           return res.status(400).send(page("Erreur", `<h2>Paiement insuffisant. Vous devez payer ${montantAttendu} FCFA pour ${agencesPayantes} compte(s)/agence(s).</h2><a href='/contact'>Contact</a>`, proConnected));
