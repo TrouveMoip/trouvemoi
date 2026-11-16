@@ -519,8 +519,7 @@ const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires
       const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${Date.now()}`);
       const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${Date.now()}`);
       
-      const trackingCode = `SUIVI-${Math.floor(Math.random() * 90000000) + 10000000}`;
-      
+      const trackingCode = `SUIVI-${crypto.randomInt(10000000, 99999999)}`;      
       await pool.query(
         `INSERT INTO professional_applications (
           full_name, company_name, phone, phone_public, npi, city, neighborhood, profession, 
