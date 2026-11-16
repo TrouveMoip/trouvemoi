@@ -41,7 +41,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
 
-    // ✅ Si le pro est expiré, on le redirige vers le paiement
     if (proConnected.pro.subscription_status === 'expired' || (proConnected.pro.subscription_expires_at && new Date(proConnected.pro.subscription_expires_at) < new Date())) {
       return res.redirect(303, "/mon-espace-pro/payer-abonnement");
     }
@@ -131,9 +130,13 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
       const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
       const unavailable_until = req.body.unavailable_until || null;
 
+      // ✅ Calcul de la date de fin des 6 mois gratuits
+      const billing_starts_at = new Date();
+      billing_starts_at.setMonth(billing_starts_at.getMonth() + 6);
+
       const insertResult = await pool.query(
-        `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status, horaires_json, unavailable_until) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}, $14, $15) RETURNING id`,
-        [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until]
+        `INSERT INTO agencies (parent_pro_id, name, address, latitude, longitude, photo_1, photo_2, photo_3, photo_1_desc, photo_2_desc, photo_3_desc, phone, whatsapp_number, status, horaires_json, unavailable_until, billing_starts_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, ${BYPASS_PAYMENT ? "'pending_validation'" : "'pending_payment'"}, $14, $15, $16) RETURNING id`,
+        [proConnected.pro.id, name, address, safeCoord(latitude, 90), safeCoord(longitude, 180), p1.secure_url, p2url, p3url, desc1 || null, desc2 || null, desc3 || null, cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until, billing_starts_at]
       );
       const agencyId = insertResult.rows[0].id;
 
@@ -163,10 +166,8 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
-      // 🔒 Le verrou : on bloque ce numéro de transaction
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1)::bigint)", [String(transactionId)]);
 
-      // 1️⃣ On vérifie si le ticket a déjà été poinçonné
       const alreadyUsed = await client.query(`SELECT id FROM subscription_payments WHERE transaction_id = $1 LIMIT 1`, [transactionId]);
       if (alreadyUsed.rows.length > 0) {
         await client.query("ROLLBACK");
@@ -179,7 +180,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
         `, proConnected));
       }
 
-      // 2️⃣ On vérifie auprès de Kkiapay
       let isPaymentValid = BYPASS_PAYMENT;
       if (!BYPASS_PAYMENT) {
         const verification = await verifyKkiapayTransaction(transactionId);
@@ -191,13 +191,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
         return res.status(400).send(page("Erreur", "<h2>Paiement non confirmé. Si vous avez été débité, contactez-nous.</h2><a href='/contact'>Contact</a>", proConnected));
       }
 
-      // 3️⃣ On poinçonne le ticket
       await client.query(
         `INSERT INTO subscription_payments (pro_id, transaction_id, amount) VALUES ($1, $2, $3)`,
         [proConnected.pro.id, transactionId, 1500]
       );
 
-      // 4️⃣ On active l'agence
       await client.query(`UPDATE agencies SET status = 'pending_validation' WHERE id = $1 AND parent_pro_id = $2`, [agencyId, proConnected.pro.id]);
       
       await client.query("COMMIT");
@@ -307,7 +305,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const id = Number(req.params.id);
     const { name, address, latitude, longitude, agency_phone, agency_whatsapp } = req.body;
     const files = req.files || {};
-    const current = await pool.query(`SELECT photo_1, photo_2, photo_3 FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
+    const current = await pool.query(`SELECT photo_1, photo_2, photo_3, billing_starts_at FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
     if (!current.rows.length) return res.redirect(303, "/mon-espace-pro/agences");
     
     let p1 = current.rows[0].photo_1; let p2 = current.rows[0].photo_2; let p3 = current.rows[0].photo_3;
@@ -322,9 +320,16 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     const horaires_json = Object.keys(horaires).length > 0 ? JSON.stringify(horaires) : null;
     const unavailable_until = req.body.unavailable_until || null;
 
-    // ✅ 2. On met à jour en base de données
-    await pool.query(`UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, latitude = $6, longitude = $7, phone = $8, whatsapp_number = $9, horaires_json = $10, unavailable_until = $11, status = 'pending_validation' WHERE id = $12 AND parent_pro_id = $13`, 
-    [name, address, p1, p2, p3, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until, id, proConnected.pro.id]);
+    // ✅ 2. On vérifie si la date de facturation existe déjà (sécurité pour les anciennes agences)
+    let billing_starts_at = current.rows[0].billing_starts_at;
+    if (!billing_starts_at) {
+      billing_starts_at = new Date();
+      billing_starts_at.setMonth(billing_starts_at.getMonth() + 6);
+    }
+
+    // ✅ 3. On met à jour en base de données
+    await pool.query(`UPDATE agencies SET name = $1, address = $2, photo_1 = $3, photo_2 = $4, photo_3 = $5, latitude = $6, longitude = $7, phone = $8, whatsapp_number = $9, horaires_json = $10, unavailable_until = $11, billing_starts_at = $12, status = 'pending_validation' WHERE id = $13 AND parent_pro_id = $14`, 
+    [name, address, p1, p2, p3, safeCoord(latitude, 90), safeCoord(longitude, 180), cleanBeninPhone(agency_phone) || null, cleanBeninPhone(agency_whatsapp) || null, horaires_json, unavailable_until, billing_starts_at, id, proConnected.pro.id]);
     
     res.redirect(303, `/mon-espace-pro/agences/${id}`);
   });
@@ -343,7 +348,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
     if (!proConnected) return res.redirect(303, "/mon-espace-pro");
     const id = Number(req.params.id);
     try {
-      // ✅ 1. On récupère les photos pour les supprimer de Cloudinary
       const current = await pool.query(`SELECT photo_1, photo_2, photo_3 FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
       if (current.rows.length) {
         const ag = current.rows[0];
@@ -352,9 +356,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
         }
       }
 
-      // 2. On supprime les statistiques liées à cette agence
       await pool.query(`DELETE FROM agency_stats WHERE agency_id = $1`, [id]);
-      // 3. On supprime l'agence elle-même
       await pool.query(`DELETE FROM agencies WHERE id = $1 AND parent_pro_id = $2`, [id, proConnected.pro.id]);
     } catch(e) {
       console.error("Erreur suppression agence:", e);
