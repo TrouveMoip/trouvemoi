@@ -715,17 +715,28 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
 // 2. Route pour VÉRIFIER le code
 async function verifyOTP(phone, code) {
   if (!phone || !code) return false;
-  
-  if (code === "123456" && !IS_PRODUCTION) {
-    console.log("⚠️ Bypass activé : Code magique utilisé pour", phone);
-    return true;
-  }
-  
-  const result = await pool.query(`SELECT code FROM otp_codes WHERE phone = $1 AND expires_at > NOW()`, [phone]);
-  if (!result.rows.length) return false;
-  return safeEqual(result.rows[0].code, code);
-}
 
+  const cleanPhone = cleanBeninPhone(phone);
+  if (!cleanPhone) return false;
+
+  const cleanCode = String(code).trim();
+  if (!/^\d{6}$/.test(cleanCode)) return false;
+
+  const result = await pool.query(
+    `SELECT code FROM otp_codes WHERE phone = $1 AND expires_at > NOW()`,
+    [cleanPhone]
+  );
+
+  if (!result.rows.length) return false;
+
+  const valid = safeEqual(String(result.rows[0].code).trim(), cleanCode);
+
+  if (valid) {
+    await pool.query(`DELETE FROM otp_codes WHERE phone = $1`, [cleanPhone]);
+  }
+
+  return valid;
+}
 app.get("/manifest.json", (req, res) => {
   res.json({
     name: "TrouveMoi",
