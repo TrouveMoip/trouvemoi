@@ -1267,8 +1267,8 @@ router.get("/signalisations", requireAdmin, async (req, res) => {
           <h3 style="font-size: 14px; color: #92400e; text-transform: uppercase;">Total Encaissé</h3>
           <div style="font-size: 32px; font-weight: 900; color: #b45309; margin: 10px 0;">${totalGeneral} FCFA</div>
           <p style="font-size: 13px; color: #d97706;">Mois sélectionné</p>
-        </div>
-      </div>
+  </div>
+</div>` : ''}
 
       <div class="alert alert-info" style="margin-top:20px; font-size:14px;">
         💡 <strong>Info :</strong> L'abonnement est de 600 FCFA / mois. Les pros bénéficient de 6 mois gratuits après leur inscription.
