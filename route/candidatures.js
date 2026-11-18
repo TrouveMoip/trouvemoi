@@ -504,9 +504,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
       }
 
       const p1 = await uploadToCloudinary(files.photo_profil[0].buffer, "trouvemoi/profils", `profil_${Date.now()}`);
-      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${Date.now()}`);
-      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${Date.now()}`);
-      
+      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_${crypto.randomBytes(24).toString("hex")}`);
+      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_${crypto.randomBytes(24).toString("hex")}`);
       const trackingCode = `SUIVI-${crypto.randomInt(10000000, 99999999)}`;      
       await pool.query(
         `INSERT INTO professional_applications (
