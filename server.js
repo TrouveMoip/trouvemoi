@@ -768,7 +768,8 @@ async function verifyOTP(phone, code) {
     `SELECT code
      FROM otp_codes
      WHERE phone = $1
-       AND expires_at > NOW()`,
+  AND expires_at > NOW()
+  AND used_at IS NULL`,
     [cleanPhone]
   );
 
