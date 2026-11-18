@@ -683,31 +683,65 @@ app.use((req, res, next) => {
 // 1. Route pour ENVOYER le code par SMS
 app.post("/api/send-otp", express.json(), async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
-  if (!phone) return res.status(400).json({ ok: false, error: "Numéro invalide (01XXXXXXXX)" });
-  
+  if (!phone) {
+    return res.status(400).json({
+      ok: false,
+      error: "Numéro invalide (01XXXXXXXX)"
+    });
+  }
+
   const ipKey = `otp_ip:${req.ip || 'unknown'}`;
   if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
-    return res.status(429).json({ ok: false, error: "Trop de demandes de SMS depuis votre réseau. Patientez 15 minutes." });
+    return res.status(429).json({
+      ok: false,
+      error: "Trop de demandes de SMS depuis votre réseau. Patientez 15 minutes."
+    });
   }
 
   if (!(await takeRateLimit(`otp:send:${phone}`, 1, 60 * 1000))) {
-    return res.status(429).json({ ok: false, error: "Patientez 1 minute avant de redemander." });
+    return res.status(429).json({
+      ok: false,
+      error: "Patientez 1 minute avant de redemander."
+    });
   }
 
   try {
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-   await pool.query(
-  `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3)
-   ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
-  [phone, code, expiresAt]
-);
+    await pool.query(
+      `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3)
+       ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+      [phone, code, expiresAt]
+    );
 
-res.json({ ok: true, message: "Code OTP généré." });
-    
+    const smsResult = await sendSMS(
+      phone,
+      `Votre code TrouveMoi est : ${code}. Il expire dans 10 minutes.`
+    );
+
+    if (smsResult?.error) {
+      await pool.query(
+        `DELETE FROM otp_codes WHERE phone = $1`,
+        [phone]
+      );
+
+      return res.status(502).json({
+        ok: false,
+        error: "Impossible d'envoyer le SMS."
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Code envoyé par SMS."
+    });
   } catch (e) {
-    res.status(500).json({ ok: false });
+    console.error("Erreur génération OTP:", e.message);
+    return res.status(500).json({
+      ok: false,
+      error: "Erreur lors de l'envoi du code."
+    });
   }
 });
 
