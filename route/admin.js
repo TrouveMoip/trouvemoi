@@ -1252,6 +1252,12 @@ const rows = filteredRows.map(p => {
       <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
       ${await customAdminMenu("/admin/abonnements", csrf, req.adminSession.role)}
       
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:20px;">
+  <a href="/admin/abonnements" class="button ${filtre === '' ? '' : 'secondary'}" style="margin:0; padding:8px 14px; font-size:13px;">Tous</a>
+  <a href="/admin/abonnements?filtre=7j" class="button ${filtre === '7j' ? '' : 'secondary'}" style="margin:0; padding:8px 14px; font-size:13px;">⏳ Expirent sous 7 jours</a>
+  <a href="/admin/abonnements?filtre=3j" class="button ${filtre === '3j' ? '' : 'secondary'}" style="margin:0; padding:8px 14px; font-size:13px;">🔥 Expirent sous 3 jours</a>
+  <a href="/admin/abonnements?filtre=echus" class="button ${filtre === 'echus' ? '' : 'secondary'}" style="margin:0; padding:8px 14px; font-size:13px;">❌ Échus</a>
+</div>
         ${req.adminSession.role === 'super_admin' ? `<div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
         <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
           <label style="font-weight:bold; font-size:14px; color:#374151;">📅 Sélectionner le mois :</label>
@@ -1303,7 +1309,47 @@ const rows = filteredRows.map(p => {
       </section>
     `, null));
   });
-
+router.get("/abonnements/pro/:id", requireAdmin, async (req, res) => {
+  const csrf = getCsrf(req);
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).send("ID invalide");
+  const r = await pool.query(`
+    SELECT id, full_name, company_name, phone, whatsapp_number, contact_email, profession, service_area,
+           subscription_status, subscription_expires_at, last_payment_at,
+           (SELECT COUNT(*) FROM agencies a WHERE a.parent_pro_id = professional_applications.id AND a.status = 'approved') AS agencies_count
+    FROM professional_applications WHERE id = $1 AND status = 'approved'
+  `, [id]);
+  if (!r.rows.length) return res.status(404).send(page("Introuvable", "<h2>Professionnel introuvable.</h2><a href='/admin/abonnements' class='button'>Retour</a>", null));
+  const p = r.rows[0];
+  const exp = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
+  const daysLeft = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
+  const isExpired = daysLeft !== null && daysLeft <= 0;
+  const statut = exp === null ? "Actif (sans date)" : isExpired ? `Expiré depuis ${Math.abs(daysLeft)} jour(s)` : `Actif, expire dans ${daysLeft} jour(s)`;
+  const waRaw = String(p.whatsapp_number || p.phone || "").replace(/\D/g, "").replace(/^(00229|229)/, "");
+  const waMessage = encodeURIComponent(`Bonjour ${p.full_name}, votre abonnement TrouveMoi ${isExpired ? 'a expiré' : 'arrive à échéance'}. Merci de régler vos 600 FCFA pour rester visible sur la plateforme.`);
+  const line = (label, value) => `<tr><td style="padding:8px; color:#6b7280; width:40%;">${label}</td><td style="padding:8px; font-weight:600;">${value}</td></tr>`;
+  res.send(page("Fiche abonnement", `
+    <h1 style="text-align:center; margin-bottom:20px;">👤 ${escapeHtml(p.company_name || p.full_name)}</h1>
+    ${await customAdminMenu("/admin/abonnements", csrf, req.adminSession.role)}
+    <section class="card" style="margin-top:20px;">
+      <table style="width:100%; border-collapse:collapse;">
+        ${line("Nom", escapeHtml(p.full_name))}
+        ${line("Profession", escapeHtml(p.profession || "-"))}
+        ${line("Zone", escapeHtml(p.service_area || "-"))}
+        ${line("Téléphone", p.phone ? escapeHtml(p.phone) : "-")}
+        ${line("Email", escapeHtml(p.contact_email || "-"))}
+        ${line("Agences approuvées", Number(p.agencies_count))}
+        ${line("Statut abonnement", escapeHtml(statut))}
+        ${line("Date d'expiration", exp ? exp.toLocaleDateString("fr-FR") : "Non définie")}
+        ${line("Dernier paiement", p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun")}
+      </table>
+      <div style="display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;">
+        ${waRaw ? `<a href="https://wa.me/229${waRaw}?text=${waMessage}" target="_blank" rel="noopener" class="button whatsapp" style="margin:0;">💬 Relancer par WhatsApp</a>` : ""}
+        <a href="/admin/abonnements" class="button secondary" style="margin:0;">← Retour à la liste</a>
+      </div>
+    </section>
+  `, null));
+});
 router.get("/abonnements/export", requireAdmin, requireSuperAdmin, async (req, res) => {
           try {
       const currentMonth = new Date().toISOString().slice(0, 7);
