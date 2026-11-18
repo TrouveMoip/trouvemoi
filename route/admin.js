@@ -1226,7 +1226,7 @@ const rows = filteredRows.map(p => {
       return `
         <tr style="border-bottom: 1px solid #e5e7eb;">
           <td style="padding: 12px;">
-            <div style="font-weight: 700; color: #111827;">${escapeHtml(p.company_name || p.full_name)}</div>
+           <a href="/admin/abonnements/pro/${p.id}" style="font-weight: 700; color: #1d4ed8; text-decoration:none;">${escapeHtml(p.company_name || p.full_name)}</a>
             <div style="font-size: 12px; color: #6b7280;">${escapeHtml(p.profession)}</div>
           </td>
           <td style="padding: 12px; font-size: 13px;">${p.phone ? `<a href="tel:+229${p.phone}" style="color:#2563eb; text-decoration:none;">${escapeHtml(p.phone)}</a>` : '-'}</td>
