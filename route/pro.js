@@ -60,7 +60,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
       await clearRateLimit(codeKey); 
 
-      const csrfToken = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(code).digest("hex");
+      const csrfToken = crypto.randomBytes(32).toString("hex");
       res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
       setProCookie(res, code); 
       res.redirect(303, "/mon-espace-pro");
