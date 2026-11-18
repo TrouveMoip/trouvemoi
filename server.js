@@ -191,13 +191,31 @@ function renderStars(rating) { let html = ""; const full = Math.floor(rating), h
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
 function readCookie(req, name) { for (const item of (req.headers.cookie || "").split(";")) { const [key, ...val] = item.trim().split("="); if (key === name) return val.join("="); } return null; }
 function getOrCreateVisitorId(req, res) { let vid = readCookie(req, "tm_visitor_id"); if (!vid || vid.length < 20) { vid = crypto.randomBytes(16).toString("hex"); res.append("Set-Cookie", `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`); } return vid; }
-function setProCookie(res, code) {
+async function setProCookie(res, proId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  await pool.query(
+    `INSERT INTO professional_sessions (token_hash, pro_id, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '24 hours')`,
+    [tokenHash, proId]
+  );
   res.append(
     "Set-Cookie",
-    `tm_pro_session=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Strict; Path=/; Max-Age=${24 * 60 * 60}`
+    `tm_pro_session=${token}; HttpOnly${COOKIE_SECURE}; SameSite=Strict; Path=/; Max-Age=${24 * 60 * 60}`
   );
 }
-function clearProCookie(res) { res.append("Set-Cookie", `tm_pro_session=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`); }
+async function clearProCookie(req, res) {
+  const token = readCookie(req, "tm_pro_session");
+  if (token) {
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    await pool.query(
+      `UPDATE professional_sessions SET revoked_at = NOW()
+       WHERE token_hash = $1 AND revoked_at IS NULL`,
+      [tokenHash]
+    );
+  }
+  res.append("Set-Cookie", `tm_pro_session=; HttpOnly${COOKIE_SECURE}; SameSite=Strict; Path=/; Max-Age=0`);
+}
 function createSessionToken(payload) { const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${encoded}.${crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url")}`; }
 function verifySessionToken(token) { try { if (!token) return null; const [encoded, signature] = token.split("."); const expected = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url"); if (!safeEqual(signature, expected)) return null; const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); return (payload.expiresAt > Date.now() && typeof payload.csrf === "string") ? payload : null; } catch { return null; } }
 function setSessionCookie(res, token) {
@@ -208,7 +226,22 @@ function setSessionCookie(res, token) {
 }
 function clearSessionCookie(res) { res.append("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`); }
 function getCsrf(req) { return req.adminSession?.csrf || ""; }
-async function getConnectedPro(req) { const code = readCookie(req, "tm_pro_session"); if (!code) return null; const result = await pool.query(`SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]); return result.rows.length ? { pro: result.rows[0], code } : null; }
+async function getConnectedPro(req) {
+  const token = readCookie(req, "tm_pro_session");
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const result = await pool.query(
+    `SELECT pa.*
+     FROM professional_sessions ps
+     JOIN professional_applications pa ON pa.id = ps.pro_id
+     WHERE ps.token_hash = $1
+       AND ps.revoked_at IS NULL
+       AND ps.expires_at > NOW()
+       AND pa.status = 'approved'`,
+    [tokenHash]
+  );
+  return result.rows.length ? { pro: result.rows[0], code: result.rows[0].pro_code } : null;
+}
 async function logAdminAction(action, targetType, targetId, details) { try { await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]); } catch (e) {} }
 async function takeRateLimit(key, max, windowMs) { try { const seconds = Math.max(1, Math.ceil(windowMs / 1000)); const result = await pool.query(`INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW()) ON CONFLICT ("limit_key") DO UPDATE SET count = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN 1 ELSE rate_limits_v2.count + 1 END, window_start = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN NOW() ELSE rate_limits_v2.window_start END RETURNING count`, [key, seconds]); return Number(result.rows[0].count) <= max; } catch (error) { return true; } }
 async function clearRateLimit(key) { try { await pool.query("DELETE FROM rate_limits_v2 WHERE limit_key = $1", [key]); } catch (error) {} }
