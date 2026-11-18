@@ -497,10 +497,10 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
               <input type="hidden" name="csrfToken" value="${csrf}">
               <button class="warning" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">🔄 Nouveau code</button>
             </form>
-            <form action="/admin/candidatures/${c.id}/abonnement" method="POST" style="margin:0;">
-              <input type="hidden" name="csrfToken" value="${csrf}">
-              <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
-            </form>
+           ${req.adminSession.role === 'super_admin' ? `<form action="/admin/candidatures/${c.id}/abonnement" method="POST" style="margin:0;">
+  <input type="hidden" name="csrfToken" value="${csrf}">
+  <button class="secondary" style="width:100%; padding:8px; font-size:12px; border-radius:8px;">+ Ajouter 1 mois</button>
+</form>` : ''}
             ${req.adminSession.role === 'super_admin' ? `
             <form action="/admin/candidatures/${c.id}/status" method="POST" style="margin:0;">
               <input type="hidden" name="csrfToken" value="${csrf}">
@@ -676,7 +676,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
     }
   });
 
-  router.post("/candidatures/:id/abonnement", requireAdmin, verifyCsrf, async (req, res) => {
+  router.post("/candidatures/:id/abonnement", requireAdmin, requireSuperAdmin, verifyCsrf, async (req, res) => {
     const id = Number(req.params.id);
     try {
       await pool.query(`
@@ -1227,10 +1227,10 @@ router.get("/signalisations", requireAdmin, async (req, res) => {
           <td style="padding: 12px; font-size: 13px;">${p.last_payment_at ? new Date(p.last_payment_at).toLocaleDateString("fr-FR") : "Aucun"}</td>
           <td style="padding: 12px;">
             <div style="display:flex; gap:5px;">
-              <form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
-                <input type="hidden" name="csrfToken" value="${csrf}">
-                <button class="success" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">+ 1 mois</button>
-              </form>
+              ${req.adminSession.role === 'super_admin' ? `<form action="/admin/candidatures/${p.id}/abonnement" method="POST" style="margin:0;">
+  <input type="hidden" name="csrfToken" value="${csrf}">
+  <button class="success" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">+ 1 mois</button>
+</form>` : ''}
               ${p.phone ? `<a href="https://wa.me/229${waNumber}?text=${waMessage}" target="_blank" class="button whatsapp" style="padding:6px 10px; font-size:11px; margin:0; border-radius:6px;">💬 Relancer</a>` : ''}
             </div>
           </td>
