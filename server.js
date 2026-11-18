@@ -246,8 +246,16 @@ async function getConnectedPro(req) {
 async function logAdminAction(action, targetType, targetId, details) { try { await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]); } catch (e) {} }
 async function takeRateLimit(key, max, windowMs) { try { const seconds = Math.max(1, Math.ceil(windowMs / 1000)); const result = await pool.query(`INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW()) ON CONFLICT ("limit_key") DO UPDATE SET count = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN 1 ELSE rate_limits_v2.count + 1 END, window_start = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN NOW() ELSE rate_limits_v2.window_start END RETURNING count`, [key, seconds]); return Number(result.rows[0].count) <= max; } catch (error) { return true; } }
 async function clearRateLimit(key) { try { await pool.query("DELETE FROM rate_limits_v2 WHERE limit_key = $1", [key]); } catch (error) {} }
+function isRealImage(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  const isPng = buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  const isWebp = buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  return isJpeg || isPng || isWebp;
+}
 async function uploadToCloudinary(buffer, folder, publicId) { 
-  return new Promise((resolve, reject) => { 
+  if (!isRealImage(buffer)) throw new Error("Fichier invalide : ce n'est pas une vraie image JPEG, PNG ou WEBP.");
+return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream({ 
       folder, public_id: publicId, resource_type: "image",
       incoming_transformation: [ { width: 1000, height: 1000, crop: "limit" }, { quality: "auto:good" }, { fetch_format: "auto" } ],
