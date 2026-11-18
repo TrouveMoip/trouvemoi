@@ -1311,11 +1311,34 @@ async function startServer() {
     )`);
     
     // --- CRÉATION DE LA TABLE POUR LES CODES SMS (OTP) ---
-    await pool.query(`CREATE TABLE IF NOT EXISTS otp_codes (
-        phone VARCHAR(50) PRIMARY KEY, 
-        code VARCHAR(10), 
-        expires_at TIMESTAMP
-    )`);
+await pool.query(`CREATE TABLE IF NOT EXISTS otp_codes (
+    phone VARCHAR(50) PRIMARY KEY,
+    code VARCHAR(10),
+    expires_at TIMESTAMP
+)`);
+
+// Ajoute la colonne si elle n'existe pas déjà
+await pool.query(
+  `ALTER TABLE otp_codes
+   ADD COLUMN IF NOT EXISTS used_at TIMESTAMP`
+);
+
+// Vérifie que la colonne est bien présente
+const otpColumnCheck = await pool.query(`
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'otp_codes'
+      AND column_name = 'used_at'
+  ) AS column_exists
+`);
+
+if (!otpColumnCheck.rows[0].column_exists) {
+  throw new Error("La colonne used_at n'a pas été créée.");
+}
+
+console.log("✅ Colonne otp_codes.used_at vérifiée");
     
     // ✅ CRÉATION DE LA TABLE POUR LES LIMITES DE REQUÊTES (RATE LIMIT)
     await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
