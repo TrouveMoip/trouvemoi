@@ -64,7 +64,10 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       links.push({ href: "/admin/admins", label: "👑 Gestion Admins", badge: 0 });
       links.push({ href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 });
     }
-
+    if (role !== 'super_admin') {
+  const allowedForModerator = ["/admin/candidatures", "/admin/messages", "/admin/emplois", "/admin/mon-profil"];
+  links = links.filter(l => allowedForModerator.includes(l.href));
+}
     const roleLabel = role === 'super_admin' ? '👑 Super Admin' : '🛡️ Modérateur';
 
     return `<section class="card" style="background:#f9fafb; border:1px solid #e5e7eb; padding:16px;"><div style="text-align:center; margin-bottom:15px; font-weight:bold; color:#4b5563;">Connecté en tant que : ${roleLabel}</div><div class="actions" style="justify-content:center; gap:10px; display:flex; flex-wrap:wrap;">${links.map(l => `<a class="button ${current === l.href ? "" : "secondary"}" href="${l.href}" style="padding:8px 16px; font-size:14px; margin:0;">${l.label}${l.badge > 0 ? ` <span class="badge badge-new" style="background:red; color:white; padding:2px 6px; border-radius:10px; font-size:10px;">${l.badge}</span>` : ""}</a>`).join("")}</div><div style="text-align:center; margin-top:20px;"><form action="/admin/logout" method="POST"><input type="hidden" name="csrfToken" value="${escapeHtml(csrf)}"><button class="danger" style="padding:8px 24px; font-size:14px; margin:0;">Déconnexion</button></form></div></section>`;
