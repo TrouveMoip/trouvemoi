@@ -62,7 +62,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
       const csrfToken = crypto.randomBytes(32).toString("hex");
       res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
-      setProCookie(res, code); 
+      await setProCookie(res, pro.id);
       res.redirect(303, "/mon-espace-pro");
       
     } catch (error) { 
@@ -70,8 +70,10 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     }
   });
 
-  router.post("/logout", (req, res) => { clearProCookie(res); res.redirect(303, "/mon-espace-pro"); });
-
+router.post("/logout", async (req, res) => {
+  try { await clearProCookie(req, res); } catch (e) {}
+  res.redirect(303, "/mon-espace-pro");
+});
   router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
     if (!proConnected) return res.send(page("Espace pro", `
