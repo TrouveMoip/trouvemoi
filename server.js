@@ -698,14 +698,13 @@ app.post("/api/send-otp", express.json(), async (req, res) => {
     const code = crypto.randomInt(100000, 999999).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await pool.query(
-      `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
-       ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
-      [phone, code, expiresAt]
-    );
+   await pool.query(
+  `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3)
+   ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+  [phone, code, expiresAt]
+);
 
-    console.log(`📱 CODE OTP POUR ${phone} : ${code}`);
-    res.json({ ok: true, message: "SMS simulé ! Regardez les logs Render." });
+res.json({ ok: true, message: "Code OTP généré." });
     
   } catch (e) {
     res.status(500).json({ ok: false });
