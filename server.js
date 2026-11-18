@@ -131,8 +131,7 @@ const METIERS_SENSIBLES = [
 
 const PAYMENT_AMOUNT = 1500;
 const SESSION_COOKIE = "tm_admin_session";
-const SESSION_DURATION = 4 * 60 * 60 * 1000;
-
+const SESSION_DURATION = 60 * 60 * 1000;
 cloudinary.config({ cloud_name: process.env.CLOUDINARY_CLOUD_NAME, api_key: process.env.CLOUDINARY_API_KEY, api_secret: process.env.CLOUDINARY_API_SECRET, secure: true });
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes("localhost") ? false : { rejectUnauthorized: false } });
 const upload = multer({ 
