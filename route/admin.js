@@ -1294,8 +1294,8 @@ router.get("/signalisations", requireAdmin, async (req, res) => {
     `, null));
   });
 
-  router.get("/abonnements/export", requireAdmin, async (req, res) => {
-    try {
+router.get("/abonnements/export", requireAdmin, requireSuperAdmin, async (req, res) => {
+          try {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const selectedMonth = String(req.query.month || currentMonth);
       const startDate = `${selectedMonth}-01`;
