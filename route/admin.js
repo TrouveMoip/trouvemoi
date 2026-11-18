@@ -1194,7 +1194,17 @@ router.get("/signalisations", requireAdmin, async (req, res) => {
         subscription_expires_at ASC
     `);
 
-    const rows = result.rows.map(p => {
+    const filtre = String(req.query.filtre || "");
+const dayDiff = (p) => p.subscription_expires_at ? Math.ceil((new Date(p.subscription_expires_at) - new Date()) / 86400000) : null;
+const filteredRows = result.rows.filter(p => {
+  const d = dayDiff(p);
+  if (filtre === "7j") return d !== null && d > 0 && d <= 7;
+  if (filtre === "3j") return d !== null && d > 0 && d <= 3;
+  if (filtre === "echus") return d !== null && d <= 0;
+  return true;
+});
+
+const rows = filteredRows.map(p => {
       const isExpired = p.subscription_status === 'expired' && p.subscription_expires_at != null;
       const expiryDate = p.subscription_expires_at ? new Date(p.subscription_expires_at) : null;
       
