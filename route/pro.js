@@ -19,7 +19,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     }
     next();
   }
-
+   router.use(verifyProCsrf);
   router.post("/login", async (req, res) => {
     const ip = req.ip || "unknown"; const ipKey = `pro_login:ip:${ip}`;
     if (!(await takeRateLimit(ipKey, 30, 15 * 60 * 1000))) return res.status(429).send(page("Trop de tentatives", "<h1>⏳ Trop de tentatives</h1>", null));
@@ -949,9 +949,6 @@ if (smsResult?.error) {
       client.release();
     }
   });
-
-  // ✅ On applique le vigile à TOUTES les routes de ce fichier
-  router.use(verifyProCsrf);
 
   return router;
 };
