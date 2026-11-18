@@ -7,15 +7,16 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
   // ✅ VIGILE CSRF : vérifie le jeton sur tous les POST
   async function verifyProCsrf(req, res, next) {
     if (req.method !== 'POST') return next();
-    if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/') || req.path.includes('/agences/')) return next();    
+    if (req.path === '/login' || req.path.endsWith('/logout') || req.path === '/reinitialiser' || req.path === '/verifier-code-pro' || req.path.startsWith('/api/')) return next();
     let cookieToken = null;
     for (const item of (req.headers.cookie || "").split(";")) {
       const [key, ...val] = item.trim().split("=");
       if (key === "tm_pro_csrf") cookieToken = val.join("=");
     }
     
-    if (!cookieToken || !req.body.csrfToken || cookieToken !== req.body.csrfToken) {
-      return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
+    const submittedToken = (req.body && req.body.csrfToken) || String(req.query.csrfToken || "");
+if (!cookieToken || !submittedToken || cookieToken !== submittedToken) {
+    return res.status(403).send(page("Erreur de sécurité", "<section class='card' style='text-align:center;'><h1>🔒 Session expirée</h1><p>Pour votre sécurité, veuillez vous reconnecter.</p><a href='/mon-espace-pro' class='button'>Se reconnecter</a></section>", null));
     }
     next();
   }
