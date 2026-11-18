@@ -781,10 +781,13 @@ async function verifyOTP(phone, code) {
   );
 
   if (valid) {
-    await pool.query(
-      `DELETE FROM otp_codes WHERE phone = $1`,
-      [cleanPhone]
-    );
+  await pool.query(
+    `UPDATE otp_codes
+     SET used_at = NOW()
+     WHERE phone = $1`,
+    [cleanPhone]
+  );
+}
   }
 
   return valid;
