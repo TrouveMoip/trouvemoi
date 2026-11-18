@@ -1231,12 +1231,12 @@ app.post("/suivi/corriger", upload.fields([{ name: "photo_profil", maxCount: 1 }
       updateQuery += `, photo_profil_url = $${values.length}`;
     }
     if (files.photo_identite && files.photo_identite[0]) {
-      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_fix_${Date.now()}`);
+      const p2 = await uploadToCloudinary(files.photo_identite[0].buffer, "trouvemoi/identites", `id_fix_${crypto.randomBytes(24).toString("hex")}`, true);
       values.push(p2.secure_url);
       updateQuery += `, photo_identite_url = $${values.length}`;
     }
     if (files.photo_kyc && files.photo_kyc[0]) {
-      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_fix_${Date.now()}`);
+      const p3 = await uploadToCloudinary(files.photo_kyc[0].buffer, "trouvemoi/kyc", `kyc_fix_${crypto.randomBytes(24).toString("hex")}`, true);
       values.push(p3.secure_url);
       updateQuery += `, photo_kyc_url = $${values.length}`;
     }
