@@ -62,7 +62,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
       const csrfToken = crypto.randomBytes(32).toString("hex");
       res.append("Set-Cookie", `tm_pro_csrf=${csrfToken}; ${process.env.NODE_ENV === "production" ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=86400`);
-      setProCookie(res, code); 
+      await setProCookie(res, pro.id);
       res.redirect(303, "/mon-espace-pro");
       
     } catch (error) { 
@@ -70,7 +70,7 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
     }
   });
 
-  router.post("/logout", (req, res) => { clearProCookie(res); res.redirect(303, "/mon-espace-pro"); });
+  router.post("/logout", async (req, res) => { await clearProCookie(res, req); res.redirect(303, "/mon-espace-pro"); });
 
   router.get("/", async (req, res) => {
     const proConnected = await getConnectedPro(req);
@@ -634,6 +634,7 @@ if (smsResult?.error) {
       const newCode = await generateUniqueProCode();
       
       await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2`, [newCode, pro.id]);
+      await pool.query(`UPDATE professional_sessions SET revoked_at = NOW() WHERE pro_id = $1 AND revoked_at IS NULL`, [pro.id]);
       await logAdminAction("pro_code_reset", "pro", pro.id, `Numéro : ${phone} | Nouveau code : ${newCode}`);
 
       res.send(page("Nouveau Code", `

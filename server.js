@@ -17,6 +17,11 @@ const COOKIE_SECURE = IS_PRODUCTION ? "; Secure" : "";
 const APP_URL = process.env.APP_URL || "https://trouvemoi.bj";
 const BYPASS_PAYMENT = process.env.BYPASS_PAYMENT === "true";
 const REFERRAL_BONUS = 100;
+if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
+  console.error("ADMIN_SESSION_SECRET doit contenir au moins 32 caractères.");
+  process.exit(1);
+}
+
 if (IS_PRODUCTION && BYPASS_PAYMENT) {
   console.error("❌ ERREUR CRITIQUE : Le mode BYPASS_PAYMENT est interdit en production. Le serveur s'arrête par sécurité.");
   process.exit(1);
@@ -191,13 +196,18 @@ function renderStars(rating) { let html = ""; const full = Math.floor(rating), h
 function renderKycBadge(person, size) { if (!person || !person.kyc_verified) return ""; return `<span class="kyc-tick ${size === "lg" ? "kyc-tick-lg" : ""}">✓</span>`; }
 function readCookie(req, name) { for (const item of (req.headers.cookie || "").split(";")) { const [key, ...val] = item.trim().split("="); if (key === name) return val.join("="); } return null; }
 function getOrCreateVisitorId(req, res) { let vid = readCookie(req, "tm_visitor_id"); if (!vid || vid.length < 20) { vid = crypto.randomBytes(16).toString("hex"); res.append("Set-Cookie", `tm_visitor_id=${vid}; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=${365 * 24 * 60 * 60}`); } return vid; }
-function setProCookie(res, code) {
-  res.append(
-    "Set-Cookie",
-    `tm_pro_session=${code}; HttpOnly${COOKIE_SECURE}; SameSite=Strict; Path=/; Max-Age=${24 * 60 * 60}`
-  );
+const PRO_SESSION_MS = 24 * 60 * 60 * 1000;
+const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
+async function setProCookie(res, proId) {
+  const token = crypto.randomBytes(32).toString("base64url");
+  await pool.query(`INSERT INTO professional_sessions (token_hash, pro_id, expires_at) VALUES ($1, $2, NOW() + make_interval(secs => $3::double precision))`, [hashToken(token), proId, PRO_SESSION_MS / 1000]);
+  res.append("Set-Cookie", `tm_pro_session=${token}; HttpOnly${COOKIE_SECURE}; SameSite=Strict; Path=/; Max-Age=${PRO_SESSION_MS / 1000}`);
 }
-function clearProCookie(res) { res.append("Set-Cookie", `tm_pro_session=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`); }
+async function clearProCookie(res, req) {
+  const token = req && readCookie(req, "tm_pro_session");
+  if (token) { try { await pool.query(`UPDATE professional_sessions SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL`, [hashToken(token)]); } catch (error) {} }
+  res.append("Set-Cookie", `tm_pro_session=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`);
+}
 function createSessionToken(payload) { const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url"); return `${encoded}.${crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url")}`; }
 function verifySessionToken(token) { try { if (!token) return null; const [encoded, signature] = token.split("."); const expected = crypto.createHmac("sha256", process.env.ADMIN_SESSION_SECRET).update(encoded).digest("base64url"); if (!safeEqual(signature, expected)) return null; const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")); return (payload.expiresAt > Date.now() && typeof payload.csrf === "string") ? payload : null; } catch { return null; } }
 function setSessionCookie(res, token) {
@@ -208,9 +218,9 @@ function setSessionCookie(res, token) {
 }
 function clearSessionCookie(res) { res.append("Set-Cookie", `${SESSION_COOKIE}=; HttpOnly${COOKIE_SECURE}; SameSite=Lax; Path=/; Max-Age=0`); }
 function getCsrf(req) { return req.adminSession?.csrf || ""; }
-async function getConnectedPro(req) { const code = readCookie(req, "tm_pro_session"); if (!code) return null; const result = await pool.query(`SELECT * FROM professional_applications WHERE pro_code = $1 AND status = 'approved'`, [code]); return result.rows.length ? { pro: result.rows[0], code } : null; }
+async function getConnectedPro(req) { const token = readCookie(req, "tm_pro_session"); if (!token) return null; const result = await pool.query(`SELECT p.* FROM professional_sessions s JOIN professional_applications p ON p.id = s.pro_id WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > NOW() AND p.status = 'approved'`, [hashToken(token)]); return result.rows.length ? { pro: result.rows[0], code: result.rows[0].pro_code } : null; }
 async function logAdminAction(action, targetType, targetId, details) { try { await pool.query(`INSERT INTO admin_logs (action, target_type, target_id, details) VALUES ($1, $2, $3, $4)`, [action, targetType, targetId, details]); } catch (e) {} }
-async function takeRateLimit(key, max, windowMs) { try { const seconds = Math.max(1, Math.ceil(windowMs / 1000)); const result = await pool.query(`INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW()) ON CONFLICT ("limit_key") DO UPDATE SET count = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN 1 ELSE rate_limits_v2.count + 1 END, window_start = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN NOW() ELSE rate_limits_v2.window_start END RETURNING count`, [key, seconds]); return Number(result.rows[0].count) <= max; } catch (error) { return true; } }
+async function takeRateLimit(key, max, windowMs) { try { const seconds = Math.max(1, Math.ceil(windowMs / 1000)); const result = await pool.query(`INSERT INTO rate_limits_v2 ("limit_key", count, window_start) VALUES ($1, 1, NOW()) ON CONFLICT ("limit_key") DO UPDATE SET count = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN 1 ELSE rate_limits_v2.count + 1 END, window_start = CASE WHEN rate_limits_v2.window_start < NOW() - make_interval(secs => $2::double precision) THEN NOW() ELSE rate_limits_v2.window_start END RETURNING count`, [key, seconds]); return Number(result.rows[0].count) <= max; } catch (error) { console.error("Rate limit indisponible :", error.message); return false; } }
 async function clearRateLimit(key) { try { await pool.query("DELETE FROM rate_limits_v2 WHERE limit_key = $1", [key]); } catch (error) {} }
 async function uploadToCloudinary(buffer, folder, publicId) { 
   return new Promise((resolve, reject) => { 
@@ -661,7 +671,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me"],
       scriptSrcAttr: ["'unsafe-inline'"],
       connectSrc: ["'self'", "https://*.googleapis.com", "https://*.kkiapay.me", "https://*.esmsafrica.io", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://*.analytics.google.com"],
       imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://www.googletagmanager.com"],
@@ -835,7 +845,7 @@ if (!webhookSecret) {
 }
 
 const provided = String(
-  req.get("x-webhook-secret") || req.query.token || ""
+  req.get("x-webhook-secret") || ""
 );
 
 if (!safeEqual(provided, webhookSecret)) {
@@ -875,7 +885,7 @@ if (!safeEqual(provided, webhookSecret)) {
 
 // ✅ Le cron job qui déclenche le nettoyage + relance SMS
 app.get("/cron/cleanup", async (req, res) => {
-  const token = req.query.token || req.headers["x-cron-secret"];
+  const token = req.headers["x-cron-secret"];
   if (!safeEqual(token || "", process.env.CRON_SECRET || "")) return res.status(401).send("Unauthorized");
   try {
     const cleaned = await cleanupExpiredDossiers();
@@ -1434,5 +1444,7 @@ await pool.query(`
     app.listen(PORT, "0.0.0.0", () => { console.log(`🚀 TrouveMoi démarré sur le port ${PORT}.`); });
   } catch (error) { console.error("❌ Erreur au démarrage :", error); process.exit(1); }
 }
+
+process.on("unhandledRejection", (reason) => { console.error("Promesse rejetée non gérée :", reason); });
 
 startServer();
