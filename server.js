@@ -801,12 +801,15 @@ async function verifyOTP(phone, code) {
   const cleanCode = String(code).trim();
   if (!/^\d{6}$/.test(cleanCode)) return false;
 
+  const attemptsKey = `otp:verify:${cleanPhone}`;
+  if (!(await takeRateLimit(attemptsKey, 5, 10 * 60 * 1000))) return false;
+
   const result = await pool.query(
     `SELECT code
      FROM otp_codes
      WHERE phone = $1
-  AND expires_at > NOW()
-  AND used_at IS NULL`,
+       AND expires_at > NOW()
+       AND used_at IS NULL`,
     [cleanPhone]
   );
 
@@ -818,15 +821,21 @@ async function verifyOTP(phone, code) {
   );
 
   if (valid) {
-  await pool.query(
-    `UPDATE otp_codes
-     SET used_at = NOW()
-     WHERE phone = $1`,
-    [cleanPhone]
-  );
+    const updated = await pool.query(
+      `UPDATE otp_codes
+       SET used_at = NOW()
+       WHERE phone = $1
+         AND code = $2
+         AND used_at IS NULL
+         AND expires_at > NOW()`,
+      [cleanPhone, result.rows[0].code]
+    );
+    if (updated.rowCount !== 1) return false;
+    await clearRateLimit(attemptsKey);
+    return true;
   }
 
-  return valid;
+  return false;
 }
 app.get("/manifest.json", (req, res) => {
   res.json({
