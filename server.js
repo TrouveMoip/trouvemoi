@@ -1346,6 +1346,24 @@ if (!otpColumnCheck.rows[0].column_exists) {
 }
 
 console.log("✅ Colonne otp_codes.used_at vérifiée");
+    // Sessions professionnelles temporaires
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS professional_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    token_hash CHAR(64) UNIQUE NOT NULL,
+    pro_id INTEGER NOT NULL
+      REFERENCES professional_applications(id)
+      ON DELETE CASCADE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at TIMESTAMPTZ
+  )
+`);
+
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_professional_sessions_pro_id
+  ON professional_sessions(pro_id)
+`);
     
     // ✅ CRÉATION DE LA TABLE POUR LES LIMITES DE REQUÊTES (RATE LIMIT)
     await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
