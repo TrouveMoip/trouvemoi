@@ -787,7 +787,6 @@ async function verifyOTP(phone, code) {
      WHERE phone = $1`,
     [cleanPhone]
   );
-}
   }
 
   return valid;
