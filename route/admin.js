@@ -655,6 +655,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       const updateResult = await pool.query(`UPDATE professional_applications SET pro_code = $1 WHERE id = $2 RETURNING id`, [newCode, id]);
       
       if (updateResult.rowCount === 0) return res.redirect(303, "/admin/candidatures");
+      await pool.query(`UPDATE professional_sessions SET revoked_at = NOW() WHERE pro_id = $1 AND revoked_at IS NULL`, [id]);
 
       const proResult = await pool.query(`SELECT full_name, phone FROM professional_applications WHERE id = $1`, [id]);
       
