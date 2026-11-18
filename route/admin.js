@@ -65,7 +65,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       links.push({ href: "/admin/parametres", label: "⚙️ Paramètres", badge: 0 });
     }
     if (role !== 'super_admin') {
-  const allowedForModerator = ["/admin/candidatures", "/admin/messages", "/admin/emplois", "/admin/mon-profil"];
+  const allowedForModerator =["/admin/candidatures", "/admin/messages", "/admin/emplois", "/admin/abonnements", "/admin/mon-profil"];
   links = links.filter(l => allowedForModerator.includes(l.href));
 }
     const roleLabel = role === 'super_admin' ? '👑 Super Admin' : '🛡️ Modérateur';
@@ -389,7 +389,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
           </div>
         </div>
 
-        <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+        ${req.adminSession.role === 'super_admin' ? `<div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px;">
           <div class="card" style="background:#f0fdf4; border-left:4px solid #10b981; margin:0;">
             <h3 style="font-size:16px; color:#065f46; margin-bottom:10px;">💰 Revenus Inscriptions</h3>
             <div style="font-size:28px; font-weight:800; color:#10b981;">${Number(s.total_inscriptions_revenue).toLocaleString('fr-FR')} FCFA</div>
@@ -400,7 +400,7 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
             <div style="font-size:28px; font-weight:800; color:#3b82f6;">${Number(s.total_subscriptions_revenue).toLocaleString('fr-FR')} FCFA</div>
             <p style="font-size:12px; color:#64748b; margin-top:5px;">${s.total_subscriptions_count} abonnement(s) payé(s)</p>
           </div>
-        </div>
+        </div>` : ''}
 
         <div class="card" style="margin-top:20px;">
           <h3 style="font-size:18px; color:#1e40af; margin-bottom:15px;">📊 Inscriptions par mois (6 derniers mois)</h3>
@@ -1242,7 +1242,7 @@ router.get("/signalisations", requireAdmin, async (req, res) => {
       <h1 style="text-align:center; margin-bottom:20px;">💳 Gestion des Abonnements</h1>
       ${await customAdminMenu("/admin/abonnements", csrf, req.adminSession.role)}
       
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
+        ${req.adminSession.role === 'super_admin' ? `<div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; flex-wrap:wrap; gap:10px; background:white; padding:15px; border-radius:12px; border:1px solid #e5e7eb;">
         <form action="/admin/abonnements" method="GET" style="display:flex; align-items:center; gap:10px; margin:0;">
           <label style="font-weight:bold; font-size:14px; color:#374151;">📅 Sélectionner le mois :</label>
           <input type="month" name="month" value="${selectedMonth}" onchange="this.form.submit()" style="padding:8px; border-radius:8px; border:1px solid #cbd5e1; margin:0; width:auto;">
