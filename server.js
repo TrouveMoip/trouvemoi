@@ -699,8 +699,13 @@ function page(title, content, proConnected, meta = {}) {
           input.type = "hidden";
           input.name = "csrfToken";
           input.value = csrfToken;
-          form.appendChild(input);
-        }
+  form.appendChild(input);
+}
+if ((form.getAttribute("enctype") || "").toLowerCase() === "multipart/form-data") {
+  const target = new URL(form.getAttribute("action") || window.location.href, window.location.href);
+  target.searchParams.set("csrfToken", csrfToken);
+  form.setAttribute("action", target.pathname + target.search);
+}
       });
     }
   });
