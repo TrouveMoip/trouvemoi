@@ -1406,6 +1406,15 @@ await pool.query(`
   CREATE INDEX IF NOT EXISTS idx_professional_sessions_pro_id
   ON professional_sessions(pro_id)
 `);
+    try {
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS uniq_professional_payment_ref
+    ON professional_applications(payment_ref)
+    WHERE payment_ref IS NOT NULL AND payment_ref <> ''
+  `);
+} catch (e) {
+  console.error("⚠️ Index unique payment_ref non créé (doublons existants ?) :", e.message);
+}
     
     // ✅ CRÉATION DE LA TABLE POUR LES LIMITES DE REQUÊTES (RATE LIMIT)
     await pool.query(`CREATE TABLE IF NOT EXISTS rate_limits_v2 (
