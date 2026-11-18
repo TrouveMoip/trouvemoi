@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt'); 
+const cloudinary = require('cloudinary').v2;
 
 module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeHtml, adminMenu, verifySessionToken, readCookie, clearSessionCookie, createSessionToken, setSessionCookie, safeEqual, ADMIN_PASSWORD, verifyTotp, ADMIN_TOTP_SECRET, SESSION_COOKIE, SESSION_DURATION, logAdminAction, takeRateLimit, clearRateLimit, generateUniqueProCode, deleteFromCloudinary, sendSMS) {
   const router = express.Router();
@@ -836,7 +837,19 @@ module.exports = function(pool, page, requireAdmin, verifyCsrf, getCsrf, escapeH
       const result = await pool.query(`SELECT ${field} AS url FROM professional_applications WHERE id = $1`, [id]);
       const url = result.rows[0]?.url;
       if (!url || !/^https:\/\/res\.cloudinary\.com\//.test(url)) return res.status(404).send("Not found");
-      const upstream = await fetch(url, { redirect: "follow" });
+let fetchUrl = url;
+const privateMatch = url.match(/\/image\/authenticated\/(?:s--[^/]+--\/)?(?:v(\d+)\/)?(.+)\.([a-zA-Z0-9]+)$/);
+if (privateMatch) {
+  fetchUrl = cloudinary.url(privateMatch[2], {
+    resource_type: "image",
+    type: "authenticated",
+    sign_url: true,
+    secure: true,
+    format: privateMatch[3],
+    version: privateMatch[1] || undefined
+  });
+}
+const upstream = await fetch(fetchUrl, { redirect: "follow" });
       if (!upstream.ok) return res.status(404).send("Not found");
       const buffer = Buffer.from(await upstream.arrayBuffer());
       res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/jpeg"); res.setHeader("Cache-Control", "private, no-store"); res.send(buffer);
