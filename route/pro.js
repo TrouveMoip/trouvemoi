@@ -575,8 +575,25 @@ DO UPDATE SET
         [phone, code, expiresAt]
       );
 
-      await sendSMS(phone, `Votre code de récupération TrouveMoi est : ${code}. Il expire dans 10 minutes.`);
+      const smsResult = await sendSMS(
+  phone,
+  `Votre code de récupération TrouveMoi est : ${code}. Il expire dans 10 minutes.`
+);
 
+if (smsResult?.error) {
+  await pool.query(
+    `DELETE FROM otp_codes WHERE phone = $1`,
+    [phone]
+  );
+
+  return res.status(502).send(
+    page(
+      "Erreur SMS",
+      "<h2>Le SMS n’a pas pu être envoyé. Réessayez plus tard.</h2><a href='/mon-espace-pro/reinitialiser'>Retour</a>",
+      null
+    )
+  );
+}
       await pool.query(
         `INSERT INTO rate_limits_v2 (limit_key, count, window_start) VALUES ($1, 1, NOW()) 
          ON CONFLICT (limit_key) DO UPDATE SET count = rate_limits_v2.count + 1`,
