@@ -253,18 +253,36 @@ function isRealImage(buffer) {
   const isWebp = buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
   return isJpeg || isPng || isWebp;
 }
-async function uploadToCloudinary(buffer, folder, publicId) { 
+async function uploadToCloudinary(buffer, folder, publicId, isPrivate = false) {
   if (!isRealImage(buffer)) throw new Error("Fichier invalide : ce n'est pas une vraie image JPEG, PNG ou WEBP.");
-return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({ 
+  return new Promise((resolve, reject) => {
+    const options = {
       folder, public_id: publicId, resource_type: "image",
-      incoming_transformation: [ { width: 1000, height: 1000, crop: "limit" }, { quality: "auto:good" }, { fetch_format: "auto" } ],
-      transformation: [ { width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" } ]
-    }, (error, result) => { if (error) return reject(error); resolve(result); }); 
-    stream.end(buffer); 
-  }); 
+      incoming_transformation: [ { width: 1000, height: 1000, crop: "limit" }, { quality: "auto:good" }, { fetch_format: "auto" } ]
+    };
+    if (isPrivate) {
+      options.type = "authenticated";
+    } else {
+      options.transformation = [ { width: 800, height: 800, crop: "limit" }, { quality: "auto" }, { fetch_format: "auto" } ];
+    }
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => { if (error) return reject(error); resolve(result); });
+    stream.end(buffer);
+  });
 }
-async function deleteFromCloudinary(publicId) { if (!publicId) return; try { const urlParts = publicId.split("/upload/"); if (urlParts.length < 2) return; let path = urlParts[1]; if (path.startsWith("v")) path = path.replace(/^v\d+\//, ""); const cleanId = path.replace(/\.[^.]+$/, ""); await cloudinary.uploader.destroy(cleanId, { invalidate: true }); } catch (error) {} }
+async function deleteFromCloudinary(publicId) {
+  if (!publicId) return;
+  try {
+    const isPrivate = publicId.includes("/image/authenticated/");
+    const marker = isPrivate ? "/authenticated/" : "/upload/";
+    const urlParts = publicId.split(marker);
+    if (urlParts.length < 2) return;
+    let path = urlParts[1];
+    path = path.replace(/^s--[^/]+--\//, "");
+    if (path.startsWith("v")) path = path.replace(/^v\d+\//, "");
+    const cleanId = path.replace(/\.[^.]+$/, "");
+    await cloudinary.uploader.destroy(cleanId, { invalidate: true, type: isPrivate ? "authenticated" : "upload" });
+  } catch (error) {}
+}
 function generateProCode() { return `TM${crypto.randomInt(10000000, 100000000)}`; }
 async function generateUniqueProCode() { let code, exists = true, attempts = 0; while (exists && attempts < 20) { code = generateProCode(); exists = (await pool.query("SELECT id FROM professional_applications WHERE pro_code = $1", [code])).rows.length > 0; attempts++; } return code; }
 async function requireAdmin(req, res, next) { const session = verifySessionToken(readCookie(req, SESSION_COOKIE)); if (!session || typeof session.jti !== "string") { clearSessionCookie(res); return res.redirect(303, "/admin"); } try { const active = await pool.query(`SELECT 1 FROM admin_sessions WHERE jti = $1 AND revoked_at IS NULL AND expires_at > NOW()`, [session.jti]); if (!active.rows.length) { clearSessionCookie(res); return res.redirect(303, "/admin"); } } catch (error) { return res.status(503).send("Erreur"); } req.adminSession = session; next(); }
