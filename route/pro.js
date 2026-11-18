@@ -567,7 +567,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, upload, uploa
 
       await pool.query(
         `INSERT INTO otp_codes (phone, code, expires_at) VALUES ($1, $2, $3) 
-         ON CONFLICT (phone) DO UPDATE SET code = $2, expires_at = $3`,
+        ON CONFLICT (phone)
+DO UPDATE SET
+  code = $2,
+  expires_at = $3,
+  used_at = NULL`,
         [phone, code, expiresAt]
       );
 
