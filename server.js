@@ -812,12 +812,23 @@ app.get("/manifest.json", (req, res) => {
 app.post("/webhooks/kkiapay", express.json({ limit: "100kb" }), async (req, res) => {
   if (BYPASS_PAYMENT) return res.status(200).json({ received: true });
   try {
-    if (process.env.KKIAPAY_WEBHOOK_SECRET) {
-      const provided = String(req.query.token || req.get("x-webhook-secret") || "");
-      if (!safeEqual(provided, process.env.KKIAPAY_WEBHOOK_SECRET)) {
-        return res.status(401).json({ received: false });
-      }
-    }
+   const webhookSecret = process.env.KKIAPAY_WEBHOOK_SECRET;
+
+if (!webhookSecret) {
+  console.error("KKIAPAY_WEBHOOK_SECRET n'est pas configuré.");
+  return res.status(500).json({
+    received: false,
+    error: "Webhook non configuré"
+  });
+}
+
+const provided = String(
+  req.get("x-webhook-secret") || req.query.token || ""
+);
+
+if (!safeEqual(provided, webhookSecret)) {
+  return res.status(401).json({ received: false });
+}
 
     const { transactionId } = req.body || {};
     if (!transactionId) return res.status(200).json({ received: true });
