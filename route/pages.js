@@ -452,14 +452,17 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               ${agency.latitude ? `<a href="https://www.google.com/maps/search/?api=1&query=${agency.latitude},${agency.longitude}" target="_blank" class="button" style="background:#2563eb; width:100%; margin-top:10px;">🗺️ Itinéraire</a>` : ""}
             </div>
             
-           ${horairesHtml}
-  ${contactButtons}
-</div>
+          ${horairesHtml}
+      ${contactButtons}
+    </div>
 
-${[1,2,3].filter(n => agency["photo_" + n]).length ? `<div class="card"><h2>📸 Photos de l'agence</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${[1,2,3].filter(n => agency["photo_" + n]).map(n => `<div style="text-align:center;"><img src="${escapeHtml(agency["photo_" + n])}" onclick="zoomImage(this.src)" alt="Photo agence" style="width:110px; height:110px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${agency["photo_" + n + "_desc"] ? `<p style="font-size:12px; margin-top:4px; max-width:110px;">${escapeHtml(agency["photo_" + n + "_desc"])}</p>` : ""}</div>`).join("")}</div></div>` : ""}
-          </div>
-        </div>
-      `, proConnected, { title: agency.name }));
+    ${[1,2,3].filter(n => agency["photo_" + n]).length ? `<div class="card"><h2>📸 Photos de l'agence</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${[1,2,3].filter(n => agency["photo_" + n]).map(n => `<div style="text-align:center;"><img src="${escapeHtml(agency["photo_" + n])}" onclick="zoomImage(this.src)" alt="Photo agence" style="width:110px; height:110px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${agency["photo_" + n + "_desc"] ? `<p style="font-size:12px; margin-top:4px; max-width:110px;">${escapeHtml(agency["photo_" + n + "_desc"])}</p>` : ""}</div>`).join("")}</div></div>` : ""}
+
+    <div style="text-align:center; margin-top:24px;">
+      <a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a>
+    </div>
+  </div>
+`, proConnected, { title: agency.name }));
     } catch (e) { 
       res.status(500).send(page("Erreur", "<h2>Erreur.</h2>", null)); 
     }
