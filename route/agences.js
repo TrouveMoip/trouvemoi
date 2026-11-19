@@ -330,7 +330,25 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
           </div>
           <button type="submit" style="width:100%; margin-top:20px;">Enregistrer</button>
         </form>
-      </section>`, proConnected));
+      </section>
+<script>
+  function getLocationAgency() {
+    const status = document.getElementById('gps-status-agency');
+    const lat = document.getElementById('agency-lat');
+    const lng = document.getElementById('agency-lng');
+    if (!confirm("Êtes-vous actuellement sur le lieu de cette agence ?")) {
+      status.innerText = "Saisissez l'adresse exacte de l'agence.";
+      document.getElementById('agency-address').focus();
+      return;
+    }
+    if (!navigator.geolocation) { status.innerText = "❌ Localisation non disponible."; return; }
+    navigator.geolocation.getCurrentPosition(
+      (position) => { lat.value = position.coords.latitude; lng.value = position.coords.longitude; status.innerText = "✅ Nouvelle position GPS enregistrée !"; },
+      () => { status.innerText = "❌ Impossible de vous localiser. Saisissez l'adresse."; },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+</script>`, proConnected));
   });
 
   router.post("/mon-espace-pro/agences/:id/modifier", upload.fields([{ name: "photo_1", maxCount: 1 }, { name: "photo_2", maxCount: 1 }, { name: "photo_3", maxCount: 1 }]), async (req, res) => {
