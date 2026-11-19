@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
-module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN) {
+module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN, verifyRecaptcha) {
   const router = express.Router();
 
   // ✅ FONCTION POUR SAVOIR SI LE PRO EST OUVERT
@@ -949,7 +949,8 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
           
           <label>Commentaire</label>
           <textarea name="comment" rows="4" maxlength="3000"></textarea>
-          
+          <div id="tm-captcha" style="display:flex; justify-content:center; margin-top:10px;"></div>
+          <script src="/captcha.js"></script>
           <div style="text-align:center; margin-top:20px;">
             <button type="submit">Envoyer</button>
             <a class="button secondary" href="/pro/${person.id}">Annuler</a>
@@ -959,9 +960,12 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
     `, proConnected));
   });
 
-  router.post("/pro/:id/avis", async (req, res) => {
-    try {
-      const proId = Number(req.params.id);
+ router.post("/pro/:id/avis", async (req, res) => {
+  try {
+    if (!(await verifyRecaptcha(req.body["g-recaptcha-response"], req.ip))) {
+      return res.status(400).send(page("Vérification échouée", "<section class='card' style='text-align:center; max-width:500px; margin:40px auto;'><h1>🤖 Vérification anti-robot échouée</h1><p>Cochez la case « Je ne suis pas un robot » puis renvoyez votre avis.</p><a class='button' href='javascript:history.back()'>Retour</a></section>", null));
+    }
+    const proId = Number(req.params.id);
       const visitorId = getOrCreateVisitorId(req, res);
       if (!Number.isSafeInteger(proId) || proId < 1) return res.redirect(303, "/");
       
