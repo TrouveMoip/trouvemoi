@@ -300,7 +300,12 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
       <section class="card" style="max-width: 700px; margin: 40px auto;">
         <form action="/mon-espace-pro/agences/${agency.id}/modifier" method="POST" enctype="multipart/form-data">
           <label>Nom de l'agence *</label><input name="name" required value="${escapeHtml(agency.name)}">
-          <label>Adresse exacte *</label><input name="address" required value="${escapeHtml(agency.address)}">
+          <label>Adresse exacte (optionnel)</label>
+<input name="address" id="agency-address" maxlength="300" value="${escapeHtml(agency.address || '')}">
+<input type="hidden" name="latitude" id="agency-lat" value="${agency.latitude ?? ''}">
+<input type="hidden" name="longitude" id="agency-lng" value="${agency.longitude ?? ''}">
+<button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin:10px 0;">📍 Utiliser ma position actuelle</button>
+<p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold;">${agency.latitude ? "✅ Position GPS déjà enregistrée" : ""}</p>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;"><div><label>Téléphone</label><input name="agency_phone" value="${escapeHtml(agency.phone || '')}"></div><div><label>WhatsApp</label><input name="agency_whatsapp" value="${escapeHtml(agency.whatsapp_number || '')}"></div></div>
           
           <label style="margin-top:15px; display:block;">Fermeture temporaire (optionnel)</label>
