@@ -419,10 +419,11 @@ btn.innerText = "..."; btn.disabled = true;
           alert("Erreur réseau.");
           btn.innerText = "Recevoir";
         }
-        btn.disabled = false;
-      }
+       tmCaptchaReset();
+  btn.disabled = false;
+}
 
-      function toggleWaField(show) {
+function toggleWaField(show) {
         const waField = document.getElementById('wa-field');
         const waInput = document.getElementById('whatsapp_input');
         if (show) {
