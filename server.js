@@ -726,12 +726,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://www.gstatic.com", "https://www.googletagmanager.com", "https://cdn.kkiapay.me", "https://www.google.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       connectSrc: ["'self'", "https://*.googleapis.com", "https://*.kkiapay.me", "https://*.esmsafrica.io", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://*.analytics.google.com"],
       imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://www.googletagmanager.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      frameSrc: ["'self'", "https://*.kkiapay.me"],
+      frameSrc: ["'self'", "https://*.kkiapay.me", "https://www.google.com"],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: IS_PRODUCTION ? [] : null,
     },
