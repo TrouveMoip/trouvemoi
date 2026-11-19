@@ -404,7 +404,7 @@ btn.innerText = "..."; btn.disabled = true;
           const res = await fetch('/api/send-otp', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ phone: phone })
+           body: JSON.stringify({ phone: phone, recaptcha: captcha })
           });
           const data = await res.json();
           if (data.ok) {
