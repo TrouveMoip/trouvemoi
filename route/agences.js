@@ -109,13 +109,23 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
         </div>
       </section>
       <script>
-        function getLocationAgency() {
-          const status = document.getElementById('gps-status-agency');
-          navigator.geolocation.getCurrentPosition(
-            (position) => { document.getElementById('agency-lat').value = position.coords.latitude; document.getElementById('agency-lng').value = position.coords.longitude; status.innerText = "✅ Position GPS enregistrée !"; },
-            (error) => { status.innerText = "❌ Impossible de vous localiser."; }, { enableHighAccuracy: true, timeout: 10000 }
-          );
-        }
+       function getLocationAgency() {
+  const status = document.getElementById('gps-status-agency');
+  const lat = document.getElementById('agency-lat');
+  const lng = document.getElementById('agency-lng');
+  if (!confirm("Êtes-vous actuellement sur le lieu de l'agence que vous ajoutez ?")) {
+    lat.value = ""; lng.value = "";
+    status.innerText = "Saisissez l'adresse exacte de l'agence.";
+    document.getElementById('agency-address').focus();
+    return;
+  }
+  if (!navigator.geolocation) { status.innerText = "❌ Localisation non disponible."; return; }
+  navigator.geolocation.getCurrentPosition(
+    (position) => { lat.value = position.coords.latitude; lng.value = position.coords.longitude; status.innerText = "✅ Position GPS enregistrée !"; },
+    () => { status.innerText = "❌ Impossible de vous localiser. Saisissez l'adresse."; },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
       </script>`, proConnected));
   });
 
