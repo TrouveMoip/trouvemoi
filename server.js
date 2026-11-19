@@ -772,7 +772,31 @@ app.use((req, res, next) => {
   if (req.path.startsWith("/webhooks/")) return next();
   return globalLimiter(req, res, next);
 });
-// --- ROUTES SYSTEME ---
+
+// Script partagé : affiche la case reCAPTCHA et fournit le jeton aux pages
+app.get("/captcha.js", (req, res) => {
+  const siteKey = JSON.stringify(process.env.RECAPTCHA_SITE_KEY || "");
+  res.type("application/javascript").set("Cache-Control", "public, max-age=300").send(`
+(function () {
+  var siteKey = ${siteKey};
+  var widgetId = null;
+  window.tmCaptchaToken = function () {
+    return (widgetId !== null && window.grecaptcha) ? window.grecaptcha.getResponse(widgetId) : "";
+  };
+  window.tmCaptchaReset = function () {
+    if (widgetId !== null && window.grecaptcha) window.grecaptcha.reset(widgetId);
+  };
+  window.tmCaptchaReady = function () {
+    var el = document.getElementById("tm-captcha");
+    if (el && siteKey) widgetId = window.grecaptcha.render(el, { sitekey: siteKey });
+  };
+  var s = document.createElement("script");
+  s.src = "https://www.google.com/recaptcha/api.js?onload=tmCaptchaReady&render=explicit";
+  s.async = true;
+  document.head.appendChild(s);
+})();
+`);
+});
 // 1. Route pour ENVOYER le code par SMS
 app.post("/api/send-otp", express.json(), async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
