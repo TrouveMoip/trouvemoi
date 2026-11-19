@@ -306,6 +306,8 @@ router.post("/logout", async (req, res) => {
 
           <div style="background:#eff6ff; padding:16px; border-radius:12px; margin-bottom:16px; border:1px solid #bfdbfe;">
             <label style="margin-top:0; color:#1e3a8a; font-weight:bold;">Vérification du numéro (Obligatoire pour changer)</label>
+            <div id="tm-captcha" style="margin-bottom:10px;"></div>
+            <script src="/captcha.js"></script>
             <div style="display:flex; gap:10px; margin-bottom:10px;">
               <button type="button" onclick="demanderCode()" style="margin-bottom:0; padding: 12px 20px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight:bold; width:100%;">📩 Recevoir le code par SMS</button>
             </div>
@@ -342,14 +344,17 @@ router.post("/logout", async (req, res) => {
           const phone = phoneInput.value;
           if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 01XXXXXXXX)"); return; }
           
-          const btn = event.target;
-          btn.innerText = "Envoi..."; btn.disabled = true;
+         const captcha = tmCaptchaToken();
+        if (!captcha) { alert("Cochez la case « Je ne suis pas un robot »."); return; }
+
+         const btn = event.target;
+         btn.innerText = "Envoi..."; btn.disabled = true;
           
           try {
             const res = await fetch('/api/send-otp', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ phone: phone })
+            body: JSON.stringify({ phone: phone, recaptcha: captcha })
             });
             const data = await res.json();
             if (data.ok) {
@@ -364,10 +369,11 @@ router.post("/logout", async (req, res) => {
             alert("Erreur réseau.");
             btn.innerText = "Recevoir";
           }
-          btn.disabled = false;
-        }
+          tmCaptchaReset();
+  btn.disabled = false;
+}
 
-        function getLocation() {
+function getLocation() {
           const status = document.getElementById('gps-status');
           status.innerText = "Récupération...";
           navigator.geolocation.getCurrentPosition(
