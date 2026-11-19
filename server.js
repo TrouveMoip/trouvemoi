@@ -800,14 +800,21 @@ app.get("/captcha.js", (req, res) => {
 // 1. Route pour ENVOYER le code par SMS
 app.post("/api/send-otp", express.json(), async (req, res) => {
   const phone = cleanBeninPhone(req.body.phone);
-  if (!phone) {
-    return res.status(400).json({
-      ok: false,
-      error: "Numéro invalide (01XXXXXXXX)"
-    });
-  }
+if (!phone) {
+  return res.status(400).json({
+    ok: false,
+    error: "Numéro invalide (01XXXXXXXX)"
+  });
+}
 
-  const ipKey = `otp_ip:${req.ip || 'unknown'}`;
+if (!(await verifyRecaptcha(req.body.recaptcha, req.ip))) {
+  return res.status(400).json({
+    ok: false,
+    error: "Vérification anti-robot échouée. Cochez la case et réessayez."
+  });
+}
+
+const ipKey = `otp_ip:${req.ip || 'unknown'}`;
   if (!(await takeRateLimit(ipKey, 5, 15 * 60 * 1000))) {
     return res.status(429).json({
       ok: false,
