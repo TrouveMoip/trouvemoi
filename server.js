@@ -1409,6 +1409,10 @@ async function startServer() {
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS referral_balance INTEGER DEFAULT 0`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS unavailable_until DATE`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_activite_url TEXT`);
+    await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_4 TEXT`);
+   await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_4_desc TEXT`);
+   await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_5 TEXT`);
+   await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS photo_galerie_5_desc TEXT`);
     await pool.query(`ALTER TABLE professional_applications ADD COLUMN IF NOT EXISTS kyc_verified BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply TEXT`);
     await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS pro_reply_date TIMESTAMP`);
