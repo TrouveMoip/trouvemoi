@@ -100,6 +100,8 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
               <label style="margin-top:0; color:#1e3a8a; font-weight:bold; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:20px;">📱</span> Vérification du numéro
               </label>
+              <div id="tm-captcha" style="margin-bottom:10px;"></div>
+              <script src="/captcha.js"></script>
               <p style="font-size:12px; color:#3b82f6; margin-bottom:10px;">Nous vous enverrons un code par SMS pour confirmer.</p>
               <div style="display:flex; gap:10px;">
                 <button type="button" onclick="demanderCodePro()" style="width:100%; margin-bottom:0; padding: 14px; white-space: nowrap; background: #3b82f6; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight:bold;">📩 Recevoir mon code par SMS</button>
@@ -392,8 +394,11 @@ module.exports = function(pool, page, getConnectedPro, upload, uploadToCloudinar
         const phone = document.getElementById('input_phone').value;
         if (!phone || !/^01[0-9]{8}$/.test(phone)) { alert("Entrez un numéro valide (ex: 0194010345)"); return; }
         
-        const btn = event.target;
-        btn.innerText = "..."; btn.disabled = true;
+       const captcha = tmCaptchaToken();
+if (!captcha) { alert("Cochez la case « Je ne suis pas un robot »."); return; }
+
+const btn = event.target;
+btn.innerText = "..."; btn.disabled = true;
         
         try {
           const res = await fetch('/api/send-otp', {
