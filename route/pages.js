@@ -291,7 +291,8 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
      let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" alt="Photo" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${item.desc ? `<p style="font-size:12px; margin-top:4px; max-width:100px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
         <div style="max-width: 800px; margin: 0 auto;">
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
-            <div style="margin-bottom:12px;">
+  ${person.photo_activite_url ? `<style>.tm-act{display:block;margin:0 auto 16px;} @media(min-width:768px){.tm-act{float:left;margin:0 20px 10px 0;}}</style><img class="tm-act" src="${escapeHtml(person.photo_activite_url)}" onclick="zoomImage(this.src)" alt="Photo d'activité" style="width:130px;height:130px;object-fit:cover;border-radius:16px;cursor:zoom-in;">` : ""}
+  <div style="margin-bottom:12px;">
               <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
                 ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
               </a>
