@@ -71,7 +71,11 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
         <div style="background:#f8fafc; padding:20px; border-radius:12px; border:1px solid #e2e8f0;">
           <form action="/mon-espace-pro/agences/nouvelle" method="POST" enctype="multipart/form-data">
             <label>Nom de l'agence *</label><input name="name" required maxlength="200">
-            <label>Adresse exacte *</label><input name="address" required maxlength="300">
+            <label>Adresse exacte (optionnel)</label>
+<input name="address" id="agency-address" maxlength="300">
+<input type="hidden" name="latitude" id="agency-lat"><input type="hidden" name="longitude" id="agency-lng">
+<button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin:10px 0;">📍 Utiliser ma position actuelle</button>
+<p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
               <div><label>Téléphone (optionnel)</label><input name="agency_phone" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
               <div><label>WhatsApp (optionnel)</label><input name="agency_whatsapp" type="tel" maxlength="30" placeholder="Ex: 0194010345"></div>
@@ -94,9 +98,6 @@ module.exports = function(pool, page, getConnectedPro, escapeHtml, safeCoord, cl
               </div>
             </div>
 
-            <input type="hidden" name="latitude" id="agency-lat"><input type="hidden" name="longitude" id="agency-lng">
-            <button type="button" onclick="getLocationAgency()" style="background:#3b82f6; width:100%; margin-bottom:10px;">📍 Utiliser ma position actuelle</button>
-            <p id="gps-status-agency" style="text-align:center; color:#2563eb; font-weight:bold;"></p>
             <label>Photo 1 *</label><input name="photo_1" type="file" accept="image/*" required>
             <input name="desc1" maxlength="150" placeholder="Description photo 1" style="margin-top:-10px; margin-bottom:10px;">
             <label>Photo 2</label><input name="photo_2" type="file" accept="image/*">
