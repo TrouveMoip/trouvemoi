@@ -779,7 +779,9 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               
               <label class="fancy-label">Téléphone</label>
               <input name="phone" type="tel" required pattern="01[0-9]{8}" placeholder="01XXXXXXXX" class="fancy-input">
-              
+
+              <div id="tm-captcha" style="margin-bottom:10px;"></div>
+              <script src="/captcha.js"></script>
               <label class="fancy-label">Vérification du numéro *</label>
               <div style="display:flex; gap:10px; margin-bottom:14px;">
                 <input name="otp_code" placeholder="Code SMS" required class="fancy-input" style="margin-bottom:0;">
@@ -821,15 +823,18 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               alert("Veuillez entrer un numéro valide (ex: 01XXXXXXXX)");
               return;
             }
-            const btn = event.target;
-            btn.innerText = "Envoi...";
-            btn.disabled = true;
+           const captcha = tmCaptchaToken();
+           if (!captcha) { alert("Cochez la case « Je ne suis pas un robot »."); return; }
+
+           const btn = event.target;
+           btn.innerText = "Envoi...";
+           btn.disabled = true;
             
             try {
               const res = await fetch('/api/send-otp', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ phone: phoneInput.value })
+                body: JSON.stringify({ phone: phoneInput.value, recaptcha: captcha })
               });
               const data = await res.json();
               if (data.ok) {
@@ -843,9 +848,10 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
               alert("Erreur réseau.");
               btn.innerText = "Recevoir";
             }
-            btn.disabled = false;
-          }
-        </script>
+           tmCaptchaReset();
+    btn.disabled = false;
+  }
+</script>
       `;
     }
 
