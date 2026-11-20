@@ -66,7 +66,8 @@ const router = express.Router();
     const name = String(req.body.name || "").trim().slice(0, 100);
     const email = String(req.body.email || "").trim().slice(0, 254);
     const phone = String(req.body.phone || "").trim().slice(0, 30);
-    const message = String(req.body.message || "").trim().slice(0, 3000);
+    const offerId = Number(req.body.offer_id) || null;
+    const message = ((offerId ? `[SIGNALEMENT OFFRE #${offerId}] ` : "") + String(req.body.message || "").trim()).slice(0, 3000);
     const proId = req.body.pro_id ? Number(req.body.pro_id) : null;
     const reportId = req.body.report_id ? Number(req.body.report_id) : null;
 
