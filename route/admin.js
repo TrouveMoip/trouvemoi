@@ -1446,11 +1446,17 @@ router.get("/abonnements/export", requireAdmin, requireSuperAdmin, async (req, r
 
   router.get("/logs", requireAdmin, async (req, res) => {
   const csrf = getCsrf(req);
+  const today = new Date().toISOString().slice(0, 10);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || "")) ? String(req.query.date) : today;
+  const shift = (d, n) => { const x = new Date(d + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+
   const logs = (await pool.query(`
     SELECT l.*, p.full_name AS pro_name, p.company_name AS pro_company, p.phone AS pro_phone
     FROM admin_logs l
     LEFT JOIN professional_applications p ON l.target_type = 'pro' AND l.target_id = p.id
-    ORDER BY l.created_at DESC LIMIT 100`)).rows;
+    WHERE (l.created_at AT TIME ZONE 'Africa/Porto-Novo')::date = $1::date
+    ORDER BY l.created_at DESC LIMIT 1000`, [day])).rows;
+
   const rows = logs.map(l => {
     let cible = "";
     if (l.target_type === "pro" && l.target_id) {
@@ -1461,9 +1467,18 @@ router.get("/abonnements/export", requireAdmin, requireSuperAdmin, async (req, r
     } else if (l.target_type) {
       cible = escapeHtml(l.target_type) + (l.target_id ? " #" + l.target_id : "");
     }
-    return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${cible}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`;
+    return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleTimeString("fr-FR", { timeZone: "Africa/Porto-Novo" })}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${cible}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`;
   }).join("");
-  res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Pro concerné</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+
+  const nav = `<form method="GET" action="/admin/logs" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; margin-bottom:16px;">
+    <a class="button secondary" href="/admin/logs?date=${shift(day, -1)}">← Jour précédent</a>
+    <input type="date" name="date" value="${day}" max="${today}" style="width:auto; margin:0;">
+    <button type="submit" style="margin:0;">Filtrer</button>
+    <a class="button secondary" href="/admin/logs">Aujourd'hui</a>
+    ${day < today ? `<a class="button secondary" href="/admin/logs?date=${shift(day, 1)}">Jour suivant →</a>` : ""}
+  </form>`;
+
+  res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf, req.adminSession.role)}<section class="card">${nav}<p style="text-align:center; font-weight:bold;">${new Date(day + "T12:00:00Z").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} : ${logs.length} action(s)</p><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Heure</th><th>Action</th><th>Pro concerné</th><th>Détails</th></tr></thead><tbody>${rows || "<tr><td colspan='4' style='text-align:center; padding:30px; color:#6b7280;'>Aucune action ce jour-là.</td></tr>"}</tbody></table></section>`, null));
 });
 
   router.get("/qrcode", requireAdmin, async (req, res) => {
