@@ -8,6 +8,7 @@ const router = express.Router();
       const proConnected = await getConnectedPro(req);
       const proId = Number(req.query.pro) || null;
       const reportId = Number(req.query.report) || null;
+      const offerId = Number(req.query.offer) || null;
       const success = req.query.success === "1";
       
       let contextHtml = "";
