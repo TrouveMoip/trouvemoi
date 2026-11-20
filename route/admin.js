@@ -1445,11 +1445,26 @@ router.get("/abonnements/export", requireAdmin, requireSuperAdmin, async (req, r
   });
 
   router.get("/logs", requireAdmin, async (req, res) => {
-    const csrf = getCsrf(req);
-    const logs = (await pool.query(`SELECT * FROM admin_logs ORDER BY created_at DESC LIMIT 100`)).rows;
-    const rows = logs.map(l => `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`).join("");
-    res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
-  });
+  const csrf = getCsrf(req);
+  const logs = (await pool.query(`
+    SELECT l.*, p.full_name AS pro_name, p.company_name AS pro_company, p.phone AS pro_phone
+    FROM admin_logs l
+    LEFT JOIN professional_applications p ON l.target_type = 'pro' AND l.target_id = p.id
+    ORDER BY l.created_at DESC LIMIT 100`)).rows;
+  const rows = logs.map(l => {
+    let cible = "";
+    if (l.target_type === "pro" && l.target_id) {
+      const nom = l.pro_company || l.pro_name;
+      cible = nom
+        ? `<a href="/pro/${l.target_id}" target="_blank">${escapeHtml(nom)}</a><br><span style="font-size:11px; color:#6b7280;">#${l.target_id} ${escapeHtml(l.pro_phone || "")}</span>`
+        : `<span style="color:#6b7280;">Pro #${l.target_id} (supprimé)</span>`;
+    } else if (l.target_type) {
+      cible = escapeHtml(l.target_type) + (l.target_id ? " #" + l.target_id : "");
+    }
+    return `<tr style="border-bottom:1px solid #e5e7eb;"><td style="padding:10px; font-size:12px;">${new Date(l.created_at).toLocaleString("fr-FR")}</td><td style="padding:10px; font-weight:bold;">${escapeHtml(l.action)}</td><td style="padding:10px;">${cible}</td><td style="padding:10px;">${escapeHtml(l.details || "")}</td></tr>`;
+  }).join("");
+  res.send(page("Journal", `<h1>Journal d'activité</h1>${await customAdminMenu("/admin/logs", csrf, req.adminSession.role)}<section class="card"><table style="width:100%; border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th>Date</th><th>Action</th><th>Pro concerné</th><th>Détails</th></tr></thead><tbody>${rows}</tbody></table></section>`, null));
+});
 
   router.get("/qrcode", requireAdmin, async (req, res) => {
     const csrf = getCsrf(req);
