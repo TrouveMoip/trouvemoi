@@ -17,7 +17,9 @@ const router = express.Router();
         if (proResult.rows.length) {
           contextHtml = `<div class="alert alert-info">Vous contactez : <strong>${escapeHtml(proResult.rows[0].company_name || proResult.rows[0].full_name)}</strong></div>`;
         }
-      } else if (reportId) {
+      } else if (offerId) {
+  contextHtml = `<div class="alert alert-danger">⚠️ Vous signalez l'offre d'emploi #${offerId}. Expliquez le problème ci-dessous.</div>`;
+} else if (reportId) {
         contextHtml = `<div class="alert alert-danger">⚠️ Vous signalez le professionnel #${reportId}.</div>`;
       }
 
