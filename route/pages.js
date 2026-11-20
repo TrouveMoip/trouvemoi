@@ -289,11 +289,11 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       }
 
       const galerieData = [1,2,3,4,5].map(n => ({ url: person["photo_galerie_" + n], desc: person["photo_galerie_" + n + "_desc"] })).filter(item => item.url);
-     let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(opt(item.url, 300))}" loading="lazy" data-full="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" alt="Photo" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${item.desc ? `<p style="font-size:12px; margin-top:4px; max-width:100px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
+     let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(opt(item.url, 300))}" data-full="${escapeHtml(item.url)}" loading="lazy" onclick="zoomImage(this.dataset.full)" onclick="zoomImage(this.src)" alt="Photo" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${item.desc ? `<p style="font-size:12px; margin-top:4px; max-width:100px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
         const content = `
       <div style="max-width: 800px; margin: 0 auto;">
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
-  ${person.photo_activite_url ? `<style>.tm-act{display:block;margin:0 auto 16px;} @media(min-width:768px){.tm-act{float:left;margin:0 20px 10px 0;}}</style><img class="tm-act" src="${escapeHtml(person.photo_activite_url)}" onclick="zoomImage(this.src)" alt="Photo d'activité" style="width:130px;height:130px;object-fit:cover;border-radius:16px;cursor:zoom-in;">` : ""}
+  ${person.photo_activite_url ? `<style>.tm-act{display:block;margin:0 auto 16px;} @media(min-width:768px){.tm-act{float:left;margin:0 20px 10px 0;}}</style><img class="tm-act" src="${escapeHtml(opt(person.photo_activite_url, 300))}" data-full="${escapeHtml(person.photo_activite_url)}" loading="lazy" onclick="zoomImage(this.dataset.full)" alt="Photo d'activité" style="width:130px;height:130px;object-fit:cover;border-radius:16px;cursor:zoom-in;">` : ""}
   <div style="margin-bottom:12px;">
               <a href="#" id="fav-btn-${person.id}" onclick="handleFavorite(event, ${person.id}, ${person.is_favorite})" class="button secondary" style="padding:8px 16px;">
                 ${person.is_favorite ? '❤️ Retirer des favoris' : '🤍 Ajouter aux favoris'}
@@ -457,7 +457,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       ${contactButtons}
     </div>
 
-    ${[1,2,3].filter(n => agency["photo_" + n]).length ? `<div class="card"><h2>📸 Photos de l'agence</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${[1,2,3].filter(n => agency["photo_" + n]).map(n => `<div style="text-align:center;"><img src="${escapeHtml(agency["photo_" + n])}" onclick="zoomImage(this.src)" alt="Photo agence" style="width:110px; height:110px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${agency["photo_" + n + "_desc"] ? `<p style="font-size:12px; margin-top:4px; max-width:110px;">${escapeHtml(agency["photo_" + n + "_desc"])}</p>` : ""}</div>`).join("")}</div></div>` : ""}
+    ${[1,2,3].filter(n => agency["photo_" + n]).length ? `<div class="card"><h2>📸 Photos de l'agence</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${[1,2,3].filter(n => agency["photo_" + n]).map(n => `<div style="text-align:center;"><img src="${escapeHtml(opt(agency["photo_" + n], 300))}" data-full="${escapeHtml(agency["photo_" + n])}" loading="lazy" onclick="zoomImage(this.dataset.full)" alt="Photo agence" style="width:110px; height:110px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${agency["photo_" + n + "_desc"] ? `<p style="font-size:12px; margin-top:4px; max-width:110px;">${escapeHtml(agency["photo_" + n + "_desc"])}</p>` : ""}</div>`).join("")}</div></div>` : ""}
 
     <div style="text-align:center; margin-top:24px;">
       <a href="/pro/${agency.parent_pro_id}" class="button secondary">← Profil de ${escapeHtml(parentName)}</a>
