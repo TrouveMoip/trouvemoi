@@ -31,6 +31,7 @@ const router = express.Router();
           <form action="/contact" method="POST">
             <input type="hidden" name="pro_id" value="${proId || ""}">
             <input type="hidden" name="report_id" value="${reportId || ""}">
+            <input type="hidden" name="offer_id" value="${offerId || ""}">
             
             <label>Votre nom *</label>
             <input name="name" required maxlength="100">
