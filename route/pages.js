@@ -289,7 +289,7 @@ module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, esc
       }
 
       const galerieData = [1,2,3,4,5].map(n => ({ url: person["photo_galerie_" + n], desc: person["photo_galerie_" + n + "_desc"] })).filter(item => item.url);
-     let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" alt="Photo" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${item.desc ? `<p style="font-size:12px; margin-top:4px; max-width:100px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
+     let galerieHtml = galerieData.length > 0 ? `<div class="card"><h2>📸 Galerie Photos</h2><div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">${galerieData.map(item => `<div style="text-align:center;"><img src="${escapeHtml(opt(item.url, 300))}" loading="lazy" data-full="${escapeHtml(item.url)}" onclick="zoomImage(this.src)" alt="Photo" style="width:100px; height:100px; object-fit:cover; border-radius:8px; cursor:zoom-in;">${item.desc ? `<p style="font-size:12px; margin-top:4px; max-width:100px;">${escapeHtml(item.desc)}</p>` : ""}</div>`).join("")}</div></div>` : "";
         const content = `
       <div style="max-width: 800px; margin: 0 auto;">
           <div class="card" style="padding: 32px 24px; position:relative; text-align:center;">
