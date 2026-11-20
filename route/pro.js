@@ -411,7 +411,7 @@ function getLocation() {
     const preference = ["whatsapp", "email"].includes(contact_preference) ? contact_preference : "whatsapp";
     
     await pool.query(`UPDATE professional_applications SET service_description = $10, company_name = $1, phone = $2, contact_email = $3, contact_preference = $4, whatsapp_number = $5, adresse_exacte = $6, latitude = $7, longitude = $8, updated_at = NOW() WHERE id = $9`, 
-    [company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, req.body.adresse_exacte || null, safeCoord(req.body.latitude, 90), safeCoord(req.body.longitude, 180), proConnected.pro.id]);
+    [company_name || null, cleanPhone, email || null, preference, cleanWhatsapp, req.body.adresse_exacte || null, safeCoord(req.body.latitude, 90), safeCoord(req.body.longitude, 180), proConnected.pro.id,description]);
     res.redirect(303, "/mon-espace-pro");
   });
 
