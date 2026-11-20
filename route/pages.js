@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 
 module.exports = function(pool, page, getConnectedPro, getOrCreateVisitorId, escapeHtml, renderStars, renderKycBadge, getDisplayName, APP_URL, cleanBeninPhone, takeRateLimit, verifyKkiapayTransaction, settlePayment, PAYMENT_AMOUNT, verifyOTP, QUARTIERS_BENIN, verifyRecaptcha) {
+  const opt = (url, w) => String(url || "").replace("/upload/", `/upload/f_auto,q_auto,w_${w}/`);
   const router = express.Router();
 
   // ✅ FONCTION POUR SAVOIR SI LE PRO EST OUVERT
