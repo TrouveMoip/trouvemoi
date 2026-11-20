@@ -406,6 +406,8 @@ function getLocation() {
     if (!cleanPhone) return res.status(400).send(page("Erreur", "<h2>Téléphone invalide.</h2>", proConnected));
     const cleanWhatsapp = whatsapp_number ? cleanBeninPhone(whatsapp_number) : null;
     const email = String(contact_email || "").trim().slice(0, 254);
+    const description = String(req.body.service_description || "").trim().slice(0, 3000);
+    if (description.length < 10) return res.status(400).send(page("Erreur", "<h2>Description trop courte (10 caractères minimum).</h2><a href='/mon-espace-pro/modifier-profil'>Retour</a>", proConnected));
     const preference = ["whatsapp", "email"].includes(contact_preference) ? contact_preference : "whatsapp";
     
     await pool.query(`UPDATE professional_applications SET company_name = $1, phone = $2, contact_email = $3, contact_preference = $4, whatsapp_number = $5, adresse_exacte = $6, latitude = $7, longitude = $8, updated_at = NOW() WHERE id = $9`, 
