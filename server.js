@@ -1535,6 +1535,13 @@ await pool.query(`
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_id ON reviews(pro_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_visitor ON client_favorites(visitor_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_pro_id ON contact_messages(pro_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_agencies_parent ON agencies(parent_pro_id, status)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_offers(status, created_at DESC)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_jobs_pro ON job_offers(pro_id)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_reviews_pro_status ON reviews(pro_id, status)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_pro_created ON professional_applications(created_at DESC)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_favorites_pro ON client_favorites(pro_id, visitor_id)`);
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_logs_created ON admin_logs(created_at DESC)`);
     
     // ✅ GESTION DES ADMINISTRATEURS (SUPER ADMIN & MODÉRATEURS)
     await pool.query(`CREATE TABLE IF NOT EXISTS admin_users (
