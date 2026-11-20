@@ -300,6 +300,8 @@ router.post("/logout", async (req, res) => {
           <input name="full_name" value="${escapeHtml(proConnected.pro.full_name)}" readonly style="background:#e5e7eb; cursor:not-allowed; color:#6b7280;">
           <label>Nom de l'entreprise (Modifiable)</label>
           <input name="company_name" maxlength="200" value="${escapeHtml(proConnected.pro.company_name || '')}">
+           <label>Description de mes services</label>
+          <textarea name="service_description" rows="5" required maxlength="3000">${escapeHtml(proConnected.pro.service_description || '')}</textarea>
           
           <label>Téléphone *</label>
           <input name="phone" id="phone-input" type="tel" required maxlength="30" pattern="01[0-9]{8}" value="${escapeHtml(proConnected.pro.phone)}">
