@@ -153,30 +153,52 @@ function safeEqual(a, b) { const b1 = Buffer.from(String(a ?? "")); const b2 = B
 function safeCoord(value, max) { if (value === null || value === undefined || value === "") return null; const num = Number(value); return Number.isFinite(num) && Math.abs(num) <= max ? num : null; }
 function cleanBeninPhone(value) { const normalized = String(value || "").trim().replace(/[()\s.-]/g, "").replace(/^(?:\+?229|00229)/, ""); return /^01\d{8}$/.test(normalized) ? normalized : null; }
 
-// --- FONCTION D'ENVOI DE SMS (eSMS Africa) ---
+// --- FONCTION D'ENVOI DE SMS (Infobip - Trial) ---
 async function sendSMS(telephone, message) {
-  if (!process.env.SMSPRO_API_KEY) return { error: "Pas de clé API" };
+  if (!process.env.INFOBIP_API_KEY || !process.env.INFOBIP_BASE_URL) {
+    console.error("❌ Infobip non configuré");
+    return { error: "Configuration manquante" };
+  }
+
   try {
-    const cleanPhone = String(telephone).replace(/\D/g, "").replace(/^(?:00229|229)/, "");
-    const finalPhone = "+229" + cleanPhone;
-    const response = await fetch("https://sms.esmsafrica.io/api/v1/messages", {
+    // Format international sans + ni 00 (ex: 2290197000000)
+    let cleanPhone = String(telephone).replace(/\D/g, "");
+    if (cleanPhone.startsWith("00")) cleanPhone = cleanPhone.substring(2);
+    if (!cleanPhone.startsWith("229")) cleanPhone = "229" + cleanPhone;
+
+    const url = `https://${process.env.INFOBIP_BASE_URL}/sms/3/messages`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.SMSPRO_API_KEY}`,
+        "Authorization": `App ${process.env.INFOBIP_API_KEY}`,
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
       body: JSON.stringify({
-        sender: "TrouveMoi",
-        recipient: finalPhone,
-        message: message
+        messages: [{
+          sender: "InfoSMS", // ⚠️ Obligatoire en trial
+          destinations: [{ to: cleanPhone }],
+          content: { text: message }
+        }]
       })
     });
+
     const data = await response.json();
-    if (!IS_PRODUCTION) console.log("📱 Résultat envoi SMS eSMS :", data);
-    return data;
+
+    if (!IS_PRODUCTION) {
+      console.log("📱 Infobip réponse :", JSON.stringify(data));
+    }
+
+    // Vérifie que le message a été accepté (groupId 1 = PENDING)
+    if (data.messages?.[0]?.status?.groupId === 1) {
+      return { success: true, messageId: data.messages[0].messageId };
+    } else {
+      console.error("❌ Infobip erreur :", data.messages?.[0]?.status?.description);
+      return { error: data.messages?.[0]?.status?.description || "Erreur inconnue" };
+    }
   } catch (error) {
-    console.error("❌ Erreur d'envoi de SMS eSMS :", error.message);
+    console.error("❌ Erreur Infobip :", error.message);
     return { error: true };
   }
 }
